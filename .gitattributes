@@ -1,0 +1,3 @@
+# Pawn sources are Windows-1251 (needed for Russian text in-game). Keep bytes exactly as they are.
+*.pwn -text
+*.inc -text
