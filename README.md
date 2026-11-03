@@ -1,6 +1,6 @@
-# Bastion RP
+# Bastion Online
 
-Свой RP-сервер для GTA San Andreas Multiplayer на open.mp.
+Свой онлайн-сервер для GTA San Andreas Multiplayer на open.mp.
 
 ## Что здесь лежит
 
@@ -21,4 +21,4 @@
 
 ## Два сервера
 
-Один код на два сервера (переключается в `config.inc`): **Bastion Peace** (админы помогают игрокам) и **Bastion War** (закон сильного, админы только банят читеров).
+Один код на два сервера (переключается в `config.inc`): **Bastion Online: Peace** (админы помогают игрокам) и **Bastion Online: War** (закон сильного, админы только банят читеров).

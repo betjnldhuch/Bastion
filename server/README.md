@@ -1,4 +1,4 @@
-# Starter RolePlay — свой RP-сервер GTA SA:MP с нуля
+# Bastion Online — свой сервер GTA SA:MP с нуля
 
 Это стартовый RolePlay-мод для **open.mp** (современный сервер для SA-MP, полностью совместим с обычным клиентом SA-MP 0.3.7). Написан на языке **Pawn**, данные хранятся в базе **SQLite**, никаких плагинов ставить не нужно.
 
@@ -37,7 +37,7 @@
 3. Открой `C:\openmp\config.json` в Notepad++ и поменяй эти поля (остальное не трогай):
 
    ```json
-   "name": "Bastion RP",
+   "name": "Bastion Online | Peace",
    "max_players": 100,
    "pawn": {
        "legacy_plugins": [],
@@ -76,7 +76,7 @@
    [DB] Database opened.
    [Houses] Default houses created.
    [Houses] Loaded 3 houses.
-     |  Starter RolePlay loaded  |
+     |  Bastion Online: Peace loaded  |
    ```
 3. В папке `scriptfiles` появится `rp.db` — это база с аккаунтами, домами и машинами.
 
@@ -176,10 +176,10 @@
 ### Два сервера: Peace и War
 
 В `bastion/config.inc` есть строка `#define SERVER_MODE MODE_PEACE`.
-- **MODE_PEACE** (Bastion Peace) — обычный сервер, админы помогают.
-- **MODE_WAR** (Bastion War) — закон сильного. Админские `/goto /gethere /sethp /setskin /veh /givemoney /jail /unjail` выключены, работают кик, бан, админ-чат и настройка сервера. Убийца забирает 20% наличных жертвы, захват районов разрешён круглосуточно.
+- **MODE_PEACE** (Bastion Online: Peace) — обычный сервер, админы помогают.
+- **MODE_WAR** (Bastion Online: War) — закон сильного. Админские `/goto /gethere /sethp /setskin /veh /givemoney /jail /unjail` выключены, работают кик, бан, админ-чат и настройка сервера. Убийца забирает 20% наличных жертвы, захват районов разрешён круглосуточно.
 
-Как запустить второй сервер: скопируй всю папку `C:\openmp\Server` в `C:\openmp\ServerWar`. Там в `config.inc` поставь `MODE_WAR`, скомпилируй, а в `config.json` смени `"port": 7777` на `7778`. У каждого сервера будет своя база игроков.
+Как запустить второй сервер: скопируй всю папку `C:\openmp\Server` в `C:\openmp\ServerWar`. Там в `config.inc` поставь `MODE_WAR`, скомпилируй, а в `config.json` смени `"port": 7777` на `7778` и `"name"` на `"Bastion Online | War"`. У каждого сервера будет своя база игроков.
 
 **PayDay:** каждый час в :00 по времени компьютера сервера — $500 и +1 опыт. Опыта на следующий уровень нужно `уровень × 4`.
 

@@ -1,5 +1,5 @@
 // =====================================================================
-//  Starter RolePlay Ч стартовый RP-мод дл€ open.mp (GTA San Andreas Multiplayer)
+//  Bastion Online Ч мод сервера дл€ open.mp (GTA San Andreas Multiplayer)
 //
 //  Ёто главный файл. ќн подключает модули из папки bastion/ и раздаЄт им
 //  событи€ сервера (callbacks). ¬с€ логика Ч в модул€х:

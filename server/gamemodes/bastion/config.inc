@@ -5,8 +5,8 @@
 
 // ---------------------------------------------------------------------
 //  –≈∆»ћ —≈–¬≈–ј. ќдин код Ч два сервера:
-//    MODE_PEACE Ч Bastion Peace: админы помогают игрокам
-//    MODE_WAR   Ч Bastion War: закон сильного, админы только бан€т читеров
+//    MODE_PEACE Ч Bastion Online: Peace Ч админы помогают игрокам
+//    MODE_WAR   Ч Bastion Online: War Ч закон сильного, админы только бан€т читеров
 //  ѕомен€й строку SERVER_MODE, скомпилируй и запусти второй сервер
 //  (у него свой порт в config.json и сво€ база rp.db в scriptfiles).
 // ---------------------------------------------------------------------
@@ -15,14 +15,14 @@
 #define SERVER_MODE         MODE_PEACE
 
 #if SERVER_MODE == MODE_WAR
-	#define SERVER_NAME     "Bastion War"
-	#define MODE_TEXT       "Bastion War v1.1"
+	#define SERVER_NAME     "Bastion Online: War"
+	#define MODE_TEXT       "Bastion Online v1.1"
 	#define DEATH_CASH_LOSS 20               // % наличных, которые убийца забирает у жертвы
 	#define CAPTURE_HOUR_FROM 0              // захват районов разрешЄн круглосуточно
 	#define CAPTURE_HOUR_TO   24
 #else
-	#define SERVER_NAME     "Bastion Peace"
-	#define MODE_TEXT       "Bastion Peace v1.1"
+	#define SERVER_NAME     "Bastion Online: Peace"
+	#define MODE_TEXT       "Bastion Online v1.1"
 	#define DEATH_CASH_LOSS 0                // при смерти деньги не тер€ютс€
 	#define CAPTURE_HOUR_FROM 16             // захват районов только с 16:00...
 	#define CAPTURE_HOUR_TO   24             // ...до 23:59

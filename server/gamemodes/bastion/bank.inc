@@ -90,7 +90,7 @@ stock Atm_GetNearby(playerid)
 
 stock Bank_ShowMenu(playerid)
 {
-	ShowPlayerDialog(playerid, DIALOG_BANK, DIALOG_STYLE_LIST, "Банк Bastion",
+	ShowPlayerDialog(playerid, DIALOG_BANK, DIALOG_STYLE_LIST, "Bastion Bank",
 		"Баланс\nПоложить деньги\nСнять деньги\nПеревести другому игроку", "Выбрать", "Закрыть");
 }
 
