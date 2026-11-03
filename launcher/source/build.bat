@@ -1,0 +1,7 @@
+@echo off
+rem Пересобрать лаунчер после правок в BastionLauncher.cs
+chcp 65001 >nul
+set CSC=%WINDIR%\Microsoft.NET\Framework\v4.0.30319\csc.exe
+"%CSC%" /nologo /codepage:65001 /target:winexe /platform:x86 /optimize+ /r:System.Windows.Forms.dll /r:System.Drawing.dll /out:..\BastionLauncher.exe BastionLauncher.cs
+if errorlevel 1 (echo ОШИБКА сборки) else (echo Готово: BastionLauncher.exe пересобран)
+pause
