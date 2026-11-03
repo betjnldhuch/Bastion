@@ -12,6 +12,10 @@
 //    bastion/houses.inc    Ч дома
 //    bastion/jobs.inc      Ч работы (грузчик, пицца)
 //    bastion/factions.inc  Ч фракции (полици€, больница, банды), тюрьма
+//    bastion/turfs.inc     Ч районы банд и войны за них
+//    bastion/bank.inc      Ч банк и банкоматы
+//    bastion/phone.inc     Ч телефон: звонки, SMS, 911
+//    bastion/business.inc  Ч бизнесы: 24/7, бар, одежда, оружие
 //    bastion/chat.inc      Ч RP-чат
 //    bastion/admin.inc     Ч админ-команды
 //    bastion/commands.inc  Ч список команд
@@ -35,6 +39,10 @@
 #include "bastion/chat.inc"
 #include "bastion/admin.inc"
 #include "bastion/factions.inc"   // после admin.inc: использует Admin_Check
+#include "bastion/turfs.inc"
+#include "bastion/bank.inc"
+#include "bastion/phone.inc"
+#include "bastion/business.inc"
 #include "bastion/commands.inc"
 
 new gLastPayDayHour = -1;
@@ -42,7 +50,7 @@ new gLastPayDayHour = -1;
 main()
 {
 	print("\n  -----------------------------");
-	print("  |  Starter RolePlay loaded  |");
+	printf("  |  %s loaded  |", SERVER_NAME);
 	print("  -----------------------------\n");
 }
 
@@ -66,6 +74,9 @@ public OnGameModeInit()
 	Jobs_Init();
 	Houses_Load();
 	Factions_Init();
+	Turfs_Init();
+	Bank_Init();
+	Business_Init();
 
 	new hour;
 	gettime(hour);
@@ -102,6 +113,7 @@ public OnPlayerConnect(playerid)
 public OnPlayerDisconnect(playerid, reason)
 {
 	Job_Stop(playerid);
+	Phone_HangUp(playerid);
 	Account_Save(playerid);
 	Vehicles_UnloadForPlayer(playerid);
 	Player[playerid][pLogged] = false;
@@ -155,6 +167,7 @@ public OnPlayerSpawn(playerid)
 
 	Account_SetNormalSpawn(playerid);   // следующий спавн Ч снова обычный
 	Factions_OnSpawn(playerid);         // цвет ника, розыск, тюрьма
+	Turfs_ShowForPlayer(playerid);      // районы банд на радаре
 	return 1;
 }
 
@@ -162,6 +175,23 @@ public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 {
 	Job_Stop(playerid);
 	Factions_OnDeath(playerid);
+	Phone_HangUp(playerid);
+	Turfs_OnDeath(playerid, killerid);
+
+#if DEATH_CASH_LOSS > 0
+	// —ервер War: убийца забирает часть наличных
+	if (killerid != INVALID_PLAYER_ID && killerid != playerid && IsPlayerConnected(killerid) && GetMoney(playerid) > 0)
+	{
+		new loss = GetMoney(playerid) * DEATH_CASH_LOSS / 100;
+		if (loss > 0)
+		{
+			GiveMoney(playerid, -loss);
+			GiveMoney(killerid, loss);
+			SendClientMessage(playerid, COLOR_RED, "%s забрал у теб€ $%d. ’рани деньги в банке!", GetRPName(killerid), loss);
+			SendClientMessage(killerid, COLOR_GREEN, "“ы забрал у %s $%d.", GetRPName(playerid), loss);
+		}
+	}
+#endif
 	Player[playerid][pDied] = true;
 	SetSpawnInfo(playerid, NO_TEAM, Player[playerid][pSkin], HOSPITAL_X, HOSPITAL_Y, HOSPITAL_Z, 0.0);
 	return 1;
@@ -186,6 +216,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 {
 	if (Account_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Vehicles_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Bank_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Business_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	return 0;
 }
 
@@ -242,6 +274,7 @@ public OnMinuteTimer()
 
 stock PayDay()
 {
+	Business_PayDay();      // доход в кассы бизнесов
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!IsPlayerConnected(i) || !Player[i][pLogged]) continue;
@@ -257,6 +290,12 @@ stock PayDay()
 		{
 			GiveMoney(i, fpay);
 			SendClientMessage(i, COLOR_WHITE, "«арплата во фракции (%s): $%d.", Faction_GetRankName(Player[i][pFaction], Player[i][pRank]), fpay);
+		}
+		new tpay = Turfs_GetIncome(i);
+		if (tpay > 0)
+		{
+			GiveMoney(i, tpay);
+			SendClientMessage(i, COLOR_WHITE, "ƒоход банды с районов (%d): $%d.", tpay / TURF_INCOME, tpay);
 		}
 
 		if (Player[i][pExp] >= Player[i][pLevel] * EXP_PER_LEVEL)

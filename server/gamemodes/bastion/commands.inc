@@ -10,7 +10,7 @@
 
 stock bool:Cmd_Help(playerid)
 {
-	new text[1600];
+	new text[2200];
 	strcat(text, "{FFFF00}Общее\n");
 	strcat(text, "{FFFFFF}/stats — статистика   /time — время   /pay — передать деньги   /admins — админы\n\n");
 	strcat(text, "{FFFF00}RP-чат\n");
@@ -25,15 +25,21 @@ stock bool:Cmd_Help(playerid)
 	strcat(text, "{FFFFFF}/buyhouse   /sellhouse   /enter   /exit   /lock\n\n");
 	strcat(text, "{FFFF00}Фракции\n");
 	strcat(text, "{FFFFFF}Полиция, больница, банды Grove / Ballas / Aztecas. Все команды фракций: /fhelp\n\n");
+	strcat(text, "{FFFF00}Деньги, телефон, бизнес\n");
+	strcat(text, "{FFFFFF}/bank — банкомат   /buy — купить в магазине   /call /sms /p /h /number /911 — телефон\n");
+	strcat(text, "/buybiz /sellbiz /bizinfo /bizcash — свой бизнес   /turfs /capture — районы банд\n\n");
 	strcat(text, "{FFFF00}Админам\n");
-	strcat(text, "{FFFFFF}/a /goto /gethere /kick /sethp /setskin /veh /dveh /createhouse /givemoney /makeadmin /jail /makeleader");
+	strcat(text, "{FFFFFF}/a /goto /gethere /kick /sethp /setskin /veh /dveh /createhouse /givemoney /makeadmin /jail /makeleader\n");
+	strcat(text, "/ban /unban /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf");
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Помощь", "%s", "Закрыть", "", text);
 	return true;
 }
 
 stock bool:Cmd_Stats(playerid)
 {
-	new house[32], car[32];
+	new house[32], car[32], phone[16];
+	if (Player[playerid][pPhone] == 0) strcat(phone, "нет");
+	else format(phone, sizeof phone, "%d", Player[playerid][pPhone]);
 	new h = House_GetOwned(playerid);
 	if (h == -1) strcat(house, "нет");
 	else format(house, sizeof house, "№%d", House[h][hDbId]);
@@ -41,10 +47,10 @@ stock bool:Cmd_Stats(playerid)
 	else format(car, sizeof car, "модель %d", GetVehicleModel(gPlayerVeh[playerid]));
 
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Статистика",
-		"{FFFFFF}Имя: {33CCFF}%s\n{FFFFFF}Уровень: %d (опыт %d/%d)\nДеньги: $%d\nРабота: %s\nФракция: %s (%s)\nРозыск: %d зв.\nДом: %s\nМашина: %s\nАдминка: %d",
+		"{FFFFFF}Имя: {33CCFF}%s\n{FFFFFF}Уровень: %d (опыт %d/%d)\nДеньги: $%d (в банке $%d)\nТелефон: %s\nРабота: %s\nФракция: %s (%s)\nРозыск: %d зв.\nДом: %s\nМашина: %s\nАдминка: %d",
 		"Закрыть", "",
 		GetRPName(playerid), Player[playerid][pLevel], Player[playerid][pExp], Player[playerid][pLevel] * EXP_PER_LEVEL,
-		GetMoney(playerid), Job_GetName(Player[playerid][pJob]),
+		GetMoney(playerid), Player[playerid][pBank], phone, Job_GetName(Player[playerid][pJob]),
 		Faction_GetName(Player[playerid][pFaction]), Faction_GetRankName(Player[playerid][pFaction], Player[playerid][pRank]),
 		Player[playerid][pWanted], house, car, Player[playerid][pAdmin]);
 	return true;
@@ -162,7 +168,38 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/jail", true))        { Cmd_Jail(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/unjail", true))      { Cmd_Unjail(playerid, cmdtext[pos]); return 1; }
 
+	// --- районы банд (turfs.inc) ---
+	if (!strcmp(cmd, "/turfs", true))       { Cmd_Turfs(playerid); return 1; }
+	if (!strcmp(cmd, "/capture", true))     { Cmd_Capture(playerid); return 1; }
+	if (!strcmp(cmd, "/addturf", true))     { Cmd_AddTurf(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/setturf", true))     { Cmd_SetTurf(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/delturf", true))     { Cmd_DelTurf(playerid); return 1; }
+
+	// --- банк (bank.inc) ---
+	if (!strcmp(cmd, "/bank", true) || !strcmp(cmd, "/atm", true)) { Cmd_Bank(playerid); return 1; }
+	if (!strcmp(cmd, "/addatm", true))      { Cmd_AddAtm(playerid); return 1; }
+	if (!strcmp(cmd, "/delatm", true))      { Cmd_DelAtm(playerid); return 1; }
+
+	// --- телефон (phone.inc) ---
+	if (!strcmp(cmd, "/number", true))      { Cmd_Number(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/call", true))        { Cmd_Call(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/p", true))           { Cmd_PickUp(playerid); return 1; }
+	if (!strcmp(cmd, "/h", true))           { Cmd_HangUp(playerid); return 1; }
+	if (!strcmp(cmd, "/sms", true))         { Cmd_Sms(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/911", true))         { Cmd_911(playerid, cmdtext[pos]); return 1; }
+
+	// --- бизнесы (business.inc) ---
+	if (!strcmp(cmd, "/buy", true))         { Cmd_Buy(playerid); return 1; }
+	if (!strcmp(cmd, "/buybiz", true))      { Cmd_BuyBiz(playerid); return 1; }
+	if (!strcmp(cmd, "/sellbiz", true))     { Cmd_SellBiz(playerid); return 1; }
+	if (!strcmp(cmd, "/bizinfo", true))     { Cmd_BizInfo(playerid); return 1; }
+	if (!strcmp(cmd, "/bizcash", true))     { Cmd_BizCash(playerid); return 1; }
+	if (!strcmp(cmd, "/createbiz", true))   { Cmd_CreateBiz(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/delbiz", true))      { Cmd_DelBiz(playerid); return 1; }
+
 	// --- админы (admin.inc) ---
+	if (!strcmp(cmd, "/ban", true))         { Cmd_Ban(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/unban", true))       { Cmd_Unban(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/a", true))           { Cmd_AdminChat(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/makeadmin", true))   { Cmd_MakeAdmin(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/goto", true))        { Cmd_Goto(playerid, cmdtext[pos]); return 1; }

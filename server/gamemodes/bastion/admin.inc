@@ -7,6 +7,10 @@
 //  3. Введи: /makeadmin [свой id] 5
 //
 //  Уровни: 1 — хелпер, 2 — модератор, 3 — админ, 4 — ст. админ, 5 — владелец
+//
+//  На сервере War (SERVER_MODE в config.inc) команды, которые вмешиваются
+//  в игру (/goto /gethere /sethp /setskin /veh /givemoney /jail ...),
+//  отключены. Работают только кик, бан, админ-чат и настройка сервера.
 // =====================================================================
 
 // Проверка уровня. Пример: if (!Admin_Check(playerid, 3)) return true;
@@ -15,6 +19,72 @@ stock bool:Admin_Check(playerid, level)
 	if (Player[playerid][pAdmin] >= level) return true;
 	SendClientMessage(playerid, COLOR_GREY, "Недостаточно прав (нужен уровень админа %d).", level);
 	return false;
+}
+
+// Для команд, которые вмешиваются в игру: на сервере War они выключены
+stock bool:Admin_CheckPeace(playerid, level)
+{
+#if SERVER_MODE == MODE_WAR
+	#pragma unused level
+	if (Player[playerid][pAdmin] > 0)
+		SendClientMessage(playerid, COLOR_GREY, "На %s админы не вмешиваются в игру. Доступно: /kick /ban /a.", SERVER_NAME);
+	else
+		SendClientMessage(playerid, COLOR_GREY, "Недостаточно прав.");
+	return false;
+#else
+	return Admin_Check(playerid, level);
+#endif
+}
+
+// ---------------------------------------------------------------------
+//  Баны (по нику). Проверка при входе — из accounts.inc
+// ---------------------------------------------------------------------
+stock Bans_IsBanned(playerid, const name[])
+{
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT reason, admin FROM bans WHERE name = '%q' LIMIT 1", name);
+	if (r == DBResult:0) return 0;
+	new banned = 0;
+	if (DB_GetRowCount(r) > 0)
+	{
+		new reason[64], admin[MAX_PLAYER_NAME];
+		DB_GetFieldString(r, 0, reason, sizeof reason);
+		DB_GetFieldString(r, 1, admin, sizeof admin);
+		SendClientMessage(playerid, COLOR_RED, "Ты забанен на этом сервере. Причина: %s (админ %s).", reason, admin);
+		KickWithDelay(playerid);
+		banned = 1;
+	}
+	DB_FreeResultSet(r);
+	return banned;
+}
+
+stock bool:Cmd_Ban(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 3)) return true;
+	new pos = 0, reason[64];
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID || !RestParam(params, pos, reason))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /ban [id] [причина]");
+	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Себя банить нельзя.");
+	if (Player[target][pAdmin] >= Player[playerid][pAdmin]) return SendClientMessage(playerid, COLOR_GREY, "Нельзя забанить равного или старшего админа.");
+
+	new name[MAX_PLAYER_NAME], admin[MAX_PLAYER_NAME];
+	GetPlayerName(target, name, sizeof name);
+	GetPlayerName(playerid, admin, sizeof admin);
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO bans (name, reason, admin, date) VALUES ('%q', '%q', '%q', %d)",
+		name, reason, admin, gettime()));
+	SendClientMessageToAll(COLOR_RED, "Администратор %s забанил %s. Причина: %s", GetRPName(playerid), GetRPName(target), reason);
+	KickWithDelay(target);
+	return true;
+}
+
+stock bool:Cmd_Unban(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, name[MAX_PLAYER_NAME];
+	if (!NextParam(params, pos, name)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /unban [Имя_Фамилия]");
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM bans WHERE name = '%q'", name));
+	SendClientMessage(playerid, COLOR_ADMIN, "Ник %s разбанен (если был в бане).", name);
+	return true;
 }
 
 stock bool:Cmd_AdminChat(playerid, const params[])
@@ -48,7 +118,7 @@ stock bool:Cmd_MakeAdmin(playerid, const params[])
 
 stock bool:Cmd_Goto(playerid, const params[])
 {
-	if (!Admin_Check(playerid, 1)) return true;
+	if (!Admin_CheckPeace(playerid, 1)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /goto [id]");
@@ -64,7 +134,7 @@ stock bool:Cmd_Goto(playerid, const params[])
 
 stock bool:Cmd_GetHere(playerid, const params[])
 {
-	if (!Admin_Check(playerid, 2)) return true;
+	if (!Admin_CheckPeace(playerid, 2)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /gethere [id]");
@@ -94,7 +164,7 @@ stock bool:Cmd_Kick(playerid, const params[])
 
 stock bool:Cmd_Veh(playerid, const params[])
 {
-	if (!Admin_Check(playerid, 3)) return true;
+	if (!Admin_CheckPeace(playerid, 3)) return true;
 	new pos = 0, model, c1 = -1, c2 = -1;
 	if (!NextIntParam(params, pos, model) || model < 400 || model > 611)
 		return SendClientMessage(playerid, COLOR_GREY, "Использование: /veh [модель 400-611] [цвет1] [цвет2]");
@@ -118,7 +188,7 @@ stock bool:Cmd_Veh(playerid, const params[])
 
 stock bool:Cmd_DVeh(playerid)
 {
-	if (!Admin_Check(playerid, 3)) return true;
+	if (!Admin_CheckPeace(playerid, 3)) return true;
 	new v = GetPlayerVehicleID(playerid);
 	if (v == 0 || !gVehAdmin[v]) return SendClientMessage(playerid, COLOR_GREY, "Сядь в машину, созданную через /veh.");
 	Vehicle_Clear(v);
@@ -129,7 +199,7 @@ stock bool:Cmd_DVeh(playerid)
 
 stock bool:Cmd_GiveMoney(playerid, const params[])
 {
-	if (!Admin_Check(playerid, 5)) return true;
+	if (!Admin_CheckPeace(playerid, 5)) return true;
 	new pos = 0, amount;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, amount))
@@ -145,7 +215,7 @@ stock bool:Cmd_GiveMoney(playerid, const params[])
 
 stock bool:Cmd_SetHP(playerid, const params[])
 {
-	if (!Admin_Check(playerid, 2)) return true;
+	if (!Admin_CheckPeace(playerid, 2)) return true;
 	new pos = 0, hp;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, hp) || hp < 0 || hp > 100)
@@ -157,7 +227,7 @@ stock bool:Cmd_SetHP(playerid, const params[])
 
 stock bool:Cmd_SetSkin(playerid, const params[])
 {
-	if (!Admin_Check(playerid, 2)) return true;
+	if (!Admin_CheckPeace(playerid, 2)) return true;
 	new pos = 0, skin;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, skin) || skin < 0 || skin > 311)

@@ -49,6 +49,10 @@ enum E_PLAYER
 	pOfferFrom,         // кто предложил (id игрока)
 	pOfferFromDb,       // аккаунт того, кто предложил (защита от подмены id)
 	pOfferValue,        // фракци€ или цена
+	pBank,              // сохран€етс€ (деньги в банке)
+	pPhone,             // сохран€етс€ (номер телефона, 0 = нет телефона)
+	pCallWith,          // с кем разговор / звонок (INVALID_PLAYER_ID = нет)
+	pCallState,         // 0 Ч нет, 1 Ч звоню, 2 Ч мне звон€т, 3 Ч разговор
 
 	bool:pDied,         // умер Ч по€витс€ в больнице
 	pHouseInside,       // id дома, внутри которого стоит игрок (-1 = на улице)
@@ -67,6 +71,7 @@ stock Player_Reset(playerid)
 	Player[playerid][pSkin] = SKIN_MALE;
 	Player[playerid][pHouseInside] = -1;
 	Player[playerid][pWorkVehicle] = INVALID_VEHICLE_ID;
+	Player[playerid][pCallWith] = INVALID_PLAYER_ID;
 }
 
 // »м€ игрока дл€ RP-сообщений: "Ivan_Petrov" -> "Ivan Petrov".

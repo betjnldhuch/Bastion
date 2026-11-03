@@ -1023,7 +1023,7 @@ stock bool:Cmd_DelFCar(playerid)
 
 stock bool:Cmd_Jail(playerid, const params[])
 {
-	if (!Admin_Check(playerid, 2)) return true;
+	if (!Admin_CheckPeace(playerid, 2)) return true;
 	new pos = 0, minutes, reason[64];
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, minutes) || minutes < 1 || minutes > 600)
@@ -1044,7 +1044,7 @@ stock bool:Cmd_Jail(playerid, const params[])
 
 stock bool:Cmd_Unjail(playerid, const params[])
 {
-	if (!Admin_Check(playerid, 2)) return true;
+	if (!Admin_CheckPeace(playerid, 2)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /unjail [id]");

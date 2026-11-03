@@ -26,6 +26,8 @@ stock Account_OnConnect(playerid)
 	}
 #endif
 
+	if (Bans_IsBanned(playerid, name)) return 0;   // admin.inc
+
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, password, salt FROM accounts WHERE name = '%q' LIMIT 1", name);
 	if (r != DBResult:0)
 	{
@@ -155,7 +157,7 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 stock Account_Load(playerid)
 {
 	new DBResult:r = DB_ExecuteQuery(gDB,
-		"SELECT money, level, exp, skin, admin, job, faction, frank, wanted, jail FROM accounts WHERE id = %d", Player[playerid][pDbId]);
+		"SELECT money, level, exp, skin, admin, job, faction, frank, wanted, jail, bank, phone FROM accounts WHERE id = %d", Player[playerid][pDbId]);
 	if (r != DBResult:0)
 	{
 		if (DB_GetRowCount(r) > 0)
@@ -170,6 +172,8 @@ stock Account_Load(playerid)
 			Player[playerid][pRank]    = DB_GetFieldInt(r, 7);
 			Player[playerid][pWanted]  = DB_GetFieldInt(r, 8);
 			Player[playerid][pJail]    = DB_GetFieldInt(r, 9);
+			Player[playerid][pBank]    = DB_GetFieldInt(r, 10);
+			Player[playerid][pPhone]   = DB_GetFieldInt(r, 11);
 			if (Player[playerid][pFaction] < 0 || Player[playerid][pFaction] >= MAX_FACTIONS) Player[playerid][pFaction] = FACTION_NONE;
 		}
 		DB_FreeResultSet(r);
@@ -182,10 +186,11 @@ stock Account_Save(playerid)
 	if (!Player[playerid][pLogged] || Player[playerid][pDbId] == 0) return 0;
 
 	DB_FreeResultSet(DB_ExecuteQuery(gDB,
-		"UPDATE accounts SET money = %d, level = %d, exp = %d, skin = %d, admin = %d, job = %d, faction = %d, frank = %d, wanted = %d, jail = %d WHERE id = %d",
+		"UPDATE accounts SET money = %d, level = %d, exp = %d, skin = %d, admin = %d, job = %d, faction = %d, frank = %d, wanted = %d, jail = %d, bank = %d, phone = %d WHERE id = %d",
 		Player[playerid][pMoney], Player[playerid][pLevel], Player[playerid][pExp],
 		Player[playerid][pSkin], Player[playerid][pAdmin], Player[playerid][pJob],
 		Player[playerid][pFaction], Player[playerid][pRank], Player[playerid][pWanted], Player[playerid][pJail],
+		Player[playerid][pBank], Player[playerid][pPhone],
 		Player[playerid][pDbId]));
 	return 1;
 }

@@ -3,8 +3,30 @@
 //  ћен€й цифры здесь, а не по всему коду.
 // =====================================================================
 
-#define SERVER_NAME         "Bastion RP"
-#define MODE_TEXT           "Bastion RP v1.0"
+// ---------------------------------------------------------------------
+//  –≈∆»ћ —≈–¬≈–ј. ќдин код Ч два сервера:
+//    MODE_PEACE Ч Bastion Peace: админы помогают игрокам
+//    MODE_WAR   Ч Bastion War: закон сильного, админы только бан€т читеров
+//  ѕомен€й строку SERVER_MODE, скомпилируй и запусти второй сервер
+//  (у него свой порт в config.json и сво€ база rp.db в scriptfiles).
+// ---------------------------------------------------------------------
+#define MODE_PEACE          1
+#define MODE_WAR            2
+#define SERVER_MODE         MODE_PEACE
+
+#if SERVER_MODE == MODE_WAR
+	#define SERVER_NAME     "Bastion War"
+	#define MODE_TEXT       "Bastion War v1.1"
+	#define DEATH_CASH_LOSS 20               // % наличных, которые убийца забирает у жертвы
+	#define CAPTURE_HOUR_FROM 0              // захват районов разрешЄн круглосуточно
+	#define CAPTURE_HOUR_TO   24
+#else
+	#define SERVER_NAME     "Bastion Peace"
+	#define MODE_TEXT       "Bastion Peace v1.1"
+	#define DEATH_CASH_LOSS 0                // при смерти деньги не тер€ютс€
+	#define CAPTURE_HOUR_FROM 16             // захват районов только с 16:00...
+	#define CAPTURE_HOUR_TO   24             // ...до 23:59
+#endif
 #define DATABASE_FILE       "rp.db"          // лежит в папке scriptfiles
 
 // “ребовать ник формата »м€_‘амили€ (true / false)
@@ -30,6 +52,24 @@
 #define HEAL_PRICE          200              // цена лечени€ у медика (/heal)
 #define JAIL_MIN_PER_STAR   5                // минут тюрьмы за одну звезду розыска
 #define ARREST_REWARD       150              // преми€ полицейскому за одну звезду при аресте
+
+// ¬ойны банд (turfs.inc)
+#define TURF_CAPTURE_TIME   300              // сколько секунд длитс€ захват района
+#define TURF_COOLDOWN       1800             // через сколько секунд район можно атаковать снова
+#define TURF_MIN_RANK       3                // с какого ранга можно начать захват (/capture)
+#define TURF_INCOME         150              // доход на PayDay каждому члену банды онлайн Ч за каждый район
+
+// Ѕанк (bank.inc)
+#define BANK_MAX_TRANSFER   1000000          // максимум за один перевод
+
+// “елефон (phone.inc)
+#define PHONE_PRICE         500              // цена телефона в магазине 24/7
+#define SMS_PRICE           5                // цена одного SMS
+
+// Ѕизнесы (business.inc)
+#define MAX_BUSINESSES      100
+#define BIZ_PAYDAY_INCOME   200              // доход бизнеса в кассу каждый PayDay
+#define BIZ_SALE_SHARE      50               // % от каждой покупки, который идЄт в кассу владельцу
 
 // ---------------------------------------------------------------------
 //  ÷вета (формат 0xRRGGBBAA)
@@ -74,5 +114,10 @@ enum
 	DIALOG_LOGIN,
 	DIALOG_GENDER,
 	DIALOG_BUYCAR,
-	DIALOG_HELP
+	DIALOG_HELP,
+	DIALOG_BANK,
+	DIALOG_BANK_DEPOSIT,
+	DIALOG_BANK_WITHDRAW,
+	DIALOG_BANK_TRANSFER,
+	DIALOG_BIZ_BUY
 }

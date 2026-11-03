@@ -12,6 +12,7 @@ stock Chat_OnText(playerid, const text[])
 	format(msg, sizeof msg, "%s говорит: %s", GetRPName(playerid), text);
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_WHITE, msg);
 	SetPlayerChatBubble(playerid, "%s", COLOR_WHITE, CHAT_RADIUS, 5000, text);
+	Phone_OnText(playerid, text);   // если говорит по телефону Ч слышит и собеседник (phone.inc)
 }
 
 stock bool:Cmd_Me(playerid, const params[])
