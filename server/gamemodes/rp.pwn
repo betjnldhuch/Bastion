@@ -178,20 +178,6 @@ public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 	Phone_HangUp(playerid);
 	Turfs_OnDeath(playerid, killerid);
 
-#if DEATH_CASH_LOSS > 0
-	// Сервер War: убийца забирает часть наличных
-	if (killerid != INVALID_PLAYER_ID && killerid != playerid && IsPlayerConnected(killerid) && GetMoney(playerid) > 0)
-	{
-		new loss = GetMoney(playerid) * DEATH_CASH_LOSS / 100;
-		if (loss > 0)
-		{
-			GiveMoney(playerid, -loss);
-			GiveMoney(killerid, loss);
-			SendClientMessage(playerid, COLOR_RED, "%s забрал у тебя $%d. Храни деньги в банке!", GetRPName(killerid), loss);
-			SendClientMessage(killerid, COLOR_GREEN, "Ты забрал у %s $%d.", GetRPName(playerid), loss);
-		}
-	}
-#endif
 	Player[playerid][pDied] = true;
 	SetSpawnInfo(playerid, NO_TEAM, Player[playerid][pSkin], HOSPITAL_X, HOSPITAL_Y, HOSPITAL_Z, 0.0);
 	return 1;
