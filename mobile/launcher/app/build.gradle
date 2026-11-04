@@ -29,7 +29,6 @@ android {
 
     sourceSets {
         main {
-            java.srcDir layout.buildDirectory.dir('generated/bastionClientSources')
             res.srcDirs += ['../../client/sampdroid/app/src/main/res']
             assets.srcDirs += ['../../client/sampdroid/app/src/main/assets']
             java.srcDir layout.buildDirectory.dir('generated/bastionClientSources')
