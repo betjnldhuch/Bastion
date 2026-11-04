@@ -47,6 +47,7 @@
 #include "bastion/business.inc"
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
+#include "bastion/fps.inc"
 #include "bastion/commands.inc"
 
 new gLastPayDayHour = -1;
@@ -82,6 +83,7 @@ public OnGameModeInit()
 	Bank_Init();
 	Business_Init();
 	Gates_Init();
+	Fps_Init();
 
 	new hour;
 	gettime(hour);
@@ -106,6 +108,7 @@ public OnGameModeExit()
 // =====================================================================
 public OnPlayerConnect(playerid)
 {
+	Fps_Reset(playerid);
 	if (!Account_OnConnect(playerid))
 	{
 		Player[playerid][pAuthShown] = true;    // игрока кикают Ч окно входа не показываем
@@ -122,6 +125,13 @@ public OnPlayerDisconnect(playerid, reason)
 	Account_Save(playerid);
 	Vehicles_UnloadForPlayer(playerid);
 	Player[playerid][pLogged] = false;
+	return 1;
+}
+
+// ћного раз в секунду: тут только замер FPS (fps.inc)
+public OnPlayerUpdate(playerid)
+{
+	Fps_OnUpdate(playerid);
 	return 1;
 }
 

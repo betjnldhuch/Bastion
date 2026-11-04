@@ -209,6 +209,13 @@
 | `/createhouse [цена] [тип 1-5]` | 4 | Создать дом там, где стоишь |
 | `/givemoney [id] [сумма]` | 5 | Выдать деньги |
 | `/makeadmin [id] [0-5]` | 5 или RCON | Выдать/снять админку |
+| `/fpslist` | 1 | FPS всех игроков |
+
+### FPS выше 90
+
+SA-MP сам не даёт больше 90 FPS. 120 / 144 / 165 игроку включает **лаунчер** (пакет FPS с фиксами физики, см. `launcher/fps/README.txt`), сервер тут ничего не включает. Сервер только меряет настоящий FPS каждого игрока: `/fps` — свой, `/fps [id]` — чужой, `/fpslist` — всех (админам).
+
+Если захочешь честный потолок (например, на War), поставь в `config.inc` `#define FPS_MAX_ALLOWED 165`: у кого FPS выше дольше 30 секунд, того предупредит и кикнет. По умолчанию `0` — без ограничений.
 
 ## 8. Как устроен код
 
@@ -230,6 +237,7 @@ bastion/phone.inc      ← телефон
 bastion/business.inc   ← бизнесы
 bastion/gates.inc      ← шлагбаумы и ворота
 bastion/keys.inc       ← кнопки ALT, Y, N, H, 2 и меню взаимодействия
+bastion/fps.inc        ← замер FPS игроков, /fps, /fpslist, лимит FPS_MAX_ALLOWED
 bastion/chat.inc       ← RP-чат
 bastion/admin.inc      ← админ-команды
 bastion/commands.inc   ← /help, /stats, /pay и ГЛАВНЫЙ СПИСОК КОМАНД

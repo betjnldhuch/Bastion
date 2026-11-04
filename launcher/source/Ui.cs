@@ -788,12 +788,16 @@ namespace BastionLauncher
             settings.Controls.Add(browse);
 
             SampCfg sc = SampCfg.Load();
-            segFps = new Segmented(new int[] { 30, 60, 90 }, Snap(sc.GetInt("fpslimit", 90), new int[] { 30, 60, 90 }));
-            segFps.Bounds = new Rectangle(260, 152, 220, 30);
+            // выше 90 лаунчер хранит сам (в sa-mp.cfg SA-MP больше 90 не примет)
+            int[] fpsOpts = FpsOptions();
+            int fpsNow;
+            if (!int.TryParse(Samp.GetValue("BastionFps"), out fpsNow)) fpsNow = sc.GetInt("fpslimit", 90);
+            segFps = new Segmented(fpsOpts, Snap(fpsNow, fpsOpts));
+            segFps.Bounds = new Rectangle(200, 152, 280, 30);
             settings.Controls.Add(segFps);
 
             segChat = new Segmented(new int[] { 10, 15, 20 }, Snap(sc.GetInt("pagesize", 10), new int[] { 10, 15, 20 }));
-            segChat.Bounds = new Rectangle(260, 192, 220, 30);
+            segChat.Bounds = new Rectangle(200, 192, 280, 30);
             settings.Controls.Add(segChat);
 
             tStamp = new Toggle("Время у сообщений в чате", sc.GetInt("timestamp", 0) == 1);
@@ -827,6 +831,59 @@ namespace BastionLauncher
             settings.BringToFront();
         }
 
+        static int[] FpsOptions()
+        {
+            FpsPack.Load();
+            List<int> l = new List<int>();
+            foreach (int o in FpsPack.Options) if (o <= FpsPack.MaxFps) l.Add(o);
+            return l.ToArray();
+        }
+
+        // Лимит FPS перед запуском: до 90 — средствами SA-MP, выше — через пакет FPS.
+        // Возвращает false, если запуск надо отменить.
+        bool ApplyFps(string gta)
+        {
+            int want = segFps.Value;
+            bool packIn = FpsPack.Available && FpsPack.Installed(gta);
+            if (want > FpsPack.SampMax && !FpsPack.Available)
+            {
+                DialogResult r = MessageBox.Show(this,
+                    "Чтобы FPS был выше 90, рядом с лаунчером нужна папка fps с пакетом FPS (снятие лимита и фиксы физики). " +
+                    "Её пока нет, поэтому игра запустится с лимитом 90.\r\n\r\nЗапустить с 90 FPS?",
+                    cfg.Title, MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+                if (r != DialogResult.OK) return false;
+                want = FpsPack.SampMax;
+            }
+            else if (want > FpsPack.SampMax && !packIn)
+            {
+                try
+                {
+                    int n = FpsPack.Install(gta);
+                    packIn = true;
+                    SetStatus("Пакет FPS установлен в игру (файлов: " + n + ").");
+                }
+                catch (Exception ex)
+                {
+                    Warn("Не получилось поставить пакет FPS: " + ex.Message +
+                         "\r\nЕсли игра лежит в Program Files — запусти лаунчер от имени администратора. Пока будет 90 FPS.");
+                    want = FpsPack.SampMax;
+                }
+            }
+            try
+            {
+                SampCfg sc = SampCfg.Load();
+                sc.Set("fpslimit", Math.Min(want, FpsPack.SampMax).ToString());
+                sc.Save();
+                // плагин снятия лимита держит свой лимит: пишем ему то же значение (и 60, и 165)
+                if (packIn) FpsPack.WriteLimit(gta, want);
+            }
+            catch (Exception ex)
+            {
+                Warn("Не удалось записать лимит FPS: " + ex.Message);
+            }
+            return true;
+        }
+
         static int Snap(int v, int[] opts)
         {
             int best = opts[0];
@@ -840,13 +897,14 @@ namespace BastionLauncher
             try
             {
                 SampCfg sc = SampCfg.Load();
-                sc.Set("fpslimit", segFps.Value.ToString());
+                sc.Set("fpslimit", Math.Min(segFps.Value, FpsPack.SampMax).ToString());
                 sc.Set("pagesize", segChat.Value.ToString());
                 sc.Set("timestamp", tStamp.Checked ? "1" : "0");
                 sc.Set("multicore", tMulti.Checked ? "1" : "0");
                 sc.Save();
                 Samp.SetValue("BastionCheckMods", tMods.Checked ? "1" : "0");
                 Samp.SetValue("BastionCloseOnPlay", tClose.Checked ? "1" : "0");
+                Samp.SetValue("BastionFps", segFps.Value.ToString());
                 string exe = Path.Combine(gtaPath.Text.Trim(), "gta_sa.exe");
                 if (gtaPath.Text.Trim().Length > 0 && File.Exists(exe)) Samp.SetValue("gta_sa_exe", exe);
                 if (showStatus) SetStatus("Настройки сохранены.");
@@ -981,6 +1039,7 @@ namespace BastionLauncher
 
             if (tMods.Checked && !CheckMods(false)) return;
             SaveSettings(false);
+            if (!ApplyFps(gta)) return;
 
             try
             {
