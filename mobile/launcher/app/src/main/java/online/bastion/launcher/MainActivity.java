@@ -458,14 +458,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    private String gtaVersion() {
-        try {
-            return getPackageManager().getPackageInfo(GTA_PACKAGE, 0).versionName;
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
     private void openGtaInStore() {
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + GTA_PACKAGE)));
@@ -595,15 +587,6 @@ public class MainActivity extends Activity {
         leftPanel.addView(option("Размер кнопок", new String[]{"S", "M", "L"},
                 new int[]{0, 1, 2}, cfg.buttonSize,
                 new Pick() { @Override public void set(int v) { cfg.buttonSize = v; } }));
-
-        leftPanel.addView(Ui.caption(this, "Проверка GTA"));
-        String version = gtaVersion();
-        TextView gta = Ui.text(this, version != null
-                ? "GTA: San Andreas найдена · " + version
-                : "GTA: San Andreas не установлена", 11,
-                version != null ? Ui.GREEN : Ui.RED, Ui.bodyBold);
-        gta.setPadding(0, Ui.dp(8), 0, Ui.dp(9));
-        leftPanel.addView(gta);
 
         TextView diagnostics = Ui.ghostButton(this, "Диагностика");
         diagnostics.setOnClickListener(new View.OnClickListener() {
