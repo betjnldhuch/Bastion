@@ -442,11 +442,7 @@ public class MainActivity extends Activity {
             return;
         }
         cfg.writeClientConfig(this);
-        Config.Server s = cfg.servers.get(cfg.selected);
-        notice("Почти готово",
-                "Ник " + nick + " и сервер " + s.name + " (" + s.host + ":" + s.port + ") сохранены.\n\n"
-                        + "Игровой клиент Bastion для телефона ещё в разработке: сейчас это первая сборка лаунчера.",
-                null, null);
+        startActivity(new Intent(this, InstallerActivity.class));
     }
 
     private boolean isGtaInstalled() {
