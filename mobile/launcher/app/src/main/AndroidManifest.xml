@@ -17,6 +17,8 @@
         android:allowBackup="true"
         android:hardwareAccelerated="true">
 
+        <activity android:name=".InstallerActivity" android:exported="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
