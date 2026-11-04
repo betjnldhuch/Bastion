@@ -28,7 +28,7 @@ import java.security.MessageDigest;
  */
 public final class InstallerActivity extends Activity {
     private static final String MANIFEST =
-            "https://raw.githubusercontent.com/the-gta-man/Bastion/main/mobile/installer/manifest.json";
+            "https://raw.githubusercontent.com/the-gta-man/Bastion/feature/android-mod-installer/mobile/installer/manifest.json";
     private final Handler main = new Handler(Looper.getMainLooper());
     private TextView status;
     private ProgressBar progress;
