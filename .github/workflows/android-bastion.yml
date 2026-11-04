@@ -1,0 +1,53 @@
+name: Android Bastion APK
+
+on:
+  pull_request:
+    paths:
+      - "mobile/**"
+      - ".github/workflows/android-bastion.yml"
+  push:
+    branches:
+      - main
+      - feature/android-mod-installer
+    paths:
+      - "mobile/**"
+      - ".github/workflows/android-bastion.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with embedded client
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android toolchains
+        run: |
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125" "cmake;3.22.1"
+
+      - name: Build Bastion APK
+        working-directory: mobile/launcher
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BastionOnline-debug
+          path: mobile/launcher/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
