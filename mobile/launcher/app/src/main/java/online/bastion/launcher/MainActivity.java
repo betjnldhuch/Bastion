@@ -113,125 +113,178 @@ public class MainActivity extends Activity {
 
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(Ui.dp(24), Ui.dp(14), Ui.dp(24), Ui.dp(14));
+        page.setPadding(Ui.dp(24), Ui.dp(10), Ui.dp(24), Ui.dp(10));
 
-        // --- шапка ---
         LinearLayout top = new LinearLayout(this);
         top.setOrientation(LinearLayout.HORIZONTAL);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        top.addView(new Ui.Header(this), new LinearLayout.LayoutParams(0, WRAP, 1));
+
+        View mark = new View(this);
+        mark.setBackgroundColor(Ui.ORANGE);
+        LinearLayout.LayoutParams markLp = new LinearLayout.LayoutParams(Ui.dp(7), Ui.dp(7));
+        markLp.rightMargin = Ui.dp(10);
+        top.addView(mark, markLp);
+
+        TextView brand = Ui.text(this, "BASTION ONLINE", 11, Ui.MUTED, Ui.heavy);
+        brand.setLetterSpacing(0.22f);
+        top.addView(brand, new LinearLayout.LayoutParams(0, WRAP, 1));
+
         TextView settings = Ui.ghostButton(this, "Настройки");
         settings.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { saveNick(); showSettings(); }
         });
-        top.addView(settings, new LinearLayout.LayoutParams(WRAP, Ui.dp(38)));
-        page.addView(top, new LinearLayout.LayoutParams(MATCH, WRAP));
+        top.addView(settings, new LinearLayout.LayoutParams(WRAP, Ui.dp(34)));
+        page.addView(top, new LinearLayout.LayoutParams(MATCH, Ui.dp(38)));
 
-        // оранжевая линия под шапкой
-        View rule = new View(this);
-        rule.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{Ui.ORANGE, 0x55FF7A1A, 0x00FF7A1A}));
-        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(MATCH, Ui.dp(2));
-        rlp.topMargin = Ui.dp(6);
-        rlp.bottomMargin = Ui.dp(12);
-        page.addView(rule, rlp);
+        View topRule = new View(this);
+        topRule.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{Ui.ORANGE, 0x66808080, 0x00808080}));
+        LinearLayout.LayoutParams trp = new LinearLayout.LayoutParams(MATCH, Ui.dp(1));
+        trp.topMargin = Ui.dp(5);
+        trp.bottomMargin = Ui.dp(12);
+        page.addView(topRule, trp);
 
-        // --- середина: сервера слева, новости справа ---
-        LinearLayout mid = new LinearLayout(this);
-        mid.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout middle = new LinearLayout(this);
+        middle.setOrientation(LinearLayout.HORIZONTAL);
 
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
-        left.addView(Ui.caption(this, "Выбор сервера"));
-        ScrollView ls = new ScrollView(this);
-        ls.setVerticalScrollBarEnabled(false);
-        LinearLayout list = new LinearLayout(this);
-        list.setOrientation(LinearLayout.VERTICAL);
-        for (int i = 0; i < cfg.servers.size(); i++) {
-            ServerCard c = new ServerCard(i);
-            cards.add(c);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(MATCH, WRAP);
-            lp.topMargin = Ui.dp(8);
-            list.addView(c.view, lp);
+
+        TextView hero = Ui.text(this, "BASTION", 46, Ui.TEXT, Ui.heavy);
+        hero.setLetterSpacing(-0.035f);
+        hero.setShadowLayer(Ui.dp(5), 0, Ui.dp(3), 0x99000000);
+        left.addView(hero, new LinearLayout.LayoutParams(MATCH, WRAP));
+
+        LinearLayout subtitle = new LinearLayout(this);
+        subtitle.setOrientation(LinearLayout.HORIZONTAL);
+        subtitle.setGravity(Gravity.CENTER_VERTICAL);
+        View orangeDash = new View(this);
+        orangeDash.setBackgroundColor(Ui.ORANGE);
+        LinearLayout.LayoutParams dashLp = new LinearLayout.LayoutParams(Ui.dp(34), Ui.dp(3));
+        dashLp.rightMargin = Ui.dp(12);
+        subtitle.addView(orangeDash, dashLp);
+        TextView tagline = Ui.text(this, "ONLINE  ·  SAN ANDREAS MULTIPLAYER", 10, Ui.MUTED, Ui.heavy);
+        tagline.setLetterSpacing(0.19f);
+        subtitle.addView(tagline);
+        LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        subLp.topMargin = Ui.dp(9);
+        subLp.bottomMargin = Ui.dp(24);
+        left.addView(subtitle, subLp);
+
+        left.addView(Ui.caption(this, "Новости"));
+        ScrollView newsScroll = new ScrollView(this);
+        newsScroll.setVerticalScrollBarEnabled(false);
+        LinearLayout newsList = new LinearLayout(this);
+        newsList.setOrientation(LinearLayout.VERTICAL);
+        newsList.setPadding(0, Ui.dp(10), Ui.dp(12), Ui.dp(4));
+
+        if (cfg.news.isEmpty()) {
+            newsList.addView(Ui.text(this, "Пока новостей нет.", 13, Ui.MUTED, Ui.body));
         }
-        ls.addView(list);
-        left.addView(ls, new LinearLayout.LayoutParams(MATCH, 0, 1));
-        LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(0, MATCH, 1.15f);
-        llp.rightMargin = Ui.dp(16);
-        mid.addView(left, llp);
+        for (int i = 0; i < cfg.news.size(); i++) {
+            final String[] n = cfg.news.get(i);
+            LinearLayout item = new LinearLayout(this);
+            item.setOrientation(LinearLayout.HORIZONTAL);
+            item.setPadding(0, i == 0 ? 0 : Ui.dp(13), 0, Ui.dp(7));
+
+            TextView date = Ui.text(this, n[0], 10, Ui.DIM, Ui.heavy);
+            LinearLayout.LayoutParams dateLp = new LinearLayout.LayoutParams(Ui.dp(76), WRAP);
+            dateLp.topMargin = Ui.dp(4);
+            item.addView(date, dateLp);
+
+            LinearLayout copy = new LinearLayout(this);
+            copy.setOrientation(LinearLayout.VERTICAL);
+            TextView headline = Ui.text(this, n[1], 15, Ui.TEXT, Ui.bodyBold);
+            copy.addView(headline);
+            TextView body = Ui.text(this, n[2], 12, Ui.MUTED, Ui.body);
+            body.setLineSpacing(Ui.dp(2), 1f);
+            body.setPadding(0, Ui.dp(4), 0, 0);
+            copy.addView(body);
+            item.addView(copy, new LinearLayout.LayoutParams(0, WRAP, 1));
+            newsList.addView(item);
+        }
+        newsScroll.addView(newsList);
+        LinearLayout.LayoutParams newsLp = new LinearLayout.LayoutParams(MATCH, 0, 1);
+        newsLp.topMargin = Ui.dp(2);
+        left.addView(newsScroll, newsLp);
+
+        LinearLayout.LayoutParams leftLp = new LinearLayout.LayoutParams(0, MATCH, 1.18f);
+        leftLp.rightMargin = Ui.dp(22);
+        middle.addView(left, leftLp);
 
         LinearLayout right = new LinearLayout(this);
         right.setOrientation(LinearLayout.VERTICAL);
-        right.addView(Ui.caption(this, "Новости"));
-        ScrollView ns = new ScrollView(this);
-        ns.setVerticalScrollBarEnabled(false);
-        LinearLayout newsList = new LinearLayout(this);
-        newsList.setOrientation(LinearLayout.VERTICAL);
-        newsList.setPadding(Ui.dp(14), Ui.dp(10), Ui.dp(14), Ui.dp(10));
-        newsList.setBackground(Ui.box(0xCC14161A, Ui.LINE, 8, 1));
-        if (cfg.news.isEmpty()) newsList.addView(Ui.text(this, "Пока новостей нет.", 13, Ui.MUTED, Ui.body));
-        for (int i = 0; i < cfg.news.size(); i++) {
-            String[] n = cfg.news.get(i);
-            LinearLayout item = new LinearLayout(this);
-            item.setOrientation(LinearLayout.VERTICAL);
-            item.setPadding(0, i == 0 ? 0 : Ui.dp(10), 0, Ui.dp(10));
-            TextView d = Ui.text(this, n[0], 10, Ui.ORANGE, Ui.heavy);
-            d.setLetterSpacing(0.1f);
-            item.addView(d);
-            TextView h = Ui.text(this, n[1], 14, Ui.TEXT, Ui.bodyBold);
-            h.setPadding(0, Ui.dp(4), 0, Ui.dp(3));
-            item.addView(h);
-            TextView b = Ui.text(this, n[2], 12, Ui.MUTED, Ui.body);
-            b.setLineSpacing(Ui.dp(2), 1f);
-            item.addView(b);
-            newsList.addView(item);
-            if (i < cfg.news.size() - 1) {
-                View sep = new View(this);
-                sep.setBackgroundColor(Ui.LINE);
-                newsList.addView(sep, new LinearLayout.LayoutParams(MATCH, 1));
-            }
+        right.addView(Ui.caption(this, "Выбери сервер"));
+
+        ScrollView serverScroll = new ScrollView(this);
+        serverScroll.setVerticalScrollBarEnabled(false);
+        LinearLayout serverList = new LinearLayout(this);
+        serverList.setOrientation(LinearLayout.VERTICAL);
+        for (int i = 0; i < cfg.servers.size(); i++) {
+            ServerCard card = new ServerCard(i);
+            cards.add(card);
+            LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(MATCH, WRAP);
+            cardLp.topMargin = Ui.dp(9);
+            serverList.addView(card.view, cardLp);
         }
-        ns.addView(newsList);
-        LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(MATCH, 0, 1);
-        nlp.topMargin = Ui.dp(8);
-        right.addView(ns, nlp);
-        mid.addView(right, new LinearLayout.LayoutParams(0, MATCH, 1f));
+        serverScroll.addView(serverList);
+        LinearLayout.LayoutParams serverScrollLp = new LinearLayout.LayoutParams(MATCH, 0, 1);
+        serverScrollLp.topMargin = Ui.dp(8);
+        right.addView(serverScroll, serverScrollLp);
+        middle.addView(right, new LinearLayout.LayoutParams(0, MATCH, 0.92f));
 
-        page.addView(mid, new LinearLayout.LayoutParams(MATCH, 0, 1));
+        page.addView(middle, new LinearLayout.LayoutParams(MATCH, 0, 1));
+        page.addView(buildFooter(), new LinearLayout.LayoutParams(MATCH, WRAP));
+        content.addView(page, new FrameLayout.LayoutParams(MATCH, MATCH));
+        updateCards();
+    }
 
-        // --- низ: ник + ИГРАТЬ ---
-        LinearLayout bottom = new LinearLayout(this);
-        bottom.setOrientation(LinearLayout.HORIZONTAL);
-        bottom.setGravity(Gravity.CENTER_VERTICAL);
+    /** Нижняя панель с ником и большой кнопкой запуска. */
+    private LinearLayout buildFooter() {
+        LinearLayout footer = new LinearLayout(this);
+        footer.setOrientation(LinearLayout.VERTICAL);
 
-        LinearLayout nickBox = new LinearLayout(this);
-        nickBox.setOrientation(LinearLayout.VERTICAL);
-        nickBox.setGravity(Gravity.CENTER_VERTICAL);
-        nickBox.setPadding(Ui.dp(14), 0, Ui.dp(14), 0);
-        nickBox.setBackground(Ui.box(0xE614161A, Ui.LINE, 6, 1));
-        TextView nl = Ui.text(this, "НИК  ·  Имя_Фамилия", 9, Ui.DIM, Ui.heavy);
-        nl.setLetterSpacing(0.12f);
-        nickBox.addView(nl);
-        nickField = field(cfg.nickname, "Например: Ivan_Petrov");
+        FrameLayout rule = new FrameLayout(this);
+        View base = new View(this);
+        base.setBackgroundColor(Ui.LINE);
+        rule.addView(base, new FrameLayout.LayoutParams(MATCH, Ui.dp(1), Gravity.TOP));
+        View accent = new View(this);
+        accent.setBackgroundColor(Ui.ORANGE);
+        rule.addView(accent, new FrameLayout.LayoutParams(Ui.dp(110), Ui.dp(2), Gravity.TOP | Gravity.LEFT));
+        footer.addView(rule, new LinearLayout.LayoutParams(MATCH, Ui.dp(2)));
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(Ui.dp(14), Ui.dp(12), Ui.dp(14), 0);
+
+        LinearLayout nick = new LinearLayout(this);
+        nick.setOrientation(LinearLayout.VERTICAL);
+        TextView label = Ui.text(this, "ТВОЙ НИК", 10, Ui.MUTED, Ui.heavy);
+        label.setLetterSpacing(0.22f);
+        nick.addView(label);
+        nickField = field(cfg.nickname, "Имя_Фамилия");
         nickField.setBackground(null);
-        nickField.setPadding(0, Ui.dp(3), 0, 0);
-        nickBox.addView(nickField, new LinearLayout.LayoutParams(MATCH, WRAP));
-        LinearLayout.LayoutParams nbl = new LinearLayout.LayoutParams(0, Ui.dp(52), 1);
-        nbl.rightMargin = Ui.dp(12);
-        bottom.addView(nickBox, nbl);
+        nickField.setPadding(0, Ui.dp(5), 0, Ui.dp(3));
+        nick.addView(nickField, new LinearLayout.LayoutParams(MATCH, WRAP));
+        View underline = new View(this);
+        underline.setBackgroundColor(Ui.LINE);
+        nick.addView(underline, new LinearLayout.LayoutParams(MATCH, Ui.dp(1)));
+
+        LinearLayout.LayoutParams nickLp = new LinearLayout.LayoutParams(0, WRAP, 1);
+        nickLp.rightMargin = Ui.dp(18);
+        row.addView(nick, nickLp);
 
         TextView play = Ui.primaryButton(this, "ИГРАТЬ");
+        play.setTextColor(Color.BLACK);
+        play.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
+        play.setLetterSpacing(0.02f);
         play.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { onPlay(); }
         });
-        bottom.addView(play, new LinearLayout.LayoutParams(Ui.dp(220), Ui.dp(52)));
-
-        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(MATCH, WRAP);
-        blp.topMargin = Ui.dp(12);
-        page.addView(bottom, blp);
-
-        content.addView(page, new FrameLayout.LayoutParams(MATCH, MATCH));
-        updateCards();
+        row.addView(play, new LinearLayout.LayoutParams(Ui.dp(210), Ui.dp(58)));
+        footer.addView(row);
+        return footer;
     }
 
     private EditText field(String value, String hint) {
@@ -267,7 +320,8 @@ public class MainActivity extends Activity {
     private final class ServerCard {
         final int index;
         final LinearLayout view;
-        final TextView status;
+        final TextView statusMain;
+        final TextView statusSub;
         final View stripe;
 
         ServerCard(final int index) {
@@ -281,22 +335,36 @@ public class MainActivity extends Activity {
 
             LinearLayout body = new LinearLayout(MainActivity.this);
             body.setOrientation(LinearLayout.VERTICAL);
-            body.setPadding(Ui.dp(14), Ui.dp(11), Ui.dp(14), Ui.dp(11));
+            body.setPadding(Ui.dp(14), Ui.dp(12), Ui.dp(14), Ui.dp(9));
 
             LinearLayout row = new LinearLayout(MainActivity.this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
             TextView name = Ui.text(MainActivity.this, s.name.toUpperCase(), 17, Ui.TEXT, Ui.heavy);
-            name.setLetterSpacing(0.04f);
+            name.setLetterSpacing(0.025f);
             row.addView(name, new LinearLayout.LayoutParams(0, WRAP, 1));
-            status = Ui.text(MainActivity.this, "…", 11, Ui.MUTED, Ui.bodyBold);
-            row.addView(status);
+
+            LinearLayout state = new LinearLayout(MainActivity.this);
+            state.setOrientation(LinearLayout.VERTICAL);
+            state.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+            statusMain = Ui.text(MainActivity.this, "…", 16, Ui.TEXT, Ui.heavy);
+            statusMain.setGravity(Gravity.RIGHT);
+            statusSub = Ui.text(MainActivity.this, "ПРОВЕРКА", 9, Ui.MUTED, Ui.heavy);
+            statusSub.setGravity(Gravity.RIGHT);
+            statusSub.setLetterSpacing(0.05f);
+            state.addView(statusMain);
+            state.addView(statusSub);
+            row.addView(state);
             body.addView(row);
 
-            TextView d = Ui.text(MainActivity.this, s.description, 12, Ui.MUTED, Ui.body);
-            d.setPadding(0, Ui.dp(5), 0, 0);
-            d.setMaxLines(2);
-            body.addView(d);
+            TextView description = Ui.text(MainActivity.this, s.description, 12, Ui.MUTED, Ui.body);
+            description.setPadding(0, Ui.dp(6), 0, Ui.dp(8));
+            description.setMaxLines(2);
+            body.addView(description);
+
+            View bottomLine = new View(MainActivity.this);
+            bottomLine.setBackgroundColor(Ui.LINE);
+            body.addView(bottomLine, new LinearLayout.LayoutParams(MATCH, Ui.dp(1)));
             view.addView(body, new LinearLayout.LayoutParams(0, WRAP, 1));
 
             view.setOnClickListener(new View.OnClickListener() {
@@ -311,18 +379,26 @@ public class MainActivity extends Activity {
 
         void update() {
             Config.Server s = cfg.servers.get(index);
-            boolean sel = cfg.selected == index;
-            view.setBackground(Ui.box(sel ? 0xF01B1E23 : 0xCC14161A, sel ? Ui.ORANGE : Ui.LINE, 6, sel ? 1.5f : 1));
-            stripe.setBackground(sel ? Ui.box(Ui.ORANGE, 0, 2, 0) : null);
+            boolean selected = cfg.selected == index;
+            view.setBackground(Ui.box(selected ? 0xF01B1E23 : 0xCC14161A,
+                    selected ? Ui.ORANGE : Ui.LINE, 2, selected ? 1.5f : 1));
+            stripe.setBackground(selected ? Ui.box(Ui.ORANGE, 0, 1, 0) : null);
+
             if (!s.queried) {
-                status.setText("проверка…");
-                status.setTextColor(Ui.MUTED);
+                statusMain.setText("…");
+                statusSub.setText("ПРОВЕРКА");
+                statusMain.setTextColor(Ui.MUTED);
+                statusSub.setTextColor(Ui.MUTED);
             } else if (s.online) {
-                status.setText("●  " + s.players + " / " + s.maxPlayers + "   " + s.ping + " мс");
-                status.setTextColor(Ui.GREEN);
+                statusMain.setText(s.players + " / " + s.maxPlayers);
+                statusSub.setText("ОНЛАЙН · " + s.ping + " МС");
+                statusMain.setTextColor(Ui.TEXT);
+                statusSub.setTextColor(Ui.ORANGE);
             } else {
-                status.setText("●  оффлайн");
-                status.setTextColor(Ui.RED);
+                statusMain.setText("OFF");
+                statusSub.setText("НЕ ОТВЕЧАЕТ");
+                statusMain.setTextColor(Ui.DIM);
+                statusSub.setTextColor(Ui.DIM);
             }
         }
     }
@@ -463,121 +539,147 @@ public class MainActivity extends Activity {
         content.removeAllViews();
         content.setTag("settings");
         serverFields.clear();
+        cards.clear();
 
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(Ui.dp(24), Ui.dp(14), Ui.dp(24), Ui.dp(14));
+        page.setPadding(Ui.dp(24), Ui.dp(10), Ui.dp(24), Ui.dp(10));
 
         LinearLayout top = new LinearLayout(this);
         top.setOrientation(LinearLayout.HORIZONTAL);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        TextView title = Ui.text(this, "НАСТРОЙКИ", 26, Ui.TEXT, Ui.heavy);
-        title.setShadowLayer(Ui.dp(4), 0, Ui.dp(2), 0xCC000000);
+        TextView title = Ui.text(this, "НАСТРОЙКИ", 17, Ui.MUTED, Ui.heavy);
+        title.setLetterSpacing(0.2f);
         top.addView(title, new LinearLayout.LayoutParams(0, WRAP, 1));
-        TextView back = Ui.primaryButton(this, "ГОТОВО");
-        back.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        back.setOnClickListener(new View.OnClickListener() {
+        TextView done = Ui.ghostButton(this, "Готово");
+        done.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { applySettings(); showMain(); }
         });
-        top.addView(back, new LinearLayout.LayoutParams(WRAP, Ui.dp(40)));
-        page.addView(top);
+        top.addView(done, new LinearLayout.LayoutParams(WRAP, Ui.dp(34)));
+        page.addView(top, new LinearLayout.LayoutParams(MATCH, Ui.dp(38)));
 
         View rule = new View(this);
         rule.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{Ui.ORANGE, 0x55FF7A1A, 0x00FF7A1A}));
-        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(MATCH, Ui.dp(2));
-        rlp.topMargin = Ui.dp(10);
-        page.addView(rule, rlp);
+                new int[]{Ui.ORANGE, 0x66808080, 0x00808080}));
+        LinearLayout.LayoutParams ruleLp = new LinearLayout.LayoutParams(MATCH, Ui.dp(1));
+        ruleLp.topMargin = Ui.dp(5);
+        ruleLp.bottomMargin = Ui.dp(10);
+        page.addView(rule, ruleLp);
 
-        ScrollView sv = new ScrollView(this);
-        LinearLayout cols = new LinearLayout(this);
-        cols.setOrientation(LinearLayout.HORIZONTAL);
-        cols.setPadding(0, Ui.dp(12), 0, Ui.dp(12));
+        ScrollView all = new ScrollView(this);
+        all.setVerticalScrollBarEnabled(false);
+        LinearLayout columns = new LinearLayout(this);
+        columns.setOrientation(LinearLayout.HORIZONTAL);
+        columns.setPadding(0, Ui.dp(2), 0, Ui.dp(12));
 
-        // левая колонка: графика и интерфейс
-        LinearLayout c1 = new LinearLayout(this);
-        c1.setOrientation(LinearLayout.VERTICAL);
-        c1.addView(Ui.caption(this, "Графика"));
-        c1.addView(option("Ограничение FPS", new String[]{"30", "60", "90", "120"}, new int[]{30, 60, 90, 120},
-                cfg.fps, new Pick() { @Override public void set(int v) { cfg.fps = v; } }));
-        c1.addView(option("Качество", new String[]{"Низкое", "Среднее", "Высокое"}, new int[]{0, 1, 2},
-                cfg.quality, new Pick() { @Override public void set(int v) { cfg.quality = v; } }));
-        TextView fpsNote = Ui.text(this, "90 и 120 FPS — только если экран телефона это поддерживает.", 11, Ui.DIM, Ui.body);
-        fpsNote.setPadding(0, Ui.dp(6), 0, Ui.dp(14));
-        c1.addView(fpsNote);
-        c1.addView(Ui.caption(this, "Интерфейс"));
-        c1.addView(option("Строк чата", new String[]{"10", "15", "20"}, new int[]{10, 15, 20},
-                cfg.chatLines, new Pick() { @Override public void set(int v) { cfg.chatLines = v; } }));
-        c1.addView(option("Размер кнопок", new String[]{"S", "M", "L"}, new int[]{0, 1, 2},
-                cfg.buttonSize, new Pick() { @Override public void set(int v) { cfg.buttonSize = v; } }));
-        LinearLayout.LayoutParams c1p = new LinearLayout.LayoutParams(0, WRAP, 1);
-        c1p.rightMargin = Ui.dp(20);
-        cols.addView(c1, c1p);
+        LinearLayout leftPanel = new LinearLayout(this);
+        leftPanel.setOrientation(LinearLayout.VERTICAL);
+        leftPanel.setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(14));
+        leftPanel.setBackground(Ui.box(Ui.PANEL, Ui.LINE, 2, 1));
+        leftPanel.addView(Ui.caption(this, "Игра"));
 
-        // правая колонка: сервера и игра
-        LinearLayout c2 = new LinearLayout(this);
-        c2.setOrientation(LinearLayout.VERTICAL);
-        c2.addView(Ui.caption(this, "Адреса серверов"));
-        for (Config.Server s : cfg.servers) {
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(0, Ui.dp(8), 0, 0);
-            TextView n = Ui.text(this, s.name, 12, Ui.TEXT, Ui.bodyBold);
-            row.addView(n, new LinearLayout.LayoutParams(Ui.dp(100), WRAP));
-            EditText host = boxedField(s.host, "адрес");
-            row.addView(host, new LinearLayout.LayoutParams(0, Ui.dp(38), 1));
-            EditText port = boxedField(String.valueOf(s.port), "порт");
-            port.setInputType(InputType.TYPE_CLASS_NUMBER);
-            LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(Ui.dp(76), Ui.dp(38));
-            pp.leftMargin = Ui.dp(6);
-            row.addView(port, pp);
-            serverFields.add(new EditText[]{host, port});
-            c2.addView(row);
+        leftPanel.addView(option("Лимит FPS", new String[]{"30", "60", "90", "120"},
+                new int[]{30, 60, 90, 120}, cfg.fps,
+                new Pick() { @Override public void set(int v) { cfg.fps = v; } }));
+        leftPanel.addView(option("Качество графики", new String[]{"Низкое", "Среднее", "Высокое"},
+                new int[]{0, 1, 2}, cfg.quality,
+                new Pick() { @Override public void set(int v) { cfg.quality = v; } }));
+        TextView fpsNote = Ui.text(this, "Высокие значения FPS доступны не на каждом экране.", 10, Ui.DIM, Ui.body);
+        fpsNote.setPadding(0, Ui.dp(5), 0, Ui.dp(12));
+        leftPanel.addView(fpsNote);
+
+        leftPanel.addView(Ui.caption(this, "Интерфейс"));
+        leftPanel.addView(option("Строк в чате", new String[]{"10", "15", "20"},
+                new int[]{10, 15, 20}, cfg.chatLines,
+                new Pick() { @Override public void set(int v) { cfg.chatLines = v; } }));
+        leftPanel.addView(option("Размер кнопок", new String[]{"S", "M", "L"},
+                new int[]{0, 1, 2}, cfg.buttonSize,
+                new Pick() { @Override public void set(int v) { cfg.buttonSize = v; } }));
+
+        leftPanel.addView(Ui.caption(this, "Проверка GTA"));
+        String version = gtaVersion();
+        TextView gta = Ui.text(this, version != null
+                ? "GTA: San Andreas найдена · " + version
+                : "GTA: San Andreas не установлена", 11,
+                version != null ? Ui.GREEN : Ui.RED, Ui.bodyBold);
+        gta.setPadding(0, Ui.dp(8), 0, Ui.dp(9));
+        leftPanel.addView(gta);
+
+        TextView diagnostics = Ui.ghostButton(this, "Диагностика");
+        diagnostics.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { runDiagnostics(); }
+        });
+        leftPanel.addView(diagnostics, new LinearLayout.LayoutParams(WRAP, Ui.dp(34)));
+
+        LinearLayout.LayoutParams leftLp = new LinearLayout.LayoutParams(0, WRAP, 1.08f);
+        leftLp.rightMargin = Ui.dp(16);
+        columns.addView(leftPanel, leftLp);
+
+        LinearLayout rightPanel = new LinearLayout(this);
+        rightPanel.setOrientation(LinearLayout.VERTICAL);
+        rightPanel.addView(Ui.caption(this, "Выбери сервер"));
+        for (int i = 0; i < cfg.servers.size(); i++) {
+            ServerCard card = new ServerCard(i);
+            cards.add(card);
+            LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(MATCH, WRAP);
+            cardLp.topMargin = Ui.dp(8);
+            rightPanel.addView(card.view, cardLp);
         }
-        TextView hint = Ui.text(this, "Дома: адрес компьютера с сервером в той же Wi-Fi сети (например 192.168.1.10). 127.0.0.1 на телефоне — это сам телефон.", 11, Ui.DIM, Ui.body);
+
+        TextView addresses = Ui.caption(this, "Адреса серверов");
+        LinearLayout.LayoutParams addressesLp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        addressesLp.topMargin = Ui.dp(14);
+        rightPanel.addView(addresses, addressesLp);
+
+        for (Config.Server server : cfg.servers) {
+            LinearLayout addressRow = new LinearLayout(this);
+            addressRow.setOrientation(LinearLayout.HORIZONTAL);
+            addressRow.setGravity(Gravity.CENTER_VERTICAL);
+            addressRow.setPadding(0, Ui.dp(7), 0, 0);
+
+            TextView name = Ui.text(this, server.name.toUpperCase(), 10, Ui.TEXT, Ui.heavy);
+            addressRow.addView(name, new LinearLayout.LayoutParams(Ui.dp(92), WRAP));
+
+            EditText host = boxedField(server.host, "адрес");
+            addressRow.addView(host, new LinearLayout.LayoutParams(0, Ui.dp(36), 1));
+
+            EditText port = boxedField(String.valueOf(server.port), "порт");
+            port.setInputType(InputType.TYPE_CLASS_NUMBER);
+            LinearLayout.LayoutParams portLp = new LinearLayout.LayoutParams(Ui.dp(62), Ui.dp(36));
+            portLp.leftMargin = Ui.dp(6);
+            addressRow.addView(port, portLp);
+            serverFields.add(new EditText[]{host, port});
+            rightPanel.addView(addressRow);
+        }
+
+        TextView hint = Ui.text(this,
+                "Для домашнего теста укажи IP компьютера в своей Wi-Fi сети.",
+                10, Ui.DIM, Ui.body);
         hint.setPadding(0, Ui.dp(6), 0, 0);
-        hint.setLineSpacing(Ui.dp(2), 1f);
-        c2.addView(hint);
+        rightPanel.addView(hint);
+
         TextView reset = Ui.ghostButton(this, "Вернуть адреса по умолчанию");
-        reset.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
+        reset.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9);
         reset.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 cfg.resetServers(MainActivity.this);
-                for (Config.Server s : cfg.servers) s.queried = false;
+                for (Config.Server server : cfg.servers) server.queried = false;
                 showSettings();
             }
         });
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(WRAP, Ui.dp(32));
-        rp.topMargin = Ui.dp(8);
-        rp.bottomMargin = Ui.dp(14);
-        c2.addView(reset, rp);
+        LinearLayout.LayoutParams resetLp = new LinearLayout.LayoutParams(WRAP, Ui.dp(32));
+        resetLp.topMargin = Ui.dp(7);
+        rightPanel.addView(reset, resetLp);
 
-        c2.addView(Ui.caption(this, "Игра"));
-        String ver = gtaVersion();
-        TextView gta = Ui.text(this, ver != null ? "●  GTA: San Andreas найдена (версия " + ver + ")"
-                : "●  GTA: San Andreas не установлена", 12, ver != null ? Ui.GREEN : Ui.RED, Ui.bodyBold);
-        gta.setPadding(0, Ui.dp(8), 0, 0);
-        c2.addView(gta);
-        TextView diag = Ui.ghostButton(this, "Диагностика");
-        diag.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
-        diag.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { runDiagnostics(); }
-        });
-        LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(WRAP, Ui.dp(32));
-        dp.topMargin = Ui.dp(8);
-        c2.addView(diag, dp);
-        TextView about = Ui.text(this, "Bastion Online Launcher " + appVersion(), 10, Ui.DIM, Ui.body);
-        about.setPadding(0, Ui.dp(10), 0, 0);
-        c2.addView(about);
-        cols.addView(c2, new LinearLayout.LayoutParams(0, WRAP, 1));
+        columns.addView(rightPanel, new LinearLayout.LayoutParams(0, WRAP, 0.92f));
+        all.addView(columns);
+        page.addView(all, new LinearLayout.LayoutParams(MATCH, 0, 1));
+        page.addView(buildFooter(), new LinearLayout.LayoutParams(MATCH, WRAP));
 
-        sv.addView(cols);
-        page.addView(sv, new LinearLayout.LayoutParams(MATCH, 0, 1));
         content.addView(page, new FrameLayout.LayoutParams(MATCH, MATCH));
+        updateCards();
     }
 
-    // ==================================================================
     //  Диагностика: отчёт о телефоне и GTA SA, чтобы скопировать и прислать
     // ==================================================================
     private void runDiagnostics() {
