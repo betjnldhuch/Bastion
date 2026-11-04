@@ -3,6 +3,7 @@ package online.bastion.launcher;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Base64;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
@@ -28,7 +29,7 @@ import java.security.MessageDigest;
  */
 public final class InstallerActivity extends Activity {
     private static final String MANIFEST =
-            "https://raw.githubusercontent.com/the-gta-man/Bastion/main/mobile/installer/manifest.json";
+            "https://api.github.com/repos/the-gta-man/Bastion/contents/mobile/installer/manifest.json?ref=main";
     private final Handler main = new Handler(Looper.getMainLooper());
     private TextView status;
     private ProgressBar progress;
@@ -171,12 +172,22 @@ public final class InstallerActivity extends Activity {
 
     private JSONObject getJson(String address) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(address).openConnection();
-        c.setConnectTimeout(15000);
-        c.setReadTimeout(20000);
+        c.setConnectTimeout(20000);
+        c.setReadTimeout(25000);
         c.setInstanceFollowRedirects(true);
-        try (InputStream in = new BufferedInputStream(c.getInputStream())) {
-            byte[] data = readAll(in);
-            return new JSONObject(new String(data, "UTF-8"));
+        c.setRequestProperty("Accept", "application/vnd.github+json");
+        c.setRequestProperty("User-Agent", "Bastion-Android");
+        try {
+            int code = c.getResponseCode();
+            if (code < 200 || code >= 300) {
+                throw new Exception("GitHub API: HTTP " + code + " " + c.getResponseMessage());
+            }
+            try (InputStream in = new BufferedInputStream(c.getInputStream())) {
+                JSONObject response = new JSONObject(new String(readAll(in), "UTF-8"));
+                String encoded = response.getString("content").replaceAll("\\s", "");
+                byte[] decoded = Base64.decode(encoded, Base64.DEFAULT);
+                return new JSONObject(new String(decoded, "UTF-8"));
+            }
         } finally { c.disconnect(); }
     }
 
