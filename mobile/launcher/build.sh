@@ -1,45 +1,40 @@
 #!/usr/bin/env bash
-# Сборка APK без Android Studio (Linux, пакеты Ubuntu: android-sdk,
-# android-sdk-platform-23, dalvik-exchange, openjdk). В Android Studio
-# можно просто открыть эту папку — там сборка идёт через Gradle.
+# Build the single Bastion Online APK (launcher + embedded native multiplayer client).
 set -euo pipefail
 cd "$(dirname "$0")"
 
-SDK=${ANDROID_SDK:-/usr/lib/android-sdk}
-BT=$(ls -d "$SDK"/build-tools/* | grep -v debian | sort -V | tail -1)
-JAR="$SDK/platforms/android-23/android.jar"
-SRC=app/src/main
-OUT=build
-KS=${BASTION_KEYSTORE:-tools/debug.keystore}
-VERSION_CODE=$(grep -o 'versionCode [0-9]*' app/build.gradle | grep -o '[0-9]*')
-VERSION_NAME=$(grep -o 'versionName "[^"]*"' app/build.gradle | cut -d'"' -f2)
+ROOT="$(cd ../.. && pwd)"
+CLIENT="$ROOT/mobile/client/sampdroid"
 
-rm -rf "$OUT" && mkdir -p "$OUT/gen" "$OUT/classes"
-
-if [ ! -f "$KS" ]; then
-  keytool -genkeypair -keystore "$KS" -storepass android -keypass android \
-    -alias bastiondebug -keyalg RSA -keysize 2048 -validity 10000 \
-    -dname "CN=Bastion Online Debug" >/dev/null 2>&1
+if [ ! -f "$CLIENT/app/src/main/cpp/CMakeLists.txt" ]; then
+  if [ -d "$ROOT/.git" ]; then
+    git -C "$ROOT" submodule update --init --recursive mobile/client/sampdroid
+  fi
 fi
 
-# В исходном манифесте нет package (так требует Gradle), aapt он нужен.
-sed 's|<manifest xmlns:android="http://schemas.android.com/apk/res/android">|<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="online.bastion.launcher">|' \
-  "$SRC/AndroidManifest.xml" > "$OUT/AndroidManifest.xml"
+if [ ! -f "$CLIENT/app/src/main/cpp/CMakeLists.txt" ]; then
+  echo "Embedded client source is missing. Clone with --recurse-submodules or run:"
+  echo "  git submodule update --init --recursive"
+  exit 1
+fi
 
-"$BT/aapt" package -f -m -0 arsc -J "$OUT/gen" -M "$OUT/AndroidManifest.xml" \
-  --min-sdk-version 21 --target-sdk-version 34 \
-  --version-code "$VERSION_CODE" --version-name "$VERSION_NAME" \
-  -S "$SRC/res" -A "$SRC/assets" -I "$JAR" -F "$OUT/unsigned.apk"
+if [ -x ./gradlew ]; then
+  GRADLE=./gradlew
+elif command -v gradle >/dev/null 2>&1; then
+  GRADLE=gradle
+else
+  echo "Gradle is required. Open mobile/launcher in Android Studio or install Gradle."
+  exit 1
+fi
 
-javac -nowarn -Xlint:-options -source 8 -target 8 -encoding UTF-8 \
-  -bootclasspath "$JAR" -d "$OUT/classes" \
-  $(find "$SRC/java" "$OUT/gen" -name '*.java')
+"$GRADLE" --no-daemon --project-dir . assembleDebug
 
-dalvik-exchange --dex --min-sdk-version=21 --output="$OUT/classes.dex" "$OUT/classes"
-(cd "$OUT" && "$BT/aapt" add unsigned.apk classes.dex >/dev/null)
+APK="app/build/outputs/apk/debug/app-debug.apk"
+if [ ! -f "$APK" ]; then
+  echo "Gradle finished but APK was not found at $APK"
+  exit 1
+fi
 
-"$BT/zipalign" -f -p 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
-"$BT/apksigner" sign --ks "$KS" --ks-pass pass:android --key-pass pass:android \
-  --out "$OUT/BastionOnline.apk" "$OUT/aligned.apk"
-"$BT/apksigner" verify "$OUT/BastionOnline.apk"
-echo "Готово: $OUT/BastionOnline.apk"
+mkdir -p build
+cp "$APK" build/BastionOnline.apk
+echo "Bastion APK: $(pwd)/build/BastionOnline.apk"
