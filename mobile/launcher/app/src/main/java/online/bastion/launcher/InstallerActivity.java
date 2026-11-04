@@ -94,10 +94,10 @@ public final class InstallerActivity extends Activity {
             if (config.selected < 0 || config.selected >= config.servers.size()) config.selected = 0;
             Config.Server server = config.servers.get(config.selected);
             String nickname = config.nickname == null ? "" : config.nickname.trim();
-            if (nickname.length() < 3 || nickname.length() > 24) {
+            if (!nickname.matches("[ -~]{3,24}")) {
                 throw new IllegalStateException("Сначала укажи корректный ник в лаунчере Bastion");
             }
-            if (server.host == null || server.host.trim().isEmpty() || server.port < 1 || server.port > 65535) {
+            if (server.host == null || !server.host.trim().matches("[A-Za-z0-9.-]{1,253}") || server.port < 1 || server.port > 65535) {
                 throw new IllegalStateException("Проверь адрес и порт выбранного сервера");
             }
 
@@ -107,7 +107,10 @@ public final class InstallerActivity extends Activity {
             getSharedPreferences("server_favorites", MODE_PRIVATE).edit()
                     .putString("primary_host", server.host.trim())
                     .putInt("primary_port", server.port)
-                    .putString("primary_label", server.name == null ? "Bastion" : server.name)
+                    .putString("primary_label", server.name == null || server.name.trim().isEmpty() ? "Bastion" : server.name.trim())
+                    .apply();
+            getSharedPreferences("bastion_bridge", MODE_PRIVATE).edit()
+                    .putBoolean("open_server_on_launch", true)
                     .apply();
 
             Intent launch = new Intent();
