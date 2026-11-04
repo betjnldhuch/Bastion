@@ -45,3 +45,23 @@
   его можно скопировать или отправить. Нужен, чтобы подобрать адреса функций игры для этапа 1.
 - По кнопке «Играть» пишет `Android/data/online.bastion.launcher/files/bastion.cfg`
   (ник, сервер, настройки) — его прочитает игровой клиент на следующих этапах.
+
+
+## Android SA-MP client handoff
+
+The Bastion launcher can open an independently installed SampDroid client
+(package `com.xykal.sampdroid`) from the installer screen. If it is absent,
+the launcher opens the upstream source repository so the player can review and
+install a suitable build themselves. The launcher does not silently download
+or install an unsigned third-party APK.
+
+This is currently a launch handoff only:
+- nickname and server selection still happen inside SampDroid;
+- SampDroid does not currently expose a documented external-intent API for
+  receiving Bastion's nickname/server configuration;
+- files downloaded by the Bastion installer remain in the launcher's private
+  app directory and are **not yet loaded by SampDroid**.
+
+Therefore this step does not claim that Bastion assets are applied in-game.
+A later integration requires a documented client-side bridge/API and a
+compatible, tested build of the Android client.
