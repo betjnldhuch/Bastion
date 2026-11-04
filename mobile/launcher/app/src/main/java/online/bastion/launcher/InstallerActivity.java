@@ -1,6 +1,9 @@
 package online.bastion.launcher;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -32,6 +35,7 @@ public final class InstallerActivity extends Activity {
     private TextView status;
     private ProgressBar progress;
     private Button install;
+    private Button launchClient;
     private volatile boolean running;
 
     @Override protected void onCreate(Bundle state) {
@@ -65,7 +69,39 @@ public final class InstallerActivity extends Activity {
         LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, -2);
         bp.topMargin = pad;
         page.addView(install, bp);
+
+        launchClient = new Button(this);
+        launchClient.setText("ОТКРЫТЬ SA-MP КЛИЕНТ");
+        launchClient.setOnClickListener(v -> openGameClient());
+        LinearLayout.LayoutParams launchLp = new LinearLayout.LayoutParams(-1, -2);
+        launchLp.topMargin = pad / 2;
+        page.addView(launchClient, launchLp);
+
+        TextView hint = new TextView(this);
+        hint.setText("Игровой клиент устанавливается отдельно. После открытия клиента выбери сервер Bastion и настрой ник в самом клиенте.");
+        hint.setTextColor(0xffaeb4bf);
+        hint.setTextSize(12);
+        hint.setPadding(0, pad / 2, 0, 0);
+        page.addView(hint);
         setContentView(page);
+    }
+
+    private void openGameClient() {
+        final String packageName = "com.xykal.sampdroid";
+        Intent launch = getPackageManager().getLaunchIntentForPackage(packageName);
+        if (launch != null) {
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(launch);
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("SA-MP клиент не установлен")
+                .setMessage("Bastion использует отдельный Android-клиент SampDroid. Установи и проверь его сборку из официального репозитория, затем вернись сюда. Передача ника и сервера из лаунчера пока не поддерживается — их нужно выбрать в клиенте.")
+                .setNegativeButton("Закрыть", null)
+                .setPositiveButton("Открыть репозиторий", (dialog, which) ->
+                        startActivity(new Intent(Intent.ACTION_VIEW,
+                                Uri.parse("https://github.com/xykal/sampdroid"))))
+                .show();
     }
 
     private void startInstall() {
