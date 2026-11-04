@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace 'online.bastion.launcher'
+    namespace 'com.xykal.sampdroid'
     compileSdk 34
     ndkVersion '26.1.10909125'
 
