@@ -29,10 +29,9 @@ android {
 
     sourceSets {
         main {
-            java.srcDirs += ['../../client/sampdroid/app/src/main/java']
+            java.srcDir layout.buildDirectory.dir('generated/bastionClientSources')
             res.srcDirs += ['../../client/sampdroid/app/src/main/res']
             assets.srcDirs += ['../../client/sampdroid/app/src/main/assets']
-            java.exclude 'com/xykal/sampdroid/ui/MainActivity.kt'
             java.srcDir layout.buildDirectory.dir('generated/bastionClientSources')
         }
     }
@@ -79,23 +78,27 @@ dependencies {
 
 // Build a Bastion-branded copy of the client entry screen. The original
 // upstream source remains untouched in the pinned submodule.
-def clientMainActivity = file('../../client/sampdroid/app/src/main/java/com/xykal/sampdroid/ui/MainActivity.kt')
+def clientJavaRoot = file('../../client/sampdroid/app/src/main/java')
 def brandedClientMainActivity = layout.buildDirectory.file(
     'generated/bastionClientSources/com/xykal/sampdroid/ui/MainActivity.kt'
 )
 tasks.register('generateBastionClientSources') {
-    inputs.file(clientMainActivity)
-    outputs.file(brandedClientMainActivity)
+    inputs.dir(clientJavaRoot)
+    outputs.dir(layout.buildDirectory.dir('generated/bastionClientSources'))
     doLast {
-        if (!clientMainActivity.exists()) {
+        if (!clientJavaRoot.exists()) {
             throw new GradleException('Embedded Android client source is missing. Run git submodule update --init --recursive.')
         }
-        def output = brandedClientMainActivity.get().asFile
-        output.parentFile.mkdirs()
-        def source = clientMainActivity.getText('UTF-8')
+        def generatedRoot = layout.buildDirectory.dir('generated/bastionClientSources').get().asFile
+        project.copy {
+            from clientJavaRoot
+            into generatedRoot
+        }
+        def entry = new File(generatedRoot, 'com/xykal/sampdroid/ui/MainActivity.kt')
+        def source = entry.getText('UTF-8')
         source = source.replace('title = "SampDroid"', 'title = "Bastion Online"')
         source = source.replace('native SA-MP client · v', 'Bastion multiplayer · v')
-        output.setText(source, 'UTF-8')
+        entry.setText(source, 'UTF-8')
     }
 }
 tasks.named('preBuild').configure {
