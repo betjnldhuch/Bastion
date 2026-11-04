@@ -40,6 +40,7 @@ stock DB_Init()
 	// Баны, районы банд, банкоматы, бизнесы
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS bans (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, reason TEXT, admin TEXT, date INTEGER DEFAULT 0)"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS turfs (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, minx REAL, miny REAL, maxx REAL, maxy REAL, owner INTEGER DEFAULT 0)"));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS gates (id INTEGER PRIMARY KEY AUTOINCREMENT, faction INTEGER DEFAULT 0, type INTEGER, x REAL, y REAL, z REAL, a REAL)"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS atms (id INTEGER PRIMARY KEY AUTOINCREMENT, x REAL, y REAL, z REAL)"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS businesses (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, type INTEGER, owner INTEGER DEFAULT 0, price INTEGER, x REAL, y REAL, z REAL, till INTEGER DEFAULT 0)"));
 

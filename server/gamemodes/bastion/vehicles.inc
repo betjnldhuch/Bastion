@@ -41,7 +41,7 @@ stock Vehicles_Init()
 
 	// јвтосалон
 	CreatePickup(1274, 1, DEALER_X, DEALER_Y, DEALER_Z, 0);
-	Create3DTextLabel("{FFFF00}јвтосалон\n{FFFFFF}/buycar Ч купить машину", COLOR_WHITE,
+	Create3DTextLabel("{FFFF00}јвтосалон\n{FFFFFF}ALT Ч купить машину", COLOR_WHITE,
 		DEALER_X, DEALER_Y, DEALER_Z + 0.6, 15.0, 0, true);
 }
 
@@ -112,9 +112,9 @@ stock Vehicles_OnBecomeDriver(playerid)
 {
 	new v = GetPlayerVehicleID(playerid);
 	if (gVehOwner[v] != 0 && gVehOwner[v] == Player[playerid][pDbId])
-		SendClientMessage(playerid, COLOR_BLUE, "Ёто тво€ машина. /engine Ч двигатель, /park Ч припарковать, /lock Ч замок.");
+		SendClientMessage(playerid, COLOR_BLUE, "Ёто тво€ машина. 2 Ч двигатель, /park Ч припарковать, /lock Ч замок.");
 	else
-		SendClientMessage(playerid, COLOR_GREY, "„тобы завести двигатель, введи /engine");
+		SendClientMessage(playerid, COLOR_GREY, "„тобы завести двигатель, нажми 2 (или /engine)");
 }
 
 // ---------------------------------------------------------------------

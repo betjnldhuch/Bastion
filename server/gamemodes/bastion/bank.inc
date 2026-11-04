@@ -42,7 +42,7 @@ stock Atm_Create(dbid, Float:x, Float:y, Float:z)
 	Atm[a][aY] = y;
 	Atm[a][aZ] = z;
 	Atm[a][aPickup] = CreatePickup(1274, 1, x, y, z, 0);
-	Atm[a][aLabel] = Create3DTextLabel("{33AA33}Ѕанкомат\n{FFFFFF}/bank Ч открыть счЄт", COLOR_WHITE, x, y, z + 0.6, 15.0, 0, true);
+	Atm[a][aLabel] = Create3DTextLabel("{33AA33}Ѕанкомат\n{FFFFFF}ALT Ч открыть счЄт", COLOR_WHITE, x, y, z + 0.6, 15.0, 0, true);
 	return a;
 }
 

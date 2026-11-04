@@ -38,7 +38,8 @@ enum
 {
 	OFFER_NONE,
 	OFFER_INVITE,       // приглашение во фракцию
-	OFFER_HEAL          // медик предлагает лечение
+	OFFER_HEAL,         // медик предлагает лечение
+	OFFER_HANDSHAKE     // пожать руку
 }
 
 static const gFactionNames[MAX_FACTIONS][32] =
@@ -275,7 +276,7 @@ stock Faction_CreateMarker(f)
 		Delete3DTextLabel(Faction[f][fLabel]);
 	}
 	Faction[f][fPickup] = CreatePickup(1275, 1, Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ], 0);
-	Faction[f][fLabel] = Create3DTextLabel("%s\n{FFFFFF}/duty — переодеться и взять снаряжение", Faction_GetColor(f),
+	Faction[f][fLabel] = Create3DTextLabel("%s\n{FFFFFF}ALT — переодеться и взять снаряжение", Faction_GetColor(f),
 		Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ] + 0.6, 15.0, 0, true, Faction_GetName(f));
 	Faction[f][fMarker] = true;
 }
@@ -440,7 +441,7 @@ stock Factions_OnBecomeDriver(playerid)
 	if (f == FACTION_NONE) return 0;
 	if (Player[playerid][pFaction] == f || Player[playerid][pAdmin] >= 3)
 	{
-		SendClientMessage(playerid, Faction_GetColor(f), "Машина фракции «%s». Двигатель: /engine", Faction_GetName(f));
+		SendClientMessage(playerid, Faction_GetColor(f), "Машина фракции «%s». Двигатель: 2, шлагбаум: H", Faction_GetName(f));
 		return 1;
 	}
 	RemovePlayerFromVehicle(playerid);
@@ -573,7 +574,7 @@ stock bool:Cmd_Invite(playerid, const params[])
 	Player[target][pOfferFrom] = playerid;
 	Player[target][pOfferFromDb] = Player[playerid][pDbId];
 	Player[target][pOfferValue] = Player[playerid][pFaction];
-	SendClientMessage(target, COLOR_BLUE, "%s приглашает тебя во фракцию «%s». Принять: /accept",
+	SendClientMessage(target, COLOR_BLUE, "%s приглашает тебя во фракцию «%s». Принять: Y (или /accept)",
 		GetRPName(playerid), Faction_GetName(Player[playerid][pFaction]));
 	SendClientMessage(playerid, COLOR_WHITE, "Ты пригласил %s. Ждём ответа.", GetRPName(target));
 	return true;
@@ -676,8 +677,40 @@ stock bool:Cmd_Accept(playerid)
 			SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 			SendClientMessage(from, COLOR_GREEN, "Ты вылечил пациента. +$%d.", price);
 		}
+		case OFFER_HANDSHAKE:
+		{
+			if (!IsPlayerNearPlayer(playerid, from, 2.5)) return SendClientMessage(playerid, COLOR_GREY, "Человек отошёл.");
+			ApplyAnimation(playerid, "GANGS", "hndshkfa", 4.1, false, false, false, false, 0, SYNC_ALL);
+			ApplyAnimation(from, "GANGS", "hndshkfa", 4.1, false, false, false, false, 0, SYNC_ALL);
+			new msg[144];
+			format(msg, sizeof msg, "%s пожимает руку %s.", GetRPName(from), GetRPName(playerid));
+			SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
+		}
 	}
 	return true;
+}
+
+// /deny (или N) — отказаться от предложения
+stock bool:Cmd_Deny(playerid)
+{
+	if (Player[playerid][pOfferType] == OFFER_NONE) return SendClientMessage(playerid, COLOR_GREY, "Тебе ничего не предлагали.");
+	new from = Player[playerid][pOfferFrom];
+	Player[playerid][pOfferType] = OFFER_NONE;
+	if (from >= 0 && from < MAX_PLAYERS && IsPlayerConnected(from) && Player[from][pDbId] == Player[playerid][pOfferFromDb])
+		SendClientMessage(from, COLOR_GREY, "%s отказался от твоего предложения.", GetRPName(playerid));
+	SendClientMessage(playerid, COLOR_WHITE, "Ты отказался.");
+	return true;
+}
+
+// Предложить пожать руку (из меню взаимодействия)
+stock Faction_OfferHandshake(playerid, target)
+{
+	Player[target][pOfferType] = OFFER_HANDSHAKE;
+	Player[target][pOfferFrom] = playerid;
+	Player[target][pOfferFromDb] = Player[playerid][pDbId];
+	Player[target][pOfferValue] = 0;
+	SendClientMessage(target, COLOR_BLUE, "%s протягивает тебе руку. Y — пожать, N — отказаться.", GetRPName(playerid));
+	SendClientMessage(playerid, COLOR_WHITE, "Ты протянул руку %s.", GetRPName(target));
 }
 
 // =====================================================================
@@ -783,6 +816,33 @@ stock bool:Cmd_Uncuff(playerid, const params[])
 	return true;
 }
 
+// Обыск: оружие и деньги задержанного
+stock bool:Cmd_Frisk(playerid, const params[])
+{
+	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	new pos = 0;
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /frisk [id]");
+	if (!IsPlayerNearPlayer(playerid, target, 2.5)) return SendClientMessage(playerid, COLOR_GREY, "Подойди ближе.");
+
+	new msg[144];
+	format(msg, sizeof msg, "%s обыскивает %s.", GetRPName(playerid), GetRPName(target));
+	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
+	SendClientMessage(playerid, COLOR_WHITE, "Обыск %s: наличные $%d.", GetRPName(target), GetMoney(target));
+
+	new WEAPON:weapon, ammo, name[32], found = 0;
+	for (new s = 0; s < 13; s++)
+	{
+		GetPlayerWeaponData(target, WEAPON_SLOT:s, weapon, ammo);
+		if (weapon == WEAPON:0 || ammo <= 0) continue;
+		GetWeaponName(weapon, name, sizeof name);
+		SendClientMessage(playerid, COLOR_WHITE, " Оружие: %s (%d патр.)", name, ammo);
+		found++;
+	}
+	if (found == 0) SendClientMessage(playerid, COLOR_WHITE, " Оружия нет.");
+	return true;
+}
+
 // Посадить задержанного в свою машину (полицейский сидит за рулём)
 stock bool:Cmd_PutCar(playerid, const params[])
 {
@@ -871,7 +931,7 @@ stock bool:Cmd_Heal(playerid, const params[])
 	Player[target][pOfferFrom] = playerid;
 	Player[target][pOfferFromDb] = Player[playerid][pDbId];
 	Player[target][pOfferValue] = HEAL_PRICE;
-	SendClientMessage(target, COLOR_BLUE, "Медик %s предлагает вылечить тебя за $%d. Согласиться: /accept", GetRPName(playerid), HEAL_PRICE);
+	SendClientMessage(target, COLOR_BLUE, "Медик %s предлагает вылечить тебя за $%d. Согласиться: Y (или /accept)", GetRPName(playerid), HEAL_PRICE);
 	SendClientMessage(playerid, COLOR_WHITE, "Ты предложил лечение %s.", GetRPName(target));
 	return true;
 }

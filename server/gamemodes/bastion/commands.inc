@@ -11,6 +11,9 @@
 stock bool:Cmd_Help(playerid)
 {
 	new text[2200];
+	strcat(text, "{FFFF00} нопки\n");
+	strcat(text, "{FFFFFF}ALT Ч действие р€дом (дом, банкомат, магазин, работа) или меню игрока перед тобой\n");
+	strcat(text, "Y Ч прин€ть / ответить на звонок   N Ч отказатьс€   ¬ машине: 2 Ч двигатель, H Ч шлагбаум\n\n");
 	strcat(text, "{FFFF00}ќбщее\n");
 	strcat(text, "{FFFFFF}/stats Ч статистика   /time Ч врем€   /pay Ч передать деньги   /admins Ч админы\n\n");
 	strcat(text, "{FFFF00}RP-чат\n");
@@ -30,7 +33,7 @@ stock bool:Cmd_Help(playerid)
 	strcat(text, "/buybiz /sellbiz /bizinfo /bizcash Ч свой бизнес   /turfs /capture Ч районы банд\n\n");
 	strcat(text, "{FFFF00}јдминам\n");
 	strcat(text, "{FFFFFF}/a /goto /gethere /kick /sethp /setskin /veh /dveh /createhouse /givemoney /makeadmin /jail /makeleader\n");
-	strcat(text, "/ban /unban /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf");
+	strcat(text, "/ban /unban /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf /addgate /delgate");
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "ѕомощь", "%s", "«акрыть", "", text);
 	return true;
 }
@@ -89,6 +92,12 @@ stock bool:Cmd_Pay(playerid, const params[])
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	SendClientMessage(target, COLOR_GREEN, "“ы получил $%d от %s.", amount, GetRPName(playerid));
 	return true;
+}
+
+// ƒл€ меню взаимодействи€ (keys.inc): та же /pay
+stock Commands_Pay(playerid, const params[])
+{
+	Cmd_Pay(playerid, params);
 }
 
 // ---------------------------------------------------------------------
@@ -196,6 +205,12 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/bizcash", true))     { Cmd_BizCash(playerid); return 1; }
 	if (!strcmp(cmd, "/createbiz", true))   { Cmd_CreateBiz(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delbiz", true))      { Cmd_DelBiz(playerid); return 1; }
+
+	// --- кнопки и шлагбаумы (keys.inc, gates.inc) ---
+	if (!strcmp(cmd, "/deny", true))        { Cmd_Deny(playerid); return 1; }
+	if (!strcmp(cmd, "/frisk", true))       { Cmd_Frisk(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/addgate", true))     { Cmd_AddGate(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/delgate", true))     { Cmd_DelGate(playerid); return 1; }
 
 	// --- админы (admin.inc) ---
 	if (!strcmp(cmd, "/ban", true))         { Cmd_Ban(playerid, cmdtext[pos]); return 1; }

@@ -123,13 +123,13 @@ stock Biz_Refresh(b)
 	Biz[b][bPickup] = CreatePickup(1239, 1, Biz[b][bX], Biz[b][bY], Biz[b][bZ], 0);
 	if (Biz[b][bOwner] == 0)
 	{
-		Biz[b][bLabel] = Create3DTextLabel("{FF9900}%s\n{FFFFFF}%s\n/buy Ч купить товар\nЅизнес продаЄтс€: ${FFFF00}%d{FFFFFF} (/buybiz)",
+		Biz[b][bLabel] = Create3DTextLabel("{FF9900}%s\n{FFFFFF}%s\nALT Ч купить товар\nЅизнес продаЄтс€: ${FFFF00}%d{FFFFFF} (/buybiz)",
 			COLOR_WHITE, Biz[b][bX], Biz[b][bY], Biz[b][bZ] + 0.6, 15.0, 0, true,
 			Biz[b][bName], Biz_GetTypeName(Biz[b][bType]), Biz[b][bPrice]);
 	}
 	else
 	{
-		Biz[b][bLabel] = Create3DTextLabel("{FF9900}%s\n{FFFFFF}%s\n/buy Ч купить товар\n¬ладелец: %s",
+		Biz[b][bLabel] = Create3DTextLabel("{FF9900}%s\n{FFFFFF}%s\nALT Ч купить товар\n¬ладелец: %s",
 			COLOR_WHITE, Biz[b][bX], Biz[b][bY], Biz[b][bZ] + 0.6, 15.0, 0, true,
 			Biz[b][bName], Biz_GetTypeName(Biz[b][bType]), Biz[b][bOwnerName]);
 	}

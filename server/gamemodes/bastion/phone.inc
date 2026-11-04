@@ -140,7 +140,7 @@ stock bool:Cmd_Call(playerid, const params[])
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	format(msg, sizeof msg, "” %s звонит телефон.", GetRPName(target));
 	SendNearbyMessage(target, CHAT_RADIUS, COLOR_PURPLE, msg);
-	SendClientMessage(target, COLOR_YELLOW, "¬ход€щий звонок с номера %d. /p Ч ответить, /h Ч сбросить", Player[playerid][pPhone]);
+	SendClientMessage(target, COLOR_YELLOW, "¬ход€щий звонок с номера %d. Y Ч ответить, N Ч сбросить", Player[playerid][pPhone]);
 	SendClientMessage(playerid, COLOR_WHITE, "»дут гудки... ѕоложить трубку: /h");
 	return true;
 }

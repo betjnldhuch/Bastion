@@ -16,6 +16,8 @@
 //    bastion/bank.inc      Ч банк и банкоматы
 //    bastion/phone.inc     Ч телефон: звонки, SMS, 911
 //    bastion/business.inc  Ч бизнесы: 24/7, бар, одежда, оружие
+//    bastion/gates.inc     Ч шлагбаумы и ворота фракций
+//    bastion/keys.inc      Ч управление кнопками: ALT, Y, N, H, 2
 //    bastion/chat.inc      Ч RP-чат
 //    bastion/admin.inc     Ч админ-команды
 //    bastion/commands.inc  Ч список команд
@@ -43,6 +45,8 @@
 #include "bastion/bank.inc"
 #include "bastion/phone.inc"
 #include "bastion/business.inc"
+#include "bastion/gates.inc"
+#include "bastion/keys.inc"
 #include "bastion/commands.inc"
 
 new gLastPayDayHour = -1;
@@ -77,6 +81,7 @@ public OnGameModeInit()
 	Turfs_Init();
 	Bank_Init();
 	Business_Init();
+	Gates_Init();
 
 	new hour;
 	gettime(hour);
@@ -204,6 +209,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Vehicles_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Bank_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Business_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Keys_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	return 0;
 }
 
@@ -222,6 +228,13 @@ public OnPlayerStateChange(playerid, PLAYER_STATE:newstate, PLAYER_STATE:oldstat
 	{
 		if (!Factions_OnBecomeDriver(playerid)) Vehicles_OnBecomeDriver(playerid);
 	}
+	return 1;
+}
+
+// Ќажати€ кнопок: ALT, Y, N, H, 2 (keys.inc)
+public OnPlayerKeyStateChange(playerid, KEY:newkeys, KEY:oldkeys)
+{
+	Keys_OnKeyStateChange(playerid, _:newkeys, _:oldkeys);
 	return 1;
 }
 
