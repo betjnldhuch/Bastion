@@ -3,6 +3,30 @@ plugins {
     id 'org.jetbrains.kotlin.android' version '1.9.24'
 }
 
+// Copy upstream client resources, omitting its standalone-app identity assets.
+// Bastion supplies the application label and launcher icons for the combined APK.
+def clientResRoot = file('../../client/sampdroid/app/src/main/res')
+def bastionClientRes = layout.buildDirectory.dir('generated/bastionClientRes')
+tasks.register('prepareBastionClientResources') {
+    inputs.dir(clientResRoot)
+    outputs.dir(bastionClientRes)
+    doLast {
+        if (!clientResRoot.exists()) {
+            throw new GradleException('Embedded Android client resources are missing. Run git submodule update --init --recursive.')
+        }
+        def output = bastionClientRes.get().asFile
+        delete(output)
+        project.copy { from clientResRoot; into output }
+        fileTree(output).matching { include 'mipmap-*/ic_launcher.*' }.files.each { delete(it) }
+        def strings = new File(output, 'values/strings.xml')
+        if (strings.exists()) {
+            def xml = strings.getText('UTF-8')
+            xml = xml.replaceAll(/(?s)\\s*<string\\s+name="app_name"[^>]*>.*?<\\/string>/, '')
+            strings.setText(xml, 'UTF-8')
+        }
+    }
+}
+
 android {
     namespace 'com.xykal.sampdroid'
     compileSdk 34
@@ -29,7 +53,7 @@ android {
 
     sourceSets {
         main {
-            res.srcDirs += ['../../client/sampdroid/app/src/main/res']
+            res.srcDirs += [bastionClientRes]
             assets.srcDirs += ['../../client/sampdroid/app/src/main/assets']
             java.srcDir layout.buildDirectory.dir('generated/bastionClientSources')
         }
@@ -110,5 +134,5 @@ tasks.register('generateBastionClientSources') {
     }
 }
 tasks.named('preBuild').configure {
-    dependsOn tasks.named('generateBastionClientSources')
+    dependsOn tasks.named('generateBastionClientSources')\n    dependsOn tasks.named('prepareBastionClientResources')
 }
