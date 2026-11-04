@@ -134,5 +134,6 @@ tasks.register('generateBastionClientSources') {
     }
 }
 tasks.named('preBuild').configure {
-    dependsOn tasks.named('generateBastionClientSources')\n    dependsOn tasks.named('prepareBastionClientResources')
+    dependsOn tasks.named('generateBastionClientSources')
+    dependsOn tasks.named('prepareBastionClientResources')
 }
