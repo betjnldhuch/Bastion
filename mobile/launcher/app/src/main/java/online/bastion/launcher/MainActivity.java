@@ -433,14 +433,8 @@ public class MainActivity extends Activity {
             notice("Неверный ник", "На сервере нужен РП-ник: Имя_Фамилия латиницей, каждое слово с большой буквы. Например: Ivan_Petrov.", null, null);
             return;
         }
-        if (!isGtaInstalled()) {
-            notice("Нужна GTA: San Andreas",
-                    "Для игры нужна официальная GTA: San Andreas для Android из Google Play. Установи её один раз, лаунчер найдёт её сам.",
-                    "Открыть Google Play", new Runnable() {
-                        @Override public void run() { openGtaInStore(); }
-                    });
-            return;
-        }
+        // SampDroid is a separate native Android SA-MP client. The launcher
+        // prepares Bastion-owned files, then offers to open the installed client.
         cfg.writeClientConfig(this);
         startActivity(new Intent(this, InstallerActivity.class));
     }
