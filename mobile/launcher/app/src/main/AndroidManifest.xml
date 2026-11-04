@@ -8,6 +8,7 @@
     <!-- Android 11+: разрешаем видеть установленную GTA: San Andreas -->
     <queries>
         <package android:name="com.rockstargames.gtasa" />
+        <package android:name="com.xykal.sampdroid" />
     </queries>
 
     <application
