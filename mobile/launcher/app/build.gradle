@@ -29,9 +29,9 @@ android {
 
     sourceSets {
         main {
-            java.srcDirs += ['../client/sampdroid/app/src/main/java']
-            res.srcDirs += ['../client/sampdroid/app/src/main/res']
-            assets.srcDirs += ['../client/sampdroid/app/src/main/assets']
+            java.srcDirs += ['../../client/sampdroid/app/src/main/java']
+            res.srcDirs += ['../../client/sampdroid/app/src/main/res']
+            assets.srcDirs += ['../../client/sampdroid/app/src/main/assets']
             java.exclude 'com/xykal/sampdroid/ui/MainActivity.kt'
             java.srcDir layout.buildDirectory.dir('generated/bastionClientSources')
         }
@@ -39,7 +39,7 @@ android {
 
     externalNativeBuild {
         cmake {
-            path file('../client/sampdroid/app/src/main/cpp/CMakeLists.txt')
+            path file('../../client/sampdroid/app/src/main/cpp/CMakeLists.txt')
             version '3.22.1'
         }
     }
@@ -79,7 +79,7 @@ dependencies {
 
 // Build a Bastion-branded copy of the client entry screen. The original
 // upstream source remains untouched in the pinned submodule.
-def clientMainActivity = file('../client/sampdroid/app/src/main/java/com/xykal/sampdroid/ui/MainActivity.kt')
+def clientMainActivity = file('../../client/sampdroid/app/src/main/java/com/xykal/sampdroid/ui/MainActivity.kt')
 def brandedClientMainActivity = layout.buildDirectory.file(
     'generated/bastionClientSources/com/xykal/sampdroid/ui/MainActivity.kt'
 )
