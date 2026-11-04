@@ -292,7 +292,8 @@ namespace BastionLauncher
     static class FpsPack
     {
         public const int SampMax = 90;          // больше SA-MP сам не умеет
-        public static readonly int[] Options = { 30, 60, 90, 120, 144, 165 };
+        public const int MinFps = 30;
+        public static readonly int[] Marks = { 60, 90, 120, 144 };   // засечки на ползунке
 
         public static string Dir
         {
