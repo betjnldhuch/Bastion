@@ -17,6 +17,57 @@ stock bool:Admin_Check(playerid, level)
 	return false;
 }
 
+// ---------------------------------------------------------------------
+//  Баны (по нику). Проверка при входе — из accounts.inc
+// ---------------------------------------------------------------------
+stock Bans_IsBanned(playerid, const name[])
+{
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT reason, admin FROM bans WHERE name = '%q' LIMIT 1", name);
+	if (r == DBResult:0) return 0;
+	new banned = 0;
+	if (DB_GetRowCount(r) > 0)
+	{
+		new reason[64], admin[MAX_PLAYER_NAME];
+		DB_GetFieldString(r, 0, reason, sizeof reason);
+		DB_GetFieldString(r, 1, admin, sizeof admin);
+		SendClientMessage(playerid, COLOR_RED, "Ты забанен на этом сервере. Причина: %s (админ %s).", reason, admin);
+		KickWithDelay(playerid);
+		banned = 1;
+	}
+	DB_FreeResultSet(r);
+	return banned;
+}
+
+stock bool:Cmd_Ban(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 3)) return true;
+	new pos = 0, reason[64];
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID || !RestParam(params, pos, reason))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /ban [id] [причина]");
+	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Себя банить нельзя.");
+	if (Player[target][pAdmin] >= Player[playerid][pAdmin]) return SendClientMessage(playerid, COLOR_GREY, "Нельзя забанить равного или старшего админа.");
+
+	new name[MAX_PLAYER_NAME], admin[MAX_PLAYER_NAME];
+	GetPlayerName(target, name, sizeof name);
+	GetPlayerName(playerid, admin, sizeof admin);
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO bans (name, reason, admin, date) VALUES ('%q', '%q', '%q', %d)",
+		name, reason, admin, gettime()));
+	SendClientMessageToAll(COLOR_RED, "Администратор %s забанил %s. Причина: %s", GetRPName(playerid), GetRPName(target), reason);
+	KickWithDelay(target);
+	return true;
+}
+
+stock bool:Cmd_Unban(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, name[MAX_PLAYER_NAME];
+	if (!NextParam(params, pos, name)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /unban [Имя_Фамилия]");
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM bans WHERE name = '%q'", name));
+	SendClientMessage(playerid, COLOR_ADMIN, "Ник %s разбанен (если был в бане).", name);
+	return true;
+}
+
 stock bool:Cmd_AdminChat(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 1)) return true;

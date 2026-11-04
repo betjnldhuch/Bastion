@@ -3,8 +3,14 @@
 //  Меняй цифры здесь, а не по всему коду.
 // =====================================================================
 
-#define SERVER_NAME         "Bastion RP"
-#define MODE_TEXT           "Bastion RP v1.0"
+#define SERVER_NAME         "Bastion Online"
+#define MODE_TEXT           "Bastion Online v1.1"
+// Пока Peace и War работают на одном и том же моде без различий.
+// Название сервера в списке задаётся в config.json ("name").
+
+// Захват районов банд разрешён с CAPTURE_HOUR_FROM:00 до CAPTURE_HOUR_TO:00
+#define CAPTURE_HOUR_FROM   16
+#define CAPTURE_HOUR_TO     24
 #define DATABASE_FILE       "rp.db"          // лежит в папке scriptfiles
 
 // Требовать ник формата Имя_Фамилия (true / false)
@@ -30,6 +36,24 @@
 #define HEAL_PRICE          200              // цена лечения у медика (/heal)
 #define JAIL_MIN_PER_STAR   5                // минут тюрьмы за одну звезду розыска
 #define ARREST_REWARD       150              // премия полицейскому за одну звезду при аресте
+
+// Войны банд (turfs.inc)
+#define TURF_CAPTURE_TIME   300              // сколько секунд длится захват района
+#define TURF_COOLDOWN       1800             // через сколько секунд район можно атаковать снова
+#define TURF_MIN_RANK       3                // с какого ранга можно начать захват (/capture)
+#define TURF_INCOME         150              // доход на PayDay каждому члену банды онлайн — за каждый район
+
+// Банк (bank.inc)
+#define BANK_MAX_TRANSFER   1000000          // максимум за один перевод
+
+// Телефон (phone.inc)
+#define PHONE_PRICE         500              // цена телефона в магазине 24/7
+#define SMS_PRICE           5                // цена одного SMS
+
+// Бизнесы (business.inc)
+#define MAX_BUSINESSES      100
+#define BIZ_PAYDAY_INCOME   200              // доход бизнеса в кассу каждый PayDay
+#define BIZ_SALE_SHARE      50               // % от каждой покупки, который идёт в кассу владельцу
 
 // ---------------------------------------------------------------------
 //  Цвета (формат 0xRRGGBBAA)
@@ -74,5 +98,14 @@ enum
 	DIALOG_LOGIN,
 	DIALOG_GENDER,
 	DIALOG_BUYCAR,
-	DIALOG_HELP
+	DIALOG_HELP,
+	DIALOG_BANK,
+	DIALOG_BANK_DEPOSIT,
+	DIALOG_BANK_WITHDRAW,
+	DIALOG_BANK_TRANSFER,
+	DIALOG_BIZ_BUY,
+	DIALOG_BIZ_MENU,
+	DIALOG_CONFIRM_HOUSE,
+	DIALOG_INTERACT,
+	DIALOG_INTERACT_PAY
 }

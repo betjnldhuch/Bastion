@@ -48,11 +48,11 @@ static gPizzaTarget[MAX_PLAYERS];
 stock Jobs_Init()
 {
 	CreatePickup(1275, 1, LOADER_JOB_X, LOADER_JOB_Y, LOADER_JOB_Z, 0);
-	Create3DTextLabel("{FF9900}Работа: Грузчик\n{FFFFFF}/getjob — устроиться\n/work — начать смену",
+	Create3DTextLabel("{FF9900}Работа: Грузчик\n{FFFFFF}ALT — устроиться\n/work — начать смену",
 		COLOR_WHITE, LOADER_JOB_X, LOADER_JOB_Y, LOADER_JOB_Z + 0.6, 15.0, 0, true);
 
 	CreatePickup(1275, 1, PIZZA_JOB_X, PIZZA_JOB_Y, PIZZA_JOB_Z, 0);
-	Create3DTextLabel("{FF9900}Работа: Развозчик пиццы\n{FFFFFF}/getjob — устроиться\nСядь на мопед и введи /work",
+	Create3DTextLabel("{FF9900}Работа: Развозчик пиццы\n{FFFFFF}ALT — устроиться\nСядь на мопед и введи /work",
 		COLOR_WHITE, PIZZA_JOB_X, PIZZA_JOB_Y, PIZZA_JOB_Z + 0.6, 15.0, 0, true);
 
 	// Мопеды пиццерии

@@ -104,7 +104,7 @@ stock House_Refresh(h)
 	{
 		// 1273 — зелёный домик (продаётся)
 		House[h][hPickup] = CreatePickup(1273, 1, House[h][hX], House[h][hY], House[h][hZ], 0);
-		House[h][hLabel] = Create3DTextLabel("{33AA33}Дом №%d продаётся\n{FFFFFF}Цена: ${FFFF00}%d\n{FFFFFF}/buyhouse — купить",
+		House[h][hLabel] = Create3DTextLabel("{33AA33}Дом №%d продаётся\n{FFFFFF}Цена: ${FFFF00}%d\n{FFFFFF}ALT — купить",
 			COLOR_WHITE, House[h][hX], House[h][hY], House[h][hZ] + 0.6, 15.0, 0, true,
 			House[h][hDbId], House[h][hPrice]);
 	}
@@ -112,7 +112,7 @@ stock House_Refresh(h)
 	{
 		// 1272 — синий домик (занят)
 		House[h][hPickup] = CreatePickup(1272, 1, House[h][hX], House[h][hY], House[h][hZ], 0);
-		House[h][hLabel] = Create3DTextLabel("{33CCFF}Дом №%d\n{FFFFFF}Владелец: %s\n/enter — войти",
+		House[h][hLabel] = Create3DTextLabel("{33CCFF}Дом №%d\n{FFFFFF}Владелец: %s\nALT — войти",
 			COLOR_WHITE, House[h][hX], House[h][hY], House[h][hZ] + 0.6, 15.0, 0, true,
 			House[h][hDbId], House[h][hOwnerName]);
 	}
