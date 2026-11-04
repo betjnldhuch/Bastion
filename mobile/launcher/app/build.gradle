@@ -21,7 +21,7 @@ tasks.register('prepareBastionClientResources') {
         def strings = new File(output, 'values/strings.xml')
         if (strings.exists()) {
             def xml = strings.getText('UTF-8')
-            xml = xml.replaceAll(/(?s)\\s*<string\\s+name="app_name"[^>]*>.*?<\\/string>/, '')
+            xml = xml.replaceAll(/(?s)\s*<string\s+name=["']app_name["'][^>]*>.*?<\/string>/, '')
             strings.setText(xml, 'UTF-8')
         }
     }
