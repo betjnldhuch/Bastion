@@ -351,6 +351,102 @@ namespace BastionLauncher
     }
 
     // -----------------------------------------------------------------
+    //  Ползунок (лимит FPS): тащи мышью, колесо или стрелки — по 1
+    // -----------------------------------------------------------------
+    class Slider : Control
+    {
+        int min, max, val;
+        public int[] Marks = new int[0];         // засечки под дорожкой
+        public string Suffix = "";
+        bool hover, drag;
+        const int LabelW = 74;                  // справа — цифра
+
+        public int Value
+        {
+            get { return val; }
+            set { val = Math.Max(min, Math.Min(max, value)); Invalidate(); }
+        }
+
+        public Slider(int minimum, int maximum, int value)
+        {
+            min = minimum; max = Math.Max(minimum + 1, maximum); Value = value;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer |
+                     ControlStyles.UserPaint | ControlStyles.ResizeRedraw | ControlStyles.Selectable, true);
+            Cursor = Cursors.Hand;
+            Font = Theme.F(10.5f, FontStyle.Bold);
+        }
+
+        int TrackL { get { return 9; } }
+        int TrackR { get { return Width - LabelW - 9; } }
+        float XOf(int v) { return TrackL + (float)(v - min) * (TrackR - TrackL) / (max - min); }
+
+        void SetFromX(int x)
+        {
+            float t = (float)(x - TrackL) / Math.Max(1, TrackR - TrackL);
+            int v = min + (int)Math.Round(t * (max - min));
+            // липнем к засечкам (60, 90, 120…), чтобы их было легко поймать
+            foreach (int m in Marks) if (Math.Abs(m - v) <= 2) v = m;
+            Value = v;
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e) { Focus(); drag = true; SetFromX(e.X); base.OnMouseDown(e); }
+        protected override void OnMouseUp(MouseEventArgs e) { drag = false; base.OnMouseUp(e); }
+        protected override void OnMouseMove(MouseEventArgs e) { if (drag) SetFromX(e.X); base.OnMouseMove(e); }
+        protected override void OnMouseEnter(EventArgs e) { hover = true; Invalidate(); base.OnMouseEnter(e); }
+        protected override void OnMouseLeave(EventArgs e) { hover = false; Invalidate(); base.OnMouseLeave(e); }
+        protected override void OnMouseWheel(MouseEventArgs e) { Value = val + (e.Delta > 0 ? 1 : -1); base.OnMouseWheel(e); }
+        protected override bool IsInputKey(Keys k) { return k == Keys.Left || k == Keys.Right || base.IsInputKey(k); }
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Left) Value = val - 1;
+            else if (e.KeyCode == Keys.Right) Value = val + 1;
+            base.OnKeyDown(e);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            Theme.Hq(g);
+            g.Clear(Theme.Card);
+            int cy = Height / 2 - 3;
+            float x = XOf(val);
+            using (SolidBrush b = new SolidBrush(Theme.BgBar)) g.FillRectangle(b, TrackL, cy - 2, TrackR - TrackL, 4);
+            using (SolidBrush b = new SolidBrush(Theme.Orange)) g.FillRectangle(b, TrackL, cy - 2, x - TrackL, 4);
+            using (Font mf = Theme.F(7f, FontStyle.Regular))
+            using (SolidBrush dim = new SolidBrush(Theme.Faint))
+            using (SolidBrush tick = new SolidBrush(Theme.Line))
+            using (StringFormat sf = new StringFormat())
+            {
+                sf.Alignment = StringAlignment.Center;
+                foreach (int m in Marks)
+                {
+                    if (m <= min || m >= max) continue;
+                    float mx = XOf(m);
+                    g.FillRectangle(tick, mx - 0.5f, cy + 5, 1, 4);
+                    g.DrawString(m.ToString(), mf, dim, new RectangleF(mx - 20, cy + 8, 40, 14), sf);
+                }
+            }
+            int r = (drag || hover) ? 8 : 7;
+            using (SolidBrush b = new SolidBrush(Theme.Orange)) g.FillEllipse(b, x - r, cy - r, r * 2, r * 2);
+            using (SolidBrush b = new SolidBrush(Theme.Card)) g.FillEllipse(b, x - 3, cy - 3, 6, 6);
+
+            Rectangle lab = new Rectangle(Width - LabelW + 8, 0, LabelW - 8, Height);
+            using (SolidBrush bg = new SolidBrush(Theme.BgBar)) g.FillRectangle(bg, lab);
+            using (Pen p = new Pen(Focused ? Theme.Orange : Theme.Line)) g.DrawRectangle(p, lab.X, lab.Y, lab.Width - 1, lab.Height - 1);
+            using (SolidBrush t = new SolidBrush(Theme.Text))
+            using (StringFormat sf = new StringFormat())
+            {
+                sf.Alignment = StringAlignment.Center;
+                sf.LineAlignment = StringAlignment.Center;
+                g.DrawString(val + Suffix, Font, t, lab, sf);
+            }
+        }
+
+        protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
+        protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
+    }
+
+    // -----------------------------------------------------------------
     //  Главное окно
     // -----------------------------------------------------------------
     class MainForm : Form
@@ -734,7 +830,8 @@ namespace BastionLauncher
         }
 
         // ---------------- настройки ----------------
-        Segmented segFps, segChat;
+        Segmented segChat;
+        Slider segFps;
         Toggle tStamp, tMulti, tMods, tClose;
 
         void BuildSettings()
@@ -788,12 +885,17 @@ namespace BastionLauncher
             settings.Controls.Add(browse);
 
             SampCfg sc = SampCfg.Load();
-            segFps = new Segmented(new int[] { 30, 60, 90 }, Snap(sc.GetInt("fpslimit", 90), new int[] { 30, 60, 90 }));
-            segFps.Bounds = new Rectangle(260, 152, 220, 30);
+            // выше 90 лаунчер хранит сам (в sa-mp.cfg SA-MP больше 90 не примет)
+            FpsPack.Load();
+            int fpsNow;
+            if (!int.TryParse(Samp.GetValue("BastionFps"), out fpsNow)) fpsNow = sc.GetInt("fpslimit", 90);
+            segFps = new Slider(FpsPack.MinFps, FpsPack.MaxFps, fpsNow);
+            segFps.Marks = FpsPack.Marks;
+            segFps.Bounds = new Rectangle(200, 148, 280, 38);
             settings.Controls.Add(segFps);
 
             segChat = new Segmented(new int[] { 10, 15, 20 }, Snap(sc.GetInt("pagesize", 10), new int[] { 10, 15, 20 }));
-            segChat.Bounds = new Rectangle(260, 192, 220, 30);
+            segChat.Bounds = new Rectangle(200, 192, 280, 30);
             settings.Controls.Add(segChat);
 
             tStamp = new Toggle("Время у сообщений в чате", sc.GetInt("timestamp", 0) == 1);
@@ -827,6 +929,51 @@ namespace BastionLauncher
             settings.BringToFront();
         }
 
+        // Лимит FPS перед запуском: до 90 — средствами SA-MP, выше — через пакет FPS.
+        // Возвращает false, если запуск надо отменить.
+        bool ApplyFps(string gta)
+        {
+            int want = segFps.Value;
+            bool packIn = FpsPack.Available && FpsPack.Installed(gta);
+            if (want > FpsPack.SampMax && !FpsPack.Available)
+            {
+                DialogResult r = MessageBox.Show(this,
+                    "Чтобы FPS был выше 90, рядом с лаунчером нужна папка fps с пакетом FPS (снятие лимита и фиксы физики). " +
+                    "Её пока нет, поэтому игра запустится с лимитом 90.\r\n\r\nЗапустить с 90 FPS?",
+                    cfg.Title, MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+                if (r != DialogResult.OK) return false;
+                want = FpsPack.SampMax;
+            }
+            else if (want > FpsPack.SampMax && !packIn)
+            {
+                try
+                {
+                    int n = FpsPack.Install(gta);
+                    packIn = true;
+                    SetStatus("Пакет FPS установлен в игру (файлов: " + n + ").");
+                }
+                catch (Exception ex)
+                {
+                    Warn("Не получилось поставить пакет FPS: " + ex.Message +
+                         "\r\nЕсли игра лежит в Program Files — запусти лаунчер от имени администратора. Пока будет 90 FPS.");
+                    want = FpsPack.SampMax;
+                }
+            }
+            try
+            {
+                SampCfg sc = SampCfg.Load();
+                sc.Set("fpslimit", Math.Min(want, FpsPack.SampMax).ToString());
+                sc.Save();
+                // плагин снятия лимита держит свой лимит: пишем ему то же значение (и 60, и 165)
+                if (packIn) FpsPack.WriteLimit(gta, want);
+            }
+            catch (Exception ex)
+            {
+                Warn("Не удалось записать лимит FPS: " + ex.Message);
+            }
+            return true;
+        }
+
         static int Snap(int v, int[] opts)
         {
             int best = opts[0];
@@ -840,13 +987,14 @@ namespace BastionLauncher
             try
             {
                 SampCfg sc = SampCfg.Load();
-                sc.Set("fpslimit", segFps.Value.ToString());
+                sc.Set("fpslimit", Math.Min(segFps.Value, FpsPack.SampMax).ToString());
                 sc.Set("pagesize", segChat.Value.ToString());
                 sc.Set("timestamp", tStamp.Checked ? "1" : "0");
                 sc.Set("multicore", tMulti.Checked ? "1" : "0");
                 sc.Save();
                 Samp.SetValue("BastionCheckMods", tMods.Checked ? "1" : "0");
                 Samp.SetValue("BastionCloseOnPlay", tClose.Checked ? "1" : "0");
+                Samp.SetValue("BastionFps", segFps.Value.ToString());
                 string exe = Path.Combine(gtaPath.Text.Trim(), "gta_sa.exe");
                 if (gtaPath.Text.Trim().Length > 0 && File.Exists(exe)) Samp.SetValue("gta_sa_exe", exe);
                 if (showStatus) SetStatus("Настройки сохранены.");
@@ -981,6 +1129,7 @@ namespace BastionLauncher
 
             if (tMods.Checked && !CheckMods(false)) return;
             SaveSettings(false);
+            if (!ApplyFps(gta)) return;
 
             try
             {

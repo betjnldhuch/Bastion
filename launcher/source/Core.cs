@@ -12,6 +12,7 @@ using System.Drawing;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -248,6 +249,7 @@ namespace BastionLauncher
                 {
                     string n = Path.GetFileName(f).ToLowerInvariant();
                     if (Array.IndexOf(Keep, n) >= 0) continue;
+                    if (FpsPack.IsPackFile(f)) continue;   // наш пакет FPS (сверяется по содержимому)
                     if (!list.Contains(f)) list.Add(f);
                 }
             }
@@ -275,6 +277,167 @@ namespace BastionLauncher
                 moved++;
             }
             return moved;
+        }
+    }
+
+    // -----------------------------------------------------------------
+    //  Пакет FPS: папка fps\ рядом с лаунчером.
+    //  SA-MP сам не даёт больше 90 FPS (/fpslimit 20..90). Чтобы было
+    //  120/144/165, в игру нужны ASI-плагины: загрузчик ASI, снятие лимита
+    //  и фиксы физики. Команда кладёт их в папку fps\ (см. fps\README.txt),
+    //  лаунчер копирует их в папку GTA и пишет туда выбранный лимит.
+    //  Проверка модов пропускает эти файлы, только если они байт в байт
+    //  совпадают с файлами пакета: переименованный чит так не пройдёт.
+    // -----------------------------------------------------------------
+    static class FpsPack
+    {
+        public const int SampMax = 90;          // больше SA-MP сам не умеет
+        public const int MinFps = 30;
+        public static readonly int[] Marks = { 60, 90, 120, 144 };   // засечки на ползунке
+
+        public static string Dir
+        {
+            get { return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "fps"); }
+        }
+
+        static string IniPath { get { return Path.Combine(Dir, "fps.ini"); } }
+
+        // Настройки пакета из fps\fps.ini
+        public static string LimiterIni = "";   // файл настроек плагина снятия лимита (в папке GTA)
+        public static string LimiterKey = "fps";// строка в нём, где хранится лимит
+        public static int MaxFps = 165;         // больше этого лаунчер не предложит
+
+        static List<string> files;              // файлы пакета (полные пути)
+        static Dictionary<string, string> hashes = new Dictionary<string, string>();
+
+        public static void Load()
+        {
+            files = new List<string>();
+            if (!Directory.Exists(Dir)) return;
+            if (File.Exists(IniPath))
+            {
+                foreach (string raw in File.ReadAllLines(IniPath, Encoding.UTF8))
+                {
+                    string line = raw.Trim();
+                    if (line.Length == 0 || line.StartsWith(";") || line.StartsWith("#")) continue;
+                    int eq = line.IndexOf('=');
+                    if (eq <= 0) continue;
+                    string key = line.Substring(0, eq).Trim().ToLowerInvariant();
+                    string val = line.Substring(eq + 1).Trim();
+                    int n;
+                    if (key == "limiter_ini") LimiterIni = val;
+                    else if (key == "limiter_key" && val.Length > 0) LimiterKey = val;
+                    else if (key == "max_fps" && int.TryParse(val, out n) && n > SampMax) MaxFps = n;
+                }
+            }
+            foreach (string f in Directory.GetFiles(Dir))
+            {
+                string n = Path.GetFileName(f).ToLowerInvariant();
+                if (n == "fps.ini" || n.StartsWith("readme") || n.StartsWith("license")) continue;
+                files.Add(f);
+            }
+        }
+
+        // Есть ли хоть один плагин (.asi) — без него выше 90 не поднять
+        public static bool Available
+        {
+            get
+            {
+                if (files == null) Load();
+                foreach (string f in files)
+                    if (f.EndsWith(".asi", StringComparison.OrdinalIgnoreCase)) return true;
+                return false;
+            }
+        }
+
+        static string Hash(string path)
+        {
+            string h;
+            if (hashes.TryGetValue(path, out h)) return h;
+            using (SHA256 sha = SHA256.Create())
+            using (FileStream fs = File.OpenRead(path))
+                h = BitConverter.ToString(sha.ComputeHash(fs));
+            hashes[path] = h;
+            return h;
+        }
+
+        // Файл в папке GTA — это файл нашего пакета (то же имя и то же содержимое)?
+        public static bool IsPackFile(string gtaFile)
+        {
+            if (files == null) Load();
+            string name = Path.GetFileName(gtaFile);
+            foreach (string f in files)
+            {
+                if (!string.Equals(Path.GetFileName(f), name, StringComparison.OrdinalIgnoreCase)) continue;
+                try
+                {
+                    hashes.Remove(gtaFile);   // файл в игре мог поменяться
+                    return Hash(f) == Hash(gtaFile);
+                }
+                catch (Exception) { return false; }
+            }
+            return false;
+        }
+
+        // Копирует пакет в папку GTA (только то, чего нет или что отличается).
+        // Настройки плагинов (.ini), которые уже лежат в игре, не трогает.
+        public static int Install(string gta)
+        {
+            if (files == null) Load();
+            int copied = 0;
+            foreach (string f in files)
+            {
+                string target = Path.Combine(gta, Path.GetFileName(f));
+                bool isIni = f.EndsWith(".ini", StringComparison.OrdinalIgnoreCase);
+                if (File.Exists(target) && (isIni || IsPackFile(target))) continue;
+                File.Copy(f, target, true);
+                hashes.Remove(target);
+                copied++;
+            }
+            return copied;
+        }
+
+        // Установлен ли пакет в игре (все .asi/.dll на месте и совпадают)
+        public static bool Installed(string gta)
+        {
+            if (files == null) Load();
+            if (files.Count == 0) return false;
+            foreach (string f in files)
+            {
+                if (f.EndsWith(".ini", StringComparison.OrdinalIgnoreCase)) continue;
+                string target = Path.Combine(gta, Path.GetFileName(f));
+                if (!File.Exists(target) || !IsPackFile(target)) return false;
+            }
+            return true;
+        }
+
+        // Записывает лимит в настройки плагина: меняет строку "fps = ..." или добавляет её
+        public static void WriteLimit(string gta, int fps)
+        {
+            if (LimiterIni.Length == 0) return;
+            string path = Path.Combine(gta, LimiterIni);
+            List<string> lines = new List<string>();
+            if (File.Exists(path)) lines.AddRange(File.ReadAllLines(path, Encoding.Default));
+            bool done = false;
+            for (int i = 0; i < lines.Count; i++)
+            {
+                string t = lines[i].Trim();
+                int eq = t.IndexOf('=');
+                if (eq > 0 && string.Equals(t.Substring(0, eq).Trim(), LimiterKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    lines[i] = LimiterKey + "=" + fps;
+                    done = true;
+                }
+            }
+            if (!done)
+            {
+                // ключ кладём в первую секцию файла (или в начало, если секций нет)
+                int at = 0;
+                for (int i = 0; i < lines.Count; i++)
+                    if (lines[i].Trim().StartsWith("[")) { at = i + 1; break; }
+                lines.Insert(at, LimiterKey + "=" + fps);
+            }
+            File.WriteAllLines(path, lines.ToArray(), Encoding.Default);
         }
     }
 
