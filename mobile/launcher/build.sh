@@ -26,8 +26,8 @@ fi
 sed 's|<manifest xmlns:android="http://schemas.android.com/apk/res/android">|<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="online.bastion.launcher">|' \
   "$SRC/AndroidManifest.xml" > "$OUT/AndroidManifest.xml"
 
-"$BT/aapt" package -f -m -J "$OUT/gen" -M "$OUT/AndroidManifest.xml" \
-  --min-sdk-version 21 --target-sdk-version 23 \
+"$BT/aapt" package -f -m -0 arsc -J "$OUT/gen" -M "$OUT/AndroidManifest.xml" \
+  --min-sdk-version 21 --target-sdk-version 34 \
   --version-code "$VERSION_CODE" --version-name "$VERSION_NAME" \
   -S "$SRC/res" -A "$SRC/assets" -I "$JAR" -F "$OUT/unsigned.apk"
 
