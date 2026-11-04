@@ -39,7 +39,7 @@
 - Установщик читает `mobile/installer/manifest.json`, скачивает перечисленные файлы по HTTPS и проверяет SHA-256.
 - Файлы Bastion сохраняются в приватную папку приложения `files/bastion-mod`; манифест можно дополнять новыми файлами и обновлениями.
 - Пока манифест пустой: добавь в него реальные URL файлов мода и их SHA-256.
-- Установщик не содержит сам мобильный SA-MP/open.mp игровой клиент. Для полноценного входа в игру нужен совместимый Android-клиент; его исходников или готовой сборки в репозитории пока нет. GTA SA также должна быть установлена отдельно.
+- Игровой Android-модуль подключён к APK Bastion как встроенный исходный компонент. Он открывается внутри того же приложения, без отдельного значка или установки второго лаунчера. GTA SA и её игровые данные предоставляются пользователем отдельно.
 
 - Настройки → «Диагностика»: отчёт о телефоне и GTA SA (версия, ABI, SHA-256 libGTASA.so),
   его можно скопировать или отправить. Нужен, чтобы подобрать адреса функций игры для этапа 1.
@@ -47,21 +47,32 @@
   (ник, сервер, настройки) — его прочитает игровой клиент на следующих этапах.
 
 
-## Android SA-MP client handoff
 
-The Bastion launcher can open an independently installed SampDroid client
-(package `com.xykal.sampdroid`) from the installer screen. If it is absent,
-the launcher opens the upstream source repository so the player can review and
-install a suitable build themselves. The launcher does not silently download
-or install an unsigned third-party APK.
+## Единое приложение Bastion Online
 
-This is currently a launch handoff only:
-- nickname and server selection still happen inside SampDroid;
-- SampDroid does not currently expose a documented external-intent API for
-  receiving Bastion's nickname/server configuration;
-- files downloaded by the Bastion installer remain in the launcher's private
-  app directory and are **not yet loaded by SampDroid**.
+Целевая сборка — один APK с интерфейсом Bastion, установщиком и встроенным игровым экраном.
+Игрок запускает только **Bastion Online**. Второй лаунчер и отдельный переход в другое приложение не требуются.
 
-Therefore this step does not claim that Bastion assets are applied in-game.
-A later integration requires a documented client-side bridge/API and a
-compatible, tested build of the Android client.
+Игровой модуль подключён как закреплённый Git submodule:
+`mobile/client/sampdroid`. При первом клонировании обязательно загружать подмодули:
+
+```bash
+git clone --recurse-submodules https://github.com/the-gta-man/Bastion.git
+# либо в уже склонированном репозитории:
+git submodule update --init --recursive
+```
+
+Сборка: открой `mobile/launcher` в Android Studio либо выполни
+`mobile/launcher/build.sh` при установленном Android SDK, NDK, CMake и Gradle.
+В APK игровой экран объявлен внутренней Activity, а ник и выбранный сервер
+перед запуском копируются в профиль встроенного клиента.
+
+Встроенный код сохраняет обязательные лицензионные уведомления MIT в исходниках
+и документации. В интерфейсе используется бренд Bastion Online.
+
+**Текущий статус:** исходники игрового модуля подключены, Gradle-конфигурация
+переведена на Kotlin + CMake, а запуск из лаунчера направлен на внутреннюю Activity.
+APK ещё необходимо собрать и проверить на устройстве. Скачанные файлы мода
+пока хранятся в staging-папке установщика; их применение к игровому миру требует
+отдельного адаптера к runtime загрузки ресурсов. Не загружай в манифест
+файлы GTA: San Andreas или чужие игровые данные.
