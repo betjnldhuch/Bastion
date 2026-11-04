@@ -98,8 +98,8 @@ public class MainActivity extends Activity {
     }
 
     @Override public void onBackPressed() {
-        if ("settings".equals(content.getTag())) { showMain(); return; }
         if (root.getChildCount() > 2) { root.removeViewAt(root.getChildCount() - 1); return; }
+        if ("settings".equals(content.getTag())) { applySettings(); showMain(); return; }
         super.onBackPressed();
     }
 
@@ -559,6 +559,14 @@ public class MainActivity extends Activity {
                 : "●  GTA: San Andreas не установлена", 12, ver != null ? Ui.GREEN : Ui.RED, Ui.bodyBold);
         gta.setPadding(0, Ui.dp(8), 0, 0);
         c2.addView(gta);
+        TextView diag = Ui.ghostButton(this, "Диагностика");
+        diag.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
+        diag.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { runDiagnostics(); }
+        });
+        LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(WRAP, Ui.dp(32));
+        dp.topMargin = Ui.dp(8);
+        c2.addView(diag, dp);
         TextView about = Ui.text(this, "Bastion Online Launcher " + appVersion(), 10, Ui.DIM, Ui.body);
         about.setPadding(0, Ui.dp(10), 0, 0);
         c2.addView(about);
@@ -567,6 +575,90 @@ public class MainActivity extends Activity {
         sv.addView(cols);
         page.addView(sv, new LinearLayout.LayoutParams(MATCH, 0, 1));
         content.addView(page, new FrameLayout.LayoutParams(MATCH, MATCH));
+    }
+
+    // ==================================================================
+    //  Диагностика: отчёт о телефоне и GTA SA, чтобы скопировать и прислать
+    // ==================================================================
+    private void runDiagnostics() {
+        applySettings();
+        final TextView body = Ui.text(this, "Собираю данные…", 11, Ui.TEXT, Typeface.MONOSPACE);
+        final String[] result = {null};
+        final FrameLayout dim = new FrameLayout(this);
+        dim.setBackgroundColor(0xB3000000);
+        dim.setClickable(true);
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(Ui.dp(20), Ui.dp(16), Ui.dp(20), Ui.dp(14));
+        box.setBackground(Ui.box(Ui.PANEL, Ui.LINE, 10, 1));
+        TextView t = Ui.text(this, "ДИАГНОСТИКА", 17, Ui.TEXT, Ui.heavy);
+        box.addView(t);
+        TextView sub = Ui.text(this, "Скопируй или отправь этот текст в чат проекта.", 12, Ui.MUTED, Ui.body);
+        sub.setPadding(0, Ui.dp(6), 0, Ui.dp(10));
+        box.addView(sub);
+        ScrollView sv = new ScrollView(this);
+        body.setTextIsSelectable(true);
+        body.setPadding(Ui.dp(10), Ui.dp(8), Ui.dp(10), Ui.dp(8));
+        body.setBackground(Ui.box(0xFF0B0C0F, Ui.LINE, 6, 1));
+        sv.addView(body);
+        box.addView(sv, new LinearLayout.LayoutParams(MATCH, 0, 1));
+
+        LinearLayout buttons = new LinearLayout(this);
+        buttons.setOrientation(LinearLayout.HORIZONTAL);
+        buttons.setGravity(Gravity.END);
+        TextView close = Ui.ghostButton(this, "Закрыть");
+        close.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { root.removeView(dim); }
+        });
+        buttons.addView(close, new LinearLayout.LayoutParams(WRAP, Ui.dp(38)));
+        TextView copy = Ui.ghostButton(this, "Копировать");
+        copy.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                if (result[0] == null) return;
+                android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("Bastion diagnostics", result[0]));
+                android.widget.Toast.makeText(MainActivity.this, "Скопировано", android.widget.Toast.LENGTH_SHORT).show();
+            }
+        });
+        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(WRAP, Ui.dp(38));
+        cp.leftMargin = Ui.dp(8);
+        buttons.addView(copy, cp);
+        TextView share = Ui.primaryButton(this, "ОТПРАВИТЬ");
+        share.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        share.setPadding(Ui.dp(18), 0, Ui.dp(18), 0);
+        share.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                if (result[0] == null) return;
+                Intent i = new Intent(Intent.ACTION_SEND);
+                i.setType("text/plain");
+                i.putExtra(Intent.EXTRA_TEXT, result[0]);
+                startActivity(Intent.createChooser(i, "Отправить диагностику"));
+            }
+        });
+        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(WRAP, Ui.dp(38));
+        sp.leftMargin = Ui.dp(8);
+        buttons.addView(share, sp);
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        bp.topMargin = Ui.dp(12);
+        box.addView(buttons, bp);
+
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(MATCH, MATCH);
+        lp.setMargins(Ui.dp(60), Ui.dp(20), Ui.dp(60), Ui.dp(20));
+        dim.addView(box, lp);
+        root.addView(dim, new FrameLayout.LayoutParams(MATCH, MATCH));
+
+        new Thread(new Runnable() {
+            @Override public void run() {
+                String rep;
+                try { rep = Diagnostics.report(MainActivity.this); }
+                catch (Throwable e) { rep = "Ошибка диагностики: " + e; }
+                final String fin = rep;
+                ui.post(new Runnable() {
+                    @Override public void run() { result[0] = fin; body.setText(fin); }
+                });
+            }
+        }, "diag").start();
     }
 
     private String appVersion() {
