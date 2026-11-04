@@ -98,12 +98,12 @@ tasks.register('generateBastionClientSources') {
         source = source.replace('title = "SampDroid"', 'title = "Bastion Online"')
         source = source.replace('native SA-MP client · v', 'Bastion multiplayer · v')
         source = source.replace(
-            '        loadServers()\\n    }',
-            '        loadServers()\\n' +
-            '        if (getSharedPreferences("bastion_bridge", MODE_PRIVATE).getBoolean("open_server_on_launch", false)) {\\n' +
-            '            getSharedPreferences("bastion_bridge", MODE_PRIVATE).edit().remove("open_server_on_launch").apply()\\n' +
-            '            window.decorView.post { connectUifFavorite() }\\n' +
-            '        }\\n' +
+            '        loadServers()\n    }',
+            '        loadServers()\n' +
+            '        if (getSharedPreferences("bastion_bridge", MODE_PRIVATE).getBoolean("open_server_on_launch", false)) {\n' +
+            '            getSharedPreferences("bastion_bridge", MODE_PRIVATE).edit().remove("open_server_on_launch").apply()\n' +
+            '            window.decorView.post { connectUifFavorite() }\n' +
+            '        }\n' +
             '    }'
         )
         entry.setText(source, 'UTF-8')
