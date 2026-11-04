@@ -1,17 +1,47 @@
 plugins {
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android' version '1.9.24'
 }
 
 android {
     namespace 'online.bastion.launcher'
     compileSdk 34
+    ndkVersion '26.1.10909125'
 
     defaultConfig {
         applicationId 'online.bastion.launcher'
-        minSdk 21
+        minSdk 24
         targetSdk 34
-        versionCode 3
-        versionName "0.2.1"
+        versionCode 4
+        versionName "0.3.0"
+
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
+        }
+
+        externalNativeBuild {
+            cmake {
+                cppFlags '-std=c++17', '-O2', '-fexceptions', '-frtti'
+                arguments '-DANDROID_STL=c++_shared'
+            }
+        }
+    }
+
+    sourceSets {
+        main {
+            java.srcDirs += ['../client/sampdroid/app/src/main/java']
+            res.srcDirs += ['../client/sampdroid/app/src/main/res']
+            assets.srcDirs += ['../client/sampdroid/app/src/main/assets']
+            java.exclude 'com/xykal/sampdroid/ui/MainActivity.kt'
+            java.srcDir layout.buildDirectory.dir('generated/bastionClientSources')
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path file('../client/sampdroid/app/src/main/cpp/CMakeLists.txt')
+            version '3.22.1'
+        }
     }
 
     buildTypes {
@@ -21,7 +51,53 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.documentfile:documentfile:1.0.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.4'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
+    testImplementation 'junit:junit:4.13.2'
+}
+
+// Build a Bastion-branded copy of the client entry screen. The original
+// upstream source remains untouched in the pinned submodule.
+def clientMainActivity = file('../client/sampdroid/app/src/main/java/com/xykal/sampdroid/ui/MainActivity.kt')
+def brandedClientMainActivity = layout.buildDirectory.file(
+    'generated/bastionClientSources/com/xykal/sampdroid/ui/MainActivity.kt'
+)
+tasks.register('generateBastionClientSources') {
+    inputs.file(clientMainActivity)
+    outputs.file(brandedClientMainActivity)
+    doLast {
+        if (!clientMainActivity.exists()) {
+            throw new GradleException('Embedded Android client source is missing. Run git submodule update --init --recursive.')
+        }
+        def output = brandedClientMainActivity.get().asFile
+        output.parentFile.mkdirs()
+        def source = clientMainActivity.getText('UTF-8')
+        source = source.replace('title = "SampDroid"', 'title = "Bastion Online"')
+        source = source.replace('native SA-MP client · v', 'Bastion multiplayer · v')
+        output.setText(source, 'UTF-8')
+    }
+}
+tasks.named('preBuild').configure {
+    dependsOn tasks.named('generateBastionClientSources')
 }
