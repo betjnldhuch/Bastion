@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Версия, minSdk и targetSdk задаются в app/build.gradle (и в build.sh). -->
+<!-- Bastion is the single installed Android application; the embedded game
+     client is an internal Activity, not a separately installed launcher. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- Android 11+: разрешаем видеть установленную GTA: San Andreas -->
     <queries>
         <package android:name="com.rockstargames.gtasa" />
-        <package android:name="com.xykal.sampdroid" />
     </queries>
 
     <application
@@ -16,9 +15,17 @@
         android:icon="@mipmap/ic_launcher"
         android:theme="@style/BastionTheme"
         android:allowBackup="true"
-        android:hardwareAccelerated="true">
+        android:hardwareAccelerated="true"
+        android:usesCleartextTraffic="false">
 
         <activity android:name=".InstallerActivity" android:exported="false" />
+
+        <!-- Embedded client screen; no launcher icon or external package. -->
+        <activity
+            android:name="com.xykal.sampdroid.ui.MainActivity"
+            android:exported="false"
+            android:screenOrientation="sensorLandscape"
+            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".MainActivity"
