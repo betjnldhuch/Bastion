@@ -434,36 +434,8 @@ public class MainActivity extends Activity {
             notice("Неверный ник", "На сервере нужен РП-ник: Имя_Фамилия латиницей, каждое слово с большой буквы. Например: Ivan_Petrov.", null, null);
             return;
         }
-        if (!isGtaInstalled()) {
-            notice("Нужна GTA: San Andreas",
-                    "Для игры нужна официальная GTA: San Andreas для Android из Google Play. Установи её один раз, лаунчер найдёт её сам.",
-                    "Открыть Google Play", new Runnable() {
-                        @Override public void run() { openGtaInStore(); }
-                    });
-            return;
-        }
         cfg.writeClientConfig(this);
-        Config.Server s = cfg.servers.get(cfg.selected);
-        Intent game = getPackageManager().getLaunchIntentForPackage(SAMP_GAME_PACKAGE);
-        if (game != null) {
-            startActivity(game);
-            return;
-        }
-        Intent launcher = getPackageManager().getLaunchIntentForPackage(SAMP_LAUNCHER_PACKAGE);
-        if (launcher != null) {
-            notice("SA-MP Launcher",
-                    "Клиентский игровой пакет ещё не найден. Сейчас откроется SA-MP Launcher: заверши там загрузку игровых файлов, затем вернись в Bastion.\n\nВыбран сервер: "
-                            + s.name + " (" + s.host + ":" + s.port + "). Ник: " + nick,
-                    "Открыть SA-MP", new Runnable() {
-                        @Override public void run() { launchInstalledSampClient(); }
-                    });
-            return;
-        }
-        notice("Нужно установить SA-MP",
-                "Bastion сохранил ник и сервер, но игровой клиент пока не установлен. Установи оранжевый SA-MP Launcher и загрузи его игровые файлы.",
-                "Установить SA-MP", new Runnable() {
-                    @Override public void run() { openSampLauncherStore(); }
-                });
+        openSampClient();
     }
 
     /** Downloads only Bastion-owned, checksum-verified files from the public asset manifest. */
@@ -739,20 +711,11 @@ public class MainActivity extends Activity {
     }
 
 
-    /** Opens the installed SA-MP Android client, or its official launcher listing. */
+    /** Opens the installed SA-MP game, falling back to the orange SA-MP Launcher. */
     private static final String SAMP_GAME_PACKAGE = "ru.unisamp_mobile.game";
     private static final String SAMP_LAUNCHER_PACKAGE = "ru.unisamp_mobile.launcher";
 
     private void openSampClient() {
-        if (!isGtaInstalled()) {
-            notice("Нужна GTA: San Andreas",
-                    "Сначала установи официальную GTA: San Andreas. После этого можно установить SA-MP клиент.",
-                    "Открыть Google Play", new Runnable() {
-                        @Override public void run() { openGtaInStore(); }
-                    });
-            return;
-        }
-
         Intent game = getPackageManager().getLaunchIntentForPackage(SAMP_GAME_PACKAGE);
         if (game != null) {
             try { startActivity(game); }
@@ -763,27 +726,15 @@ public class MainActivity extends Activity {
         Intent sampLauncher = getPackageManager().getLaunchIntentForPackage(SAMP_LAUNCHER_PACKAGE);
         if (sampLauncher != null) {
             startActivity(sampLauncher);
-            notice("SA-MP Launcher открыт",
-                    "В оранжевом SA-MP Launcher заверши загрузку игровых файлов. После этого возвращайся в Bastion и нажимай «ИГРАТЬ».",
-                    null, null);
+            android.widget.Toast.makeText(this,
+                    "Сначала заверши загрузку клиента в SA-MP Launcher, затем вернись в Bastion.",
+                    android.widget.Toast.LENGTH_LONG).show();
             return;
         }
 
-        notice("Нужен SA-MP клиент",
-                "Сейчас откроется официальная страница SA-MP Launcher. Установи его, открой и дождись загрузки игровых файлов. Затем вернись в Bastion.",
-                "Открыть SA-MP Launcher", new Runnable() {
-                    @Override public void run() { openSampLauncherStore(); }
-                });
-    }
-
-    private void openSampLauncherStore() {
-        Uri market = Uri.parse("market://details?id=" + SAMP_LAUNCHER_PACKAGE);
-        try {
-            startActivity(new Intent(Intent.ACTION_VIEW, market));
-        } catch (Exception e) {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(
-                    "https://play.google.com/store/apps/details?id=" + SAMP_LAUNCHER_PACKAGE)));
-        }
+        notice("SA-MP клиент не найден",
+                "Bastion сохранил ник и настройки. Установи оранжевый SA-MP Launcher APK, открой его один раз и дождись загрузки игрового клиента. Затем вернись сюда и нажми «ИГРАТЬ». Google Play не открывается.",
+                null, null);
     }
 
     private void launchInstalledSampClient() {
