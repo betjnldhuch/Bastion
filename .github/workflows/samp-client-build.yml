@@ -44,6 +44,13 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Patch upstream build for CI
+        working-directory: samp-mobile
+        run: |
+          # The upstream build references an obsolete Splunk Maven host and a local signing key.
+          sed -i "/mint\\.splunk\\.com/d; /jcenter()/d" build.gradle
+          sed -i "/signingConfig signingConfigs\\.release/c\\            signingConfig signingConfigs.debug" app/build.gradle
+
       - name: Build ARM32 + ARM64 client APK
         working-directory: samp-mobile
         run: gradle :app:assembleDebug --no-daemon
