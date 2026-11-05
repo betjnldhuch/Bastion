@@ -3,10 +3,8 @@ package online.bastion.launcher;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
-
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -15,13 +13,9 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.MessageDigest;
 
-/**
- * Downloads Bastion client assets described by mobile/installer/manifest.json.
- * Files are stored inside the launcher's private app directory.
- */
+/** Downloads Bastion-owned assets listed in the public manifest. */
 public final class ClientInstaller {
-    private static final String MANIFEST_URL =
-            "https://raw.githubusercontent.com/the-gta-man/Bastion-assets/main/manifest.json";
+    private static final String MANIFEST_URL = "https://raw.githubusercontent.com/the-gta-man/Bastion-assets/main/manifest.json";
     private static final int CONNECT_TIMEOUT = 15000;
     private static final int READ_TIMEOUT = 30000;
     private static final long MAX_FILE_SIZE = 512L * 1024L * 1024L;
@@ -35,64 +29,49 @@ public final class ClientInstaller {
     private final Context context;
     private final Handler main = new Handler(Looper.getMainLooper());
 
-    public ClientInstaller(Context context) {
-        this.context = context.getApplicationContext();
-    }
+    public ClientInstaller(Context context) { this.context = context.getApplicationContext(); }
 
     public void install(final Callback callback) {
         new Thread(new Runnable() {
             @Override public void run() {
                 try {
                     report(callback, "Загрузка списка файлов…");
-                    JSONObject manifest = new JSONObject(new String(
-                            readUrl(MANIFEST_URL, 1024 * 1024), "UTF-8"));
+                    JSONObject manifest = new JSONObject(new String(readUrl(MANIFEST_URL, 1024 * 1024), "UTF-8"));
+                    if (manifest.optInt("version", -1) != 1)
+                        throw new IllegalStateException("Неподдерживаемая версия manifest.json.");
                     JSONArray files = manifest.optJSONArray("files");
-                    if (manifest.optInt("version", -1) != 1) {\n                        throw new IllegalStateException("Версия manifest.json не поддерживается.");\n                    }\n                    if (files == null || files.length() == 0) {
-                        throw new IllegalStateException(
-                                "Список файлов пуст. Сначала добавьте клиентские ресурсы в manifest.json.");
-                    }
+                    if (files == null) throw new IllegalStateException("В manifest.json отсутствует список files.");
 
-                    File root = new File(context.getExternalFilesDir(null), "client");
-                    if (!root.exists() && !root.mkdirs()) {
+                    File external = context.getExternalFilesDir(null);
+                    if (external == null) throw new IllegalStateException("Android не предоставил папку для файлов.");
+                    final File root = new File(external, "client");
+                    if (!root.exists() && !root.mkdirs())
                         throw new IllegalStateException("Не удалось создать папку клиента.");
-                    }
 
                     int installed = 0;
                     for (int i = 0; i < files.length(); i++) {
                         JSONObject item = files.getJSONObject(i);
                         String path = item.getString("path");
-                        String url = item.getString("url");
+                        String address = item.getString("url");
                         String expectedHash = item.getString("sha256").toLowerCase();
-                        long expectedSize = item.optLong("size", -1);
-
-                        if (!path.matches("[A-Za-z0-9._/-]+") || path.startsWith("/")
-                                || path.contains("..") || !expectedHash.matches("[0-9a-f]{64}")) {
-                            throw new IllegalArgumentException("Некорректная запись в manifest: " + path);
-                        }
-                        if (!url.startsWith("https://") || expectedSize < 0
-                                || expectedSize > MAX_FILE_SIZE) {
-                            throw new IllegalArgumentException("Небезопасный URL или размер файла: " + path);
-                        }
-
-                        report(callback, "Загрузка " + (i + 1) + "/" + files.length() + ": " + path);
-                        byte[] data = readUrl(url, (int) Math.min(MAX_FILE_SIZE, expectedSize + 1));
-                        if (data.length != expectedSize) {
-                            throw new IllegalStateException("Размер файла не совпадает: " + path);
-                        }
-                        String actualHash = sha256(data);
-                        if (!actualHash.equals(expectedHash)) {
-                            throw new SecurityException("SHA-256 не совпадает: " + path);
-                        }
+                        long expectedSize = item.getLong("size");
+                        if (!path.matches("[A-Za-z0-9._/-]+") || path.startsWith("/") || path.contains("..")
+                                || !expectedHash.matches("[0-9a-f]{64}"))
+                            throw new IllegalArgumentException("Некорректная запись manifest: " + path);
+                        if (!address.startsWith("https://") || expectedSize < 0 || expectedSize > MAX_FILE_SIZE)
+                            throw new IllegalArgumentException("Недопустимый URL или размер: " + path);
 
                         File target = new File(root, path);
+                        String canonicalRoot = root.getCanonicalPath() + File.separator;
+                        if (!target.getCanonicalPath().startsWith(canonicalRoot))
+                            throw new SecurityException("Недопустимый путь: " + path);
                         File parent = target.getParentFile();
-                        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+                        if (parent != null && !parent.exists() && !parent.mkdirs())
                             throw new IllegalStateException("Не удалось создать папку: " + path);
-                        }
+
+                        report(callback, "Загрузка " + (i + 1) + "/" + files.length() + ": " + path);
                         File temp = new File(target.getAbsolutePath() + ".part");
-                        FileOutputStream out = new FileOutputStream(temp);
-                        try { out.write(data); out.getFD().sync(); }
-                        finally { out.close(); }
+                        downloadAndVerify(address, temp, expectedSize, expectedHash);
                         if (target.exists() && !target.delete()) {
                             temp.delete();
                             throw new IllegalStateException("Не удалось заменить файл: " + path);
@@ -104,9 +83,8 @@ public final class ClientInstaller {
                         installed++;
                     }
                     final int count = installed;
-                    final File destination = root;
                     main.post(new Runnable() {
-                        @Override public void run() { callback.onComplete(count, destination); }
+                        @Override public void run() { callback.onComplete(count, root); }
                     });
                 } catch (final Exception e) {
                     main.post(new Runnable() {
@@ -119,12 +97,49 @@ public final class ClientInstaller {
         }, "bastion-client-installer").start();
     }
 
+    private static void downloadAndVerify(String address, File target, long expectedSize, String expectedHash) throws Exception {
+        HttpURLConnection connection = (HttpURLConnection) new URL(address).openConnection();
+        connection.setConnectTimeout(CONNECT_TIMEOUT);
+        connection.setReadTimeout(READ_TIMEOUT);
+        connection.setInstanceFollowRedirects(true);
+        connection.setRequestProperty("User-Agent", "Bastion-Launcher/0.3");
+        try {
+            int code = connection.getResponseCode();
+            if (code < 200 || code >= 300) throw new IllegalStateException("HTTP " + code);
+            InputStream in = new BufferedInputStream(connection.getInputStream());
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            FileOutputStream out = new FileOutputStream(target);
+            long total = 0;
+            try {
+                byte[] buffer = new byte[16384];
+                int n;
+                while ((n = in.read(buffer)) != -1) {
+                    total += n;
+                    if (total > expectedSize || total > MAX_FILE_SIZE)
+                        throw new IllegalStateException("Размер файла больше указанного: " + target.getName());
+                    digest.update(buffer, 0, n);
+                    out.write(buffer, 0, n);
+                }
+                out.getFD().sync();
+            } finally {
+                try { in.close(); } finally { out.close(); }
+            }
+            if (total != expectedSize) throw new IllegalStateException("Размер файла не совпадает: " + target.getName());
+            if (!hex(digest.digest()).equals(expectedHash)) throw new SecurityException("SHA-256 не совпадает: " + target.getName());
+        } catch (Exception e) {
+            target.delete();
+            throw e;
+        } finally {
+            connection.disconnect();
+        }
+    }
+
     private static byte[] readUrl(String address, int limit) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(address).openConnection();
         connection.setConnectTimeout(CONNECT_TIMEOUT);
         connection.setReadTimeout(READ_TIMEOUT);
         connection.setInstanceFollowRedirects(true);
-        connection.setRequestProperty("User-Agent", "Bastion-Launcher/0.2");
+        connection.setRequestProperty("User-Agent", "Bastion-Launcher/0.3");
         try {
             int code = connection.getResponseCode();
             if (code < 200 || code >= 300) throw new IllegalStateException("HTTP " + code);
@@ -135,7 +150,7 @@ public final class ClientInstaller {
                 int total = 0, n;
                 while ((n = in.read(chunk)) != -1) {
                     total += n;
-                    if (total > limit) throw new IllegalStateException("Файл превышает допустимый размер.");
+                    if (total > limit) throw new IllegalStateException("Манифест слишком большой.");
                     buffer.write(chunk, 0, n);
                 }
                 return buffer.toByteArray();
@@ -143,10 +158,9 @@ public final class ClientInstaller {
         } finally { connection.disconnect(); }
     }
 
-    private static String sha256(byte[] data) throws Exception {
-        byte[] hash = MessageDigest.getInstance("SHA-256").digest(data);
+    private static String hex(byte[] bytes) {
         StringBuilder result = new StringBuilder();
-        for (byte b : hash) result.append(String.format("%02x", b & 0xff));
+        for (byte b : bytes) result.append(String.format("%02x", b & 0xff));
         return result.toString();
     }
 
