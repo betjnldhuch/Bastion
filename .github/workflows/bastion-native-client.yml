@@ -1,4 +1,4 @@
-name: Build Bastion native SA-MP client
+name: Build single Bastion Android APK
 
 on:
   workflow_dispatch:
@@ -10,13 +10,14 @@ on:
       - "mobile/sampdroid"
       - "mobile/sampdroid/**"
       - "mobile/sampdroid-patches/**"
+      - "mobile/launcher/**"
       - ".github/workflows/bastion-native-client.yml"
 
 permissions:
   contents: read
 
 concurrency:
-  group: bastion-native-client-${{ github.ref }}
+  group: bastion-single-apk-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -57,27 +58,34 @@ jobs:
         with:
           gradle-version: "8.7"
 
-      - name: Brand native client for Bastion
+      - name: Brand and localize embedded client
         working-directory: mobile/sampdroid
         run: |
-          sed -i 's/applicationId = "com.xykal.sampdroid"/applicationId = "online.bastion.client"/' app/build.gradle.kts
-          sed -i 's/<string name="app_name">SampDroid<\//<string name="app_name">Bastion Online<\//' app/src/main/res/values/strings.xml
-          sed -i 's/title = "SampDroid"/title = "Bastion Online"/' app/src/main/java/com/xykal/sampdroid/ui/MainActivity.kt
-          grep -q 'applicationId = "online.bastion.client"' app/build.gradle.kts
-          grep -q 'Bastion Online' app/src/main/res/values/strings.xml
+          sed -i 's/<string name="app_name">SampDroid<\//<string name="app_name">Bastion<\//' app/src/main/res/values/strings.xml
+          python3 ../sampdroid-patches/apply.py .
 
-      - name: Apply Bastion patches (Russian UI, autoconnect from launcher)
+      - name: Convert SampDroid into an embedded Android library
         working-directory: mobile/sampdroid
-        run: python3 ../sampdroid-patches/apply.py .
+        run: python3 ../sampdroid-patches/prepare_library.py
 
-      - name: Run unit tests and build ARM32 + ARM64 APK
-        working-directory: mobile/sampdroid
-        run: gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
+      - name: Build and test the one installable Bastion APK
+        working-directory: mobile/launcher
+        run: |
+          gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$APK" | grep -q "package: name='online.bastion.launcher'"
+          if "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$APK" | grep -q "package: name='online.bastion.client'"; then
+            echo "Unexpected second client package"
+            exit 1
+          fi
+          mkdir -p ../artifacts
+          cp "$APK" ../artifacts/Bastion-Launcher-Embedded-debug.apk
 
-      - name: Upload Bastion native client APK
+      - name: Upload single Bastion APK
         uses: actions/upload-artifact@v4
         with:
-          name: Bastion-native-client-debug
-          path: mobile/sampdroid/app/build/outputs/apk/debug/app-debug.apk
+          name: Bastion-Launcher-Embedded-debug
+          path: mobile/artifacts/Bastion-Launcher-Embedded-debug.apk
           if-no-files-found: error
           retention-days: 14
