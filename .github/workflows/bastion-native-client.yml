@@ -44,6 +44,8 @@ jobs:
           test -f jni/Application.mk
           # The upstream source stores RakNet in lowercase; Android.mk used uppercase.
           sed -i 's|vendor/RakNet|vendor/raknet|g' jni/Android.mk
+          # Source headers still include vendor/RakNet/...; preserve that path on Linux.
+          ln -sfn raknet jni/vendor/RakNet
           # gnustl_static was removed from modern NDKs. NDK r16 supports libc++.
           sed -i 's/gnustl_static/c++_static/' jni/Application.mk
           mkdir -p ../native-output
