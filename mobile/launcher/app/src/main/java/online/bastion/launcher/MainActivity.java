@@ -487,8 +487,7 @@ public class MainActivity extends Activity {
             @Override public void onComplete(int count, java.io.File directory) {
                 if (progress.isShowing()) progress.dismiss();
                 notice("Загрузка завершена",
-                        "Установлено файлов: " + count + "
-Папка: " + directory.getAbsolutePath(),
+                        "Установлено файлов: " + count + "\nПапка: " + directory.getAbsolutePath(),
                         null, null);
             }
 
