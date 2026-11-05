@@ -1,6 +1,7 @@
 package online.bastion.launcher;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -465,6 +466,39 @@ public class MainActivity extends Activity {
                 });
     }
 
+    /** Downloads only Bastion-owned, checksum-verified files from the public asset manifest. */
+    private void installClientAssets() {
+        final ProgressDialog progress = new ProgressDialog(this);
+        progress.setTitle("Файлы Bastion");
+        progress.setMessage("Подключение к серверу ресурсов…");
+        progress.setIndeterminate(true);
+        progress.setCancelable(false);
+        progress.show();
+
+        new ClientInstaller(this).install(new ClientInstaller.Callback() {
+            @Override public void onProgress(final String message) {
+                ui.post(new Runnable() {
+                    @Override public void run() {
+                        if (progress.isShowing()) progress.setMessage(message);
+                    }
+                });
+            }
+
+            @Override public void onComplete(int count, java.io.File directory) {
+                if (progress.isShowing()) progress.dismiss();
+                notice("Загрузка завершена",
+                        "Установлено файлов: " + count + "
+Папка: " + directory.getAbsolutePath(),
+                        null, null);
+            }
+
+            @Override public void onError(String message) {
+                if (progress.isShowing()) progress.dismiss();
+                notice("Не удалось загрузить файлы", message, null, null);
+            }
+        });
+    }
+
     private boolean isGtaInstalled() {
         try {
             PackageInfo pi = getPackageManager().getPackageInfo(GTA_PACKAGE, 0);
@@ -627,10 +661,10 @@ public class MainActivity extends Activity {
         });
         leftPanel.addView(diagnostics, new LinearLayout.LayoutParams(WRAP, Ui.dp(34)));
 
-        TextView install = Ui.primaryButton(this, "УСТАНОВИТЬ / ОТКРЫТЬ SA-MP");
+        TextView install = Ui.primaryButton(this, "СКАЧАТЬ ФАЙЛЫ BASTION");
         install.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
         install.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { openSampClient(); }
+            @Override public void onClick(View v) { installClientAssets(); }
         });
         LinearLayout.LayoutParams installLp = new LinearLayout.LayoutParams(MATCH, Ui.dp(40));
         installLp.topMargin = Ui.dp(9);
