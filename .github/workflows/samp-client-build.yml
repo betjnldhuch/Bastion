@@ -1,0 +1,57 @@
+name: Build SA-MP 2.10 client for Bastion
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/samp-client-build.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-client:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Bastion
+        uses: actions/checkout@v4
+
+      - name: Checkout SA-MP Mobile source
+        uses: actions/checkout@v4
+        with:
+          repository: kuzia15/SAMP-Mobile
+          ref: GTA-2.10
+          path: samp-mobile
+          fetch-depth: 1
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android SDK and NDK
+        run: |
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.2.11394342" "cmake;3.22.1"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build ARM32 + ARM64 client APK
+        working-directory: samp-mobile
+        run: gradle :app:assembleDebug --no-daemon
+
+      - name: Upload SA-MP client APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bastion-SAMP-Mobile-2.10-client
+          path: samp-mobile/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
