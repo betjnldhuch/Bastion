@@ -8,10 +8,10 @@ android {
 
     defaultConfig {
         applicationId 'online.bastion.launcher'
-        minSdk 21
+        minSdk 24
         targetSdk 34
-        versionCode 3
-        versionName "0.2.1"
+        versionCode 4
+        versionName "0.3.0"
     }
 
     buildTypes {
@@ -21,7 +21,11 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
+}
+
+dependencies {
+    implementation project(':sampdroid')
 }
