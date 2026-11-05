@@ -42,5 +42,6 @@ xml, count = re.subn(r'\s*<intent-filter>\s*<action android:name="android.intent
 if count != 1:
     raise SystemExit("Expected SampDroid launcher intent-filter was not found")
 xml = xml.replace('android:exported="true"', 'android:exported="false"', 1)
+xml = xml.replace('android:name=".ui.MainActivity" android:exported="false"', 'android:name=".ui.MainActivity" android:exported="false" android:theme="@style/Theme.SampDroid"', 1)
 manifest.write_text(xml, encoding="utf-8")
 print("SampDroid converted to an Android library; its Activity is embedded, not a launcher.")
