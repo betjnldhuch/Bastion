@@ -159,7 +159,7 @@ public final class ClientInstaller {
         }, "bastion-archive-installer").start();
     }
 
-    private static void downloadArchive(String address, File target, Callback callback) throws Exception {
+    private void downloadArchive(String address, File target, Callback callback) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(address).openConnection();
         connection.setConnectTimeout(CONNECT_TIMEOUT);
         connection.setReadTimeout(READ_TIMEOUT);
