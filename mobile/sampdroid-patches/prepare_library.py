@@ -44,7 +44,7 @@ if count != 1:
     raise SystemExit("Expected SampDroid launcher intent-filter was not found")
 xml = xml.replace('android:exported="true"', 'android:exported="false"', 1)
 # The host launcher owns the application theme; retain SampDroid theme only on its Activity.
-xml = re.sub(r'(<application\\b[^>]*?)\\s+android:theme="[^"]+"' , r'\\1', xml, count=1)
+xml = re.sub(r'(<application\b[^>]*?)\s+android:theme="[^"]+"', r'\1', xml, count=1)
 xml = xml.replace('android:name=".ui.MainActivity" android:exported="false"', 'android:name=".ui.MainActivity" android:exported="false" android:theme="@style/Theme.SampDroid"', 1)
 manifest.write_text(xml, encoding="utf-8")
 print("SampDroid converted to an Android library; its Activity is embedded, not a launcher.")
