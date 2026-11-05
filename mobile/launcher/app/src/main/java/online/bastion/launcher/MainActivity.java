@@ -611,6 +611,15 @@ public class MainActivity extends Activity {
         });
         leftPanel.addView(diagnostics, new LinearLayout.LayoutParams(WRAP, Ui.dp(34)));
 
+        TextView install = Ui.primaryButton(this, "СКАЧАТЬ ФАЙЛЫ КЛИЕНТА");
+        install.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        install.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { installClientFiles(); }
+        });
+        LinearLayout.LayoutParams installLp = new LinearLayout.LayoutParams(MATCH, Ui.dp(40));
+        installLp.topMargin = Ui.dp(9);
+        leftPanel.addView(install, installLp);
+
         LinearLayout.LayoutParams leftLp = new LinearLayout.LayoutParams(0, WRAP, 1.08f);
         leftLp.rightMargin = Ui.dp(16);
         columns.addView(leftPanel, leftLp);
@@ -678,6 +687,41 @@ public class MainActivity extends Activity {
 
         content.addView(page, new FrameLayout.LayoutParams(MATCH, MATCH));
         updateCards();
+    }
+
+
+    /** Скачивает проверенные клиентские ресурсы по удалённому manifest.json. */
+    private void installClientFiles() {
+        final TextView status = Ui.text(this, "Подготовка загрузки…", 11, Ui.MUTED, Ui.body);
+        final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
+                .setTitle("Файлы игрового клиента")
+                .setView(status)
+                .setNegativeButton("Закрыть", null)
+                .create();
+        dialog.show();
+        new ClientInstaller(this).install(new ClientInstaller.Callback() {
+            @Override public void onProgress(final String message) {
+                ui.post(new Runnable() {
+                    @Override public void run() { if (!isFinishing()) status.setText(message); }
+                });
+            }
+            @Override public void onComplete(final int count, final File directory) {
+                ui.post(new Runnable() {
+                    @Override public void run() {
+                        if (isFinishing()) return;
+                        status.setText("Готово. Установлено файлов: " + count
+                                + "\\nПапка: " + directory.getAbsolutePath());
+                    }
+                });
+            }
+            @Override public void onError(final String message) {
+                ui.post(new Runnable() {
+                    @Override public void run() {
+                        if (!isFinishing()) status.setText("Ошибка: " + message);
+                    }
+                });
+            }
+        });
     }
 
     //  Диагностика: отчёт о телефоне и GTA SA, чтобы скопировать и прислать
