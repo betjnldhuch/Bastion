@@ -12,6 +12,15 @@ on:
       - "mobile/sampdroid-patches/**"
       - "mobile/launcher/**"
       - ".github/workflows/bastion-native-client.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "mobile/sampdroid"
+      - "mobile/sampdroid/**"
+      - "mobile/sampdroid-patches/**"
+      - "mobile/launcher/**"
+      - ".github/workflows/bastion-native-client.yml"
 
 permissions:
   contents: read
