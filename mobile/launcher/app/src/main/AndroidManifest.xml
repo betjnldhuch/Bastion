@@ -5,10 +5,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- Android 11+: разрешаем видеть установленную GTA: San Andreas -->
+    <!-- Android 11+: разрешаем находить установленный SA-MP Mobile client -->
     <queries>
-        <package android:name="ru.unisamp_mobile.launcher" />
-        <package android:name="ru.unisamp_mobile.game" />
+        <package android:name="com.samp.mobile" />
     </queries>
 
     <application
