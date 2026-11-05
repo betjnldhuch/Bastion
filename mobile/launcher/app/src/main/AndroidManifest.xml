@@ -8,7 +8,6 @@
     <!-- Android 11+: разрешаем видеть установленную GTA: San Andreas -->
     <queries>
         <package android:name="com.rockstargames.gtasa" />
-        <package android:name="online.bastion.client" />
         <package android:name="ru.unisamp_mobile.launcher" />
         <package android:name="ru.unisamp_mobile.game" />
     </queries>
