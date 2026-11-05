@@ -29,7 +29,7 @@ import java.security.MessageDigest;
  */
 public final class InstallerActivity extends Activity {
     private static final String MANIFEST =
-            "https://api.github.com/repos/the-gta-man/Bastion/contents/mobile/installer/manifest.json?ref=main";
+            "https://api.github.com/repos/the-gta-man/Bastion-assets/contents/manifest.json?ref=main";
     private final Handler main = new Handler(Looper.getMainLooper());
     private TextView status;
     private ProgressBar progress;
