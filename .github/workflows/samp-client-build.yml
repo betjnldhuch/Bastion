@@ -55,6 +55,7 @@ jobs:
           # Fix upstream header casing: Linux runners are case-sensitive.
           sed -i "s/playerTabList\\.h/playertablist.h/g" app/src/main/cpp/samp/gui/gui.h
           sed -i 's/"RGBA.h"/"rgba.h"/' app/src/main/cpp/samp/game/rgba.cpp
+          sed -i 's|../vendor/RakNet/BitStream.h|../vendor/raknet/BitStream.h|' app/src/main/cpp/voice_new/Network.h
 
       - name: Build ARM32 + ARM64 client APK
         working-directory: samp-mobile
