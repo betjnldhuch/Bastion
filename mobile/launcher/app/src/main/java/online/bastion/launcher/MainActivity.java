@@ -705,7 +705,7 @@ public class MainActivity extends Activity {
                     @Override public void run() { if (!isFinishing()) status.setText(message); }
                 });
             }
-            @Override public void onComplete(final int count, final File directory) {
+            @Override public void onComplete(final int count, final java.io.File directory) {
                 ui.post(new Runnable() {
                     @Override public void run() {
                         if (isFinishing()) return;
