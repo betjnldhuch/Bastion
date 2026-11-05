@@ -112,6 +112,139 @@ public final class ClientInstaller {
         }, "bastion-client-installer").start();
     }
 
+
+    /** Download a user-supplied HTTPS ZIP and safely extract it into the app's client folder. */
+    public void installArchive(final String address, final Callback callback) {
+        new Thread(new Runnable() {
+            @Override public void run() {
+                File archive = null, staging = null;
+                try {
+                    if (address == null || !address.trim().startsWith("https://"))
+                        throw new IllegalArgumentException("Нужна прямая HTTPS-ссылка на ZIP-архив клиента.");
+                    File external = context.getExternalFilesDir(null);
+                    if (external == null) throw new IllegalStateException("Android не предоставил папку для файлов.");
+                    if (!external.exists() && !external.mkdirs()) throw new IllegalStateException("Не удалось создать папку загрузки.");
+                    archive = new File(external, "bastion-client-download.zip");
+                    staging = new File(external, "client-installing");
+                    deleteTree(staging);
+                    if (!staging.mkdirs()) throw new IllegalStateException("Не удалось подготовить установку.");
+                    report(callback, "Скачивание архива клиента…");
+                    downloadArchive(address.trim(), archive, callback);
+                    report(callback, "Распаковка файлов клиента…");
+                    int count = extractZip(archive, staging);
+                    if (count == 0) throw new IllegalStateException("Архив пустой — файлов для установки нет.");
+                    File root = new File(external, "client");
+                    File backup = new File(external, "client-previous");
+                    deleteTree(backup);
+                    if (root.exists() && !root.renameTo(backup)) throw new IllegalStateException("Не удалось сохранить предыдущую установку.");
+                    if (!staging.renameTo(root)) {
+                        if (backup.exists()) backup.renameTo(root);
+                        throw new IllegalStateException("Не удалось завершить установку файлов.");
+                    }
+                    deleteTree(backup);
+                    archive.delete();
+                    final int installed = count;
+                    final File result = root;
+                    main.post(new Runnable() {
+                        @Override public void run() { callback.onComplete(installed, result); }
+                    });
+                } catch (final Exception e) {
+                    if (staging != null) deleteTree(staging);
+                    if (archive != null) archive.delete();
+                    main.post(new Runnable() {
+                        @Override public void run() { callback.onError(e.getMessage() == null ? e.toString() : e.getMessage()); }
+                    });
+                }
+            }
+        }, "bastion-archive-installer").start();
+    }
+
+    private static void downloadArchive(String address, File target, Callback callback) throws Exception {
+        HttpURLConnection connection = (HttpURLConnection) new URL(address).openConnection();
+        connection.setConnectTimeout(CONNECT_TIMEOUT);
+        connection.setReadTimeout(READ_TIMEOUT);
+        connection.setInstanceFollowRedirects(true);
+        connection.setRequestProperty("User-Agent", "Bastion-Launcher/0.4");
+        try {
+            int code = connection.getResponseCode();
+            if (code < 200 || code >= 300) throw new IllegalStateException("Ошибка загрузки архива: HTTP " + code);
+            long expected = (long) connection.getContentLength();
+            if (expected > 2147483648L) throw new IllegalStateException("Архив превышает лимит 2 ГБ.");
+            InputStream in = new BufferedInputStream(connection.getInputStream());
+            FileOutputStream out = new FileOutputStream(target);
+            try {
+                byte[] buffer = new byte[32768];
+                long total = 0;
+                int n;
+                while ((n = in.read(buffer)) != -1) {
+                    total += n;
+                    if (total > 2147483648L) throw new IllegalStateException("Архив превышает лимит 2 ГБ.");
+                    out.write(buffer, 0, n);
+                    if (expected > 0) {
+                        final int percent = (int) Math.min(99, total * 100 / expected);
+                        report(callback, "Скачивание архива клиента… " + percent + "%");
+                    } else if (total / 1048576 != (total - n) / 1048576) {
+                        report(callback, "Скачано: " + (total / 1048576) + " МБ");
+                    }
+                }
+                out.getFD().sync();
+            } finally { try { in.close(); } finally { out.close(); } }
+            if (target.length() == 0) throw new IllegalStateException("Сервер вернул пустой архив.");
+        } catch (Exception e) {
+            target.delete();
+            throw e;
+        } finally { connection.disconnect(); }
+    }
+
+    private static int extractZip(File archive, File destination) throws Exception {
+        java.util.zip.ZipInputStream zip = new java.util.zip.ZipInputStream(
+                new BufferedInputStream(new java.io.FileInputStream(archive)));
+        int count = 0;
+        long total = 0;
+        try {
+            java.util.zip.ZipEntry entry;
+            byte[] buffer = new byte[32768];
+            String base = destination.getCanonicalPath() + File.separator;
+            while ((entry = zip.getNextEntry()) != null) {
+                String name = entry.getName();
+                if (name == null || name.length() == 0 || name.startsWith("/")
+                        || name.indexOf('\\\\') >= 0 || name.matches("^[A-Za-z]:.*"))
+                    throw new SecurityException("Недопустимый путь в архиве: " + name);
+                File outFile = new File(destination, name);
+                String canonical = outFile.getCanonicalPath();
+                if (!canonical.startsWith(base) && !canonical.equals(destination.getCanonicalPath()))
+                    throw new SecurityException("Архив пытается записать файл вне папки клиента: " + name);
+                if (entry.isDirectory()) {
+                    if (!outFile.exists() && !outFile.mkdirs()) throw new IllegalStateException("Не удалось создать папку: " + name);
+                } else {
+                    File parent = outFile.getParentFile();
+                    if (parent != null && !parent.exists() && !parent.mkdirs()) throw new IllegalStateException("Не удалось создать папку: " + name);
+                    FileOutputStream out = new FileOutputStream(outFile);
+                    try {
+                        int n;
+                        while ((n = zip.read(buffer)) != -1) {
+                            total += n;
+                            if (total > 4294967296L) throw new IllegalStateException("Распакованные файлы превышают лимит 4 ГБ.");
+                            out.write(buffer, 0, n);
+                        }
+                    } finally { out.close(); }
+                    count++;
+                }
+                zip.closeEntry();
+            }
+        } finally { zip.close(); }
+        return count;
+    }
+
+    private static void deleteTree(File file) {
+        if (file == null || !file.exists()) return;
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) for (File child : children) deleteTree(child);
+        }
+        file.delete();
+    }
+
     private static void downloadAndVerify(String address, File target, long expectedSize, String expectedHash) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(address).openConnection();
         connection.setConnectTimeout(CONNECT_TIMEOUT);
