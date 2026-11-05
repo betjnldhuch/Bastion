@@ -2,6 +2,7 @@ package online.bastion.launcher;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -432,16 +433,52 @@ public class MainActivity extends Activity {
         openSampClient();
     }
 
-    /** Downloads only Bastion-owned, checksum-verified files from the public asset manifest. */
+    /** Opens the built-in ZIP installer. The archive is downloaded and unpacked inside app storage. */
     private void installClientAssets() {
+        final EditText urlField = new EditText(this);
+        urlField.setSingleLine(true);
+        urlField.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        urlField.setHint("https://ссылка-на-клиент.zip");
+        urlField.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        urlField.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
+        urlField.setBackground(Ui.box(0xE60E1013, Ui.LINE, 5, 1));
+
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(Ui.dp(20), Ui.dp(8), Ui.dp(20), 0);
+        TextView hint = Ui.text(this,
+                "Вставь прямую HTTPS-ссылку на ZIP-архив Android-клиента. Лаунчер скачает архив, проверит структуру и распакует файлы в свою папку client.",
+                12, Ui.MUTED, Ui.body);
+        hint.setPadding(0, 0, 0, Ui.dp(10));
+        form.addView(hint);
+        form.addView(urlField, new LinearLayout.LayoutParams(MATCH, Ui.dp(44)));
+
+        new AlertDialog.Builder(this)
+                .setTitle("Установка файлов клиента")
+                .setView(form)
+                .setNegativeButton("Отмена", null)
+                .setPositiveButton("СКАЧАТЬ И УСТАНОВИТЬ", new android.content.DialogInterface.OnClickListener() {
+                    @Override public void onClick(android.content.DialogInterface dialog, int which) {
+                        String address = urlField.getText().toString().trim();
+                        if (address.length() == 0) {
+                            notice("Нет ссылки", "Вставь прямую HTTPS-ссылку на ZIP-архив.", null, null);
+                            return;
+                        }
+                        startArchiveInstall(address);
+                    }
+                })
+                .show();
+    }
+
+    private void startArchiveInstall(String address) {
         final ProgressDialog progress = new ProgressDialog(this);
         progress.setTitle("Установка клиента Bastion");
-        progress.setMessage("Загрузка списка файлов…");
+        progress.setMessage("Подготовка загрузки…");
         progress.setIndeterminate(true);
         progress.setCancelable(false);
         progress.show();
 
-        new ClientInstaller(this).install(new ClientInstaller.Callback() {
+        new ClientInstaller(this).installArchive(address, new ClientInstaller.Callback() {
             @Override public void onProgress(final String message) {
                 ui.post(new Runnable() {
                     @Override public void run() {
