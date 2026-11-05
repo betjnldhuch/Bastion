@@ -17,7 +17,7 @@ import java.util.Set;
 
 /** Downloads Bastion-owned assets listed in the public manifest. */
 public final class ClientInstaller {
-    private static final String MANIFEST_URL = "https://raw.githubusercontent.com/the-gta-man/Bastion-assets/main/manifest.json";
+    private static final String MANIFEST_URL = "https://raw.githubusercontent.com/the-gta-man/Bastion/main/mobile/installer/manifest.json";
     private static final int CONNECT_TIMEOUT = 15000;
     private static final int READ_TIMEOUT = 30000;
     private static final long MAX_FILE_SIZE = 512L * 1024L * 1024L;
@@ -44,7 +44,7 @@ public final class ClientInstaller {
                     JSONArray files = manifest.optJSONArray("files");
                     if (files == null) throw new IllegalStateException("В manifest.json отсутствует список files.");
                     if (files.length() == 0)
-                        throw new IllegalStateException("Список файлов Bastion пока пуст. Загрузчик работает, но ресурсы проекта ещё не опубликованы.");
+                        throw new IllegalStateException("В manifest.json пока нет файлов клиента. Загрузчик готов, но ресурсы ещё не опубликованы.");
 
                     Set<String> seenPaths = new HashSet<String>();
                     File external = context.getExternalFilesDir(null);
