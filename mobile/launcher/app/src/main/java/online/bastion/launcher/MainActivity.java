@@ -711,11 +711,22 @@ public class MainActivity extends Activity {
     }
 
 
-    /** Opens the installed SA-MP game, falling back to the orange SA-MP Launcher. */
+    /** Opens the Bastion native client first; legacy SA-MP installs remain fallback options. */
+    private static final String BASTION_CLIENT_PACKAGE = "online.bastion.client";
     private static final String SAMP_GAME_PACKAGE = "ru.unisamp_mobile.game";
     private static final String SAMP_LAUNCHER_PACKAGE = "ru.unisamp_mobile.launcher";
 
     private void openSampClient() {
+        Intent bastionClient = getPackageManager().getLaunchIntentForPackage(BASTION_CLIENT_PACKAGE);
+        if (bastionClient != null) {
+            try {
+                startActivity(bastionClient);
+            } catch (Exception e) {
+                notice("Не удалось открыть Bastion Client", e.getMessage(), null, null);
+            }
+            return;
+        }
+
         Intent game = getPackageManager().getLaunchIntentForPackage(SAMP_GAME_PACKAGE);
         if (game != null) {
             try { startActivity(game); }
@@ -727,17 +738,22 @@ public class MainActivity extends Activity {
         if (sampLauncher != null) {
             startActivity(sampLauncher);
             android.widget.Toast.makeText(this,
-                    "Сначала заверши загрузку клиента в SA-MP Launcher, затем вернись в Bastion.",
+                    "Установи Bastion Native Client для запуска нативной версии. Пока доступен старый SA-MP Launcher.",
                     android.widget.Toast.LENGTH_LONG).show();
             return;
         }
 
-        notice("SA-MP клиент не найден",
-                "Bastion сохранил ник и настройки. Установи оранжевый SA-MP Launcher APK, открой его один раз и дождись загрузки игрового клиента. Затем вернись сюда и нажми «ИГРАТЬ». Google Play не открывается.",
+        notice("Bastion Native Client не найден",
+                "Установи APK Bastion Native Client из сборки GitHub Actions. После установки кнопка «ИГРАТЬ» будет открывать нативный клиент. Google Play не открывается.",
                 null, null);
     }
 
     private void launchInstalledSampClient() {
+        Intent bastionClient = getPackageManager().getLaunchIntentForPackage(BASTION_CLIENT_PACKAGE);
+        if (bastionClient != null) {
+            startActivity(bastionClient);
+            return;
+        }
         Intent game = getPackageManager().getLaunchIntentForPackage(SAMP_GAME_PACKAGE);
         if (game != null) {
             startActivity(game);
