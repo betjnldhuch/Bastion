@@ -712,7 +712,6 @@ public class MainActivity extends Activity {
 
 
     /** Opens the Bastion native client first; legacy SA-MP installs remain fallback options. */
-    private static final String BASTION_CLIENT_PACKAGE = "online.bastion.client";
     private static final String SAMP_GAME_PACKAGE = "ru.unisamp_mobile.game";
     private static final String SAMP_LAUNCHER_PACKAGE = "ru.unisamp_mobile.launcher";
 
