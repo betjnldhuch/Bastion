@@ -50,7 +50,10 @@ jobs:
           # The upstream build references an obsolete Splunk Maven host and a local signing key.
           sed -i "/mint\\.splunk\\.com/d; /jcenter()/d; /artifacts\\.applovin\\.com/d" build.gradle
           sed -i "0,/repositories {/s//repositories {\\n        mavenCentral()/" build.gradle
-          sed -i "/maven.aliyun.com/d; /jcenter()/d; /PRDownloader/d" app/build.gradle
+          sed -i "/maven.aliyun.com/d; /jcenter()/d" app/build.gradle
+          # PRDownloader is used by the upstream updater; resolve it from JitPack.
+          sed -i "/allprojects {repositories {/a\\        maven { url 'https://jitpack.io' }" app/build.gradle
+          sed -i "/dependencies {/a\\    implementation 'com.github.amitshekhariitbhu:PRDownloader:1.0.1'" app/build.gradle
           sed -i "/signingConfig signingConfigs\\.release/c\\            signingConfig signingConfigs.debug" app/build.gradle
           # Fix upstream header casing: Linux runners are case-sensitive.
           sed -i "s/playerTabList\\.h/playertablist.h/g" app/src/main/cpp/samp/gui/gui.h
