@@ -37,5 +37,6 @@
 - Проверка, что GTA: San Andreas установлена (пакет `com.rockstargames.gtasa`).
 - Настройки → «Диагностика»: отчёт о телефоне и GTA SA (версия, ABI, SHA-256 libGTASA.so),
   его можно скопировать или отправить. Нужен, чтобы подобрать адреса функций игры для этапа 1.
+- В **Настройки → Скачать файлы Bastion** загружает ресурсы из публичного `Bastion-assets/manifest.json`, проверяет точный размер и SHA-256 и сохраняет их в `Android/data/online.bastion.launcher/files/client/`.
 - По кнопке «Играть» пишет `Android/data/online.bastion.launcher/files/bastion.cfg`
   (ник, сервер, настройки) — его прочитает игровой клиент на следующих этапах.
