@@ -52,6 +52,8 @@ jobs:
           sed -i "0,/repositories {/s//repositories {\\n        mavenCentral()/" build.gradle
           sed -i "/maven.aliyun.com/d; /jcenter()/d; /PRDownloader/d" app/build.gradle
           sed -i "/signingConfig signingConfigs\\.release/c\\            signingConfig signingConfigs.debug" app/build.gradle
+          # Fix upstream header casing: Linux runners are case-sensitive.
+          sed -i "s/playerTabList\\.h/playertablist.h/g" app/src/main/cpp/samp/gui/gui.h
 
       - name: Build ARM32 + ARM64 client APK
         working-directory: samp-mobile
