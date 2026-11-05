@@ -24,6 +24,12 @@ jobs:
           path: samp-native
           fetch-depth: 1
 
+      - name: Set up Java 17 for Android SDK tools
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: Install Android NDK (legacy source compatibility)
         uses: android-actions/setup-android@v3
         with:
