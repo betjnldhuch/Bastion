@@ -13,24 +13,24 @@ public final class Diagnostics {
     @SuppressWarnings("deprecation")
     public static String report(Context ctx) {
         StringBuilder r = new StringBuilder();
-        r.append("=== Bastion Online: диагностика ===\\n");
+        r.append("=== Bastion Online: диагностика ===\n");
         try {
             r.append("Лаунчер: ").append(ctx.getPackageManager()
-                    .getPackageInfo(ctx.getPackageName(), 0).versionName).append('\\n');
+                    .getPackageInfo(ctx.getPackageName(), 0).versionName).append('\n');
         } catch (Exception ignored) { }
 
-        r.append("\\n[Телефон]\\n");
+        r.append("\n[Телефон]\n");
         r.append("Модель: ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL)
-                .append(" (").append(Build.DEVICE).append(")\\n");
+                .append(" (").append(Build.DEVICE).append(")\n");
         r.append("Android: ").append(Build.VERSION.RELEASE).append(" (API ")
-                .append(Build.VERSION.SDK_INT).append(")\\n");
-        r.append("ABI: ").append(join(Build.SUPPORTED_ABIS)).append('\\n');
-        r.append("32-bit ABI: ").append(join(Build.SUPPORTED_32_BIT_ABIS)).append('\\n');
+                .append(Build.VERSION.SDK_INT).append(")\n");
+        r.append("ABI: ").append(join(Build.SUPPORTED_ABIS)).append('\n');
+        r.append("32-bit ABI: ").append(join(Build.SUPPORTED_32_BIT_ABIS)).append('\n');
         try {
             ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
             ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
             am.getMemoryInfo(mi);
-            r.append("RAM: ").append(mi.totalMem / (1024 * 1024)).append(" МБ\\n");
+            r.append("RAM: ").append(mi.totalMem / (1024 * 1024)).append(" МБ\n");
         } catch (Exception ignored) { }
         try {
             Display d = ((WindowManager) ctx.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
@@ -46,7 +46,7 @@ public final class Diagnostics {
                 }
                 r.append(", поддерживает: ").append(modes).append(" Гц");
             }
-            r.append('\\n');
+            r.append('\n');
         } catch (Exception ignored) { }
         return r.toString();
     }
