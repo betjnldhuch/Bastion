@@ -12,6 +12,8 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.MessageDigest;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Downloads Bastion-owned assets listed in the public manifest. */
 public final class ClientInstaller {
@@ -41,7 +43,10 @@ public final class ClientInstaller {
                         throw new IllegalStateException("Неподдерживаемая версия manifest.json.");
                     JSONArray files = manifest.optJSONArray("files");
                     if (files == null) throw new IllegalStateException("В manifest.json отсутствует список files.");
+                    if (files.length() == 0)
+                        throw new IllegalStateException("Список файлов Bastion пока пуст. Загрузчик работает, но ресурсы проекта ещё не опубликованы.");
 
+                    Set<String> seenPaths = new HashSet<String>();
                     File external = context.getExternalFilesDir(null);
                     if (external == null) throw new IllegalStateException("Android не предоставил папку для файлов.");
                     final File root = new File(external, "client");
@@ -52,6 +57,8 @@ public final class ClientInstaller {
                     for (int i = 0; i < files.length(); i++) {
                         JSONObject item = files.getJSONObject(i);
                         String path = item.getString("path");
+                        if (!seenPaths.add(path))
+                            throw new IllegalArgumentException("Повторяющийся путь в manifest: " + path);
                         String address = item.getString("url");
                         String expectedHash = item.getString("sha256").toLowerCase();
                         long expectedSize = item.getLong("size");
@@ -72,14 +79,22 @@ public final class ClientInstaller {
                         report(callback, "Загрузка " + (i + 1) + "/" + files.length() + ": " + path);
                         File temp = new File(target.getAbsolutePath() + ".part");
                         downloadAndVerify(address, temp, expectedSize, expectedHash);
-                        if (target.exists() && !target.delete()) {
+                        File backup = new File(target.getAbsolutePath() + ".bak");
+                        if (backup.exists() && !backup.delete()) {
                             temp.delete();
-                            throw new IllegalStateException("Не удалось заменить файл: " + path);
+                            throw new IllegalStateException("Не удалось очистить резервный файл: " + path);
+                        }
+                        boolean hadOldFile = target.exists();
+                        if (hadOldFile && !target.renameTo(backup)) {
+                            temp.delete();
+                            throw new IllegalStateException("Не удалось подготовить замену файла: " + path);
                         }
                         if (!temp.renameTo(target)) {
+                            if (hadOldFile) backup.renameTo(target);
                             temp.delete();
                             throw new IllegalStateException("Не удалось сохранить файл: " + path);
                         }
+                        if (backup.exists()) backup.delete();
                         installed++;
                     }
                     final int count = installed;
