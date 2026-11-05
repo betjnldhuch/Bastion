@@ -1,0 +1,72 @@
+name: Build Bastion native SA-MP client
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/bastion-native-client.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-native:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Bastion launcher
+        uses: actions/checkout@v4
+
+      - name: Checkout Bastion SA-MP source
+        uses: actions/checkout@v4
+        with:
+          repository: the-gta-man/-
+          ref: master
+          path: samp-native
+          fetch-depth: 1
+
+      - name: Install Android NDK (legacy source compatibility)
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ndk;16.1.4479499
+
+      - name: Prepare native build files
+        working-directory: samp-native
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test -f jni/Android.mk
+          test -f jni/Application.mk
+          # The upstream source stores RakNet in lowercase; Android.mk used uppercase.
+          sed -i 's|vendor/RakNet|vendor/raknet|g' jni/Android.mk
+          # gnustl_static was removed from modern NDKs. NDK r16 supports libc++.
+          sed -i 's/gnustl_static/c++_static/' jni/Application.mk
+          mkdir -p ../native-output
+
+      - name: Compile armeabi-v7a native client
+        working-directory: samp-native
+        shell: bash
+        run: |
+          set -euxo pipefail
+          "$ANDROID_HOME/ndk/16.1.4479499/ndk-build" \
+            NDK_PROJECT_PATH=. \
+            APP_BUILD_SCRIPT=jni/Android.mk \
+            NDK_APPLICATION_MK=jni/Application.mk \
+            NDK_OUT=../native-output/obj \
+            NDK_LIBS_OUT=../native-output/libs \
+            -j2
+
+      - name: Verify native library
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test -s native-output/libs/armeabi-v7a/libsamp.so
+          file native-output/libs/armeabi-v7a/libsamp.so
+          readelf -h native-output/libs/armeabi-v7a/libsamp.so
+
+      - name: Upload native client library
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bastion-SAMP-native-armeabi-v7a
+          path: native-output/libs/armeabi-v7a/libsamp.so
+          if-no-files-found: error
+          retention-days: 14
