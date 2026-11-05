@@ -727,54 +727,20 @@ public class MainActivity extends Activity {
         return i;
     }
 
+    /** Запускает встроенный SampDroid Activity внутри того же Bastion APK. */
     private void openSampClient() {
-        Intent bastionClient = getPackageManager().getLaunchIntentForPackage(BASTION_CLIENT_PACKAGE);
-        if (bastionClient != null) {
-            try {
-                startActivity(withBastionSession(bastionClient));
-            } catch (Exception e) {
-                notice("Не удалось открыть Bastion Client", e.getMessage(), null, null);
-            }
-            return;
+        try {
+            Intent embeddedClient = new Intent();
+            embeddedClient.setClassName(this, "com.xykal.sampdroid.ui.MainActivity");
+            startActivity(withBastionSession(embeddedClient));
+        } catch (Exception e) {
+            notice("Не удалось открыть игровой клиент",
+                    "Встроенный клиент не запустился: " + e.getMessage(), null, null);
         }
-
-        Intent game = getPackageManager().getLaunchIntentForPackage(SAMP_GAME_PACKAGE);
-        if (game != null) {
-            try { startActivity(game); }
-            catch (Exception e) { notice("Не удалось открыть игру", e.getMessage(), null, null); }
-            return;
-        }
-
-        Intent sampLauncher = getPackageManager().getLaunchIntentForPackage(SAMP_LAUNCHER_PACKAGE);
-        if (sampLauncher != null) {
-            startActivity(sampLauncher);
-            android.widget.Toast.makeText(this,
-                    "Установи Bastion Native Client для запуска нативной версии. Пока доступен старый SA-MP Launcher.",
-                    android.widget.Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        notice("Bastion Native Client не найден",
-                "Установи APK Bastion Native Client из сборки GitHub Actions. После установки кнопка «ИГРАТЬ» будет открывать нативный клиент. Google Play не открывается.",
-                null, null);
     }
 
+    /** Повторное открытие игрового экрана не обращается к отдельному пакету. */
     private void launchInstalledSampClient() {
-        Intent bastionClient = getPackageManager().getLaunchIntentForPackage(BASTION_CLIENT_PACKAGE);
-        if (bastionClient != null) {
-            startActivity(withBastionSession(bastionClient));
-            return;
-        }
-        Intent game = getPackageManager().getLaunchIntentForPackage(SAMP_GAME_PACKAGE);
-        if (game != null) {
-            startActivity(game);
-            return;
-        }
-        Intent launcher = getPackageManager().getLaunchIntentForPackage(SAMP_LAUNCHER_PACKAGE);
-        if (launcher != null) {
-            startActivity(launcher);
-            return;
-        }
         openSampClient();
     }
 
