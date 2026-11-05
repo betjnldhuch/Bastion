@@ -1,4 +1,4 @@
-# Bastion native Android client
+# Bastion native Android client — embedded single APK
 
 The native SA-MP/open.mp client is pinned as a Git submodule at
 `mobile/sampdroid`:
@@ -7,37 +7,38 @@ The native SA-MP/open.mp client is pinned as a Git submodule at
 - Pinned commit: `f9daca1f4271dfd34c4aaeeaa4aaf21ae0e31d86`
 - Upstream license: MIT (see the submodule's `LICENSE` and `NOTICE.md`).
 
-The upstream source is kept intact in Git. The CI build applies only local
-branding at build time: Android application ID `online.bastion.client` and
-display name `Bastion Online`. It builds both `armeabi-v7a` and
-`arm64-v8a` variants from the upstream NDK configuration.
+## One installable application
+
+The only installable package is `online.bastion.launcher`. The Bastion launcher
+remains the launcher Activity and visual shell. The SampDroid source module is
+converted from an Android application to an Android library in the CI checkout,
+then linked into the launcher APK. Its launcher intent-filter and application ID
+are removed during conversion. The game Activity is launched explicitly inside
+the same package; there is no `online.bastion.client` APK.
+
+The client is built for `armeabi-v7a` and `arm64-v8a`. GTA game assets and
+proprietary GTA binaries are not redistributed; players select game data they
+are entitled to use.
 
 ## Build
 
-Run the **Build Bastion native SA-MP client** workflow manually from GitHub
-Actions, or push a change to this integration branch. Download the
-`Bastion-native-client-debug` artifact from the completed workflow run.
-
-The existing Bastion launcher remains in `mobile/launcher`. During this
-integration stage the native client is a separate APK/package; the launcher
-will open it when installed. Passing server/nickname settings into the native
-session still needs an explicit integration with the client's connection UI.
-
-## Important status
-
-This is an experimental native client, not a bundled GTA:SA distribution.
-It does not contain GTA game assets or proprietary GTA binaries. Players must
-select/provide game data they are entitled to use. The upstream README documents
-which gameplay and live-server compatibility areas remain experimental.
+Run **Build single Bastion Android APK** from GitHub Actions, or push a change
+to the integration branch. Download the `Bastion-Launcher-Embedded-debug`
+artifact. The workflow checks the resulting APK package name is exactly
+`online.bastion.launcher` and rejects the former separate client package.
 
 ## Bastion patches
 
-`mobile/sampdroid-patches/apply.py` runs in CI after branding and before the
-Gradle build. It only edits the build checkout, the submodule stays pinned:
+The upstream submodule remains pinned and unmodified in Git. CI applies patches
+to its temporary checkout:
 
-- **Autoconnect:** the launcher starts `online.bastion.client` with extras
-  `bastion.host`, `bastion.port`, `bastion.name`, `bastion.nick`. The client saves
-  the nickname, queries the server and opens its connect screen directly.
-- **Russian UI:** `ru_strings.py` maps player-facing SampDroid strings to Russian.
-  Debug/developer screens stay in the original language. The script prints any
-  string it could not find, so an upstream update shows what to re-check.
+- **Autoconnect:** the launcher passes `bastion.host`, `bastion.port`,
+  `bastion.name`, and `bastion.nick`; the client saves the nickname and opens
+  the matching server connection screen.
+- **Russian UI:** `ru_strings.py` translates player-facing strings found in
+  the source and resources. Any missing dictionary keys are reported in CI logs;
+  this is an ongoing localization pass, not a claim that every diagnostic/native
+  string has already been translated.
+
+A successful APK build proves packaging and compilation only. Actual gameplay,
+device installation, and server admission still require phone testing.
