@@ -30,6 +30,7 @@ text = re.sub(r'(?m)^\s*versionName\s*=\s*"[^"]+"\s*\n', '', text)
 # only installable application and controls signing for the combined APK.
 text = re.sub(r'(?ms)^val officialKeystorePath.*?^}\n\n(?=android \{)', '', text)
 text = remove_gradle_block(text, "signingConfigs")
+text = re.sub(r'(?ms)^\s*if \(hasOfficialReleaseSigning\) \{.*?^\s*\}\s*', '', text)
 text = re.sub(r'(?m)^\s*signingConfig\s*=.*\n', '', text)
 if 'id("com.android.library")' not in text or 'applicationId' in text or 'signingConfigs' in text:
     raise SystemExit("Could not safely convert SampDroid Gradle module to library")
