@@ -208,7 +208,7 @@ public final class ClientInstaller {
             while ((entry = zip.getNextEntry()) != null) {
                 String name = entry.getName();
                 if (name == null || name.length() == 0 || name.startsWith("/")
-                        || name.indexOf('\\\\') >= 0 || name.matches("^[A-Za-z]:.*"))
+                        || name.indexOf('\\') >= 0 || name.matches("^[A-Za-z]:.*"))
                     throw new SecurityException("Недопустимый путь в архиве: " + name);
                 File outFile = new File(destination, name);
                 String canonical = outFile.getCanonicalPath();
