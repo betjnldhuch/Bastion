@@ -3,12 +3,9 @@ package online.bastion.launcher;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -29,9 +26,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends Activity {
-
-    /** Пакет официальной GTA: San Andreas из Google Play. */
-    public static final String GTA_PACKAGE = "com.rockstargames.gtasa";
 
     private static final int MATCH = ViewGroup.LayoutParams.MATCH_PARENT;
     private static final int WRAP = ViewGroup.LayoutParams.WRAP_CONTENT;
@@ -470,32 +464,6 @@ public class MainActivity extends Activity {
         });
     }
 
-    private boolean isGtaInstalled() {
-        try {
-            PackageInfo pi = getPackageManager().getPackageInfo(GTA_PACKAGE, 0);
-            return pi != null;
-        } catch (PackageManager.NameNotFoundException e) {
-            return false;
-        }
-    }
-
-    private String gtaVersion() {
-        try {
-            return getPackageManager().getPackageInfo(GTA_PACKAGE, 0).versionName;
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private void openGtaInStore() {
-        try {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + GTA_PACKAGE)));
-        } catch (Exception e) {
-            startActivity(new Intent(Intent.ACTION_VIEW,
-                    Uri.parse("https://play.google.com/store/apps/details?id=" + GTA_PACKAGE)));
-        }
-    }
-
     /** Своё окно-сообщение поверх экрана, в стиле лаунчера. */
     private void notice(String title, String message, String action, final Runnable onAction) {
         final FrameLayout dim = new FrameLayout(this);
@@ -616,15 +584,6 @@ public class MainActivity extends Activity {
         leftPanel.addView(option("Размер кнопок", new String[]{"S", "M", "L"},
                 new int[]{0, 1, 2}, cfg.buttonSize,
                 new Pick() { @Override public void set(int v) { cfg.buttonSize = v; } }));
-
-        leftPanel.addView(Ui.caption(this, "Проверка GTA"));
-        String version = gtaVersion();
-        TextView gta = Ui.text(this, version != null
-                ? "GTA: San Andreas найдена · " + version
-                : "GTA: San Andreas не установлена", 11,
-                version != null ? Ui.GREEN : Ui.RED, Ui.bodyBold);
-        gta.setPadding(0, Ui.dp(8), 0, Ui.dp(9));
-        leftPanel.addView(gta);
 
         TextView diagnostics = Ui.ghostButton(this, "Диагностика");
         diagnostics.setOnClickListener(new View.OnClickListener() {
