@@ -9,6 +9,7 @@ on:
     paths:
       - "mobile/sampdroid"
       - "mobile/sampdroid/**"
+      - "mobile/sampdroid-patches/**"
       - ".github/workflows/bastion-native-client.yml"
 
 permissions:
@@ -64,6 +65,10 @@ jobs:
           sed -i 's/title = "SampDroid"/title = "Bastion Online"/' app/src/main/java/com/xykal/sampdroid/ui/MainActivity.kt
           grep -q 'applicationId = "online.bastion.client"' app/build.gradle.kts
           grep -q 'Bastion Online' app/src/main/res/values/strings.xml
+
+      - name: Apply Bastion patches (Russian UI, autoconnect from launcher)
+        working-directory: mobile/sampdroid
+        run: python3 ../sampdroid-patches/apply.py .
 
       - name: Run unit tests and build ARM32 + ARM64 APK
         working-directory: mobile/sampdroid

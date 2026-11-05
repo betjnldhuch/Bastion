@@ -716,11 +716,22 @@ public class MainActivity extends Activity {
     private static final String SAMP_GAME_PACKAGE = "ru.unisamp_mobile.game";
     private static final String SAMP_LAUNCHER_PACKAGE = "ru.unisamp_mobile.launcher";
 
+    /** Передаёт нативному клиенту ник и выбранный сервер: он сразу откроет подключение. */
+    private Intent withBastionSession(Intent i) {
+        Config.Server s = cfg.servers.get(cfg.selected);
+        i.putExtra("bastion.host", s.host);
+        i.putExtra("bastion.port", s.port);
+        i.putExtra("bastion.name", s.name);
+        i.putExtra("bastion.nick", cfg.nickname);
+        i.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        return i;
+    }
+
     private void openSampClient() {
         Intent bastionClient = getPackageManager().getLaunchIntentForPackage(BASTION_CLIENT_PACKAGE);
         if (bastionClient != null) {
             try {
-                startActivity(bastionClient);
+                startActivity(withBastionSession(bastionClient));
             } catch (Exception e) {
                 notice("Не удалось открыть Bastion Client", e.getMessage(), null, null);
             }
@@ -751,7 +762,7 @@ public class MainActivity extends Activity {
     private void launchInstalledSampClient() {
         Intent bastionClient = getPackageManager().getLaunchIntentForPackage(BASTION_CLIENT_PACKAGE);
         if (bastionClient != null) {
-            startActivity(bastionClient);
+            startActivity(withBastionSession(bastionClient));
             return;
         }
         Intent game = getPackageManager().getLaunchIntentForPackage(SAMP_GAME_PACKAGE);

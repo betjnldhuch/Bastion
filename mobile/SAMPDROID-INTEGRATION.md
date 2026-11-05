@@ -29,3 +29,15 @@ This is an experimental native client, not a bundled GTA:SA distribution.
 It does not contain GTA game assets or proprietary GTA binaries. Players must
 select/provide game data they are entitled to use. The upstream README documents
 which gameplay and live-server compatibility areas remain experimental.
+
+## Bastion patches
+
+`mobile/sampdroid-patches/apply.py` runs in CI after branding and before the
+Gradle build. It only edits the build checkout, the submodule stays pinned:
+
+- **Autoconnect:** the launcher starts `online.bastion.client` with extras
+  `bastion.host`, `bastion.port`, `bastion.name`, `bastion.nick`. The client saves
+  the nickname, queries the server and opens its connect screen directly.
+- **Russian UI:** `ru_strings.py` maps player-facing SampDroid strings to Russian.
+  Debug/developer screens stay in the original language. The script prints any
+  string it could not find, so an upstream update shows what to re-check.
