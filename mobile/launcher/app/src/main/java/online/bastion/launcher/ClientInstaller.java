@@ -21,7 +21,7 @@ import java.security.MessageDigest;
  */
 public final class ClientInstaller {
     private static final String MANIFEST_URL =
-            "https://raw.githubusercontent.com/the-gta-man/Bastion/main/mobile/installer/manifest.json";
+            "https://raw.githubusercontent.com/the-gta-man/Bastion-assets/main/manifest.json";
     private static final int CONNECT_TIMEOUT = 15000;
     private static final int READ_TIMEOUT = 30000;
     private static final long MAX_FILE_SIZE = 512L * 1024L * 1024L;
@@ -47,7 +47,7 @@ public final class ClientInstaller {
                     JSONObject manifest = new JSONObject(new String(
                             readUrl(MANIFEST_URL, 1024 * 1024), "UTF-8"));
                     JSONArray files = manifest.optJSONArray("files");
-                    if (files == null || files.length() == 0) {
+                    if (manifest.optInt("version", -1) != 1) {\n                        throw new IllegalStateException("Версия manifest.json не поддерживается.");\n                    }\n                    if (files == null || files.length() == 0) {
                         throw new IllegalStateException(
                                 "Список файлов пуст. Сначала добавьте клиентские ресурсы в manifest.json.");
                     }
@@ -66,7 +66,7 @@ public final class ClientInstaller {
                         long expectedSize = item.optLong("size", -1);
 
                         if (!path.matches("[A-Za-z0-9._/-]+") || path.startsWith("/")
-                                || path.contains("..") || expectedHash.length() != 64) {
+                                || path.contains("..") || !expectedHash.matches("[0-9a-f]{64}")) {
                             throw new IllegalArgumentException("Некорректная запись в manifest: " + path);
                         }
                         if (!url.startsWith("https://") || expectedSize < 0
