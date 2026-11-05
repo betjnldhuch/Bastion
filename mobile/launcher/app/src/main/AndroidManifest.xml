@@ -5,11 +5,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- Android 11+: разрешаем находить установленный SA-MP Mobile client -->
-    <queries>
-        <package android:name="com.samp.mobile" />
-    </queries>
-
     <application
         android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
@@ -29,5 +24,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            Сюда добавляется Activity игры (game_activity из assets/launcher.ini),
+            когда клиент собирается в этот же APK. Пример:
+            <activity
+                android:name="com.rockstargames.gtasa.GTASA"
+                android:exported="false"
+                android:screenOrientation="sensorLandscape"
+                android:configChanges="orientation|screenSize|keyboardHidden|keyboard|screenLayout|smallestScreenSize" />
+            Пока её нет, кнопка ИГРАТЬ честно сообщает «Игра не найдена».
+        -->
     </application>
 </manifest>

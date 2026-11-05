@@ -10,8 +10,8 @@ android {
         applicationId 'online.bastion.launcher'
         minSdk 21
         targetSdk 34
-        versionCode 3
-        versionName "0.2.1"
+        versionCode 4
+        versionName "0.3.0"
     }
 
     buildTypes {
@@ -24,4 +24,9 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+}
+
+dependencies {
+    // Юнит-тесты ядра (пакет core). Запуск: gradle :app:testDebugUnitTest
+    testImplementation 'junit:junit:4.13.2'
 }

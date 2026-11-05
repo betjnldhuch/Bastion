@@ -1,80 +1,115 @@
 package online.bastion.launcher;
 
 import android.app.Activity;
-import android.app.ProgressDialog;
-import android.app.AlertDialog;
-import android.content.Intent;
-import android.graphics.Color;
-import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.text.InputType;
-import android.util.TypedValue;
-import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.TextView;
+import android.widget.Toast;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 
-public class MainActivity extends Activity {
+import online.bastion.launcher.core.LauncherConfig;
+import online.bastion.launcher.core.Nickname;
+import online.bastion.launcher.core.QueryResult;
+import online.bastion.launcher.core.ServerAddress;
+import online.bastion.launcher.core.ServerEntry;
+import online.bastion.launcher.data.LauncherPrefs;
+import online.bastion.launcher.game.Diagnostics;
+import online.bastion.launcher.game.GameLauncher;
+import online.bastion.launcher.net.ServerMonitor;
+import online.bastion.launcher.ui.MainScreen;
+import online.bastion.launcher.ui.Overlay;
+import online.bastion.launcher.ui.ScreenHost;
+import online.bastion.launcher.ui.SettingsScreen;
+import online.bastion.launcher.ui.Theme;
 
-    private static final int MATCH = ViewGroup.LayoutParams.MATCH_PARENT;
-    private static final int WRAP = ViewGroup.LayoutParams.WRAP_CONTENT;
+/**
+ * Единственная Activity лаунчера. Здесь только жизненный цикл и переходы между экранами;
+ * внешний вид — в пакете ui, логика — в core / net / game.
+ */
+public class MainActivity extends Activity implements ScreenHost {
 
-    private Config cfg;
-    private FrameLayout root;
-    private FrameLayout content;
-    private final Handler ui = new Handler(Looper.getMainLooper());
-    private final List<ServerCard> cards = new ArrayList<ServerCard>();
-    private EditText nickField;
-    private boolean resumed;
+    private static final String CONFIG_ASSET = "launcher.ini";
 
-    private final Runnable poll = new Runnable() {
-        @Override public void run() {
-            if (!resumed) return;
-            refreshServers();
-            ui.postDelayed(this, 10000);
-        }
-    };
+    private LauncherConfig config;
+    private LauncherPrefs prefs;
+    private ServerMonitor monitor;
+    private GameLauncher game;
+
+    private FrameLayout root;      // экран + окна поверх него
+    private FrameLayout content;   // текущий экран
+    private MainScreen mainScreen;
+    private SettingsScreen settingsScreen;
 
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        Ui.init(this);
-        cfg = new Config(this);
+        Theme.init(this);
+        config = loadConfig();
+        prefs = new LauncherPrefs(this, config);
+        game = new GameLauncher(this, config);
+        monitor = new ServerMonitor(config.servers, new ServerMonitor.AddressSource() {
+            @Override public ServerAddress addressOf(ServerEntry server) { return prefs.addressOf(server); }
+        }, config.pollIntervalSec);
 
         root = new FrameLayout(this);
-        root.addView(new Ui.Background(this), new FrameLayout.LayoutParams(MATCH, MATCH));
+        root.setBackgroundColor(Theme.BLACK);
         content = new FrameLayout(this);
-        root.addView(content, new FrameLayout.LayoutParams(MATCH, MATCH));
+        root.addView(content, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
         setContentView(root);
-        showMain();
+        openMain();
+
+        if (config.servers.isEmpty()) {
+            Overlay.message(root, "Ошибка сборки",
+                    "В assets/" + CONFIG_ASSET + " нет ни одного сервера.\n\n" + join(config));
+        }
+    }
+
+    /** Читает assets/launcher.ini. Если файла нет — пустая конфигурация с предупреждением. */
+    private LauncherConfig loadConfig() {
+        Reader r = null;
+        try {
+            r = new InputStreamReader(getAssets().open(CONFIG_ASSET), "UTF-8");
+            return LauncherConfig.parse(r);
+        } catch (IOException e) {
+            try {
+                return LauncherConfig.parse(new java.io.StringReader(""));
+            } catch (IOException impossible) {
+                throw new IllegalStateException(impossible);
+            }
+        } finally {
+            if (r != null) try { r.close(); } catch (IOException ignored) { }
+        }
+    }
+
+    private static String join(LauncherConfig c) {
+        StringBuilder b = new StringBuilder();
+        for (String w : c.warnings) b.append("• ").append(w).append('\n');
+        return b.toString().trim();
     }
 
     @Override protected void onResume() {
         super.onResume();
-        resumed = true;
         hideSystemBars();
-        ui.removeCallbacks(poll);
-        ui.post(poll);
+        monitor.start();
     }
 
     @Override protected void onPause() {
         super.onPause();
-        resumed = false;
-        ui.removeCallbacks(poll);
-        if (nickField != null) cfg.nickname = nickField.getText().toString().trim();
-        cfg.save();
+        saveNickname();
+        monitor.stop();
+    }
+
+    @Override protected void onDestroy() {
+        super.onDestroy();
+        monitor.shutdown();
     }
 
     @Override public void onWindowFocusChanged(boolean focus) {
@@ -93,822 +128,113 @@ public class MainActivity extends Activity {
                         | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
     }
 
+    @SuppressWarnings("deprecation")
     @Override public void onBackPressed() {
-        if (root.getChildCount() > 2) { root.removeViewAt(root.getChildCount() - 1); return; }
-        if ("settings".equals(content.getTag())) { applySettings(); showMain(); return; }
+        if (Overlay.dismissTop(root)) return;
+        if (settingsScreen != null) {
+            if (settingsScreen.save()) openMain();
+            return;
+        }
         super.onBackPressed();
     }
 
-    // ==================================================================
-    //  Главный экран
-    // ==================================================================
-    private void showMain() {
+    // ------------------------------------------------------------------ ScreenHost
+
+    @Override public Activity activity() { return this; }
+    @Override public LauncherConfig config() { return config; }
+    @Override public LauncherPrefs prefs() { return prefs; }
+    @Override public ServerMonitor monitor() { return monitor; }
+
+    @Override public void openMain() {
+        hideKeyboard();
+        settingsScreen = null;
+        mainScreen = new MainScreen(this);
+        monitor.setListener(mainScreen);
+        show(mainScreen.view());
+    }
+
+    @Override public void openSettings() {
+        saveNickname();
+        hideKeyboard();
+        mainScreen = null;
+        monitor.setListener(null);
+        settingsScreen = new SettingsScreen(this, game);
+        show(settingsScreen.view());
+    }
+
+    private void show(View screen) {
         content.removeAllViews();
-        content.setTag("main");
-        cards.clear();
-
-        LinearLayout page = new LinearLayout(this);
-        page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(Ui.dp(24), Ui.dp(10), Ui.dp(24), Ui.dp(10));
-
-        LinearLayout top = new LinearLayout(this);
-        top.setOrientation(LinearLayout.HORIZONTAL);
-        top.setGravity(Gravity.CENTER_VERTICAL);
-
-        View mark = new View(this);
-        mark.setBackgroundColor(Ui.ORANGE);
-        LinearLayout.LayoutParams markLp = new LinearLayout.LayoutParams(Ui.dp(7), Ui.dp(7));
-        markLp.rightMargin = Ui.dp(10);
-        top.addView(mark, markLp);
-
-        TextView brand = Ui.text(this, "BASTION ONLINE", 11, Ui.MUTED, Ui.heavy);
-        brand.setLetterSpacing(0.22f);
-        top.addView(brand, new LinearLayout.LayoutParams(0, WRAP, 1));
-
-        TextView settings = Ui.ghostButton(this, "Настройки");
-        settings.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { saveNick(); showSettings(); }
-        });
-        top.addView(settings, new LinearLayout.LayoutParams(WRAP, Ui.dp(34)));
-        page.addView(top, new LinearLayout.LayoutParams(MATCH, Ui.dp(38)));
-
-        View topRule = new View(this);
-        topRule.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{Ui.ORANGE, 0x66808080, 0x00808080}));
-        LinearLayout.LayoutParams trp = new LinearLayout.LayoutParams(MATCH, Ui.dp(1));
-        trp.topMargin = Ui.dp(5);
-        trp.bottomMargin = Ui.dp(12);
-        page.addView(topRule, trp);
-
-        LinearLayout middle = new LinearLayout(this);
-        middle.setOrientation(LinearLayout.HORIZONTAL);
-
-        LinearLayout left = new LinearLayout(this);
-        left.setOrientation(LinearLayout.VERTICAL);
-
-        TextView hero = Ui.text(this, "BASTION", 46, Ui.TEXT, Ui.heavy);
-        hero.setLetterSpacing(-0.035f);
-        hero.setShadowLayer(Ui.dp(5), 0, Ui.dp(3), 0x99000000);
-        left.addView(hero, new LinearLayout.LayoutParams(MATCH, WRAP));
-
-        LinearLayout subtitle = new LinearLayout(this);
-        subtitle.setOrientation(LinearLayout.HORIZONTAL);
-        subtitle.setGravity(Gravity.CENTER_VERTICAL);
-        View orangeDash = new View(this);
-        orangeDash.setBackgroundColor(Ui.ORANGE);
-        LinearLayout.LayoutParams dashLp = new LinearLayout.LayoutParams(Ui.dp(34), Ui.dp(3));
-        dashLp.rightMargin = Ui.dp(12);
-        subtitle.addView(orangeDash, dashLp);
-        TextView tagline = Ui.text(this, "ONLINE  ·  SAN ANDREAS MULTIPLAYER", 10, Ui.MUTED, Ui.heavy);
-        tagline.setLetterSpacing(0.19f);
-        subtitle.addView(tagline);
-        LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(MATCH, WRAP);
-        subLp.topMargin = Ui.dp(9);
-        subLp.bottomMargin = Ui.dp(24);
-        left.addView(subtitle, subLp);
-
-        left.addView(Ui.caption(this, "Новости"));
-        ScrollView newsScroll = new ScrollView(this);
-        newsScroll.setVerticalScrollBarEnabled(false);
-        LinearLayout newsList = new LinearLayout(this);
-        newsList.setOrientation(LinearLayout.VERTICAL);
-        newsList.setPadding(0, Ui.dp(10), Ui.dp(12), Ui.dp(4));
-
-        if (cfg.news.isEmpty()) {
-            newsList.addView(Ui.text(this, "Пока новостей нет.", 13, Ui.MUTED, Ui.body));
-        }
-        for (int i = 0; i < cfg.news.size(); i++) {
-            final String[] n = cfg.news.get(i);
-            LinearLayout item = new LinearLayout(this);
-            item.setOrientation(LinearLayout.HORIZONTAL);
-            item.setPadding(0, i == 0 ? 0 : Ui.dp(13), 0, Ui.dp(7));
-
-            TextView date = Ui.text(this, n[0], 10, Ui.DIM, Ui.heavy);
-            LinearLayout.LayoutParams dateLp = new LinearLayout.LayoutParams(Ui.dp(76), WRAP);
-            dateLp.topMargin = Ui.dp(4);
-            item.addView(date, dateLp);
-
-            LinearLayout copy = new LinearLayout(this);
-            copy.setOrientation(LinearLayout.VERTICAL);
-            TextView headline = Ui.text(this, n[1], 15, Ui.TEXT, Ui.bodyBold);
-            copy.addView(headline);
-            TextView body = Ui.text(this, n[2], 12, Ui.MUTED, Ui.body);
-            body.setLineSpacing(Ui.dp(2), 1f);
-            body.setPadding(0, Ui.dp(4), 0, 0);
-            copy.addView(body);
-            item.addView(copy, new LinearLayout.LayoutParams(0, WRAP, 1));
-            newsList.addView(item);
-        }
-        newsScroll.addView(newsList);
-        LinearLayout.LayoutParams newsLp = new LinearLayout.LayoutParams(MATCH, 0, 1);
-        newsLp.topMargin = Ui.dp(2);
-        left.addView(newsScroll, newsLp);
-
-        LinearLayout.LayoutParams leftLp = new LinearLayout.LayoutParams(0, MATCH, 1.18f);
-        leftLp.rightMargin = Ui.dp(22);
-        middle.addView(left, leftLp);
-
-        LinearLayout right = new LinearLayout(this);
-        right.setOrientation(LinearLayout.VERTICAL);
-        right.addView(Ui.caption(this, "Выбери сервер"));
-
-        ScrollView serverScroll = new ScrollView(this);
-        serverScroll.setVerticalScrollBarEnabled(false);
-        LinearLayout serverList = new LinearLayout(this);
-        serverList.setOrientation(LinearLayout.VERTICAL);
-        for (int i = 0; i < cfg.servers.size(); i++) {
-            ServerCard card = new ServerCard(i);
-            cards.add(card);
-            LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(MATCH, WRAP);
-            cardLp.topMargin = Ui.dp(9);
-            serverList.addView(card.view, cardLp);
-        }
-        serverScroll.addView(serverList);
-        LinearLayout.LayoutParams serverScrollLp = new LinearLayout.LayoutParams(MATCH, 0, 1);
-        serverScrollLp.topMargin = Ui.dp(8);
-        right.addView(serverScroll, serverScrollLp);
-        middle.addView(right, new LinearLayout.LayoutParams(0, MATCH, 0.92f));
-
-        page.addView(middle, new LinearLayout.LayoutParams(MATCH, 0, 1));
-        page.addView(buildFooter(), new LinearLayout.LayoutParams(MATCH, WRAP));
-        content.addView(page, new FrameLayout.LayoutParams(MATCH, MATCH));
-        updateCards();
+        content.addView(screen, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
     }
 
-    /** Нижняя панель с ником и большой кнопкой запуска. */
-    private LinearLayout buildFooter() {
-        LinearLayout footer = new LinearLayout(this);
-        footer.setOrientation(LinearLayout.VERTICAL);
+    @Override public void play() {
+        hideKeyboard();
+        saveNickname();
 
-        FrameLayout rule = new FrameLayout(this);
-        View base = new View(this);
-        base.setBackgroundColor(Ui.LINE);
-        rule.addView(base, new FrameLayout.LayoutParams(MATCH, Ui.dp(1), Gravity.TOP));
-        View accent = new View(this);
-        accent.setBackgroundColor(Ui.ORANGE);
-        rule.addView(accent, new FrameLayout.LayoutParams(Ui.dp(110), Ui.dp(2), Gravity.TOP | Gravity.LEFT));
-        footer.addView(rule, new LinearLayout.LayoutParams(MATCH, Ui.dp(2)));
+        String error = Nickname.validate(prefs.nickname(), config.requireRpName);
+        if (error != null) {
+            Overlay.message(root, "Проверь ник", error);
+            return;
+        }
+        final ServerEntry server = prefs.selectedServer();
+        if (server == null) {
+            Overlay.message(root, "Нет серверов", "В сборке не указан ни один сервер.");
+            return;
+        }
 
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(Ui.dp(14), Ui.dp(12), Ui.dp(14), 0);
-
-        LinearLayout nick = new LinearLayout(this);
-        nick.setOrientation(LinearLayout.VERTICAL);
-        TextView label = Ui.text(this, "ТВОЙ НИК", 10, Ui.MUTED, Ui.heavy);
-        label.setLetterSpacing(0.22f);
-        nick.addView(label);
-        nickField = field(cfg.nickname, "Имя_Фамилия");
-        nickField.setBackground(null);
-        nickField.setPadding(0, Ui.dp(5), 0, Ui.dp(3));
-        nick.addView(nickField, new LinearLayout.LayoutParams(MATCH, WRAP));
-        View underline = new View(this);
-        underline.setBackgroundColor(Ui.LINE);
-        nick.addView(underline, new LinearLayout.LayoutParams(MATCH, Ui.dp(1)));
-
-        LinearLayout.LayoutParams nickLp = new LinearLayout.LayoutParams(0, WRAP, 1);
-        nickLp.rightMargin = Ui.dp(18);
-        row.addView(nick, nickLp);
-
-        TextView play = Ui.primaryButton(this, "ИГРАТЬ");
-        play.setTextColor(Color.BLACK);
-        play.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
-        play.setLetterSpacing(0.02f);
-        play.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { onPlay(); }
-        });
-        row.addView(play, new LinearLayout.LayoutParams(Ui.dp(210), Ui.dp(58)));
-        footer.addView(row);
-        return footer;
+        // Сервер не ответил на последний опрос — предупреждаем, но даём запустить:
+        // query-порт может быть закрыт, а игровой — работать.
+        ServerMonitor.Status status = monitor.statusOf(server);
+        QueryResult last = status == null ? null : status.result;
+        if (last != null && !last.isOnline()) {
+            String why = last.state == QueryResult.State.UNRESOLVED
+                    ? "Адрес " + status.address.host + " не найден."
+                    : "Сервер " + status.address + " не отвечает. Возможно, он выключен.";
+            Overlay.show(root, "Сервер недоступен", why,
+                    new Overlay.Action("Отмена", false, null),
+                    new Overlay.Action("Всё равно играть", true, new Runnable() {
+                        @Override public void run() { launch(server); }
+                    }));
+            return;
+        }
+        launch(server);
     }
 
-    private EditText field(String value, String hint) {
-        EditText e = new EditText(this);
-        e.setText(value);
-        e.setHint(hint);
-        e.setHintTextColor(Ui.DIM);
-        e.setTextColor(Ui.TEXT);
-        e.setTypeface(Ui.bodyBold);
-        e.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        e.setSingleLine(true);
-        e.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
-                | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-        e.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI | EditorInfo.IME_FLAG_NO_FULLSCREEN | EditorInfo.IME_ACTION_DONE);
-        return e;
+    private void launch(ServerEntry server) {
+        try {
+            game.launch(this, prefs.nickname(), server, prefs.addressOf(server), prefs);
+        } catch (GameLauncher.LaunchException e) {
+            Overlay.message(root, e.title, e.getMessage());
+        }
     }
 
-    private void saveNick() {
-        if (nickField != null) cfg.nickname = nickField.getText().toString().trim();
-        cfg.save();
+    @Override public void showDiagnostics() {
+        final String report = Diagnostics.report(this, config, game);
+        Overlay.show(root, "Диагностика", report,
+                new Overlay.Action("Закрыть", false, null),
+                new Overlay.Action("Копировать", true, new Runnable() {
+                    @Override public void run() {
+                        ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                        if (cm != null) {
+                            cm.setPrimaryClip(ClipData.newPlainText("Bastion diagnostics", report));
+                            Toast.makeText(MainActivity.this, "Скопировано", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }));
+    }
+
+    // ------------------------------------------------------------------ helpers
+
+    private void saveNickname() {
+        if (mainScreen != null) prefs.setNickname(mainScreen.nickname());
     }
 
     private void hideKeyboard() {
         View f = getCurrentFocus();
-        if (f != null) {
-            InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(f.getWindowToken(), 0);
-            f.clearFocus();
-        }
-    }
-
-    /** Карточка сервера: название, описание, онлайн и пинг. */
-    private final class ServerCard {
-        final int index;
-        final LinearLayout view;
-        final TextView statusMain;
-        final TextView statusSub;
-        final View stripe;
-
-        ServerCard(final int index) {
-            this.index = index;
-            Config.Server s = cfg.servers.get(index);
-            view = new LinearLayout(MainActivity.this);
-            view.setOrientation(LinearLayout.HORIZONTAL);
-
-            stripe = new View(MainActivity.this);
-            view.addView(stripe, new LinearLayout.LayoutParams(Ui.dp(4), MATCH));
-
-            LinearLayout body = new LinearLayout(MainActivity.this);
-            body.setOrientation(LinearLayout.VERTICAL);
-            body.setPadding(Ui.dp(14), Ui.dp(12), Ui.dp(14), Ui.dp(9));
-
-            LinearLayout row = new LinearLayout(MainActivity.this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            TextView name = Ui.text(MainActivity.this, s.name.toUpperCase(), 17, Ui.TEXT, Ui.heavy);
-            name.setLetterSpacing(0.025f);
-            row.addView(name, new LinearLayout.LayoutParams(0, WRAP, 1));
-
-            LinearLayout state = new LinearLayout(MainActivity.this);
-            state.setOrientation(LinearLayout.VERTICAL);
-            state.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
-            statusMain = Ui.text(MainActivity.this, "…", 16, Ui.TEXT, Ui.heavy);
-            statusMain.setGravity(Gravity.RIGHT);
-            statusSub = Ui.text(MainActivity.this, "ПРОВЕРКА", 9, Ui.MUTED, Ui.heavy);
-            statusSub.setGravity(Gravity.RIGHT);
-            statusSub.setLetterSpacing(0.05f);
-            state.addView(statusMain);
-            state.addView(statusSub);
-            row.addView(state);
-            body.addView(row);
-
-            TextView description = Ui.text(MainActivity.this, s.description, 12, Ui.MUTED, Ui.body);
-            description.setPadding(0, Ui.dp(6), 0, Ui.dp(8));
-            description.setMaxLines(2);
-            body.addView(description);
-
-            View bottomLine = new View(MainActivity.this);
-            bottomLine.setBackgroundColor(Ui.LINE);
-            body.addView(bottomLine, new LinearLayout.LayoutParams(MATCH, Ui.dp(1)));
-            view.addView(body, new LinearLayout.LayoutParams(0, WRAP, 1));
-
-            view.setOnClickListener(new View.OnClickListener() {
-                @Override public void onClick(View v) {
-                    cfg.selected = ServerCard.this.index;
-                    cfg.save();
-                    updateCards();
-                }
-            });
-            Ui.pressFeedback(view);
-        }
-
-        void update() {
-            Config.Server s = cfg.servers.get(index);
-            boolean selected = cfg.selected == index;
-            view.setBackground(Ui.box(selected ? 0xF01B1E23 : 0xCC14161A,
-                    selected ? Ui.ORANGE : Ui.LINE, 2, selected ? 1.5f : 1));
-            stripe.setBackground(selected ? Ui.box(Ui.ORANGE, 0, 1, 0) : null);
-
-            if (!s.queried) {
-                statusMain.setText("…");
-                statusSub.setText("ПРОВЕРКА");
-                statusMain.setTextColor(Ui.MUTED);
-                statusSub.setTextColor(Ui.MUTED);
-            } else if (s.online) {
-                statusMain.setText(s.players + " / " + s.maxPlayers);
-                statusSub.setText("ОНЛАЙН · " + s.ping + " МС");
-                statusMain.setTextColor(Ui.TEXT);
-                statusSub.setTextColor(Ui.ORANGE);
-            } else {
-                statusMain.setText("OFF");
-                statusSub.setText("НЕ ОТВЕЧАЕТ");
-                statusMain.setTextColor(Ui.DIM);
-                statusSub.setTextColor(Ui.DIM);
-            }
-        }
-    }
-
-    private void updateCards() {
-        for (ServerCard c : cards) c.update();
-    }
-
-    private void refreshServers() {
-        for (final Config.Server s : cfg.servers) {
-            new Thread(new Runnable() {
-                @Override public void run() {
-                    SampQuery.query(s);
-                    ui.post(new Runnable() { @Override public void run() { updateCards(); } });
-                }
-            }, "query").start();
-        }
-    }
-
-    // ==================================================================
-    //  Кнопка ИГРАТЬ
-    // ==================================================================
-    private void onPlay() {
-        hideKeyboard();
-        saveNick();
-        String nick = cfg.nickname;
-        if (nick.length() == 0) {
-            notice("Введи ник", "Ник нужен для входа на сервер. Формат: Имя_Фамилия, например Ivan_Petrov.", null, null);
-            return;
-        }
-        if (cfg.requireRpName && !Config.isRpName(nick)) {
-            notice("Неверный ник", "На сервере нужен РП-ник: Имя_Фамилия латиницей, каждое слово с большой буквы. Например: Ivan_Petrov.", null, null);
-            return;
-        }
-        cfg.writeClientConfig(this);
-        openSampClient();
-    }
-
-    /** Opens the built-in ZIP installer. The archive is downloaded and unpacked inside app storage. */
-    private void installClientAssets() {
-        final EditText urlField = new EditText(this);
-        urlField.setSingleLine(true);
-        urlField.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        urlField.setHint("https://ссылка-на-клиент.zip");
-        urlField.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        urlField.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
-        urlField.setBackground(Ui.box(0xE60E1013, Ui.LINE, 5, 1));
-
-        LinearLayout form = new LinearLayout(this);
-        form.setOrientation(LinearLayout.VERTICAL);
-        form.setPadding(Ui.dp(20), Ui.dp(8), Ui.dp(20), 0);
-        TextView hint = Ui.text(this,
-                "Вставь прямую HTTPS-ссылку на ZIP-архив Android-клиента. Лаунчер скачает архив, проверит структуру и распакует файлы в свою папку client.",
-                12, Ui.MUTED, Ui.body);
-        hint.setPadding(0, 0, 0, Ui.dp(10));
-        form.addView(hint);
-        form.addView(urlField, new LinearLayout.LayoutParams(MATCH, Ui.dp(44)));
-
-        new AlertDialog.Builder(this)
-                .setTitle("Установка файлов клиента")
-                .setView(form)
-                .setNegativeButton("Отмена", null)
-                .setPositiveButton("СКАЧАТЬ И УСТАНОВИТЬ", new android.content.DialogInterface.OnClickListener() {
-                    @Override public void onClick(android.content.DialogInterface dialog, int which) {
-                        String address = urlField.getText().toString().trim();
-                        if (address.length() == 0) {
-                            notice("Нет ссылки", "Вставь прямую HTTPS-ссылку на ZIP-архив.", null, null);
-                            return;
-                        }
-                        startArchiveInstall(address);
-                    }
-                })
-                .show();
-    }
-
-    private void startArchiveInstall(String address) {
-        final ProgressDialog progress = new ProgressDialog(this);
-        progress.setTitle("Установка клиента Bastion");
-        progress.setMessage("Подготовка загрузки…");
-        progress.setIndeterminate(true);
-        progress.setCancelable(false);
-        progress.show();
-
-        new ClientInstaller(this).installArchive(address, new ClientInstaller.Callback() {
-            @Override public void onProgress(final String message) {
-                ui.post(new Runnable() {
-                    @Override public void run() {
-                        if (progress.isShowing()) progress.setMessage(message);
-                    }
-                });
-            }
-
-            @Override public void onComplete(int count, java.io.File directory) {
-                if (progress.isShowing()) progress.dismiss();
-                notice("Установка завершена",
-                        "Установлено файлов: " + count + "\nПапка: " + directory.getAbsolutePath(),
-                        null, null);
-            }
-
-            @Override public void onError(String message) {
-                if (progress.isShowing()) progress.dismiss();
-                notice("Ошибка установки", message, null, null);
-            }
-        });
-    }
-
-    /** Своё окно-сообщение поверх экрана, в стиле лаунчера. */
-    private void notice(String title, String message, String action, final Runnable onAction) {
-        final FrameLayout dim = new FrameLayout(this);
-        dim.setBackgroundColor(0xB3000000);
-        dim.setClickable(true);
-
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(Ui.dp(22), Ui.dp(18), Ui.dp(22), Ui.dp(18));
-        box.setBackground(Ui.box(Ui.PANEL, Ui.LINE, 10, 1));
-
-        TextView t = Ui.text(this, title.toUpperCase(), 17, Ui.TEXT, Ui.heavy);
-        t.setLetterSpacing(0.05f);
-        box.addView(t);
-        View bar = new View(this);
-        bar.setBackgroundColor(Ui.ORANGE);
-        LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(Ui.dp(36), Ui.dp(2));
-        bl.topMargin = Ui.dp(8);
-        bl.bottomMargin = Ui.dp(12);
-        box.addView(bar, bl);
-        TextView m = Ui.text(this, message, 13, Ui.MUTED, Ui.body);
-        m.setLineSpacing(Ui.dp(3), 1f);
-        box.addView(m);
-
-        LinearLayout buttons = new LinearLayout(this);
-        buttons.setOrientation(LinearLayout.HORIZONTAL);
-        buttons.setGravity(Gravity.END);
-        final Runnable close = new Runnable() {
-            @Override public void run() { root.removeView(dim); }
-        };
-        TextView ok = Ui.ghostButton(this, action == null ? "Понятно" : "Закрыть");
-        ok.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { close.run(); }
-        });
-        buttons.addView(ok, new LinearLayout.LayoutParams(WRAP, Ui.dp(40)));
-        if (action != null) {
-            TextView a = Ui.primaryButton(this, action.toUpperCase());
-            a.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-            a.setPadding(Ui.dp(18), 0, Ui.dp(18), 0);
-            a.setOnClickListener(new View.OnClickListener() {
-                @Override public void onClick(View v) { close.run(); onAction.run(); }
-            });
-            LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(WRAP, Ui.dp(40));
-            alp.leftMargin = Ui.dp(10);
-            buttons.addView(a, alp);
-        }
-        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(MATCH, WRAP);
-        bp.topMargin = Ui.dp(18);
-        box.addView(buttons, bp);
-
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(Ui.dp(440), WRAP, Gravity.CENTER);
-        dim.addView(box, lp);
-        root.addView(dim, new FrameLayout.LayoutParams(MATCH, MATCH));
-    }
-
-    // ==================================================================
-    //  Настройки
-    // ==================================================================
-    private final List<EditText[]> serverFields = new ArrayList<EditText[]>();
-
-    private void showSettings() {
-        content.removeAllViews();
-        content.setTag("settings");
-        serverFields.clear();
-        cards.clear();
-
-        LinearLayout page = new LinearLayout(this);
-        page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(Ui.dp(24), Ui.dp(10), Ui.dp(24), Ui.dp(10));
-
-        LinearLayout top = new LinearLayout(this);
-        top.setOrientation(LinearLayout.HORIZONTAL);
-        top.setGravity(Gravity.CENTER_VERTICAL);
-        TextView title = Ui.text(this, "НАСТРОЙКИ", 17, Ui.MUTED, Ui.heavy);
-        title.setLetterSpacing(0.2f);
-        top.addView(title, new LinearLayout.LayoutParams(0, WRAP, 1));
-        TextView done = Ui.ghostButton(this, "Готово");
-        done.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { applySettings(); showMain(); }
-        });
-        top.addView(done, new LinearLayout.LayoutParams(WRAP, Ui.dp(34)));
-        page.addView(top, new LinearLayout.LayoutParams(MATCH, Ui.dp(38)));
-
-        View rule = new View(this);
-        rule.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{Ui.ORANGE, 0x66808080, 0x00808080}));
-        LinearLayout.LayoutParams ruleLp = new LinearLayout.LayoutParams(MATCH, Ui.dp(1));
-        ruleLp.topMargin = Ui.dp(5);
-        ruleLp.bottomMargin = Ui.dp(10);
-        page.addView(rule, ruleLp);
-
-        ScrollView all = new ScrollView(this);
-        all.setVerticalScrollBarEnabled(false);
-        LinearLayout columns = new LinearLayout(this);
-        columns.setOrientation(LinearLayout.HORIZONTAL);
-        columns.setPadding(0, Ui.dp(2), 0, Ui.dp(12));
-
-        LinearLayout leftPanel = new LinearLayout(this);
-        leftPanel.setOrientation(LinearLayout.VERTICAL);
-        leftPanel.setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(14));
-        leftPanel.setBackground(Ui.box(Ui.PANEL, Ui.LINE, 2, 1));
-        leftPanel.addView(Ui.caption(this, "Игра"));
-
-        leftPanel.addView(option("Лимит FPS", new String[]{"30", "60", "90", "120"},
-                new int[]{30, 60, 90, 120}, cfg.fps,
-                new Pick() { @Override public void set(int v) { cfg.fps = v; } }));
-        leftPanel.addView(option("Качество графики", new String[]{"Низкое", "Среднее", "Высокое"},
-                new int[]{0, 1, 2}, cfg.quality,
-                new Pick() { @Override public void set(int v) { cfg.quality = v; } }));
-        TextView fpsNote = Ui.text(this, "Высокие значения FPS доступны не на каждом экране.", 10, Ui.DIM, Ui.body);
-        fpsNote.setPadding(0, Ui.dp(5), 0, Ui.dp(12));
-        leftPanel.addView(fpsNote);
-
-        leftPanel.addView(Ui.caption(this, "Интерфейс"));
-        leftPanel.addView(option("Строк в чате", new String[]{"10", "15", "20"},
-                new int[]{10, 15, 20}, cfg.chatLines,
-                new Pick() { @Override public void set(int v) { cfg.chatLines = v; } }));
-        leftPanel.addView(option("Размер кнопок", new String[]{"S", "M", "L"},
-                new int[]{0, 1, 2}, cfg.buttonSize,
-                new Pick() { @Override public void set(int v) { cfg.buttonSize = v; } }));
-
-        TextView diagnostics = Ui.ghostButton(this, "Диагностика");
-        diagnostics.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { runDiagnostics(); }
-        });
-        leftPanel.addView(diagnostics, new LinearLayout.LayoutParams(WRAP, Ui.dp(34)));
-
-        TextView install = Ui.primaryButton(this, "УСТАНОВИТЬ ФАЙЛЫ КЛИЕНТА");
-        install.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-        install.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { installClientAssets(); }
-        });
-        LinearLayout.LayoutParams installLp = new LinearLayout.LayoutParams(MATCH, Ui.dp(40));
-        installLp.topMargin = Ui.dp(9);
-        leftPanel.addView(install, installLp);
-
-        LinearLayout.LayoutParams leftLp = new LinearLayout.LayoutParams(0, WRAP, 1.08f);
-        leftLp.rightMargin = Ui.dp(16);
-        columns.addView(leftPanel, leftLp);
-
-        LinearLayout rightPanel = new LinearLayout(this);
-        rightPanel.setOrientation(LinearLayout.VERTICAL);
-        rightPanel.addView(Ui.caption(this, "Выбери сервер"));
-        for (int i = 0; i < cfg.servers.size(); i++) {
-            ServerCard card = new ServerCard(i);
-            cards.add(card);
-            LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(MATCH, WRAP);
-            cardLp.topMargin = Ui.dp(8);
-            rightPanel.addView(card.view, cardLp);
-        }
-
-        TextView addresses = Ui.caption(this, "Адреса серверов");
-        LinearLayout.LayoutParams addressesLp = new LinearLayout.LayoutParams(MATCH, WRAP);
-        addressesLp.topMargin = Ui.dp(14);
-        rightPanel.addView(addresses, addressesLp);
-
-        for (Config.Server server : cfg.servers) {
-            LinearLayout addressRow = new LinearLayout(this);
-            addressRow.setOrientation(LinearLayout.HORIZONTAL);
-            addressRow.setGravity(Gravity.CENTER_VERTICAL);
-            addressRow.setPadding(0, Ui.dp(7), 0, 0);
-
-            TextView name = Ui.text(this, server.name.toUpperCase(), 10, Ui.TEXT, Ui.heavy);
-            addressRow.addView(name, new LinearLayout.LayoutParams(Ui.dp(92), WRAP));
-
-            EditText host = boxedField(server.host, "адрес");
-            addressRow.addView(host, new LinearLayout.LayoutParams(0, Ui.dp(36), 1));
-
-            EditText port = boxedField(String.valueOf(server.port), "порт");
-            port.setInputType(InputType.TYPE_CLASS_NUMBER);
-            LinearLayout.LayoutParams portLp = new LinearLayout.LayoutParams(Ui.dp(62), Ui.dp(36));
-            portLp.leftMargin = Ui.dp(6);
-            addressRow.addView(port, portLp);
-            serverFields.add(new EditText[]{host, port});
-            rightPanel.addView(addressRow);
-        }
-
-        TextView hint = Ui.text(this,
-                "Для домашнего теста укажи IP компьютера в своей Wi-Fi сети.",
-                10, Ui.DIM, Ui.body);
-        hint.setPadding(0, Ui.dp(6), 0, 0);
-        rightPanel.addView(hint);
-
-        TextView reset = Ui.ghostButton(this, "Вернуть адреса по умолчанию");
-        reset.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9);
-        reset.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                cfg.resetServers(MainActivity.this);
-                for (Config.Server server : cfg.servers) server.queried = false;
-                showSettings();
-            }
-        });
-        LinearLayout.LayoutParams resetLp = new LinearLayout.LayoutParams(WRAP, Ui.dp(32));
-        resetLp.topMargin = Ui.dp(7);
-        rightPanel.addView(reset, resetLp);
-
-        columns.addView(rightPanel, new LinearLayout.LayoutParams(0, WRAP, 0.92f));
-        all.addView(columns);
-        page.addView(all, new LinearLayout.LayoutParams(MATCH, 0, 1));
-        page.addView(buildFooter(), new LinearLayout.LayoutParams(MATCH, WRAP));
-
-        content.addView(page, new FrameLayout.LayoutParams(MATCH, MATCH));
-        updateCards();
-    }
-
-
-    /** Opens the installed SA-MP game, falling back to the orange SA-MP Launcher. */
-    private static final String SAMP_GAME_PACKAGE = "com.samp.mobile";
-    private static final String SAMP_LAUNCHER_PACKAGE = "com.samp.mobile";
-
-    private void openSampClient() {
-        Intent game = getPackageManager().getLaunchIntentForPackage(SAMP_GAME_PACKAGE);
-        if (game != null) {
-            try { startActivity(game); }
-            catch (Exception e) { notice("Не удалось открыть игру", e.getMessage(), null, null); }
-            return;
-        }
-
-        Intent sampLauncher = getPackageManager().getLaunchIntentForPackage(SAMP_LAUNCHER_PACKAGE);
-        if (sampLauncher != null) {
-            startActivity(sampLauncher);
-            android.widget.Toast.makeText(this,
-                    "Сначала заверши загрузку клиента в SA-MP Launcher, затем вернись в Bastion.",
-                    android.widget.Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        notice("SA-MP клиент не найден",
-                "Bastion сохранил ник и настройки. Установи оранжевый SA-MP Launcher APK, открой его один раз и дождись загрузки игрового клиента. Затем вернись сюда и нажми «ИГРАТЬ». Google Play не открывается.",
-                null, null);
-    }
-
-    private void launchInstalledSampClient() {
-        Intent game = getPackageManager().getLaunchIntentForPackage(SAMP_GAME_PACKAGE);
-        if (game != null) {
-            startActivity(game);
-            return;
-        }
-        Intent launcher = getPackageManager().getLaunchIntentForPackage(SAMP_LAUNCHER_PACKAGE);
-        if (launcher != null) {
-            startActivity(launcher);
-            return;
-        }
-        openSampClient();
-    }
-
-    //  Диагностика: отчёт о телефоне и GTA SA, чтобы скопировать и прислать
-    // ==================================================================
-    private void runDiagnostics() {
-        applySettings();
-        final TextView body = Ui.text(this, "Собираю данные…", 11, Ui.TEXT, Typeface.MONOSPACE);
-        final String[] result = {null};
-        final FrameLayout dim = new FrameLayout(this);
-        dim.setBackgroundColor(0xB3000000);
-        dim.setClickable(true);
-
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(Ui.dp(20), Ui.dp(16), Ui.dp(20), Ui.dp(14));
-        box.setBackground(Ui.box(Ui.PANEL, Ui.LINE, 10, 1));
-        TextView t = Ui.text(this, "ДИАГНОСТИКА", 17, Ui.TEXT, Ui.heavy);
-        box.addView(t);
-        TextView sub = Ui.text(this, "Скопируй или отправь этот текст в чат проекта.", 12, Ui.MUTED, Ui.body);
-        sub.setPadding(0, Ui.dp(6), 0, Ui.dp(10));
-        box.addView(sub);
-        ScrollView sv = new ScrollView(this);
-        body.setTextIsSelectable(true);
-        body.setPadding(Ui.dp(10), Ui.dp(8), Ui.dp(10), Ui.dp(8));
-        body.setBackground(Ui.box(0xFF0B0C0F, Ui.LINE, 6, 1));
-        sv.addView(body);
-        box.addView(sv, new LinearLayout.LayoutParams(MATCH, 0, 1));
-
-        LinearLayout buttons = new LinearLayout(this);
-        buttons.setOrientation(LinearLayout.HORIZONTAL);
-        buttons.setGravity(Gravity.END);
-        TextView close = Ui.ghostButton(this, "Закрыть");
-        close.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { root.removeView(dim); }
-        });
-        buttons.addView(close, new LinearLayout.LayoutParams(WRAP, Ui.dp(38)));
-        TextView copy = Ui.ghostButton(this, "Копировать");
-        copy.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                if (result[0] == null) return;
-                android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                cm.setPrimaryClip(android.content.ClipData.newPlainText("Bastion diagnostics", result[0]));
-                android.widget.Toast.makeText(MainActivity.this, "Скопировано", android.widget.Toast.LENGTH_SHORT).show();
-            }
-        });
-        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(WRAP, Ui.dp(38));
-        cp.leftMargin = Ui.dp(8);
-        buttons.addView(copy, cp);
-        TextView share = Ui.primaryButton(this, "ОТПРАВИТЬ");
-        share.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        share.setPadding(Ui.dp(18), 0, Ui.dp(18), 0);
-        share.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                if (result[0] == null) return;
-                Intent i = new Intent(Intent.ACTION_SEND);
-                i.setType("text/plain");
-                i.putExtra(Intent.EXTRA_TEXT, result[0]);
-                startActivity(Intent.createChooser(i, "Отправить диагностику"));
-            }
-        });
-        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(WRAP, Ui.dp(38));
-        sp.leftMargin = Ui.dp(8);
-        buttons.addView(share, sp);
-        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(MATCH, WRAP);
-        bp.topMargin = Ui.dp(12);
-        box.addView(buttons, bp);
-
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(MATCH, MATCH);
-        lp.setMargins(Ui.dp(60), Ui.dp(20), Ui.dp(60), Ui.dp(20));
-        dim.addView(box, lp);
-        root.addView(dim, new FrameLayout.LayoutParams(MATCH, MATCH));
-
-        new Thread(new Runnable() {
-            @Override public void run() {
-                String rep;
-                try { rep = Diagnostics.report(MainActivity.this); }
-                catch (Throwable e) { rep = "Ошибка диагностики: " + e; }
-                final String fin = rep;
-                ui.post(new Runnable() {
-                    @Override public void run() { result[0] = fin; body.setText(fin); }
-                });
-            }
-        }, "diag").start();
-    }
-
-    private String appVersion() {
-        try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; }
-        catch (Exception e) { return ""; }
-    }
-
-    private EditText boxedField(String v, String hint) {
-        EditText e = field(v, hint);
-        e.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        e.setBackground(Ui.box(0xE60E1013, Ui.LINE, 5, 1));
-        e.setPadding(Ui.dp(10), 0, Ui.dp(10), 0);
-        return e;
-    }
-
-    private void applySettings() {
-        hideKeyboard();
-        for (int i = 0; i < serverFields.size() && i < cfg.servers.size(); i++) {
-            Config.Server s = cfg.servers.get(i);
-            String h = serverFields.get(i)[0].getText().toString().trim();
-            int p;
-            try { p = Integer.parseInt(serverFields.get(i)[1].getText().toString().trim()); }
-            catch (NumberFormatException e) { p = s.port; }
-            if (h.length() > 0 && (!h.equals(s.host) || p != s.port)) {
-                s.host = h;
-                s.port = p;
-                s.queried = false;
-            }
-        }
-        cfg.save();
-        refreshServers();
-    }
-
-    private interface Pick { void set(int v); }
-
-    /** Строка «название + переключатель из нескольких кнопок». */
-    private View option(String label, String[] names, final int[] values, int current, final Pick pick) {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(0, Ui.dp(8), 0, 0);
-        TextView l = Ui.text(this, label, 13, Ui.TEXT, Ui.body);
-        row.addView(l, new LinearLayout.LayoutParams(0, WRAP, 1));
-
-        final LinearLayout seg = new LinearLayout(this);
-        seg.setOrientation(LinearLayout.HORIZONTAL);
-        seg.setBackground(Ui.box(0xE60E1013, Ui.LINE, 6, 1));
-        seg.setPadding(Ui.dp(3), Ui.dp(3), Ui.dp(3), Ui.dp(3));
-        final List<TextView> items = new ArrayList<TextView>();
-        for (int i = 0; i < names.length; i++) {
-            final TextView t = Ui.text(this, names[i], 12, Ui.MUTED, Ui.heavy);
-            t.setGravity(Gravity.CENTER);
-            t.setPadding(Ui.dp(12), 0, Ui.dp(12), 0);
-            t.setMinWidth(Ui.dp(44));
-            items.add(t);
-            final int idx = i;
-            t.setOnClickListener(new View.OnClickListener() {
-                @Override public void onClick(View v) {
-                    pick.set(values[idx]);
-                    paintSegments(items, idx);
-                }
-            });
-            seg.addView(t, new LinearLayout.LayoutParams(WRAP, Ui.dp(30)));
-        }
-        int sel = 0;
-        for (int i = 0; i < values.length; i++) if (values[i] == current) sel = i;
-        paintSegments(items, sel);
-        row.addView(seg);
-        return row;
-    }
-
-    private void paintSegments(List<TextView> items, int sel) {
-        for (int i = 0; i < items.size(); i++) {
-            TextView t = items.get(i);
-            if (i == sel) {
-                t.setBackground(Ui.box(Ui.ORANGE, 0, 4, 0));
-                t.setTextColor(Color.WHITE);
-            } else {
-                t.setBackground(null);
-                t.setTextColor(Ui.MUTED);
-            }
-        }
+        if (f == null) return;
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.hideSoftInputFromWindow(f.getWindowToken(), 0);
+        f.clearFocus();
     }
 }

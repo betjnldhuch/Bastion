@@ -1,4 +1,4 @@
-package online.bastion.launcher;
+package online.bastion.launcher.game;
 
 import android.app.ActivityManager;
 import android.content.Context;
@@ -6,12 +6,17 @@ import android.os.Build;
 import android.view.Display;
 import android.view.WindowManager;
 
-/** Device-only diagnostics. Does not inspect or require a particular GTA installation. */
+import java.io.File;
+import java.util.List;
+
+import online.bastion.launcher.core.LauncherConfig;
+
+/** Отчёт для поддержки: устройство, папка игры, кеш и ошибки launcher.ini. */
 public final class Diagnostics {
     private Diagnostics() { }
 
     @SuppressWarnings("deprecation")
-    public static String report(Context ctx) {
+    public static String report(Context ctx, LauncherConfig config, GameLauncher game) {
         StringBuilder r = new StringBuilder();
         r.append("=== Bastion Online: диагностика ===\n");
         try {
@@ -48,6 +53,20 @@ public final class Diagnostics {
             }
             r.append('\n');
         } catch (Exception ignored) { }
+
+        r.append("\n[Игра]\n");
+        File dir = game.storageDir();
+        r.append("Папка: ").append(dir == null ? "недоступна" : dir.getAbsolutePath()).append('\n');
+        r.append("Activity: ").append(config.gameActivity.length() == 0 ? "-" : config.gameActivity)
+                .append(game.gameIntent() == null ? " (не найдена)" : " (есть)").append('\n');
+        List<String> missing = game.missingCacheFiles();
+        r.append("Кеш: ").append(missing.isEmpty() ? "все файлы на месте" : "нет " + missing).append('\n');
+        r.append("Адреса серверов: ").append(config.serversLocked ? "заблокированы" : "можно менять").append('\n');
+
+        if (!config.warnings.isEmpty()) {
+            r.append("\n[launcher.ini]\n");
+            for (String w : config.warnings) r.append("• ").append(w).append('\n');
+        }
         return r.toString();
     }
 
