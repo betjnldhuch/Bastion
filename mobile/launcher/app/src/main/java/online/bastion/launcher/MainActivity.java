@@ -702,7 +702,7 @@ public class MainActivity extends Activity {
         openSampClient();
     }
 
-    //  Диагностика: отчёт о телефоне и GTA SA, чтобы скопировать и прислать
+    //  Диагностика устройства и ресурсов Bastion
     // ==================================================================
     private void runDiagnostics() {
         applySettings();
