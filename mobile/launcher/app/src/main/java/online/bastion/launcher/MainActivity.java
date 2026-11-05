@@ -443,10 +443,26 @@ public class MainActivity extends Activity {
         }
         cfg.writeClientConfig(this);
         Config.Server s = cfg.servers.get(cfg.selected);
-        notice("Почти готово",
-                "Ник " + nick + " и сервер " + s.name + " (" + s.host + ":" + s.port + ") сохранены.\n\n"
-                        + "Игровой клиент Bastion для телефона ещё в разработке: сейчас это первая сборка лаунчера.",
-                null, null);
+        Intent game = getPackageManager().getLaunchIntentForPackage(SAMP_GAME_PACKAGE);
+        if (game != null) {
+            startActivity(game);
+            return;
+        }
+        Intent launcher = getPackageManager().getLaunchIntentForPackage(SAMP_LAUNCHER_PACKAGE);
+        if (launcher != null) {
+            notice("SA-MP Launcher",
+                    "Клиентский игровой пакет ещё не найден. Сейчас откроется SA-MP Launcher: заверши там загрузку игровых файлов, затем вернись в Bastion.\n\nВыбран сервер: "
+                            + s.name + " (" + s.host + ":" + s.port + "). Ник: " + nick,
+                    "Открыть SA-MP", new Runnable() {
+                        @Override public void run() { launchInstalledSampClient(); }
+                    });
+            return;
+        }
+        notice("Нужно установить SA-MP",
+                "Bastion сохранил ник и сервер, но игровой клиент пока не установлен. Установи оранжевый SA-MP Launcher и загрузи его игровые файлы.",
+                "Установить SA-MP", new Runnable() {
+                    @Override public void run() { openSampLauncherStore(); }
+                });
     }
 
     private boolean isGtaInstalled() {
@@ -611,10 +627,10 @@ public class MainActivity extends Activity {
         });
         leftPanel.addView(diagnostics, new LinearLayout.LayoutParams(WRAP, Ui.dp(34)));
 
-        TextView install = Ui.primaryButton(this, "СКАЧАТЬ ФАЙЛЫ КЛИЕНТА");
+        TextView install = Ui.primaryButton(this, "УСТАНОВИТЬ / ОТКРЫТЬ SA-MP");
         install.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
         install.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { installClientFiles(); }
+            @Override public void onClick(View v) { openSampClient(); }
         });
         LinearLayout.LayoutParams installLp = new LinearLayout.LayoutParams(MATCH, Ui.dp(40));
         installLp.topMargin = Ui.dp(9);
@@ -690,38 +706,65 @@ public class MainActivity extends Activity {
     }
 
 
-    /** Скачивает проверенные клиентские ресурсы по удалённому manifest.json. */
-    private void installClientFiles() {
-        final TextView status = Ui.text(this, "Подготовка загрузки…", 11, Ui.MUTED, Ui.body);
-        final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
-                .setTitle("Файлы игрового клиента")
-                .setView(status)
-                .setNegativeButton("Закрыть", null)
-                .create();
-        dialog.show();
-        new ClientInstaller(this).install(new ClientInstaller.Callback() {
-            @Override public void onProgress(final String message) {
-                ui.post(new Runnable() {
-                    @Override public void run() { if (!isFinishing()) status.setText(message); }
+    /** Opens the installed SA-MP Android client, or its official launcher listing. */
+    private static final String SAMP_GAME_PACKAGE = "ru.unisamp_mobile.game";
+    private static final String SAMP_LAUNCHER_PACKAGE = "ru.unisamp_mobile.launcher";
+
+    private void openSampClient() {
+        if (!isGtaInstalled()) {
+            notice("Нужна GTA: San Andreas",
+                    "Сначала установи официальную GTA: San Andreas. После этого можно установить SA-MP клиент.",
+                    "Открыть Google Play", new Runnable() {
+                        @Override public void run() { openGtaInStore(); }
+                    });
+            return;
+        }
+
+        Intent game = getPackageManager().getLaunchIntentForPackage(SAMP_GAME_PACKAGE);
+        if (game != null) {
+            try { startActivity(game); }
+            catch (Exception e) { notice("Не удалось открыть игру", e.getMessage(), null, null); }
+            return;
+        }
+
+        Intent sampLauncher = getPackageManager().getLaunchIntentForPackage(SAMP_LAUNCHER_PACKAGE);
+        if (sampLauncher != null) {
+            startActivity(sampLauncher);
+            notice("SA-MP Launcher открыт",
+                    "В оранжевом SA-MP Launcher заверши загрузку игровых файлов. После этого возвращайся в Bastion и нажимай «ИГРАТЬ».",
+                    null, null);
+            return;
+        }
+
+        notice("Нужен SA-MP клиент",
+                "Сейчас откроется официальная страница SA-MP Launcher. Установи его, открой и дождись загрузки игровых файлов. Затем вернись в Bastion.",
+                "Открыть SA-MP Launcher", new Runnable() {
+                    @Override public void run() { openSampLauncherStore(); }
                 });
-            }
-            @Override public void onComplete(final int count, final java.io.File directory) {
-                ui.post(new Runnable() {
-                    @Override public void run() {
-                        if (isFinishing()) return;
-                        status.setText("Готово. Установлено файлов: " + count
-                                + "\\nПапка: " + directory.getAbsolutePath());
-                    }
-                });
-            }
-            @Override public void onError(final String message) {
-                ui.post(new Runnable() {
-                    @Override public void run() {
-                        if (!isFinishing()) status.setText("Ошибка: " + message);
-                    }
-                });
-            }
-        });
+    }
+
+    private void openSampLauncherStore() {
+        Uri market = Uri.parse("market://details?id=" + SAMP_LAUNCHER_PACKAGE);
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, market));
+        } catch (Exception e) {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(
+                    "https://play.google.com/store/apps/details?id=" + SAMP_LAUNCHER_PACKAGE)));
+        }
+    }
+
+    private void launchInstalledSampClient() {
+        Intent game = getPackageManager().getLaunchIntentForPackage(SAMP_GAME_PACKAGE);
+        if (game != null) {
+            startActivity(game);
+            return;
+        }
+        Intent launcher = getPackageManager().getLaunchIntentForPackage(SAMP_LAUNCHER_PACKAGE);
+        if (launcher != null) {
+            startActivity(launcher);
+            return;
+        }
+        openSampClient();
     }
 
     //  Диагностика: отчёт о телефоне и GTA SA, чтобы скопировать и прислать
