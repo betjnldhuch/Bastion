@@ -708,8 +708,8 @@ public class MainActivity extends Activity {
 
 
     /** Opens the installed SA-MP game, falling back to the orange SA-MP Launcher. */
-    private static final String SAMP_GAME_PACKAGE = "ru.unisamp_mobile.game";
-    private static final String SAMP_LAUNCHER_PACKAGE = "ru.unisamp_mobile.launcher";
+    private static final String SAMP_GAME_PACKAGE = "com.samp.mobile";
+    private static final String SAMP_LAUNCHER_PACKAGE = "com.samp.mobile";
 
     private void openSampClient() {
         Intent game = getPackageManager().getLaunchIntentForPackage(SAMP_GAME_PACKAGE);
