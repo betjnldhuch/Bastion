@@ -1,28 +1,37 @@
 # Bastion Android client installer
 
-The Android launcher downloads only the files listed in `manifest.json`.
-Downloads are saved under the launcher's private app storage:
+The launcher reads this repository's manifest:
+
+`https://raw.githubusercontent.com/the-gta-man/Bastion/main/mobile/installer/manifest.json`
+
+Files are installed under the launcher's app-specific directory:
 
 `Android/data/online.bastion.launcher/files/client/`
 
-Each item in `files` must contain:
+Each manifest entry must describe a file that the Bastion project is authorized to redistribute:
 
-- `path`: relative destination path, using letters, digits, dots, underscores, hyphens and slashes.
-- `url`: HTTPS URL to the file.
-- `size`: exact file size in bytes.
-- `sha256`: lowercase SHA-256 checksum (64 hexadecimal characters).
+- `path`: relative destination path (letters, digits, dots, underscores, hyphens and slashes).
+- `url`: HTTPS download URL.
+- `size`: exact byte size.
+- `sha256`: lowercase SHA-256 checksum.
 
-Example entry (replace with a real, authorized file URL and its actual size/hash):
+Example:
 
 ```json
 {
-  "path": "models/example.dff",
-  "url": "https://downloads.example.org/bastion/models/example.dff",
-  "size": 12345,
-  "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  "version": 1,
+  "product": "Bastion Android Client Assets",
+  "files": [
+    {
+      "path": "bastion/config/client.ini",
+      "url": "https://downloads.example.org/bastion/client.ini",
+      "size": 12345,
+      "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  ]
 }
 ```
 
-The example is illustrative only; it is not a real downloadable asset. The repository's manifest intentionally starts with an empty `files` array until redistributable client assets and their checksums are supplied.
+The installer validates the manifest, rejects unsafe paths and non-HTTPS URLs, downloads each file to a temporary file, verifies its exact size and SHA-256, and only then replaces the destination. Existing files are kept if a download or verification fails.
 
-The installer verifies exact size and SHA-256 before writing each file. It does not download or install the GTA: San Andreas APK, does not install another launcher, and does not write into another app's private Android/data directory.
+The manifest is intentionally empty until redistributable client assets are published. The server-side Pawn gamemode archive is not an Android client package and must not be listed here. Original GTA: San Andreas game data and third-party app APKs are not bundled or redistributed by this installer.
