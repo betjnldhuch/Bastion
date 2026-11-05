@@ -54,6 +54,7 @@ jobs:
           sed -i "/signingConfig signingConfigs\\.release/c\\            signingConfig signingConfigs.debug" app/build.gradle
           # Fix upstream header casing: Linux runners are case-sensitive.
           sed -i "s/playerTabList\\.h/playertablist.h/g" app/src/main/cpp/samp/gui/gui.h
+          sed -i 's/"RGBA.h"/"rgba.h"/' app/src/main/cpp/samp/game/rgba.cpp
 
       - name: Build ARM32 + ARM64 client APK
         working-directory: samp-mobile
