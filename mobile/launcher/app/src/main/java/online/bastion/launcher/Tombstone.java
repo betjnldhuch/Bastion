@@ -14,7 +14,7 @@ final class Tombstone {
     private Tombstone() { }
 
     /** Читает поток; если это не protobuf (старый текстовый tombstone) — отдаёт текст как есть. */
-    static String format(InputStream in, int maxLogLines) throws Exception {
+    static String format(InputStream in, int maxLogLines, ApkLibs apk) throws Exception {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         byte[] chunk = new byte[16384];
         int n;
@@ -25,7 +25,7 @@ final class Tombstone {
             return text.length() > 12000 ? text.substring(0, 12000) : text;
         }
         try {
-            return parse(data, maxLogLines);
+            return parse(data, maxLogLines, apk);
         } catch (RuntimeException e) {
             return "не удалось разобрать tombstone: " + e;
         }
@@ -79,7 +79,7 @@ final class Tombstone {
         }
     }
 
-    private static String parse(byte[] data, int maxLogLines) {
+    private static String parse(byte[] data, int maxLogLines, ApkLibs apk) {
         StringBuilder r = new StringBuilder();
         long crashTid = -1;
         String abort = null;
@@ -123,7 +123,7 @@ final class Tombstone {
         }
         if (abort != null && abort.length() > 0) r.append("Abort: ").append(abort).append('\n');
         if (crashThread == null && !threads.isEmpty()) crashThread = threads.get(0);
-        if (crashThread != null) appendThread(r, crashThread, 64, true);
+        if (crashThread != null) appendThread(r, crashThread, 64, true, apk);
 
         r.append("\n[Загруженные библиотеки приложения: base, offset, build-id]\n");
         for (byte[] m : mappings) {
@@ -149,7 +149,7 @@ final class Tombstone {
         int shown = 0;
         for (byte[] t : threads) {
             if (t == crashThread) continue;
-            appendThread(r, t, 3, false);
+            appendThread(r, t, 3, false, apk);
             if (++shown >= 40) break;
         }
 
@@ -185,7 +185,7 @@ final class Tombstone {
         return slash >= 0 ? file.substring(slash + 1) : file;
     }
 
-    private static void appendThread(StringBuilder r, byte[] thread, int maxFrames, boolean header) {
+    private static void appendThread(StringBuilder r, byte[] thread, int maxFrames, boolean header, ApkLibs apk) {
         String name = "";
         long tid = 0;
         List<byte[]> frames = new ArrayList<byte[]>();
@@ -208,9 +208,26 @@ final class Tombstone {
                 else if (f.number == 7 && f.wire == 0) mapOff = f.varint;
                 else if (f.number == 8 && f.wire == 2) build = f.str();
             }
-            r.append(String.format("#%02d pc %08x  %s", i, relPc, shortName(file)));
-            if (mapOff != 0) r.append(String.format(" (offset 0x%x)", mapOff));
-            if (fn.length() > 0) r.append(" (").append(fn).append('+').append(fnOff).append(')');
+            ApkLibs.Lib lib = (apk != null && file.endsWith(".apk")) ? apk.find(mapOff + relPc) : null;
+            if (lib != null) {
+                // Участок APK не опознан как ELF: считаем адрес внутри библиотеки сами.
+                long libPc = mapOff + relPc - lib.start;
+                r.append(String.format("#%02d pc %08x  %s", i, libPc, lib.name));
+                String sym = apk.symbol(lib, libPc);
+                if (sym != null && fn.length() == 0) { fn = sym; fnOff = -1; }
+                r.append(String.format(" [из base.apk offset 0x%x + 0x%x]", mapOff, relPc));
+            } else {
+                r.append(String.format("#%02d pc %08x  %s", i, relPc, shortName(file)));
+                if (mapOff != 0) r.append(String.format(" (offset 0x%x)", mapOff));
+                if (apk != null && file.contains(".apk!")) {
+                    ApkLibs.Lib named = null;
+                    String libName = shortName(file);
+                    // имя функции для stripped-библиотеки, если Android его не дал
+                    if (fn.length() == 0) named = apk.byName(libName);
+                    if (named != null) { String sym = apk.symbol(named, relPc); if (sym != null) { fn = sym; fnOff = -1; } }
+                }
+            }
+            if (fn.length() > 0) r.append(" (").append(fn).append(fnOff >= 0 ? "+" + fnOff : "").append(')');
             if (header && build.length() > 0) r.append(" (BuildId: ").append(build).append(')');
             r.append('\n');
             if (++i >= maxFrames) break;

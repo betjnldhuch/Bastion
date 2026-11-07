@@ -116,6 +116,15 @@ replace_exact(cpp / "settings.cpp", 'sprintf(buff, "/storage/emulated/0/GTA/SAMP
 replace_exact(cpp / "game/hooks.cpp", f"g_pszStorage = {UPSTREAM_STORAGE};",
               "g_pszStorage = (char*)BastionStoragePath();", count=2)
 
+# A missing game file makes the engine call OS_FileRead(NULL, ...) and crash
+# with SIGSEGV at 0x10 (seen on device). Record every file NvFOpen could not
+# find, so the launcher can name it in the crash report.
+replace_exact(cpp / "game/hooks.cpp", 'Log("NVFOpen hook | Error: file not found (%s)", path);',
+              'Log("NVFOpen hook | Error: file not found (%s)", path);\n'
+              '        { char bastionList[600]; snprintf(bastionList, sizeof(bastionList), "%sbastion_missing_files.txt", BastionStoragePath());\n'
+              '          FILE* bastionMissing = fopen(bastionList, "a");\n'
+              '          if (bastionMissing) { fprintf(bastionMissing, "%s\\n", path); fclose(bastionMissing); } }')
+
 leftovers = []
 for source in cpp.rglob("*"):
     if source.suffix not in {".cpp", ".h", ".c"} or "vendor" in source.parts:

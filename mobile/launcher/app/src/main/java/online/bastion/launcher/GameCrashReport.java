@@ -24,11 +24,15 @@ public final class GameCrashReport {
     private static final String KEY_LAUNCH = "launch_time";
     private static final String KEY_SHOWN = "shown_exit";
     static final String REPORT_FILE = "last_game_crash.txt";
+    /** Пишет встроенный клиент (патч NvFOpen): пути файлов, которые не открылись. */
+    static final String MISSING_FILE = "bastion_missing_files.txt";
 
     /** Вызывается перед запуском игры. */
     public static void markLaunch(Context ctx) {
         prefs(ctx).edit().putLong(KEY_LAUNCH, System.currentTimeMillis()).apply();
         new File(ctx.getFilesDir(), "last_crash.txt").delete();
+        File root = ClientInstaller.findSampStorageRoot(ctx);
+        if (root != null) new File(root, MISSING_FILE).delete();
     }
 
     /**
@@ -60,7 +64,7 @@ public final class GameCrashReport {
                     if (e.getDescription() != null) r.append("Описание: ").append(e.getDescription()).append('\n');
                     r.append("Через ").append((e.getTimestamp() - launch) / 1000).append(" с после запуска\n");
                     if (reason == ApplicationExitInfo.REASON_CRASH_NATIVE || reason == ApplicationExitInfo.REASON_ANR) {
-                        String trace = readTrace(e);
+                        String trace = readTrace(ctx, e);
                         if (trace != null) r.append("\n[Трасса]\n").append(trace).append('\n');
                     }
                     break;
@@ -73,6 +77,17 @@ public final class GameCrashReport {
         if (javaCrash != null) { crashed = true; r.append("\n[Java-исключение]\n").append(javaCrash).append('\n'); }
         if (!crashed) return null;
         File root = ClientInstaller.findSampStorageRoot(ctx);
+        String missingFiles = root == null ? null : readTail(new File(root, MISSING_FILE), 3000);
+        if (missingFiles != null && missingFiles.trim().length() > 0) {
+            String[] lines = missingFiles.trim().split("\n");
+            StringBuilder m = new StringBuilder("[Игра не нашла файлы — последний, скорее всего, причина падения]\n");
+            for (int i = Math.max(0, lines.length - 15); i < lines.length; i++) {
+                String path = lines[i];
+                String rootPath = root.getAbsolutePath() + "/";
+                m.append("• ").append(path.startsWith(rootPath) ? path.substring(rootPath.length()) : path).append('\n');
+            }
+            r.insert(0, m.append('\n'));
+        }
         r.append("\n[Подготовка запуска]\n");
         r.append("BASTION_GTA_STORAGE: ").append(root == null ? "корень SAMP не найден" : root.getAbsolutePath() + "/").append('\n');
         if (root != null) {
@@ -105,11 +120,12 @@ public final class GameCrashReport {
         return readTail(new File(ctx.getFilesDir(), REPORT_FILE), 60000);
     }
 
-    private static String readTrace(ApplicationExitInfo e) {
+    private static String readTrace(Context ctx, ApplicationExitInfo e) {
         try {
             InputStream in = e.getTraceInputStream();
             if (in == null) return null;
-            try { return Tombstone.format(in, 60); } finally { in.close(); }
+            ApkLibs apk = new ApkLibs(new File(ctx.getApplicationInfo().sourceDir));
+            try { return Tombstone.format(in, 60, apk); } finally { in.close(); }
         } catch (Exception ex) { return "трасса недоступна: " + ex; }
     }
 
