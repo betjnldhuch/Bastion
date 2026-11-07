@@ -266,6 +266,11 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 		}
 		case ITEM_WEAPON, ITEM_ARMOUR:
 		{
+			if (Biz[b][bType] == BIZ_GUNS && gBizItems[item][biKind] == ITEM_WEAPON && !Licenses_Has(playerid, LIC_GUN))
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Оружие продают только с лицензией. Сдать на неё можно в автошколе у мэрии.");
+				return 1;
+			}
 			if (Biz[b][bType] == BIZ_GUNS && Player[playerid][pLevel] < GUNS_MIN_LEVEL)
 			{
 				SendClientMessage(playerid, COLOR_GREY, "Оружие продают с %d уровня.", GUNS_MIN_LEVEL);

@@ -24,7 +24,8 @@ stock bool:Cmd_Help(playerid)
 	strcat(text, "√рузчик Ч порт Ocean Docks. –азвозчик пиццы Ч пиццери€ Idlewood.\n\n");
 	strcat(text, "{FFFF00}“ранспорт\n");
 	strcat(text, "{FFFFFF}/engine Ч двигатель   /buycar Ч автосалон   /park Ч парковка   /lock Ч замок   /sellcar\n");
-	strcat(text, "ј«—: H в машине Ч заправка, ALT Ч канистра, /canister Ч залить, /fuel Ч бак, /speedo Ч спидометр\n\n");
+	strcat(text, "ј«—: H в машине Ч заправка, ALT Ч канистра, /canister Ч залить, /fuel Ч бак, /speedo Ч спидометр\n");
+	strcat(text, "јвтошкола у мэрии: /exam Ч права и лицензии, /licenses Ч мои, /showlic Ч показать\n\n");
 	strcat(text, "{FFFF00}ƒом\n");
 	strcat(text, "{FFFFFF}/buyhouse   /sellhouse   /enter   /exit   /lock\n\n");
 	strcat(text, "{FFFF00}‘ракции\n");
@@ -34,7 +35,7 @@ stock bool:Cmd_Help(playerid)
 	strcat(text, "/buybiz /sellbiz /bizinfo /bizcash Ч свой бизнес   /turfs /capture Ч районы банд\n\n");
 	strcat(text, "{FFFF00}јдминам\n");
 	strcat(text, "{FFFFFF}/a /goto /gethere /kick /sethp /setskin /veh /dveh /createhouse /givemoney /makeadmin /jail /makeleader /fpslist\n");
-	strcat(text, "/ban /unban /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf /addgate /delgate /addfuel /delfuel /setfuel");
+	strcat(text, "/ban /unban /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf /addgate /delgate /addfuel /delfuel /setfuel /givelic /addexampoint /clearexam");
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "ѕомощь", "%s", "«акрыть", "", text);
 	return true;
 }
@@ -148,6 +149,11 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/fuel", true))        { Cmd_Fuel(playerid); return 1; }
 	if (!strcmp(cmd, "/canister", true))    { Cmd_Canister(playerid); return 1; }
 	if (!strcmp(cmd, "/speedo", true))      { Cmd_Speedo(playerid); return 1; }
+	if (!strcmp(cmd, "/exam", true))        { Cmd_Exam(playerid); return 1; }
+	if (!strcmp(cmd, "/licenses", true))    { Cmd_Licenses(playerid); return 1; }
+	if (!strcmp(cmd, "/showlic", true))     { Cmd_ShowLic(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/checklic", true))    { Cmd_CheckLic(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/takelic", true))     { Cmd_TakeLic(playerid, cmdtext[pos]); return 1; }
 
 	// --- дома (houses.inc) ---
 	if (!strcmp(cmd, "/buyhouse", true))    { Cmd_BuyHouse(playerid); return 1; }
@@ -197,6 +203,9 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/addfuel", true))     { Cmd_AddFuel(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delfuel", true))     { Cmd_DelFuel(playerid); return 1; }
 	if (!strcmp(cmd, "/setfuel", true))     { Cmd_SetFuel(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/givelic", true))     { Cmd_GiveLic(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/addexampoint", true)) { Cmd_AddExamPoint(playerid); return 1; }
+	if (!strcmp(cmd, "/clearexam", true))   { Cmd_ClearExam(playerid); return 1; }
 	if (!strcmp(cmd, "/delatm", true))      { Cmd_DelAtm(playerid); return 1; }
 
 	// --- телефон (phone.inc) ---
