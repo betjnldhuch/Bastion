@@ -339,6 +339,21 @@ replace_exact(main / "res/values/strings.xml", '<string name="app_name">GTA 2.11
 # ---------------------------------------------------------------------------
 # 6. Native dependencies of libsamp.so that are not in jniLibs upstream
 # ---------------------------------------------------------------------------
+# CMake copies libraries linked by path (bass, GlossHook) next to libsamp.so, and
+# upstream also ships some of them in jniLibs. Use one identical, 16 KB-aligned
+# copy of each: the vendor arm64 libbass.so is only 4 KB-aligned, the jniLibs one is 16 KB.
+shutil.copy2(main / "jniLibs/arm64-v8a/libbass.so", cpp / "vendor/bass/libs/arm64-v8a/libbass.so")
+shutil.copy2(main / "jniLibs/arm64-v8a/libbass_ssl.so", cpp / "vendor/bass/libs/arm64-v8a/libbass_ssl.so")
+replace_exact(gradle, """        jniLibs {
+            excludes.add("META-INF/*")
+""", """        jniLibs {
+            excludes.add("META-INF/*")
+            // Same files from jniLibs and from CMake-linked prebuilts.
+            pickFirsts.add("**/libbass.so")
+            pickFirsts.add("**/libbass_ssl.so")
+            pickFirsts.add("**/libGlossHook.so")
+""")
+
 gloss = cpp / "vendor/GlossHook/libs/ARM64/libGlossHook.so"
 if not gloss.exists():
     raise SystemExit("libGlossHook.so (ARM64) not found")
