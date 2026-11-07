@@ -74,7 +74,7 @@ jobs:
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update -qq
-          sudo apt-get install -y -qq libc6:i386 libstdc++6:i386 libgcc-s1:i386 >/dev/null
+          sudo apt-get install -y -qq libc6:i386 libstdc++6:i386 libgcc-s1:i386 libatomic1:i386 >/dev/null
 
       - name: Compile the Bastion gamemode with the bundled pawncc
         run: |
@@ -120,6 +120,7 @@ jobs:
           done
           sleep 2
           cat /tmp/omp.log
+          kill -0 "$(cat /tmp/omp.pid)" || { echo "open.mp server is not running"; exit 1; }
 
       - name: "e2e: new player registers, picks gender, spawns"
         run: /tmp/bastion-e2e 127.0.0.1 7777 Test_Mobile ci_pass_123 register
