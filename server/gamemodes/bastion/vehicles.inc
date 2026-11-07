@@ -18,6 +18,10 @@
 
 #define PERSONAL_RESPAWN    600     // через сколько секунд брошенная машина вернётся на парковку
 
+// Функции из fuel.inc, которые нужны здесь раньше, чем он подключён
+forward Float:Fuel_Get(vehicleid);
+forward bool:Fuel_IsEmpty(vehicleid);
+
 new gVehOwner[MAX_VEHICLES];        // id аккаунта владельца (0 = общая машина)
 new bool:gVehLocked[MAX_VEHICLES];
 new bool:gVehAdmin[MAX_VEHICLES];   // создана админом через /veh
