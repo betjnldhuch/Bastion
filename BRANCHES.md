@@ -38,15 +38,14 @@
 2. Перед PR `develop` → `main`: мод собирается в Qawno без ошибок, вход на сервер
    проверен с ПК и с телефона.
 
-## Старые ветки
+## Архив
 
-`integrate/*`, `feature/android-*`, `launcher-*`, `more-systems`, `initial-import`,
-`backup/*`, `claude/project-thread-30q0tf`, `claude/project-thread-f2os3l` — история.
-Всё, кроме перечисленного ниже, уже входит в `main`.
+Старые ветки разработки (`integrate/*`, `launcher-*`, `more-systems`, `initial-import`,
+`claude/project-thread-*` ранних версий) удалены: всё из них уже в `main`.
+Клиент SampDroid (`integrate/openmp-login-spawn`, релизы `android-v0.6.x`) не используется,
+вместо него SAMP-Mobile GTA-2.11.
 
-- `integrate/openmp-login-spawn` — альтернативный клиент SampDroid с патчем входа/спавна
-  open.mp и e2e-тестом в CI (релизы `android-v0.6.x`). Заменён SAMP-Mobile GTA-2.11,
-  оставлен как источник идей.
-- `feature/android-launcher-v2`, `feature/android-mod-installer`, `backup/2026-11-04` —
-  ранние варианты лаунчера, заменены текущим `mobile/launcher`.
 - `archive/main-2026-11-05` — состояние `main` до обновления 07.11.
+- `archive/backup-2026-11-04`, `archive/feature-android-launcher-v2`,
+  `archive/feature-android-mod-installer` — ранние варианты мобильного лаунчера,
+  которых нет в `main`.
