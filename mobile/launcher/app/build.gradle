@@ -44,6 +44,10 @@ android {
             // Keep .so files uncompressed and 16 KB-aligned inside the APK
             // (Android 15+ devices with 16 KB memory pages).
             useLegacyPackaging false
+            // The SAMP-Mobile module ships these both from jniLibs/AAR and as
+            // CMake/prefab-linked copies: same library, package one.
+            pickFirsts += ['**/libshadowhook.so', '**/libbass.so', '**/libbass_ssl.so',
+                           '**/libGlossHook.so', '**/libc++_shared.so']
         }
         resources {
             excludes += ['META-INF/*']
