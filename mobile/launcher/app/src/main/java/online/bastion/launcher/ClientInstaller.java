@@ -145,12 +145,75 @@ public final class ClientInstaller {
         return root != null && hasGta3Img(root);
     }
 
-    /** models/gta3.img без учёта регистра (в архивах встречается GTA3.IMG). */
+    /**
+     * Есть ли основной IMG так, как его ищет встроенный SampDroid
+     * (MainActivity.mountUserOwnedGtaTree): сначала models/gta3.img, затем
+     * пути из строк «IMG …» в gta.dat. Имена без учёта регистра, «\\» = «/».
+     */
     static boolean hasGta3Img(File root) {
-        File models = childIgnoreCase(root, "models");
-        if (models == null || !models.isDirectory()) return false;
-        File img = childIgnoreCase(models, "gta3.img");
-        return img != null && img.isFile() && img.length() > 0;
+        return findMainImg(root) != null;
+    }
+
+    static File findMainImg(File root) {
+        java.util.List<String> candidates = new java.util.ArrayList<String>();
+        candidates.add("models/gta3.img");
+        File gtaDat = resolveIgnoreCase(root, "data/gta.dat");
+        if (gtaDat == null) gtaDat = resolveIgnoreCase(root, "gta.dat");
+        if (gtaDat != null && gtaDat.isFile() && gtaDat.length() < 1024 * 1024) {
+            try {
+                java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(
+                        new java.io.FileInputStream(gtaDat), "ISO-8859-1"));
+                try {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        String trimmed = line.trim();
+                        if (trimmed.length() > 4 && trimmed.substring(0, 3).equalsIgnoreCase("IMG")
+                                && Character.isWhitespace(trimmed.charAt(3))) {
+                            String path = trimmed.substring(4).trim();
+                            int comment = path.indexOf(';');
+                            if (comment >= 0) path = path.substring(0, comment).trim();
+                            if (path.length() > 0) candidates.add(path);
+                        }
+                    }
+                } finally { reader.close(); }
+            } catch (Exception ignored) {
+                // Нечитаемый gta.dat: остаётся только models/gta3.img.
+            }
+        }
+        for (String candidate : candidates) {
+            File img = resolveIgnoreCase(root, candidate);
+            if (img != null && img.isFile() && img.length() > 0) return img;
+        }
+        return null;
+    }
+
+    /** Относительный путь (с «/» или «\\») внутри root без учёта регистра; «..» запрещён. */
+    private static File resolveIgnoreCase(File root, String relative) {
+        File current = root;
+        for (String segment : relative.replace('\\', '/').split("/")) {
+            if (segment.length() == 0) continue;
+            if (segment.equals(".") || segment.equals("..")) return null;
+            current = childIgnoreCase(current, segment);
+            if (current == null) return null;
+        }
+        return current;
+    }
+
+    /** Что лежит в папке (для понятного сообщения об ошибке). */
+    static String describeFolder(File dir) {
+        File[] children = dir.listFiles();
+        if (children == null || children.length == 0) return "(пусто)";
+        java.util.Arrays.sort(children);
+        StringBuilder out = new StringBuilder();
+        int shown = 0;
+        for (File child : children) {
+            if (child.getName().equals(INSTALL_MARKER)) continue;
+            if (shown == 12) { out.append(", …"); break; }
+            if (shown > 0) out.append(", ");
+            out.append(child.getName()).append(child.isDirectory() ? "/" : "");
+            shown++;
+        }
+        return out.toString();
     }
 
     private static File childIgnoreCase(File dir, String name) {
@@ -241,8 +304,12 @@ public final class ClientInstaller {
                     File dataRoot = findGtaDatRoot(staging, 0);
                     if (dataRoot == null)
                         throw new IllegalStateException("После распаковки не найден data/gta.dat — архив не подходит.");
-                    if (!hasGta3Img(dataRoot))
-                        throw new IllegalStateException("После распаковки не найден models/gta3.img — архив неполный.");
+                    if (!hasGta3Img(dataRoot)) {
+                        File models = resolveIgnoreCase(dataRoot, "models");
+                        throw new IllegalStateException("В архиве нет основного IMG игры: ни models/gta3.img, "
+                                + "ни файла из строк IMG в data/gta.dat.\n\nВ папке игры: " + describeFolder(dataRoot)
+                                + (models != null && models.isDirectory() ? "\nВ models/: " + describeFolder(models) : ""));
+                    }
                     if (!new File(staging, INSTALL_MARKER).createNewFile())
                         throw new IllegalStateException("Не удалось отметить завершение установки.");
 
