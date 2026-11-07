@@ -150,6 +150,15 @@ jobs:
             echo "ok: $marker"
           done
           strings so/lib/arm64-v8a/libsamp.so | grep -q BASTION_GTA_STORAGE || { echo "native storage patch missing"; exit 1; }
+          echo "== crash diagnostics: libsamp.so keeps its symbol table"
+          readelf -S so/lib/arm64-v8a/libsamp.so | grep -q '\.symtab' || { echo "libsamp.so is stripped"; exit 1; }
+          readelf -n so/lib/arm64-v8a/libsamp.so | grep -i "build id" || true
+          echo "libGame.so exported symbols: $(readelf --dyn-syms -W so/lib/arm64-v8a/libGame.so | grep -c FUNC)"
+          mkdir -p ../symbols
+          cp so/lib/arm64-v8a/*.so ../symbols/
+          UNSTRIPPED=$(find ../samp-mobile/app/build/intermediates/cxx -path '*obj/arm64-v8a/libsamp.so' | head -1)
+          test -n "$UNSTRIPPED" && cp "$UNSTRIPPED" ../symbols/libsamp.so
+          ls -la ../symbols
           rm -rf dex so manifest.txt
           ls -la "$APK"
           sha256sum "$APK"
@@ -159,5 +168,13 @@ jobs:
         with:
           name: Bastion-Launcher-SAMP-Mobile-debug
           path: mobile/artifacts/Bastion-Launcher-SAMP-Mobile-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload native libraries for crash symbolization
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bastion-native-symbols
+          path: mobile/symbols/*.so
           if-no-files-found: error
           retention-days: 30

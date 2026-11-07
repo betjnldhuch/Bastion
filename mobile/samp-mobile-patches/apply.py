@@ -200,6 +200,12 @@ for source in cpp_root.rglob("*"):
 print(f"fixed letter case / separators in {case_fixes} #include directive(s)")
 
 # ---------------------------------------------------------------------------
+# 1c. Keep symbols in libsamp.so (no "-s"), so on-device tombstones show
+#     function names and CI can keep an unstripped copy for symbolization.
+# ---------------------------------------------------------------------------
+replace_exact(cpp / "CMakeLists.txt", '"${CMAKE_CXX_FLAGS} -w -s -g ', '"${CMAKE_CXX_FLAGS} -w -g ')
+
+# ---------------------------------------------------------------------------
 # 2. Java: export the storage path before native libraries load
 # ---------------------------------------------------------------------------
 base = main / "java/com/rockstargames/oswrapper/GameActivityBase.java"

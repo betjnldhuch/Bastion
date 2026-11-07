@@ -570,15 +570,11 @@ public class MainActivity extends Activity {
     private void showGameCrashIfAny() {
         final String report = GameCrashReport.collectNew(this);
         if (report == null) return;
-        String brief = report.length() > 1100 ? report.substring(0, 1100) + "…" : report;
+        String brief = report.length() > 900 ? report.substring(0, 900) + "…" : report;
         notice("Игра закрылась с ошибкой",
-                brief + "\n\nПолный отчёт сохранён и есть в «Диагностике».",
-                "Копировать отчёт", new Runnable() {
-                    @Override public void run() {
-                        android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                        cm.setPrimaryClip(android.content.ClipData.newPlainText("Bastion game crash", report));
-                        android.widget.Toast.makeText(MainActivity.this, "Отчёт скопирован", android.widget.Toast.LENGTH_SHORT).show();
-                    }
+                brief + "\n\nПолный отчёт (стек, библиотеки, logcat) — кнопка ниже: его можно скопировать или отправить.",
+                "Полный отчёт", new Runnable() {
+                    @Override public void run() { runDiagnostics(); }
                 });
     }
 

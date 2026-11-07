@@ -11,8 +11,8 @@ android {
         // SAMP-Mobile GTA-2.11 requires Android 9+ (API 28) and ARM64.
         minSdk 28
         targetSdk 34
-        versionCode 9
-        versionName "0.6.2"
+        versionCode 10
+        versionName "0.6.3"
         multiDexEnabled true
 
         ndk {
@@ -48,6 +48,9 @@ android {
             // CMake/prefab-linked copies: same library, package one.
             pickFirsts += ['**/libshadowhook.so', '**/libbass.so', '**/libbass_ssl.so',
                            '**/libGlossHook.so', '**/libc++_shared.so']
+            // Crash diagnostics: keep the symbol table of the client library,
+            // so native tombstones on the device contain function names.
+            keepDebugSymbols += ['**/libsamp.so']
         }
         resources {
             excludes += ['META-INF/*']

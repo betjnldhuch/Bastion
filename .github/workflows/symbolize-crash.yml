@@ -1,0 +1,46 @@
+name: Symbolize Bastion game crash
+
+# Запуск вручную: вставь «Полный отчёт» из лаунчера (или только строки стека)
+# и номер запуска сборки APK, с которого установлен лаунчер.
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: "ID запуска 'Build single Bastion Android APK' (из ссылки .../actions/runs/<ID>)"
+        required: true
+      report:
+        description: "Текст отчёта о падении (строки '#00 pc ...')"
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  symbolize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download native libraries of that build
+        uses: actions/download-artifact@v4
+        with:
+          name: Bastion-native-symbols
+          path: libs
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Symbolize
+        env:
+          REPORT: ${{ inputs.report }}
+        run: |
+          printf '%s\n' "$REPORT" > report.txt
+          SYM=$(ls -d /usr/local/lib/android/sdk/ndk/*/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-symbolizer 2>/dev/null | tail -1 || true)
+          [ -n "$SYM" ] || SYM=$(ls /usr/bin/llvm-symbolizer* | head -1)
+          python3 mobile/tools/symbolize.py report.txt libs "$SYM" | tee symbolized.txt
+          {
+            echo '### Символизированный стек'
+            echo '```'
+            cat symbolized.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

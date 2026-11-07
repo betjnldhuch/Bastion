@@ -86,8 +86,11 @@ final class Tombstone {
         List<Field> top = fields(data);
         byte[] crashThread = null;
         List<byte[]> threads = new ArrayList<byte[]>();
+        List<byte[]> mappings = new ArrayList<byte[]>();
         for (Field f : top) {
-            if (f.number == 6 && f.wire == 0) crashTid = f.varint;
+            if (f.number == 2 && f.wire == 2) r.append("Сборка Android: ").append(f.str()).append('\n');
+            else if (f.number == 17 && f.wire == 2) mappings.add(f.bytes);
+            else if (f.number == 6 && f.wire == 0) crashTid = f.varint;
             else if (f.number == 14 && f.wire == 2) abort = f.str();
             else if (f.number == 10 && f.wire == 2) {               // Signal
                 String name = "", code = "";
@@ -120,7 +123,35 @@ final class Tombstone {
         }
         if (abort != null && abort.length() > 0) r.append("Abort: ").append(abort).append('\n');
         if (crashThread == null && !threads.isEmpty()) crashThread = threads.get(0);
-        if (crashThread != null) appendThread(r, crashThread);
+        if (crashThread != null) appendThread(r, crashThread, 64, true);
+
+        r.append("\n[Загруженные библиотеки приложения: base, offset, build-id]\n");
+        for (byte[] m : mappings) {
+            long begin = 0, end = 0, offset = 0, bias = 0;
+            boolean exec = false;
+            String name = "", build = "";
+            for (Field f : fields(m)) {
+                if (f.number == 1 && f.wire == 0) begin = f.varint;
+                else if (f.number == 2 && f.wire == 0) end = f.varint;
+                else if (f.number == 3 && f.wire == 0) offset = f.varint;
+                else if (f.number == 6 && f.wire == 0) exec = f.varint != 0;
+                else if (f.number == 7 && f.wire == 2) name = f.str();
+                else if (f.number == 8 && f.wire == 2) build = f.str();
+                else if (f.number == 9 && f.wire == 0) bias = f.varint;
+            }
+            if (!exec || !(name.contains("online.bastion.launcher") || name.endsWith(".so") && name.contains("/data/"))) continue;
+            r.append(String.format("%012x-%012x off %08x  %s", begin, end, offset, shortName(name)));
+            if (build.length() > 0) r.append("  bid ").append(build);
+            r.append('\n');
+        }
+
+        r.append("\n[Другие потоки: верх стека]\n");
+        int shown = 0;
+        for (byte[] t : threads) {
+            if (t == crashThread) continue;
+            appendThread(r, t, 3, false);
+            if (++shown >= 40) break;
+        }
 
         if (maxLogLines > 0) {
             List<String> logs = new ArrayList<String>();
@@ -147,30 +178,42 @@ final class Tombstone {
         return r.toString();
     }
 
-    private static void appendThread(StringBuilder r, byte[] thread) {
+    private static String shortName(String file) {
+        int apk = file.indexOf(".apk!");
+        if (apk >= 0) return file.substring(apk + 5);
+        int slash = file.lastIndexOf('/');
+        return slash >= 0 ? file.substring(slash + 1) : file;
+    }
+
+    private static void appendThread(StringBuilder r, byte[] thread, int maxFrames, boolean header) {
         String name = "";
+        long tid = 0;
         List<byte[]> frames = new ArrayList<byte[]>();
         for (Field t : fields(thread)) {
-            if (t.number == 2 && t.wire == 2) name = t.str();
+            if (t.number == 1 && t.wire == 0) tid = t.varint;
+            else if (t.number == 2 && t.wire == 2) name = t.str();
             else if (t.number == 4 && t.wire == 2) frames.add(t.bytes);
         }
-        r.append("Поток: ").append(name).append('\n').append("Стек:\n");
+        if (header) r.append("Упавший поток: ").append(name).append(" (tid ").append(tid).append(")\nСтек:\n");
+        else r.append("-- ").append(name).append(" (tid ").append(tid).append(")\n");
         int i = 0;
         for (byte[] frame : frames) {
-            long relPc = 0, fnOff = 0;
-            String fn = "", file = "";
+            long relPc = 0, fnOff = 0, mapOff = 0;
+            String fn = "", file = "", build = "";
             for (Field f : fields(frame)) {
                 if (f.number == 1 && f.wire == 0) relPc = f.varint;
                 else if (f.number == 4 && f.wire == 2) fn = f.str();
                 else if (f.number == 5 && f.wire == 0) fnOff = f.varint;
                 else if (f.number == 6 && f.wire == 2) file = f.str();
+                else if (f.number == 7 && f.wire == 0) mapOff = f.varint;
+                else if (f.number == 8 && f.wire == 2) build = f.str();
             }
-            int slash = file.lastIndexOf('/');
-            String shortFile = slash >= 0 ? file.substring(slash + 1) : file;
-            r.append(String.format("#%02d pc %08x  %s", i, relPc, shortFile));
+            r.append(String.format("#%02d pc %08x  %s", i, relPc, shortName(file)));
+            if (mapOff != 0) r.append(String.format(" (offset 0x%x)", mapOff));
             if (fn.length() > 0) r.append(" (").append(fn).append('+').append(fnOff).append(')');
+            if (header && build.length() > 0) r.append(" (BuildId: ").append(build).append(')');
             r.append('\n');
-            if (++i >= 40) break;
+            if (++i >= maxFrames) break;
         }
     }
 }

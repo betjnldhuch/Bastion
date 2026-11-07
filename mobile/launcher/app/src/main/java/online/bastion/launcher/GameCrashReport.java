@@ -73,6 +73,21 @@ public final class GameCrashReport {
         if (javaCrash != null) { crashed = true; r.append("\n[Java-исключение]\n").append(javaCrash).append('\n'); }
         if (!crashed) return null;
         File root = ClientInstaller.findSampStorageRoot(ctx);
+        r.append("\n[Подготовка запуска]\n");
+        r.append("BASTION_GTA_STORAGE: ").append(root == null ? "корень SAMP не найден" : root.getAbsolutePath() + "/").append('\n');
+        if (root != null) {
+            for (String rel : ClientInstaller.REQUIRED_FILES) {
+                File f = ClientInstaller.resolveIgnoreCase(root, rel);
+                r.append(f != null && f.isFile() ? "ok  " : "НЕТ ").append(rel)
+                        .append(f != null && f.isFile() ? " (" + f.length() + " Б)" : "").append('\n');
+            }
+            File ini = ClientInstaller.resolveIgnoreCase(root, "SAMP/settings.ini");
+            r.append(ini != null ? "ok  " : "НЕТ ").append("SAMP/settings.ini\n");
+            File texdb = ClientInstaller.resolveIgnoreCase(root, "texdb");
+            r.append(texdb != null ? "ok  " : "НЕТ ").append("texdb/").append('\n');
+        }
+        r.append("Устройство: ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL)
+                .append(", Android ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")\n");
         if (root != null) {
             String log = readTail(new File(root, "logcat.txt"), 5000);
             if (log != null) r.append("\n[logcat.txt клиента, конец]\n").append(log).append('\n');
@@ -87,7 +102,7 @@ public final class GameCrashReport {
 
     /** Последний сохранённый отчёт (для «Диагностики»). */
     public static String last(Context ctx) {
-        return readTail(new File(ctx.getFilesDir(), REPORT_FILE), 12000);
+        return readTail(new File(ctx.getFilesDir(), REPORT_FILE), 60000);
     }
 
     private static String readTrace(ApplicationExitInfo e) {

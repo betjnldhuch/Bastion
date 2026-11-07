@@ -56,6 +56,8 @@ public final class Diagnostics {
     public static String report(Context ctx) {
         StringBuilder r = new StringBuilder();
         r.append("=== Bastion Online: диагностика ===\n");
+        String game = GameCrashReport.last(ctx);
+        r.append("\n[Последнее падение игры]\n").append(game == null ? "нет\n" : game).append('\n');
         try {
             r.append("Лаунчер: ").append(ctx.getPackageManager()
                     .getPackageInfo(ctx.getPackageName(), 0).versionName).append('\n');
@@ -129,8 +131,6 @@ public final class Diagnostics {
                 r.append('\n');
             }
         }
-        String game = GameCrashReport.last(ctx);
-        r.append("\n[Последнее падение игры]\n").append(game == null ? "нет\n" : game);
         String crash = lastCrash(ctx);
         r.append("\n[Последний вылет лаунчера]\n").append(crash == null ? "нет\n" : crash);
         return r.toString();
