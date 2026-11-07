@@ -260,6 +260,42 @@ replace_exact(base, "    public static GameActivityBase getInstance() {", """   
     public static GameActivityBase getInstance() {""")
 
 # ---------------------------------------------------------------------------
+# 2b. Game language. libGame.so maps the value of getDeviceLocale() through
+#     OS_LanguageUserSelected (table at 0x271d24) and InitialiseLanguage:
+#       0 AMERICAN, 1 FRENCH, 2 GERMAN, 3 ITALIAN, 4 SPANISH, 5 JAPANESE, 9 RUSSIAN
+#     Upstream returns 5 for "ru", so Russian devices open text/japanese.gxt,
+#     NvFOpen returns NULL and OS_FileRead(NULL) crashes (SIGSEGV at 0x10).
+#     The launcher passes "bastion.language" = the language whose .gxt is installed.
+# ---------------------------------------------------------------------------
+lang = main / "java/com/rockstargames/oswrapper/services/LanguageServices.java"
+lang_text = read(lang)
+start = lang_text.find("    public int getDeviceLocale() {")
+end = lang_text.rfind("}")
+if start < 0 or end < 0:
+    raise SystemExit("LanguageServices.getDeviceLocale not found")
+end = lang_text.rfind("}", 0, end)  # end of getDeviceLocale
+write(lang, lang_text[:start] + """    public int getDeviceLocale() {
+        // Values are libGame.so codes (see apply.py): 0 en, 1 fr, 2 de, 3 it, 4 es, 5 ja, 9 ru.
+        String language = null;
+        try {
+            if (activity.getIntent() != null) language = activity.getIntent().getStringExtra("bastion.language");
+        } catch (Exception ignored) { }
+        if (language == null || language.isEmpty()) language = java.util.Locale.getDefault().getLanguage();
+        switch (language) {
+            case "fr": return 1;
+            case "de": return 2;
+            case "it": return 3;
+            case "es": return 4;
+            case "ja": return 5;
+            case "ru": return 9;
+            default:   return 0;
+        }
+    }
+""" + lang_text[end + 1:])
+if 'return 9' not in read(lang) or 'if (language.equals("ru")) return 5' in read(lang):
+    raise SystemExit("language mapping patch failed")
+
+# ---------------------------------------------------------------------------
 # 3. Gradle: application -> library, without Firebase
 # ---------------------------------------------------------------------------
 gradle = app / "build.gradle.kts"

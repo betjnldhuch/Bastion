@@ -234,7 +234,38 @@ public final class ClientInstaller {
         }
         File texdb = resolveIgnoreCase(root, "texdb");
         if (texdb == null || !texdb.isDirectory()) missing.add("texdb/");
+        if (chooseGameLanguage(root) == null) missing.add("text/russian.gxt или text/american.gxt");
         return missing;
+    }
+
+    /** Языки движка GTA SA (libGame.so) и их файлы текстов. */
+    static final String[][] GAME_LANGUAGES = {
+            {"ru", "text/russian.gxt"}, {"en", "text/american.gxt"}, {"fr", "text/french.gxt"},
+            {"de", "text/german.gxt"}, {"it", "text/italian.gxt"}, {"es", "text/spanish.gxt"},
+            {"ja", "text/japanese.gxt"}
+    };
+
+    /**
+     * Язык игры, для которого в установке есть .gxt: язык телефона, иначе русский,
+     * иначе английский, иначе любой установленный. null — текстов игры нет вообще.
+     * Передаётся клиенту как bastion.language (без этого движок открывает файл по
+     * языку телефона и падает, если его нет в кэше).
+     */
+    public static String chooseGameLanguage(File root) {
+        String device = java.util.Locale.getDefault().getLanguage();
+        String[] order = {device, "ru", "en", "fr", "de", "it", "es", "ja"};
+        for (String want : order)
+            for (String[] lang : GAME_LANGUAGES)
+                if (lang[0].equals(want)) {
+                    File f = resolveIgnoreCase(root, lang[1]);
+                    if (f != null && f.isFile() && f.length() > 0) return lang[0];
+                }
+        return null;
+    }
+
+    static String gxtFor(String language) {
+        for (String[] lang : GAME_LANGUAGES) if (lang[0].equals(language)) return lang[1];
+        return "text/american.gxt";
     }
 
     /** Находит файл по относительному пути без учёта регистра. */

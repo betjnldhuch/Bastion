@@ -100,6 +100,8 @@ public final class GameCrashReport {
             r.append(ini != null ? "ok  " : "НЕТ ").append("SAMP/settings.ini\n");
             File texdb = ClientInstaller.resolveIgnoreCase(root, "texdb");
             r.append(texdb != null ? "ok  " : "НЕТ ").append("texdb/").append('\n');
+            String language = ClientInstaller.chooseGameLanguage(root);
+            r.append("Язык игры: ").append(language == null ? "нет ни одного text/*.gxt" : language + " (" + ClientInstaller.gxtFor(language) + ")").append('\n');
         }
         r.append("Устройство: ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL)
                 .append(", Android ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")\n");

@@ -795,6 +795,9 @@ public class MainActivity extends Activity {
         // bastion.storage — корень для SAMP-Mobile (где лежит SAMP/), заменяет /storage/emulated/0/GTA/.
         java.io.File storage = ClientInstaller.findSampStorageRoot(this);
         if (storage != null) i.putExtra("bastion.storage", storage.getAbsolutePath() + "/");
+        // Язык, для которого установлен text/*.gxt (движок иначе берёт язык телефона).
+        String language = storage == null ? null : ClientInstaller.chooseGameLanguage(storage);
+        if (language != null) i.putExtra("bastion.language", language);
         java.io.File gameData = ClientInstaller.findGameDataRoot(this);
         if (gameData != null) i.putExtra("bastion.game_dir", gameData.getAbsolutePath());
         // Настройки лаунчера (те же значения записаны в bastion.cfg).
