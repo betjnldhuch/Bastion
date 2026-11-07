@@ -35,6 +35,11 @@
 #define CHAT_RADIUS         20.0
 #define SHOUT_RADIUS        40.0
 
+// Топливо (fuel.inc)
+#define FUEL_TANK           60               // литров в баке любой машины
+#define FUEL_PRICE          5                // цена литра на новых АЗС (у каждой АЗС можно своя: /addfuel)
+#define FUEL_CANISTER       20               // литров в канистре
+
 // Фракции (factions.inc)
 #define FACTION_SALARY_BASE 300              // зарплата полиции и медиков на PayDay...
 #define FACTION_SALARY_RANK 100              // ...плюс столько за каждый ранг

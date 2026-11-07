@@ -36,6 +36,7 @@
 #include "bastion/database.inc"
 #include "bastion/accounts.inc"
 #include "bastion/vehicles.inc"
+#include "bastion/fuel.inc"
 #include "bastion/houses.inc"
 #include "bastion/jobs.inc"
 #include "bastion/chat.inc"
@@ -84,6 +85,7 @@ public OnGameModeInit()
 	Business_Init();
 	Gates_Init();
 	Fps_Init();
+	Fuel_Init();          // после всех машин: им выдаётся бензин
 
 	new hour;
 	gettime(hour);
@@ -99,6 +101,7 @@ public OnGameModeExit()
 	{
 		if (IsPlayerConnected(i)) Account_Save(i);
 	}
+	Fuel_Exit();
 	DB_Shutdown();
 	return 1;
 }
@@ -124,6 +127,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Phone_HangUp(playerid);
 	Account_Save(playerid);
 	Vehicles_UnloadForPlayer(playerid);
+	Fuel_OnDisconnect(playerid);
 	Player[playerid][pLogged] = false;
 	return 1;
 }
@@ -220,6 +224,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Bank_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Business_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Keys_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Fuel_OnDialog(playerid, dialogid, response, inputtext)) return 1;
 	return 0;
 }
 
@@ -250,6 +255,7 @@ public OnPlayerKeyStateChange(playerid, KEY:newkeys, KEY:oldkeys)
 
 public OnVehicleSpawn(vehicleid)
 {
+	Fuel_OnVehicleSpawn(vehicleid);
 	Vehicles_OnSpawn(vehicleid);
 	return 1;
 }
