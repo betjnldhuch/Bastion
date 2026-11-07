@@ -94,18 +94,7 @@ public final class GameCrashReport {
         try {
             InputStream in = e.getTraceInputStream();
             if (in == null) return null;
-            try {
-                java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(in, "UTF-8"));
-                StringBuilder sb = new StringBuilder();
-                String l;
-                int lines = 0;
-                while ((l = br.readLine()) != null && lines < 80) {
-                    if (l.trim().length() == 0) continue;
-                    sb.append(l).append('\n');
-                    lines++;
-                }
-                return sb.toString();
-            } finally { in.close(); }
+            try { return Tombstone.format(in, 60); } finally { in.close(); }
         } catch (Exception ex) { return "трасса недоступна: " + ex; }
     }
 
@@ -124,13 +113,14 @@ public final class GameCrashReport {
     }
 
     private static String reasonName(int reason) {
+        // Значения ApplicationExitInfo.REASON_*.
         switch (reason) {
-            case 4: return "нативное падение (CRASH_NATIVE)";
-            case 5: return "Java-исключение (CRASH)";
-            case 6: return "зависание (ANR)";
-            case 3: return "низкая память (LOW_MEMORY)";
-            case 2: return "сигнал (SIGNALED)";
             case 1: return "выход с кодом (EXIT_SELF)";
+            case 2: return "сигнал (SIGNALED)";
+            case 3: return "нехватка памяти (LOW_MEMORY)";
+            case 4: return "Java-исключение (CRASH)";
+            case 5: return "нативное падение (CRASH_NATIVE)";
+            case 6: return "зависание (ANR)";
             case 7: return "ошибка инициализации (INITIALIZATION_FAILURE)";
             default: return "код " + reason;
         }

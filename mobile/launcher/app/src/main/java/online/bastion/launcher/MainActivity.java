@@ -570,7 +570,7 @@ public class MainActivity extends Activity {
     private void showGameCrashIfAny() {
         final String report = GameCrashReport.collectNew(this);
         if (report == null) return;
-        String brief = report.length() > 700 ? report.substring(0, 700) + "…" : report;
+        String brief = report.length() > 1100 ? report.substring(0, 1100) + "…" : report;
         notice("Игра закрылась с ошибкой",
                 brief + "\n\nПолный отчёт сохранён и есть в «Диагностике».",
                 "Копировать отчёт", new Runnable() {
