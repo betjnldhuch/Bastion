@@ -113,30 +113,81 @@ public final class ClientInstaller {
     }
 
 
-    /** Download a user-supplied HTTPS ZIP and safely extract it into the app's client folder. */
-    public void installArchive(final String address, final Callback callback) {
+    // ------------------------------------------------------------------
+    //  Установка игры из ZIP-архива (логика рабочего BastionLauncher3)
+    // ------------------------------------------------------------------
+
+    /** Архив игры по умолчанию — тот же, что в рабочем установщике. */
+    public static final String GAME_ARCHIVE_URL = "http://192.168.31.182:8000/game.zip";
+    /** MD5 архива по умолчанию. Для своей ссылки проверка MD5 не выполняется. */
+    public static final String GAME_ARCHIVE_MD5 = "57A0F9765B2C229FD814E11D36F5EF00";
+    /** Из архива берётся только эта папка, её содержимое кладётся в files/game. */
+    private static final String GAME_ARCHIVE_PREFIX = "Data file Lite (samp)/ru.unisamp_mobile.game/files/";
+    private static final String INSTALL_MARKER = ".install_complete";
+    private static final long MAX_ARCHIVE_SIZE = 2147483648L;     // 2 ГБ
+    private static final long MAX_EXTRACTED_SIZE = 4294967296L;   // 4 ГБ
+
+    /** Папка установленной игры: Android/data/online.bastion.launcher/files/game. */
+    public static File gameDir(Context context) {
+        File external = context.getExternalFilesDir(null);
+        return external == null ? null : new File(external, "game");
+    }
+
+    /** Игра считается установленной, если установка дошла до конца и есть папка SAMP. */
+    public static boolean isGameInstalled(Context context) {
+        File dir = gameDir(context);
+        return dir != null && new File(dir, INSTALL_MARKER).exists() && new File(dir, "SAMP").isDirectory();
+    }
+
+    /**
+     * Скачивает ZIP (http или https), сверяет MD5 (если он передан), распаковывает
+     * папку GAME_ARCHIVE_PREFIX во временную папку и только после успеха
+     * заменяет ею files/game. При ошибке старая установка остаётся.
+     */
+    public void installArchive(final String address, final String expectedMd5, final Callback callback) {
         new Thread(new Runnable() {
             @Override public void run() {
-                File archive = null, staging = null;
+                File archive = null, part = null, staging = null;
                 try {
-                    if (address == null || !address.trim().startsWith("https://"))
-                        throw new IllegalArgumentException("Нужна прямая HTTPS-ссылка на ZIP-архив клиента.");
+                    String url = address == null ? "" : address.trim();
+                    if (!url.startsWith("http://") && !url.startsWith("https://"))
+                        throw new IllegalArgumentException("Нужна прямая ссылка на ZIP-архив (http:// или https://).");
                     File external = context.getExternalFilesDir(null);
                     if (external == null) throw new IllegalStateException("Android не предоставил папку для файлов.");
-                    if (!external.exists() && !external.mkdirs()) throw new IllegalStateException("Не удалось создать папку загрузки.");
-                    archive = new File(external, "bastion-client-download.zip");
-                    staging = new File(external, "client-installing");
+                    File downloads = new File(external, "downloads");
+                    if (!downloads.exists() && !downloads.mkdirs())
+                        throw new IllegalStateException("Не удалось создать папку загрузки.");
+                    archive = new File(downloads, "bastion_cache.zip");
+                    part = new File(downloads, "bastion_cache.zip.part");
+                    staging = new File(external, "game-installing");
                     deleteTree(staging);
                     if (!staging.mkdirs()) throw new IllegalStateException("Не удалось подготовить установку.");
-                    report(callback, "Скачивание архива клиента…");
-                    downloadArchive(address.trim(), archive, callback);
-                    report(callback, "Распаковка файлов клиента…");
-                    int count = extractZip(archive, staging);
-                    if (count == 0) throw new IllegalStateException("Архив пустой — файлов для установки нет.");
-                    File root = new File(external, "client");
-                    File backup = new File(external, "client-previous");
+
+                    report(callback, "Подключение к серверу…");
+                    downloadArchive(url, part, callback);
+                    if (archive.exists() && !archive.delete())
+                        throw new IllegalStateException("Не удалось заменить старый архив.");
+                    if (!part.renameTo(archive)) throw new IllegalStateException("Не удалось сохранить архив.");
+
+                    if (expectedMd5 != null && expectedMd5.trim().length() > 0) {
+                        report(callback, "Проверка архива (MD5)…");
+                        String actual = fileDigest(archive, "MD5");
+                        if (!actual.equalsIgnoreCase(expectedMd5.trim()))
+                            throw new SecurityException("MD5 не совпадает! Архив повреждён или это другая версия.");
+                    }
+
+                    report(callback, "Распаковка файлов игры…");
+                    int count = extractZip(archive, staging, GAME_ARCHIVE_PREFIX, callback);
+                    if (count == 0)
+                        throw new IllegalStateException("В архиве нет папки «" + GAME_ARCHIVE_PREFIX + "».");
+                    if (!new File(staging, INSTALL_MARKER).createNewFile())
+                        throw new IllegalStateException("Не удалось отметить завершение установки.");
+
+                    File root = new File(external, "game");
+                    File backup = new File(external, "game-previous");
                     deleteTree(backup);
-                    if (root.exists() && !root.renameTo(backup)) throw new IllegalStateException("Не удалось сохранить предыдущую установку.");
+                    if (root.exists() && !root.renameTo(backup))
+                        throw new IllegalStateException("Не удалось сохранить предыдущую установку.");
                     if (!staging.renameTo(root)) {
                         if (backup.exists()) backup.renameTo(root);
                         throw new IllegalStateException("Не удалось завершить установку файлов.");
@@ -150,6 +201,7 @@ public final class ClientInstaller {
                     });
                 } catch (final Exception e) {
                     if (staging != null) deleteTree(staging);
+                    if (part != null) part.delete();
                     if (archive != null) archive.delete();
                     main.post(new Runnable() {
                         @Override public void run() { callback.onError(e.getMessage() == null ? e.toString() : e.getMessage()); }
@@ -168,21 +220,25 @@ public final class ClientInstaller {
         try {
             int code = connection.getResponseCode();
             if (code < 200 || code >= 300) throw new IllegalStateException("Ошибка загрузки архива: HTTP " + code);
-            long expected = (long) connection.getContentLength();
-            if (expected > 2147483648L) throw new IllegalStateException("Архив превышает лимит 2 ГБ.");
+            long expected = connection.getContentLength();
+            if (expected > MAX_ARCHIVE_SIZE) throw new IllegalStateException("Архив превышает лимит 2 ГБ.");
             InputStream in = new BufferedInputStream(connection.getInputStream());
             FileOutputStream out = new FileOutputStream(target);
             try {
                 byte[] buffer = new byte[32768];
                 long total = 0;
+                int lastPercent = -1;
                 int n;
                 while ((n = in.read(buffer)) != -1) {
                     total += n;
-                    if (total > 2147483648L) throw new IllegalStateException("Архив превышает лимит 2 ГБ.");
+                    if (total > MAX_ARCHIVE_SIZE) throw new IllegalStateException("Архив превышает лимит 2 ГБ.");
                     out.write(buffer, 0, n);
                     if (expected > 0) {
-                        final int percent = (int) Math.min(99, total * 100 / expected);
-                        report(callback, "Скачивание архива клиента… " + percent + "%");
+                        int percent = (int) Math.min(100, total * 100 / expected);
+                        if (percent != lastPercent) {
+                            lastPercent = percent;
+                            report(callback, "Скачивание файлов: " + percent + "%  (" + (total / 1048576) + " / " + (expected / 1048576) + " МБ)");
+                        }
                     } else if (total / 1048576 != (total - n) / 1048576) {
                         report(callback, "Скачано: " + (total / 1048576) + " МБ");
                     }
@@ -196,7 +252,8 @@ public final class ClientInstaller {
         } finally { connection.disconnect(); }
     }
 
-    private static int extractZip(File archive, File destination) throws Exception {
+    /** Распаковывает только записи внутри prefix (сам prefix отрезается). Возвращает число файлов. */
+    private int extractZip(File archive, File destination, String prefix, Callback callback) throws Exception {
         java.util.zip.ZipInputStream zip = new java.util.zip.ZipInputStream(
                 new BufferedInputStream(new java.io.FileInputStream(archive)));
         int count = 0;
@@ -207,33 +264,46 @@ public final class ClientInstaller {
             String base = destination.getCanonicalPath() + File.separator;
             while ((entry = zip.getNextEntry()) != null) {
                 String name = entry.getName();
-                if (name == null || name.length() == 0 || name.startsWith("/")
-                        || name.indexOf('\\') >= 0 || name.matches("^[A-Za-z]:.*"))
+                if (name == null || !name.startsWith(prefix)) { zip.closeEntry(); continue; }
+                String relative = name.substring(prefix.length());
+                if (relative.length() == 0) { zip.closeEntry(); continue; }
+                if (relative.startsWith("/") || relative.indexOf('\\') >= 0 || relative.matches("^[A-Za-z]:.*"))
                     throw new SecurityException("Недопустимый путь в архиве: " + name);
-                File outFile = new File(destination, name);
-                String canonical = outFile.getCanonicalPath();
-                if (!canonical.startsWith(base) && !canonical.equals(destination.getCanonicalPath()))
-                    throw new SecurityException("Архив пытается записать файл вне папки клиента: " + name);
+                File outFile = new File(destination, relative);
+                if (!outFile.getCanonicalPath().startsWith(base))
+                    throw new SecurityException("Архив пытается записать файл вне папки игры: " + name);
                 if (entry.isDirectory()) {
-                    if (!outFile.exists() && !outFile.mkdirs()) throw new IllegalStateException("Не удалось создать папку: " + name);
+                    if (!outFile.exists() && !outFile.mkdirs()) throw new IllegalStateException("Не удалось создать папку: " + relative);
                 } else {
                     File parent = outFile.getParentFile();
-                    if (parent != null && !parent.exists() && !parent.mkdirs()) throw new IllegalStateException("Не удалось создать папку: " + name);
+                    if (parent != null && !parent.exists() && !parent.mkdirs()) throw new IllegalStateException("Не удалось создать папку: " + relative);
                     FileOutputStream out = new FileOutputStream(outFile);
                     try {
                         int n;
                         while ((n = zip.read(buffer)) != -1) {
                             total += n;
-                            if (total > 4294967296L) throw new IllegalStateException("Распакованные файлы превышают лимит 4 ГБ.");
+                            if (total > MAX_EXTRACTED_SIZE) throw new IllegalStateException("Распакованные файлы превышают лимит 4 ГБ.");
                             out.write(buffer, 0, n);
                         }
                     } finally { out.close(); }
                     count++;
+                    if (count % 50 == 0) report(callback, "Распаковка файлов игры… " + count);
                 }
                 zip.closeEntry();
             }
         } finally { zip.close(); }
         return count;
+    }
+
+    private static String fileDigest(File file, String algorithm) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance(algorithm);
+        InputStream in = new BufferedInputStream(new java.io.FileInputStream(file));
+        try {
+            byte[] buffer = new byte[32768];
+            int n;
+            while ((n = in.read(buffer)) != -1) digest.update(buffer, 0, n);
+        } finally { in.close(); }
+        return hex(digest.digest());
     }
 
     private static void deleteTree(File file) {

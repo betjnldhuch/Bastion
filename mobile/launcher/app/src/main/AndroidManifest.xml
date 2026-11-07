@@ -15,6 +15,7 @@
         android:icon="@mipmap/ic_launcher"
         android:theme="@style/BastionTheme"
         android:allowBackup="true"
+        android:usesCleartextTraffic="true"
         android:hardwareAccelerated="true">
 
         <activity

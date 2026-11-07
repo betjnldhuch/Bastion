@@ -37,6 +37,7 @@ public class MainActivity extends Activity {
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final List<ServerCard> cards = new ArrayList<ServerCard>();
     private EditText nickField;
+    private TextView playButton;
     private boolean resumed;
 
     private final Runnable poll = new Runnable() {
@@ -64,6 +65,7 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         resumed = true;
+        updatePlayButton();
         hideSystemBars();
         ui.removeCallbacks(poll);
         ui.post(poll);
@@ -273,8 +275,9 @@ public class MainActivity extends Activity {
 
         TextView play = Ui.primaryButton(this, "ИГРАТЬ");
         play.setTextColor(Color.BLACK);
-        play.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
         play.setLetterSpacing(0.02f);
+        playButton = play;
+        updatePlayButton();
         play.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { onPlay(); }
         });
@@ -417,9 +420,28 @@ public class MainActivity extends Activity {
     // ==================================================================
     //  Кнопка ИГРАТЬ
     // ==================================================================
+    /** «ИГРАТЬ», если файлы игры установлены, иначе «УСТАНОВИТЬ». */
+    private void updatePlayButton() {
+        if (playButton == null) return;
+        boolean installed = ClientInstaller.isGameInstalled(this);
+        playButton.setText(installed ? "ИГРАТЬ" : "УСТАНОВИТЬ");
+        playButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, installed ? 22 : 18);
+    }
+
     private void onPlay() {
         hideKeyboard();
         saveNick();
+        if (!ClientInstaller.isGameInstalled(this)) {
+            notice("Нужно установить игру",
+                    "Файлы игры ещё не скачаны. Лаунчер скачает архив с сервера Bastion, проверит его и распакует.\n\nАдрес: "
+                            + ClientInstaller.GAME_ARCHIVE_URL,
+                    "Скачать", new Runnable() {
+                        @Override public void run() {
+                            startArchiveInstall(ClientInstaller.GAME_ARCHIVE_URL, ClientInstaller.GAME_ARCHIVE_MD5);
+                        }
+                    });
+            return;
+        }
         String nick = cfg.nickname;
         if (nick.length() == 0) {
             notice("Введи ник", "Ник нужен для входа на сервер. Формат: Имя_Фамилия, например Ivan_Petrov.", null, null);
@@ -438,7 +460,8 @@ public class MainActivity extends Activity {
         final EditText urlField = new EditText(this);
         urlField.setSingleLine(true);
         urlField.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        urlField.setHint("https://ссылка-на-клиент.zip");
+        urlField.setText(ClientInstaller.GAME_ARCHIVE_URL);
+        urlField.setHint("http://адрес:8000/game.zip");
         urlField.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         urlField.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
         urlField.setBackground(Ui.box(0xE60E1013, Ui.LINE, 5, 1));
@@ -447,7 +470,7 @@ public class MainActivity extends Activity {
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(Ui.dp(20), Ui.dp(8), Ui.dp(20), 0);
         TextView hint = Ui.text(this,
-                "Вставь прямую HTTPS-ссылку на ZIP-архив Android-клиента. Лаунчер скачает архив, проверит структуру и распакует файлы в свою папку client.",
+                "Ссылка на ZIP-архив игры. По умолчанию — сервер Bastion (архив проверяется по MD5). Если сервер переехал, впиши новый адрес: тогда MD5 не проверяется.",
                 12, Ui.MUTED, Ui.body);
         hint.setPadding(0, 0, 0, Ui.dp(10));
         form.addView(hint);
@@ -461,24 +484,25 @@ public class MainActivity extends Activity {
                     @Override public void onClick(android.content.DialogInterface dialog, int which) {
                         String address = urlField.getText().toString().trim();
                         if (address.length() == 0) {
-                            notice("Нет ссылки", "Вставь прямую HTTPS-ссылку на ZIP-архив.", null, null);
+                            notice("Нет ссылки", "Вставь прямую ссылку на ZIP-архив.", null, null);
                             return;
                         }
-                        startArchiveInstall(address);
+                        String md5 = address.equals(ClientInstaller.GAME_ARCHIVE_URL) ? ClientInstaller.GAME_ARCHIVE_MD5 : "";
+                        startArchiveInstall(address, md5);
                     }
                 })
                 .show();
     }
 
-    private void startArchiveInstall(String address) {
+    private void startArchiveInstall(String address, String md5) {
         final ProgressDialog progress = new ProgressDialog(this);
-        progress.setTitle("Установка клиента Bastion");
+        progress.setTitle("Установка игры Bastion");
         progress.setMessage("Подготовка загрузки…");
         progress.setIndeterminate(true);
         progress.setCancelable(false);
         progress.show();
 
-        new ClientInstaller(this).installArchive(address, new ClientInstaller.Callback() {
+        new ClientInstaller(this).installArchive(address, md5, new ClientInstaller.Callback() {
             @Override public void onProgress(final String message) {
                 ui.post(new Runnable() {
                     @Override public void run() {
@@ -489,6 +513,7 @@ public class MainActivity extends Activity {
 
             @Override public void onComplete(int count, java.io.File directory) {
                 if (progress.isShowing()) progress.dismiss();
+                updatePlayButton();
                 notice("Установка завершена",
                         "Установлено файлов: " + count + "\nПапка: " + directory.getAbsolutePath(),
                         null, null);
@@ -496,6 +521,7 @@ public class MainActivity extends Activity {
 
             @Override public void onError(String message) {
                 if (progress.isShowing()) progress.dismiss();
+                updatePlayButton();
                 notice("Ошибка установки", message, null, null);
             }
         });
@@ -628,7 +654,7 @@ public class MainActivity extends Activity {
         });
         leftPanel.addView(diagnostics, new LinearLayout.LayoutParams(WRAP, Ui.dp(34)));
 
-        TextView install = Ui.primaryButton(this, "УСТАНОВИТЬ ФАЙЛЫ КЛИЕНТА");
+        TextView install = Ui.primaryButton(this, "УСТАНОВИТЬ / ОБНОВИТЬ ИГРУ");
         install.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
         install.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { installClientAssets(); }
