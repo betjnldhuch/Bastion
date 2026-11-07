@@ -50,6 +50,12 @@
 
 // Ѕанк (bank.inc)
 #define BANK_MAX_TRANSFER   1000000          // максимум за один перевод
+#define BANK_MAX_BALANCE    1000000000       // максимум денег на одном счЄте
+#define BANK_ATM_FEE_PCT    1                // комисси€ за сн€тие в банкомате, % (0 Ч без комиссии)
+#define BANK_TRANSFER_FEE_PCT 1              // комисси€ за перевод, % (0 Ч без комиссии)
+#define BANK_INTEREST_PERMILLE 1             // проценты на остаток каждый PayDay, в дес€тых дол€х % (1 = 0.1%)
+#define BANK_INTEREST_MAX   500              // максимум процентов за один PayDay
+#define PAYDAY_TO_BANK      true             // зарплата на счЄт (true) или наличными (false)
 
 // “елефон (phone.inc)
 #define PHONE_PRICE         500              // цена телефона в магазине 24/7
@@ -108,6 +114,8 @@ enum
 	DIALOG_BANK_DEPOSIT,
 	DIALOG_BANK_WITHDRAW,
 	DIALOG_BANK_TRANSFER,
+	DIALOG_BANK_TRANSFER_ACC,
+	DIALOG_BANK_HISTORY,
 	DIALOG_BIZ_BUY,
 	DIALOG_BIZ_MENU,
 	DIALOG_CONFIRM_HOUSE,

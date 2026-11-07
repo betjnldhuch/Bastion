@@ -42,6 +42,9 @@ stock DB_Init()
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS turfs (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, minx REAL, miny REAL, maxx REAL, maxy REAL, owner INTEGER DEFAULT 0)"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS gates (id INTEGER PRIMARY KEY AUTOINCREMENT, faction INTEGER DEFAULT 0, type INTEGER, x REAL, y REAL, z REAL, a REAL)"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS atms (id INTEGER PRIMARY KEY AUTOINCREMENT, x REAL, y REAL, z REAL)"));
+	DB_AddColumn("atms", "a", "REAL DEFAULT -1.0");   // угол аппарата; -1 Ч только значок
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS bank_log (id INTEGER PRIMARY KEY AUTOINCREMENT, account INTEGER NOT NULL, type INTEGER, amount INTEGER, other INTEGER DEFAULT 0, date INTEGER DEFAULT 0)"));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE INDEX IF NOT EXISTS bank_log_account ON bank_log (account, id)"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS businesses (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, type INTEGER, owner INTEGER DEFAULT 0, price INTEGER, x REAL, y REAL, z REAL, till INTEGER DEFAULT 0)"));
 
 	// Ѕазы фракций (спавн и раздевалка) и машины фракций
