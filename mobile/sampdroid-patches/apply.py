@@ -5,6 +5,8 @@
    клиент сразу проверяет сервер и открывает экран подключения, минуя свой список серверов.
 2. Русский перевод экранов, которые видит игрок (главный экран, сервер, сессия,
    чат, управление, мир). Отладочные экраны остаются как в оригинале.
+4. handling.cfg: секции лодок/мотоциклов/самолётов и нестандартные записи
+   пропускаются, а не отвергают всю папку игры.
 3. Папка игры от лаунчера: ZIP-установщик Bastion распаковывает файлы в
    Android/data/online.bastion.launcher/files/game, лаунчер передаёт этот путь
    в "bastion.game_dir", и клиент подключает его сам, без ручного выбора папки (SAF).
@@ -110,6 +112,42 @@ if "uri.scheme == \"file\"" not in rt:
     if rt.count(TREE_OLD) != 1:
         sys.exit("apply.py: не нашёл fromTreeUri в GtaDataTreeResolver.kt (обновился SampDroid?)")
     resolver.write_text(rt.replace(TREE_OLD, TREE_NEW), encoding="utf-8")
+
+# ---------------------------------------------------------------- 4. handling.cfg
+# Стандартный handling.cfg GTA SA после машин содержит секции лодок (%), мотоциклов (!),
+# самолётов ($) и анимаций (^). Исходный парсер принимает их за ошибку и отвергает
+# всю папку игры («nilai handling.cfg tidak valid pada baris N»). Пропускаем эти
+# секции и отдельные нестандартные записи: для них остаётся общий профиль машины.
+hcpp = root / "app/src/main/cpp/gta_vehicle_handling.cpp"
+ht = hcpp.read_text(encoding="utf-8")
+H_REPL = [
+    (
+        "    if (line.front() == ';' || line.front() == '#') continue;\n",
+        "    if (line.front() == ';' || line.front() == '#' || line.front() == '%' ||\n"
+        "        line.front() == '!' || line.front() == '$' || line.front() == '^') continue;  // Bastion\n",
+    ),
+    (
+        '      error = "record handling.cfg tidak lengkap pada baris " + std::to_string(lineNumber);\n'
+        "      return false;\n",
+        "      continue;  // Bastion: неполная запись, остаётся общий профиль\n",
+    ),
+    (
+        '      error = "nilai handling.cfg tidak valid pada baris " + std::to_string(lineNumber);\n'
+        "      return false;\n",
+        "      continue;  // Bastion: нестандартные значения, остаётся общий профиль\n",
+    ),
+    (
+        "    if (candidate.size() >= maxProfiles || !candidate.emplace(profile.id, std::move(profile)).second) {\n",
+        "    if (candidate.size() < maxProfiles && candidate.count(profile.id) != 0u) continue;  // Bastion: дубликат\n"
+        "    if (candidate.size() >= maxProfiles || !candidate.emplace(profile.id, std::move(profile)).second) {\n",
+    ),
+]
+if "// Bastion" not in ht:
+    for old, new in H_REPL:
+        if ht.count(old) != 1:
+            sys.exit("apply.py: не нашёл место для патча handling.cfg (обновился SampDroid?): " + old.strip()[:60])
+        ht = ht.replace(old, new)
+    hcpp.write_text(ht, encoding="utf-8")
 
 # ---------------------------------------------------------------- 2. перевод
 files = list(src.rglob("*.kt")) + list((root / "app/src/main/res").rglob("*.xml"))
