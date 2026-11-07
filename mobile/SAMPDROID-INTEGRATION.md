@@ -44,5 +44,32 @@ to its temporary checkout:
   this is an ongoing localization pass, not a claim that every diagnostic/native
   string has already been translated.
 
+- **open.mp handshake, login and spawn** (`native-openmp-rpc-spawn-cp1251.patch`,
+  applied first by `apply.py`):
+  - RPCs use the real RakPeer::RPC framing (`ID_RPC, id, WriteCompressed(bits),
+    data`). Upstream SampDroid omitted the bit count, so open.mp dropped
+    ClientJoin and never sent PlayerInit ("Menunggu PlayerInit").
+  - `TogglePlayerSpectating(false)` after spectating and `SpawnPlayer()`
+    (bodyless RPC 129) make the client send PlayerSpawn, like the PC client.
+    The Bastion gamemode spawns players this way after login.
+  - Windows-1251 server text (dialogs, chat) is shown as UTF-8, player input
+    (chat, commands, dialog text/passwords) is sent as Windows-1251, and the JNI
+    boundary never passes invalid UTF-8 to `NewStringUTF`.
+- **Server dialogs:** `{RRGGBB}` colour codes are rendered in the dialog body and
+  stripped from titles, buttons, list rows and chat; tapping outside a dialog no
+  longer cancels it (Bastion kicks on a cancelled login dialog).
+- **handling.cfg:** boat/bike/plane sections and records the Android vehicle
+  model cannot use (e.g. REEFER's negative traction on line 281) are skipped
+  instead of rejecting the whole game folder; physics values are not changed.
+
+## Verification
+
+- `Build single Bastion Android APK` runs the SampDroid native test suite with
+  the Bastion patches, builds both ABIs, checks the APK, and on
+  `integrate/openmp-*` branches publishes it as a GitHub pre-release.
+- `Bastion e2e` builds the same patched native client for the host and runs it
+  against a real open.mp server with `server/gamemodes/rp.pwn`: register ->
+  gender -> spawn, then login -> spawn, with Russian dialogs and chat.
+
 A successful APK build proves packaging and compilation only. Actual gameplay,
 device installation, and server admission still require phone testing.
