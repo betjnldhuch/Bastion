@@ -43,12 +43,36 @@ index bf6f923..6167d5e 100644
    if (text.size() > kMaxDialogResponseBytes || hasUnsafeDialogControlByte(text)) return {};
    raknet::BitWriter writer;
    writer.writeBits(kIdRpc, 8);
+diff --git a/app/src/main/cpp/jni_bridge.cpp b/app/src/main/cpp/jni_bridge.cpp
+index a174ecb..5e7140f 100644
+--- a/app/src/main/cpp/jni_bridge.cpp
++++ b/app/src/main/cpp/jni_bridge.cpp
+@@ -16,6 +16,7 @@
+ #include "raknet_probe.h"
+ #include "raknet_session.h"
+ #include "samp_query.h"
++#include "legacy_text.h"
+ 
+ namespace {
+ 
+@@ -28,7 +29,10 @@ std::string to_std(JNIEnv* env, jstring s) {
+ }
+ 
+ jstring to_java(JNIEnv* env, const std::string& s) {
+-  return env->NewStringUTF(s.c_str());
++  // Bastion: never pass invalid UTF-8 (e.g. Windows-1251 server text) to
++  // NewStringUTF; CheckJNI aborts the app on it in debuggable builds.
++  const std::string safe = samp::legacytext::lenientToUtf8(s);
++  return env->NewStringUTF(safe.c_str());
+ }
+ 
+ std::mutex game_data_mutex;
 diff --git a/app/src/main/cpp/legacy_text.h b/app/src/main/cpp/legacy_text.h
 new file mode 100644
-index 0000000..ab08f68
+index 0000000..ff89e7f
 --- /dev/null
 +++ b/app/src/main/cpp/legacy_text.h
-@@ -0,0 +1,128 @@
+@@ -0,0 +1,166 @@
 +// Bastion: Windows-1251 <-> UTF-8 for SA-MP/open.mp text.
 +//
 +// SA-MP strings are raw bytes in the server's ANSI codepage; Russian servers
@@ -172,6 +196,44 @@ index 0000000..ab08f68
 +      }
 +    }
 +    if (!found) return input;
++  }
++  return out;
++}
++
++// Safety net for the JNI boundary: keeps every valid UTF-8 sequence and turns
++// each remaining high byte into its Windows-1251 character, so a composed JSON
++// string can never hand invalid (Modified) UTF-8 to NewStringUTF. NUL bytes are
++// dropped because NewStringUTF stops at them.
++inline std::string lenientToUtf8(const std::string& input) {
++  bool multibyte = false;
++  bool hasFourByte = false;
++  for (const char raw : input) hasFourByte = hasFourByte || static_cast<uint8_t>(raw) >= 0xF0u;
++  if (!hasFourByte && isStrictUtf8(input, multibyte) && input.find('\0') == std::string::npos) {
++    return input;
++  }
++  std::string out;
++  out.reserve(input.size() + input.size() / 2u);
++  for (size_t i = 0; i < input.size();) {
++    const uint8_t c = static_cast<uint8_t>(input[i]);
++    if (c == 0u) { ++i; continue; }
++    if (c < 0x80u) { out.push_back(static_cast<char>(c)); ++i; continue; }
++    size_t width = 0;
++    if (c >= 0xC2u && c <= 0xDFu) width = 2;
++    else if (c >= 0xE0u && c <= 0xEFu) width = 3;
++    else if (c >= 0xF0u && c <= 0xF4u) width = 4;
++    if (width != 0 && i + width <= input.size()) {
++      const std::string piece = input.substr(i, width);
++      bool pieceMultibyte = false;
++      if (isStrictUtf8(piece, pieceMultibyte)) {
++        // Modified UTF-8 has no 4-byte form (it needs surrogate pairs).
++        if (width == 4) out.push_back('?'); else out += piece;
++        i += width;
++        continue;
++      }
++    }
++    const uint16_t cp = kCp1251High[c - 0x80u];
++    if (cp == 0xFFFDu) out.push_back('?'); else appendUtf8(out, cp);
++    ++i;
 +  }
 +  return out;
 +}
@@ -381,7 +443,7 @@ index cd7fb37..aee3ddc 100644
                // PlayerRequestSpawn is only permission. The legacy protocol
                // requires the client to follow it with empty RPC PlayerSpawn (52).
 diff --git a/app/src/main/cpp/rpc_state.cpp b/app/src/main/cpp/rpc_state.cpp
-index 17fdf6b..f5c1951 100644
+index 17fdf6b..9b1b074 100644
 --- a/app/src/main/cpp/rpc_state.cpp
 +++ b/app/src/main/cpp/rpc_state.cpp
 @@ -1,6 +1,8 @@
@@ -405,6 +467,24 @@ index 17fdf6b..f5c1951 100644
    std::string out;
    out.reserve(input.size());
    for (size_t i = 0; i < input.size();) {
+@@ -4391,7 +4396,7 @@ bool WorldState::applyRpc(const std::vector<uint8_t>& rpcPayload, RpcEvent& even
+       const std::string text = readString32(reader, kMaxChatTextBytes);
+       if (!reader.ok() || text.empty()) break;
+       if (chatLines_.size() >= kMaxChatLines) chatLines_.pop_front();
+-      chatLines_.push_back({rgba, text});
++      chatLines_.push_back({rgba, sanitizeUiText(text)});  // Bastion: Windows-1251 -> UTF-8
+       event.kind = RpcEventKind::ChatMessage;
+       // Do not put untrusted text into diagnostic summaries; a future native
+       // HUD consumes the retained payload, while logs remain bounded/safe.
+@@ -4419,7 +4424,7 @@ bool WorldState::applyRpc(const std::vector<uint8_t>& rpcPayload, RpcEvent& even
+         sender = "#" + std::to_string(id);
+       }
+       if (chatLines_.size() >= kMaxChatLines) chatLines_.pop_front();
+-      chatLines_.push_back({rgba, sender + ": " + message});
++      chatLines_.push_back({rgba, sanitizeUiText(sender) + ": " + sanitizeUiText(message)});  // Bastion
+       event.kind = RpcEventKind::ChatMessage;
+       event.playerId = id;
+       event.summary = "PlayerChatMessage";
 @@ -4503,17 +4508,26 @@ bool WorldState::applyRpc(const std::vector<uint8_t>& rpcPayload, RpcEvent& even
        if (rpcPayload.size() - 2u != 4u) break;
        const uint32_t enabled = reader.readBits(32);
@@ -469,7 +549,7 @@ index 62b1311..60c91a5 100644
    // prediction must be dropped rather than continue using stale gravity.
    bool worldGravityUpdated = false;
 diff --git a/tests/native/raknet_codec_test.cpp b/tests/native/raknet_codec_test.cpp
-index 1663a82..cb09a3b 100644
+index 1663a82..3f7d26a 100644
 --- a/tests/native/raknet_codec_test.cpp
 +++ b/tests/native/raknet_codec_test.cpp
 @@ -26,6 +26,7 @@
@@ -480,7 +560,7 @@ index 1663a82..cb09a3b 100644
  
  #include <algorithm>
  #include <array>
-@@ -2223,6 +2224,39 @@ std::vector<uint8_t> makeEmptyRpc(uint8_t rpcId) {
+@@ -2223,6 +2224,48 @@ std::vector<uint8_t> makeEmptyRpc(uint8_t rpcId) {
    return {20, rpcId};
  }
  
@@ -496,6 +576,15 @@ index 1663a82..cb09a3b 100644
 +             std::string("\xC2\xF5\xEE\xE4 ok", 7),
 +         "UTF-8 Android input must be sent as Windows-1251");
 +  expect(samp::legacytext::utf8ToServerText("plain") == "plain", "ASCII must stay unchanged");
++  expect(samp::legacytext::lenientToUtf8(std::string("ok \xD0\x92 \xC2", 7)) == "ok \xD0\x92 \xD0\x92" &&
++             samp::legacytext::lenientToUtf8("\xF0\x9F\x98\x80") == "?",
++         "JNI safety net must keep UTF-8, decode stray Windows-1251 and drop 4-byte forms");
++  samp::state::WorldState chatWorld;
++  samp::state::RpcEvent chatEvent;
++  std::vector<uint8_t> chat = {20u, 93u, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 4u, 0u, 0u, 0u, 0xC2u, 0xF5u, 0xEEu, 0xE4u};
++  expect(chatWorld.applyRpc(chat, chatEvent) && !chatWorld.recentChat(4).empty() &&
++             chatWorld.recentChat(4).back().text == "\xD0\x92\xD1\x85\xD0\xBE\xD0\xB4",
++         "Windows-1251 SendClientMessage must reach the HUD as UTF-8");
 +  const auto dialog = samp::clientrpc::buildDialogResponse(1, true, -1, "\xD0\xBF\xD0\xB0\xD1\x80\xD0\xBE\xD0\xBB\xD1\x8C");
 +  expect(dialog.size() == 2u + 2u + 1u + 2u + 1u + 6u && dialog[7] == 6u &&
 +             static_cast<uint8_t>(dialog[8]) == 0xEFu,
@@ -520,7 +609,7 @@ index 1663a82..cb09a3b 100644
  void testLegacyHandshakeBuilders() {
    using samp::handshake::buildClientJoin;
    using samp::handshake::buildEmptyStaticData;
-@@ -2413,16 +2447,17 @@ void testLegacyHandshakeBuilders() {
+@@ -2413,16 +2456,17 @@ void testLegacyHandshakeBuilders() {
    // NEW_INCOMING/internal-ping/static-data, so its first game RPC is message 5.
    const auto framedJoin = samp::raknet::buildReliableOrdered(
        5u, samp::clientrpc::kReliableOrderedChannel, 0u, join);
@@ -547,7 +636,7 @@ index 1663a82..cb09a3b 100644
           }), "ClientJoin SyncRPC-channel wire vector changed");
    const auto decoded = samp::raknet::decodeDatagram(framedJoin);
    expect(decoded.ok && decoded.packets.size() == 1u &&
-@@ -2449,11 +2484,11 @@ void testLegacyHandshakeBuilders() {
+@@ -2449,11 +2493,11 @@ void testLegacyHandshakeBuilders() {
               0x01u, 0x00u, 0x42u, 0x38u, 0x1Eu, 0x5Eu, 0x17u, 0x91u, 0x89u,
               0x60u, 0x1Eu, 0x03u, 0x00u, 0x64u, 0x50u, 0x06u, 0x78u, 0x56u,
               0x34u, 0x12u, 0x04u, 0x00u, 0x87u, 0x00u, 0x29u, 0x05u, 0x00u,
@@ -564,7 +653,7 @@ index 1663a82..cb09a3b 100644
           }), "source-equivalent coalesced post-accept bootstrap changed");
    const auto decodedBootstrap = samp::raknet::decodeDatagram(bootstrap);
    expect(decodedBootstrap.ok && decodedBootstrap.packets.size() == 4u &&
-@@ -2609,7 +2644,9 @@ void testReliableAndAck() {
+@@ -2609,7 +2653,9 @@ void testReliableAndAck() {
    // Locks the actual five-bit SyncRPC header at channel 2, not merely a
    // decoder round-trip that could otherwise drift together with its encoder.
    expect(ordered == std::vector<uint8_t>({
@@ -575,7 +664,7 @@ index 1663a82..cb09a3b 100644
           "SyncRPC channel-2 wire vector changed");
    const auto orderedDecoded = samp::raknet::decodeDatagram(ordered);
    expect(orderedDecoded.ok && orderedDecoded.packets.size() == 1,
-@@ -6015,6 +6052,14 @@ void appendLoopbackReliableOrderedFrame(samp::raknet::BitWriter& writer,
+@@ -6015,6 +6061,14 @@ void appendLoopbackReliableOrderedFrame(samp::raknet::BitWriter& writer,
    writer.writeBits(orderingChannel & 0x1Fu, 5);
    writer.writeBits(orderingIndex, 16);
    writer.writeBit(false);  // isSplit
@@ -590,7 +679,7 @@ index 1663a82..cb09a3b 100644
    writer.writeCompressedU16(static_cast<uint16_t>(payload.size() * 8u));
    writer.writeAlignedBytes(payload.data(), payload.size());
  }
-@@ -8933,6 +8978,7 @@ void testSetVehicleVelocityReducer() {
+@@ -8933,6 +8987,7 @@ void testSetVehicleVelocityReducer() {
  }  // namespace
  
  int main() {

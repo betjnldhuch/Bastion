@@ -61,6 +61,7 @@ int main(int argc, char** argv) {
 
   bool sawInit = false, sawClass = false, answeredAuth = false, answeredGender = false;
   bool sawSpawnGrant = false, sentChat = false, sawWelcomeChat = false, sawRussianText = false;
+  bool sawRussianChat = false;
   uint64_t answeredRevision = 0;
   size_t chatSeen = 0;
   const auto deadline = Clock::now() + std::chrono::seconds(45);
@@ -84,6 +85,7 @@ int main(int argc, char** argv) {
       logLine("chat", line);
       if (line.find('?') == std::string::npos && line.find("\xD0") != std::string::npos) {
         sawRussianText = true;
+        sawRussianChat = true;
       }
       if (line.find("Bastion") != std::string::npos || line.find("\xD0\x94\xD0\xBE\xD0\xB1") != std::string::npos) {
         sawWelcomeChat = true;
@@ -135,9 +137,10 @@ int main(int argc, char** argv) {
       if (!s.active) return failWith("server closed the session after spawn", s);
       logLine("result", std::string("OK: connected, ") + (registering ? "registered" : "logged in") +
                             ", class flow done, spawned. russianText=" + (sawRussianText ? "1" : "0") +
+                            " russianChat=" + (sawRussianChat ? "1" : "0") +
                             " welcomeChat=" + (sawWelcomeChat ? "1" : "0"));
       samp::raknet_session_disconnect();
-      return sawRussianText ? 0 : 3;
+      return (sawRussianText && sawRussianChat) ? 0 : 3;
     }
   }
   return failWith(std::string("timeout: init=") + (sawInit ? "1" : "0") + " class=" +
