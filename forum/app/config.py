@@ -1,0 +1,80 @@
+"""Чтение forum.ini."""
+
+import configparser
+import os
+from dataclasses import dataclass, field
+
+
+@dataclass
+class GameServer:
+    key: str
+    name: str
+    db: str
+    address: str = "127.0.0.1"
+    port: int = 7777
+
+
+@dataclass
+class Config:
+    base_dir: str
+    title: str = "Bastion Online"
+    subtitle: str = ""
+    host: str = "0.0.0.0"
+    port: int = 8080
+    public_url: str = "http://127.0.0.1:8080"
+    owners: list = field(default_factory=list)
+    moderator_level: int = 1
+    admin_level: int = 4
+    discord: str = ""
+    servers: dict = field(default_factory=dict)
+    data_dir: str = ""
+
+    def server(self, key):
+        return self.servers.get(key)
+
+
+def _int(value, default):
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return default
+
+
+def load(path, base_dir=None):
+    base_dir = base_dir or os.path.dirname(os.path.abspath(path))
+    parser = configparser.ConfigParser(interpolation=None, inline_comment_prefixes=None)
+    if os.path.exists(path):
+        with open(path, encoding="utf-8-sig") as fh:
+            parser.read_file(fh)
+
+    f = parser["forum"] if parser.has_section("forum") else {}
+    cfg = Config(base_dir=base_dir)
+    cfg.title = f.get("title", cfg.title).strip() or cfg.title
+    cfg.subtitle = f.get("subtitle", "").strip()
+    cfg.host = f.get("host", cfg.host).strip() or cfg.host
+    cfg.port = _int(f.get("port"), cfg.port)
+    cfg.public_url = (f.get("public_url", "") or cfg.public_url).strip().rstrip("/")
+    cfg.owners = [n.strip().lower() for n in f.get("owners", "").split(",") if n.strip()]
+    cfg.moderator_level = max(1, _int(f.get("moderator_level"), 1))
+    cfg.admin_level = max(cfg.moderator_level, _int(f.get("admin_level"), 4))
+    cfg.discord = f.get("discord", "").strip()
+    cfg.data_dir = os.path.join(base_dir, "data")
+
+    for section in parser.sections():
+        if not section.startswith("server:"):
+            continue
+        key = section.split(":", 1)[1].strip().lower()
+        if not key:
+            continue
+        s = parser[section]
+        db = s.get("db", "").strip()
+        if db and not os.path.isabs(db) and not (len(db) > 1 and db[1] == ":"):
+            db = os.path.normpath(os.path.join(base_dir, db))
+        cfg.servers[key] = GameServer(
+            key=key,
+            name=s.get("name", key).strip() or key,
+            db=db,
+            address=s.get("address", "127.0.0.1").strip(),
+            port=_int(s.get("port"), 7777),
+        )
+    return cfg
