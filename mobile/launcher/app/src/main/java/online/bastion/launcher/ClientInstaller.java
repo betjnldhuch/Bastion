@@ -357,7 +357,8 @@ public final class ClientInstaller {
                 File archive = null, part = null, staging = null;
                 try {
                     String url = address == null ? "" : address.trim();
-                    if (!url.startsWith("http://") && !url.startsWith("https://"))
+                    boolean local = url.startsWith("content://") || url.startsWith("file://");
+                    if (!local && !url.startsWith("http://") && !url.startsWith("https://"))
                         throw new IllegalArgumentException("Нужна прямая ссылка на ZIP-архив (http:// или https://).");
                     File external = context.getExternalFilesDir(null);
                     if (external == null) throw new IllegalStateException("Android не предоставил папку для файлов.");
@@ -370,8 +371,13 @@ public final class ClientInstaller {
                     deleteTree(staging);
                     if (!staging.mkdirs()) throw new IllegalStateException("Не удалось подготовить установку.");
 
-                    report(callback, "Подключение к серверу…");
-                    downloadArchive(url, part, callback);
+                    if (local) {
+                        report(callback, "Копирование архива…");
+                        copyLocalArchive(android.net.Uri.parse(url), part, callback);
+                    } else {
+                        report(callback, "Подключение к серверу…");
+                        downloadArchive(url, part, callback);
+                    }
                     if (archive.exists() && !archive.delete())
                         throw new IllegalStateException("Не удалось заменить старый архив.");
                     if (!part.renameTo(archive)) throw new IllegalStateException("Не удалось сохранить архив.");
@@ -421,6 +427,42 @@ public final class ClientInstaller {
                 }
             }
         }, "bastion-archive-installer").start();
+    }
+
+    /** ZIP, выбранный на телефоне (например, скачанный в браузере кэш SAMP-Mobile). */
+    private void copyLocalArchive(android.net.Uri uri, File target, Callback callback) throws Exception {
+        InputStream in = context.getContentResolver().openInputStream(uri);
+        if (in == null) throw new IllegalStateException("Не удалось открыть выбранный файл.");
+        long expected = -1;
+        try {
+            android.database.Cursor c = context.getContentResolver().query(uri, null, null, null, null);
+            if (c != null) {
+                try {
+                    int idx = c.getColumnIndex(android.provider.OpenableColumns.SIZE);
+                    if (idx >= 0 && c.moveToFirst() && !c.isNull(idx)) expected = c.getLong(idx);
+                } finally { c.close(); }
+            }
+        } catch (Exception ignored) { }
+        FileOutputStream out = new FileOutputStream(target);
+        try {
+            byte[] buffer = new byte[65536];
+            long total = 0;
+            int n, last = -1;
+            while ((n = in.read(buffer)) != -1) {
+                total += n;
+                if (total > MAX_ARCHIVE_SIZE) throw new IllegalStateException("Архив превышает лимит 2 ГБ.");
+                out.write(buffer, 0, n);
+                if (expected > 0) {
+                    int percent = (int) Math.min(100, total * 100 / expected);
+                    if (percent != last) { last = percent; report(callback, "Копирование архива: " + percent + "%"); }
+                }
+            }
+            out.getFD().sync();
+        } catch (Exception e) {
+            target.delete();
+            throw e;
+        } finally { try { in.close(); } finally { out.close(); } }
+        if (target.length() == 0) throw new IllegalStateException("Выбранный файл пустой.");
     }
 
     private void downloadArchive(String address, File target, Callback callback) throws Exception {
@@ -505,6 +547,23 @@ public final class ClientInstaller {
         String[] sampFiles = samp.list();
         if (!samp.isDirectory() || sampFiles == null || sampFiles.length == 0)
             throw new IllegalStateException("После распаковки нет папки SAMP/ с файлами клиента.");
+        // Без этих файлов SAMP-Mobile GTA-2.11 гарантированно падает при старте:
+        // такой архив не устанавливается, предыдущая установка остаётся.
+        java.util.List<String> required = new java.util.ArrayList<String>();
+        for (String rel : REQUIRED_FILES) {
+            if (rel.equals(SAMP_FONT)) continue;   // шрифт лаунчер подкладывает сам
+            File f = resolveIgnoreCase(root, rel);
+            if (f == null || !f.isFile() || f.length() == 0) required.add(rel);
+        }
+        File texdbDir = resolveIgnoreCase(root, "texdb");
+        if (texdbDir == null || !texdbDir.isDirectory()) required.add("texdb/");
+        if (chooseGameLanguage(root) == null) required.add("text/russian.gxt или text/american.gxt");
+        if (!required.isEmpty()) {
+            StringBuilder list = new StringBuilder();
+            for (String m : required) list.append("\n• ").append(m);
+            throw new IllegalStateException("Архив неполный, это не кэш SAMP-Mobile GTA-2.11. Нет файлов:" + list
+                    + "\n\nУстановка отменена, прежние файлы игры не тронуты.");
+        }
         StringBuilder missing = new StringBuilder();
         for (String dir : new String[]{"texdb", "audio", "data", "models"}) {
             if (!existsIgnoreCase(root, dir)) missing.append(missing.length() == 0 ? "" : ", ").append(dir);

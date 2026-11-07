@@ -504,7 +504,7 @@ public class MainActivity extends Activity {
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(Ui.dp(20), Ui.dp(8), Ui.dp(20), 0);
         TextView hint = Ui.text(this,
-                "Ссылка на ZIP-архив игры. По умолчанию — сервер Bastion (архив проверяется по MD5). Если сервер переехал, впиши новый адрес: тогда MD5 не проверяется.",
+                "Ссылка на ZIP-архив игры. По умолчанию — сервер Bastion (архив проверяется по MD5). Если сервер переехал, впиши новый адрес: тогда MD5 не проверяется.\n\nИли выбери ZIP, уже скачанный на телефон (например, кэш SAMP-Mobile GTA-2.11 из браузера). Неполный архив не установится — лаунчер покажет, каких файлов нет.",
                 12, Ui.MUTED, Ui.body);
         hint.setPadding(0, 0, 0, Ui.dp(10));
         form.addView(hint);
@@ -514,6 +514,9 @@ public class MainActivity extends Activity {
                 .setTitle("Установка файлов клиента")
                 .setView(form)
                 .setNegativeButton("Отмена", null)
+                .setNeutralButton("ZIP НА ТЕЛЕФОНЕ", new android.content.DialogInterface.OnClickListener() {
+                    @Override public void onClick(android.content.DialogInterface dialog, int which) { pickLocalArchive(); }
+                })
                 .setPositiveButton("СКАЧАТЬ И УСТАНОВИТЬ", new android.content.DialogInterface.OnClickListener() {
                     @Override public void onClick(android.content.DialogInterface dialog, int which) {
                         String address = urlField.getText().toString().trim();
@@ -526,6 +529,27 @@ public class MainActivity extends Activity {
                     }
                 })
                 .show();
+    }
+
+    private static final int PICK_ARCHIVE = 4711;
+
+    /** Выбор ZIP-архива игры из памяти телефона (Загрузки, Google Drive и т. д.). */
+    private void pickLocalArchive() {
+        try {
+            Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            pick.addCategory(Intent.CATEGORY_OPENABLE);
+            pick.setType("*/*");
+            pick.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/zip", "application/x-zip-compressed", "application/octet-stream"});
+            startActivityForResult(pick, PICK_ARCHIVE);
+        } catch (Exception e) {
+            notice("Нет доступа к файлам", "Не удалось открыть выбор файла: " + e.getMessage(), null, null);
+        }
+    }
+
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PICK_ARCHIVE && resultCode == RESULT_OK && data != null && data.getData() != null)
+            startArchiveInstall(data.getData().toString(), "");
     }
 
     private void startArchiveInstall(String address, String md5) {

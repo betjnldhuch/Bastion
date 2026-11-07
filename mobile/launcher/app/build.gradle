@@ -11,8 +11,8 @@ android {
         // SAMP-Mobile GTA-2.11 requires Android 9+ (API 28) and ARM64.
         minSdk 28
         targetSdk 34
-        versionCode 13
-        versionName "0.7.1"
+        versionCode 14
+        versionName "0.7.2"
         multiDexEnabled true
 
         ndk {
