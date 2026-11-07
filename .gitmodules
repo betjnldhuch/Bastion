@@ -1,3 +1,4 @@
-[submodule "mobile/sampdroid"]
-	path = mobile/sampdroid
-	url = https://github.com/xykal/sampdroid.git
+[submodule "mobile/samp-mobile"]
+	path = mobile/samp-mobile
+	url = https://github.com/kuzia15/SAMP-Mobile.git
+	branch = GTA-2.11

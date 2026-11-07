@@ -1,0 +1,276 @@
+#!/usr/bin/env python3
+"""Prepare the pinned SAMP-Mobile (GTA-2.11) checkout for embedding into Bastion.
+
+The upstream submodule stays unmodified in Git; this script edits only the
+temporary CI checkout. Every edit is checked: if upstream code changes and a
+pattern is no longer found, the script fails instead of silently skipping.
+
+What it does:
+  1. Native client: the hard-coded storage root /storage/emulated/0/GTA/ is
+     replaced by BastionStoragePath(), which reads $BASTION_GTA_STORAGE (set by
+     the Java side) and falls back to the upstream path.
+  2. Java client: GameActivityBase sets $BASTION_GTA_STORAGE before the native
+     libraries are loaded (from the "bastion.storage" extra, or from
+     Android/data/<package>/files/game/ when launched without extras).
+  3. Gradle: the :app application module becomes an Android library without
+     Firebase / google-services (their config is bound to com.gta.game).
+  4. Manifest: no launcher Activity, no <application> attributes that clash
+     with Bastion, no all-files-access / install-packages permissions; the game
+     Activities run in a separate ":game" process so System.exit() in the game
+     does not kill the Bastion launcher.
+  5. Resources: upstream launcher icons are removed so the Bastion icon wins
+     (the upstream adaptive mipmap-anydpi-v26 icon would otherwise override it).
+  6. libGlossHook.so is packaged, because libsamp.so is linked against it.
+
+Usage: python3 apply.py <path-to-samp-mobile-checkout>
+"""
+from pathlib import Path
+import re
+import shutil
+import sys
+
+if len(sys.argv) != 2:
+    raise SystemExit("usage: apply.py <samp-mobile checkout>")
+root = Path(sys.argv[1]).resolve()
+app = root / "app"
+main = app / "src/main"
+UPSTREAM_STORAGE = '"/storage/emulated/0/GTA/"'
+
+
+# latin-1 keeps every byte as-is (some upstream sources are cp1251).
+def read(path: Path) -> str:
+    return path.read_text(encoding="latin-1")
+
+
+def write(path: Path, text: str) -> None:
+    path.write_text(text, encoding="latin-1")
+
+
+def replace_exact(path: Path, old: str, new: str, count: int = 1) -> None:
+    text = read(path)
+    found = text.count(old)
+    if found != count:
+        raise SystemExit(f"{path}: expected {count} occurrence(s) of {old!r}, found {found}")
+    write(path, text.replace(old, new))
+
+
+def remove_block(source: str, block_name: str, required: bool = True) -> str:
+    match = re.search(r"(?m)^[ \t]*" + re.escape(block_name) + r"\s*\{", source)
+    if not match:
+        if required:
+            raise SystemExit("Gradle block not found: " + block_name)
+        return source
+    opening = source.find("{", match.start())
+    depth = 0
+    for index in range(opening, len(source)):
+        if source[index] == "{":
+            depth += 1
+        elif source[index] == "}":
+            depth -= 1
+            if depth == 0:
+                end = index + 1
+                if end < len(source) and source[end] == "\n":
+                    end += 1
+                return source[:match.start()] + source[end:]
+    raise SystemExit("Unbalanced Gradle block: " + block_name)
+
+
+# ---------------------------------------------------------------------------
+# 1. Native storage root
+# ---------------------------------------------------------------------------
+cpp = main / "cpp/samp"
+
+replace_exact(cpp / "main.h", "extern char* g_pszStorage;",
+              "extern char* g_pszStorage;\n"
+              "// Bastion: game data root (with trailing '/'), from $BASTION_GTA_STORAGE.\n"
+              "const char* BastionStoragePath();")
+
+replace_exact(cpp / "main.cpp", f"char* g_pszStorage = {UPSTREAM_STORAGE};", """char* g_pszStorage = (char*)"/storage/emulated/0/GTA/";
+
+// Bastion: the launcher installs game files into its own app storage
+// (Android/data/online.bastion.launcher/files/game/) and exports that path in
+// BASTION_GTA_STORAGE before libsamp.so is loaded. No storage permission needed.
+const char* BastionStoragePath()
+{
+	static char s_storage[512] = "/storage/emulated/0/GTA/";
+	static bool s_resolved = false;
+	if (!s_resolved)
+	{
+		const char* env = getenv("BASTION_GTA_STORAGE");
+		if (env != nullptr && env[0] != '\\0')
+		{
+			size_t len = strlen(env);
+			snprintf(s_storage, sizeof(s_storage), "%s%s", env, env[len - 1] == '/' ? "" : "/");
+			s_resolved = true;
+		}
+	}
+	return s_storage;
+}""")
+replace_exact(cpp / "main.cpp", 'sprintf(buffer, "/storage/emulated/0/GTA/logcat.txt");',
+              'snprintf(buffer, sizeof(buffer), "%slogcat.txt", BastionStoragePath());')
+
+replace_exact(cpp / "settings.cpp", "char buff[0x7F];", "char buff[0x200];")
+replace_exact(cpp / "settings.cpp", 'sprintf(buff, "/storage/emulated/0/GTA/SAMP/settings.ini");',
+              'snprintf(buff, sizeof(buff), "%sSAMP/settings.ini", BastionStoragePath());')
+
+replace_exact(cpp / "game/hooks.cpp", f"g_pszStorage = {UPSTREAM_STORAGE};",
+              "g_pszStorage = (char*)BastionStoragePath();", count=2)
+
+leftovers = []
+for source in cpp.rglob("*"):
+    if source.suffix not in {".cpp", ".h", ".c"} or "vendor" in source.parts:
+        continue
+    for number, line in enumerate(read(source).splitlines(), 1):
+        if "/storage/emulated/0/GTA" in line and "BastionStoragePath" not in line \
+                and "s_storage[512]" not in line and "g_pszStorage = (char*)" not in line \
+                and not line.strip().startswith("//"):
+            leftovers.append(f"{source.relative_to(root)}:{number}: {line.strip()}")
+if leftovers:
+    raise SystemExit("Hard-coded GTA storage path left in native code:\n" + "\n".join(leftovers))
+
+# ---------------------------------------------------------------------------
+# 2. Java: export the storage path before native libraries load
+# ---------------------------------------------------------------------------
+base = main / "java/com/rockstargames/oswrapper/GameActivityBase.java"
+replace_exact(base, """        instance = this;
+
+        Log.i(TAG, "[!!] onCreate");""", """        instance = this;
+        exportBastionStorage();
+
+        Log.i(TAG, "[!!] onCreate");""")
+replace_exact(base, "    public static GameActivityBase getInstance() {", """    /** Bastion: tell libsamp.so where the launcher installed the game files. */
+    private void exportBastionStorage() {
+        try {
+            String storage = getIntent() != null ? getIntent().getStringExtra("bastion.storage") : null;
+            if (storage == null || storage.isEmpty()) {
+                File ext = getExternalFilesDir(null);
+                if (ext != null) storage = new File(ext, "game").getAbsolutePath();
+            }
+            if (storage != null) {
+                if (!storage.endsWith("/")) storage = storage + "/";
+                android.system.Os.setenv("BASTION_GTA_STORAGE", storage, true);
+                Log.i(TAG, "[Bastion] BASTION_GTA_STORAGE = " + storage);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "[Bastion] cannot export BASTION_GTA_STORAGE", e);
+        }
+    }
+
+    public static GameActivityBase getInstance() {""")
+
+# ---------------------------------------------------------------------------
+# 3. Gradle: application -> library, without Firebase
+# ---------------------------------------------------------------------------
+gradle = app / "build.gradle.kts"
+g = read(gradle)
+g = g.replace('id("com.android.application")', 'id("com.android.library")', 1)
+for plugin in ('    id("com.google.gms.google-services")\n', '    id("com.google.firebase.crashlytics")\n'):
+    if plugin not in g:
+        raise SystemExit("plugin line not found: " + plugin.strip())
+    g = g.replace(plugin, "")
+for pattern in (r'(?m)^\s*applicationId\s*=\s*"[^"]+"\s*\n',
+                r'(?m)^\s*versionCode\s*=\s*\d+\s*\n',
+                r'(?m)^\s*versionName\s*=\s*"[^"]+"\s*\n',
+                r'(?m)^\s*targetSdk\s*=\s*\d+\s*\n',
+                r'(?m)^\s*isDebuggable\s*=\s*(true|false)\s*\n'):
+    g, n = re.subn(pattern, "", g)
+    if n == 0:
+        raise SystemExit("Gradle line not found: " + pattern)
+g = remove_block(g, "applicationVariants.all")
+# debugSymbolLevel is an application-only NDK option.
+g, n = re.subn(r'\s*ndk\s*\{\s*debugSymbolLevel\s*=\s*"FULL"\s*\}', "", g)
+if n == 0:
+    raise SystemExit("ndk debugSymbolLevel blocks not found")
+g = remove_block(g, "firebaseCrashlytics")
+g, n = re.subn(r'(?m)^\s*(//)?\s*implementation\((platform\()?"com\.google\.firebase:[^\n]*\n', "", g)
+if n < 3:
+    raise SystemExit("Firebase dependencies not found (got %d)" % n)
+for bad in ("com.android.application", "applicationId", "google-services", "firebase", "applicationVariants"):
+    if bad in g:
+        raise SystemExit("Could not remove from SAMP-Mobile Gradle module: " + bad)
+write(gradle, g)
+(app / "google-services.json").unlink(missing_ok=True)
+
+# ---------------------------------------------------------------------------
+# 4. Manifest
+# ---------------------------------------------------------------------------
+manifest = main / "AndroidManifest.xml"
+xml = read(manifest)
+xml, n = re.subn(r'\s+package="com\.gta\.game"', "", xml, count=1)
+if n != 1:
+    raise SystemExit("manifest package attribute not found")
+xml, n = re.subn(r'\s*<uses-sdk[^>]*/>', "", xml, count=1)
+if n != 1:
+    raise SystemExit("uses-sdk not found")
+for perm in ("com.google.android.c2dm.permission.RECEIVE",
+             "com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE",
+             "android.permission.REQUEST_INSTALL_PACKAGES",
+             "android.permission.MANAGE_EXTERNAL_STORAGE",
+             "android.permission.READ_EXTERNAL_STORAGE",
+             "android.permission.WRITE_EXTERNAL_STORAGE",
+             "android.permission.READ_MEDIA_AUDIO",
+             "android.permission.READ_MEDIA_VIDEO",
+             "android.permission.READ_MEDIA_IMAGES",
+             "android.permission.RECEIVE_BOOT_COMPLETED",
+             "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
+             "com.rockstargames.gtasa.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"):
+    xml, n = re.subn(r'\s*<uses-permission(-sdk-23)?\s+android:name="' + re.escape(perm) + r'"[^>]*/>', "", xml)
+    if n == 0:
+        raise SystemExit("permission not found in manifest: " + perm)
+
+# <application ...> attributes belong to Bastion (icon, label, theme, backup...).
+xml, n = re.subn(r"<application\b[^>]*>", "<application>", xml, count=1, flags=re.S)
+if n != 1:
+    raise SystemExit("<application> not found")
+xml, n = re.subn(r'\s*<meta-data\s+android:name="firebase_sessions_enabled"[^>]*/>', "", xml)
+if n != 1:
+    raise SystemExit("firebase meta-data not found")
+
+# The upstream launcher screen (storage permission + START button) is replaced by Bastion.
+xml, n = re.subn(r'\s*<activity\s+android:name="com\.gta\.launcher\.activity\.MainActivity".*?</activity>', "", xml,
+                 count=1, flags=re.S)
+if n != 1:
+    raise SystemExit("upstream launcher Activity not found")
+if "android.intent.category.LAUNCHER" in xml:
+    raise SystemExit("a LAUNCHER intent-filter is still present in SAMP-Mobile manifest")
+
+# Game Activities: private to the APK, own process.
+def harden(match: "re.Match[str]") -> str:
+    tag = match.group(0)
+    tag = tag.replace('android:exported="true"', 'android:exported="false"')
+    if "android:process=" not in tag:
+        tag = tag.replace("<activity", '<activity\n            android:process=":game"', 1)
+    return tag
+
+xml, n = re.subn(r"<activity\b[^>]*>", harden, xml, flags=re.S)
+if n != 3 or 'android:exported="true"' in xml:
+    raise SystemExit("unexpected Activity set in SAMP-Mobile manifest (%d)" % n)
+for activity in ("com.gta.game.SAMP", "com.rockstargames.gtasa.GameActivity", "com.rockstargames.gtasa.DownloaderActivity"):
+    if f'android:name="{activity}"' not in xml:
+        raise SystemExit("Activity missing after patch: " + activity)
+write(manifest, xml)
+
+# ---------------------------------------------------------------------------
+# 5. Resources: let Bastion's icon/app name win
+# ---------------------------------------------------------------------------
+removed = 0
+for res_dir in (main / "res").glob("mipmap*"):
+    for icon in list(res_dir.glob("ic_launcher*")):
+        icon.unlink()
+        removed += 1
+    if not any(res_dir.iterdir()):
+        res_dir.rmdir()
+if removed == 0:
+    raise SystemExit("upstream launcher icons not found")
+replace_exact(main / "res/values/strings.xml", '<string name="app_name">GTA 2.11</string>',
+              '<string name="app_name">Bastion</string>')
+
+# ---------------------------------------------------------------------------
+# 6. Native dependencies of libsamp.so that are not in jniLibs upstream
+# ---------------------------------------------------------------------------
+gloss = cpp / "vendor/GlossHook/libs/ARM64/libGlossHook.so"
+if not gloss.exists():
+    raise SystemExit("libGlossHook.so (ARM64) not found")
+shutil.copy2(gloss, main / "jniLibs/arm64-v8a/libGlossHook.so")
+
+print("SAMP-Mobile prepared for Bastion: library module, Bastion storage, :game process, no Firebase.")

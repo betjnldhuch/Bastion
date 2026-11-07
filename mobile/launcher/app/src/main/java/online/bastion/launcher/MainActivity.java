@@ -454,6 +454,18 @@ public class MainActivity extends Activity {
             return;
         }
         clientConfig = cfg.writeClientConfig(this);
+        java.io.File storage = ClientInstaller.findSampStorageRoot(this);
+        if (storage == null) {
+            notice("Файлы игры повреждены", "Не найдена папка SAMP в установленной игре. Переустанови игру в настройках.", null, null);
+            return;
+        }
+        Config.Server server = cfg.servers.get(cfg.selected);
+        try {
+            ClientInstaller.writeSampSettings(storage, nick, server.host, server.port, cfg.fps, cfg.chatLines);
+        } catch (Exception e) {
+            notice("Не удалось подготовить запуск", "Ошибка записи SAMP/settings.ini: " + e.getMessage(), null, null);
+            return;
+        }
         openSampClient();
     }
 
@@ -516,8 +528,11 @@ public class MainActivity extends Activity {
             @Override public void onComplete(int count, java.io.File directory) {
                 if (progress.isShowing()) progress.dismiss();
                 updatePlayButton();
+                String warnings = ClientInstaller.installWarnings(MainActivity.this);
                 notice("Установка завершена",
-                        "Установлено файлов: " + count + "\nПапка: " + directory.getAbsolutePath(),
+                        "Установлено файлов: " + count + "\nПапка: " + directory.getAbsolutePath()
+                                + (warnings.length() > 0 ? "\n\nВнимание: " + warnings
+                                + ". Если игра не запустится, проверь, что это кэш SAMP-Mobile GTA-2.11." : ""),
                         null, null);
             }
 
@@ -743,6 +758,9 @@ public class MainActivity extends Activity {
         i.putExtra("bastion.name", s.name);
         i.putExtra("bastion.nick", cfg.nickname);
         // Папка с игрой, которую скачал и распаковал ZIP-установщик лаунчера.
+        // bastion.storage — корень для SAMP-Mobile (где лежит SAMP/), заменяет /storage/emulated/0/GTA/.
+        java.io.File storage = ClientInstaller.findSampStorageRoot(this);
+        if (storage != null) i.putExtra("bastion.storage", storage.getAbsolutePath() + "/");
         java.io.File gameData = ClientInstaller.findGameDataRoot(this);
         if (gameData != null) i.putExtra("bastion.game_dir", gameData.getAbsolutePath());
         // Настройки лаунчера (те же значения записаны в bastion.cfg).
@@ -751,15 +769,17 @@ public class MainActivity extends Activity {
         i.putExtra("bastion.chat_lines", cfg.chatLines);
         i.putExtra("bastion.button_size", cfg.buttonSize);
         if (clientConfig != null) i.putExtra("bastion.config", clientConfig.getAbsolutePath());
-        i.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         return i;
     }
 
-    /** Запускает встроенный SampDroid Activity внутри того же Bastion APK. */
+    /** Activity встроенного клиента SAMP-Mobile GTA-2.11 (модуль :samp, процесс ":game"). */
+    static final String SAMP_ACTIVITY = "com.gta.game.SAMP";
+
+    /** Запускает встроенный SAMP-Mobile внутри того же Bastion APK. */
     private void openSampClient() {
         try {
             Intent embeddedClient = new Intent();
-            embeddedClient.setClassName(this, "com.xykal.sampdroid.ui.MainActivity");
+            embeddedClient.setClassName(this, SAMP_ACTIVITY);
             startActivity(withBastionSession(embeddedClient));
         } catch (Exception e) {
             notice("Не удалось открыть игровой клиент",

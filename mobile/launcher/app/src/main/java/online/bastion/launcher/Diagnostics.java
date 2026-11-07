@@ -96,6 +96,10 @@ public final class Diagnostics {
         if (client == null) client = new File(ctx.getFilesDir(), "game");
         r.append("Папка игры: ").append(client.getAbsolutePath()).append('\n');
         r.append("Установлено: ").append(ClientInstaller.isGameInstalled(ctx) ? "да" : "нет").append('\n');
+        File sampRoot = ClientInstaller.findSampStorageRoot(ctx);
+        r.append("Корень SAMP-Mobile: ").append(sampRoot == null ? "не найден" : sampRoot.getAbsolutePath()).append('\n');
+        String warnings = ClientInstaller.installWarnings(ctx);
+        if (warnings.length() > 0) r.append(warnings).append('\n');
         String[] names = client.list();
         if (names == null) {
             r.append(client.exists() ? "Папка есть, но нет доступа\n" : "Ресурсы ещё не загружены\n");

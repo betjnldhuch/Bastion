@@ -121,8 +121,14 @@ public final class ClientInstaller {
     public static final String GAME_ARCHIVE_URL = "http://192.168.31.182:8000/game.zip";
     /** MD5 архива по умолчанию. Для своей ссылки проверка MD5 не выполняется. */
     public static final String GAME_ARCHIVE_MD5 = "57A0F9765B2C229FD814E11D36F5EF00";
-    /** Из архива берётся только эта папка, её содержимое кладётся в files/game. */
+    /**
+     * Папка внутри архива, содержимое которой кладётся в files/game. Если её нет,
+     * корень игры ищется автоматически: папка, в которой лежит SAMP/ (так устроен
+     * кэш SAMP-Mobile GTA-2.11 — содержимое /storage/emulated/0/GTA/).
+     */
     private static final String GAME_ARCHIVE_PREFIX = "Data file Lite (samp)/ru.unisamp_mobile.game/files/";
+    /** Папка встроенного клиента SAMP-Mobile внутри корня игры. */
+    public static final String SAMP_DIR = "SAMP";
     private static final String INSTALL_MARKER = ".install_complete";
     private static final long MAX_ARCHIVE_SIZE = 2147483648L;     // 2 ГБ
     private static final long MAX_EXTRACTED_SIZE = 4294967296L;   // 4 ГБ
@@ -136,7 +142,90 @@ public final class ClientInstaller {
     /** Игра считается установленной, если установка дошла до конца и есть папка SAMP. */
     public static boolean isGameInstalled(Context context) {
         File dir = gameDir(context);
-        return dir != null && new File(dir, INSTALL_MARKER).exists() && new File(dir, "SAMP").isDirectory();
+        return dir != null && new File(dir, INSTALL_MARKER).exists() && findSampStorageRoot(context) != null;
+    }
+
+    /**
+     * Корень хранилища для SAMP-Mobile — папка, где лежит SAMP/ (аналог
+     * /storage/emulated/0/GTA/ в оригинальном клиенте). Ищется в files/game
+     * не глубже 3 уровней. Возвращает null, если SAMP/ нет.
+     */
+    public static File findSampStorageRoot(Context context) {
+        File game = gameDir(context);
+        if (game == null || !game.isDirectory()) return null;
+        return findSampRoot(game, 0);
+    }
+
+    private static File findSampRoot(File dir, int depth) {
+        if (new File(dir, SAMP_DIR).isDirectory()) return dir;
+        if (depth >= 3) return null;
+        File[] children = dir.listFiles();
+        if (children == null) return null;
+        for (File child : children) {
+            if (!child.isDirectory()) continue;
+            File found = findSampRoot(child, depth + 1);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    /**
+     * Записывает выбранный сервер, ник и настройки в SAMP/settings.ini клиента.
+     * Остальные ключи файла (из кэша игры) сохраняются. Без этого файла
+     * SAMP-Mobile завершается сразу после запуска.
+     */
+    public static File writeSampSettings(File storageRoot, String nick, String host, int port,
+                                         int fpsLimit, int chatLines) throws java.io.IOException {
+        File samp = new File(storageRoot, SAMP_DIR);
+        if (!samp.isDirectory() && !samp.mkdirs()) throw new java.io.IOException("Нет папки " + samp);
+        File ini = new File(samp, "settings.ini");
+        java.util.List<String> lines = new java.util.ArrayList<String>();
+        if (ini.exists()) {
+            java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(
+                    new java.io.FileInputStream(ini), "UTF-8"));
+            try { String l; while ((l = r.readLine()) != null) lines.add(l); } finally { r.close(); }
+        }
+        setIni(lines, "client", "name", nick);
+        setIni(lines, "client", "host", host);
+        setIni(lines, "client", "port", String.valueOf(port));
+        setIni(lines, "gui", "FPSLimit", String.valueOf(fpsLimit));
+        setIni(lines, "gui", "ChatMaxMessages", String.valueOf(chatLines));
+        File tmp = new File(samp, "settings.ini.tmp");
+        java.io.Writer w = new java.io.OutputStreamWriter(new FileOutputStream(tmp), "UTF-8");
+        try { for (String l : lines) { w.write(l); w.write('\n'); } } finally { w.close(); }
+        if (ini.exists() && !ini.delete()) throw new java.io.IOException("Не удалось обновить " + ini);
+        if (!tmp.renameTo(ini)) throw new java.io.IOException("Не удалось сохранить " + ini);
+        return ini;
+    }
+
+    /** Ставит key=value в секции [section] (без учёта регистра, как inih); создаёт при отсутствии. */
+    static void setIni(java.util.List<String> lines, String section, String key, String value) {
+        int sectionStart = -1, sectionEnd = lines.size();
+        for (int i = 0; i < lines.size(); i++) {
+            String t = lines.get(i).trim();
+            if (t.startsWith("[") && t.endsWith("]")) {
+                if (sectionStart >= 0) { sectionEnd = i; break; }
+                if (t.substring(1, t.length() - 1).trim().equalsIgnoreCase(section)) sectionStart = i;
+            }
+        }
+        if (sectionStart < 0) {
+            if (!lines.isEmpty() && lines.get(lines.size() - 1).trim().length() > 0) lines.add("");
+            lines.add("[" + section + "]");
+            lines.add(key + " = " + value);
+            return;
+        }
+        for (int i = sectionStart + 1; i < sectionEnd; i++) {
+            String t = lines.get(i).trim();
+            if (t.startsWith(";") || t.startsWith("#")) continue;
+            int eq = t.indexOf('=');
+            if (eq > 0 && t.substring(0, eq).trim().equalsIgnoreCase(key)) {
+                lines.set(i, key + " = " + value);
+                return;
+            }
+        }
+        int insert = sectionEnd;
+        while (insert > sectionStart + 1 && lines.get(insert - 1).trim().length() == 0) insert--;
+        lines.add(insert, key + " = " + value);
     }
 
     /**
@@ -208,12 +297,17 @@ public final class ClientInstaller {
                             throw new SecurityException("MD5 не совпадает! Архив повреждён или это другая версия.");
                     }
 
+                    report(callback, "Проверка содержимого архива…");
+                    String prefix = detectGamePrefix(archive);
                     report(callback, "Распаковка файлов игры…");
-                    int count = extractZip(archive, staging, GAME_ARCHIVE_PREFIX, callback);
+                    int count = extractZip(archive, staging, prefix, callback);
                     if (count == 0)
-                        throw new IllegalStateException("В архиве нет папки «" + GAME_ARCHIVE_PREFIX + "».");
-                    if (!new File(staging, INSTALL_MARKER).createNewFile())
-                        throw new IllegalStateException("Не удалось отметить завершение установки.");
+                        throw new IllegalStateException("В архиве нет файлов игры («" + prefix + "»).");
+                    report(callback, "Проверка установки…");
+                    String summary = verifyInstall(staging, count);
+                    java.io.Writer marker = new java.io.OutputStreamWriter(
+                            new FileOutputStream(new File(staging, INSTALL_MARKER)), "UTF-8");
+                    try { marker.write(summary); } finally { marker.close(); }
 
                     File root = new File(external, "game");
                     File backup = new File(external, "game-previous");
@@ -282,6 +376,83 @@ public final class ClientInstaller {
             target.delete();
             throw e;
         } finally { connection.disconnect(); }
+    }
+
+    /**
+     * Определяет папку архива с игрой: сначала GAME_ARCHIVE_PREFIX, затем самая
+     * верхняя папка, содержащая SAMP/. Если SAMP/ нигде нет — архив не подходит.
+     */
+    static String detectGamePrefix(File archive) throws Exception {
+        java.util.zip.ZipFile zip = new java.util.zip.ZipFile(archive);
+        try {
+            String best = null;
+            boolean hasDefault = false;
+            java.util.Enumeration<? extends java.util.zip.ZipEntry> entries = zip.entries();
+            while (entries.hasMoreElements()) {
+                String name = entries.nextElement().getName().replace('\\', '/');
+                if (name.startsWith(GAME_ARCHIVE_PREFIX + SAMP_DIR + "/")) hasDefault = true;
+                int from = 0;
+                while (true) {
+                    int idx = name.indexOf(SAMP_DIR + "/", from);
+                    if (idx < 0) break;
+                    if (idx == 0 || name.charAt(idx - 1) == '/') {
+                        String p = name.substring(0, idx);
+                        if (best == null || p.length() < best.length()) best = p;
+                        break;
+                    }
+                    from = idx + 1;
+                }
+            }
+            if (hasDefault) return GAME_ARCHIVE_PREFIX;
+            if (best == null)
+                throw new IllegalStateException("В архиве нет папки SAMP/ — это не кэш SAMP-Mobile GTA-2.11.");
+            return best;
+        } finally { zip.close(); }
+    }
+
+    /**
+     * Проверка распакованной игры. Обязательна непустая папка SAMP/; про
+     * отсутствующие стандартные папки GTA SA сообщается в итоге установки.
+     */
+    static String verifyInstall(File root, int count) {
+        File samp = new File(root, SAMP_DIR);
+        String[] sampFiles = samp.list();
+        if (!samp.isDirectory() || sampFiles == null || sampFiles.length == 0)
+            throw new IllegalStateException("После распаковки нет папки SAMP/ с файлами клиента.");
+        StringBuilder missing = new StringBuilder();
+        for (String dir : new String[]{"texdb", "audio", "data", "models"}) {
+            if (!existsIgnoreCase(root, dir)) missing.append(missing.length() == 0 ? "" : ", ").append(dir);
+        }
+        if (!existsIgnoreCase(samp, "fonts")) missing.append(missing.length() == 0 ? "" : ", ").append("SAMP/fonts");
+        StringBuilder out = new StringBuilder();
+        out.append("files=").append(count).append('\n');
+        out.append("samp_files=").append(sampFiles.length).append('\n');
+        out.append("missing=").append(missing).append('\n');
+        return out.toString();
+    }
+
+    private static boolean existsIgnoreCase(File dir, String name) {
+        String[] names = dir.list();
+        if (names == null) return false;
+        for (String n : names) if (n.equalsIgnoreCase(name)) return true;
+        return false;
+    }
+
+    /** Текст предупреждения о неполной установке (пусто, если всё на месте). */
+    public static String installWarnings(Context context) {
+        File dir = gameDir(context);
+        if (dir == null) return "";
+        File marker = new File(dir, INSTALL_MARKER);
+        try {
+            java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(
+                    new java.io.FileInputStream(marker), "UTF-8"));
+            try {
+                String l;
+                while ((l = r.readLine()) != null)
+                    if (l.startsWith("missing=") && l.length() > 8) return "Не найдены папки: " + l.substring(8);
+            } finally { r.close(); }
+        } catch (Exception ignored) { }
+        return "";
     }
 
     /** Распаковывает только записи внутри prefix (сам prefix отрезается). Возвращает число файлов. */
