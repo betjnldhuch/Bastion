@@ -23,7 +23,7 @@ on:
       - ".github/workflows/bastion-single-apk.yml"
 
 permissions:
-  contents: read
+  contents: write  # publish the tested APK as a pre-release on integrate/openmp-* pushes
 
 concurrency:
   group: bastion-single-apk-${{ github.ref }}
@@ -135,3 +135,20 @@ jobs:
           path: mobile/artifacts/Bastion-Launcher-Embedded-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish APK as a pre-release (integrate/openmp-* branches)
+        if: github.event_name == 'push' && startsWith(github.ref_name, 'integrate/openmp-')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: mobile/artifacts
+        run: |
+          set -euo pipefail
+          VERSION=$(grep -o 'versionName "[^"]*"' ../launcher/app/build.gradle | cut -d'"' -f2)
+          TAG="android-v${VERSION}-${GITHUB_SHA::7}"
+          NAME="Bastion-Launcher-${VERSION}-${GITHUB_SHA::7}-debug.apk"
+          cp Bastion-Launcher-Embedded-debug.apk "$NAME"
+          sha256sum "$NAME" | tee "$NAME.sha256"
+          gh release create "$TAG" "$NAME" "$NAME.sha256" \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title "Bastion Launcher ${VERSION} (${GITHUB_SHA::7}, debug)" \
+            --notes "Debug APK from branch ${GITHUB_REF_NAME}, commit ${GITHUB_SHA}. Built and checked by workflow run ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID} (native tests, armeabi-v7a + arm64-v8a, embedded SampDroid). Login/class/spawn protocol is verified separately by the 'Bastion e2e' workflow against open.mp + the Bastion gamemode."
