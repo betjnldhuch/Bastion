@@ -12,6 +12,46 @@ import java.io.File;
 public final class Diagnostics {
     private Diagnostics() { }
 
+    private static final String CRASH_FILE = "last_crash.txt";
+
+    /**
+     * Записывает последнее необработанное исключение процесса (лаунчер и встроенный
+     * клиент работают в одном процессе) в files/last_crash.txt, затем передаёт его
+     * стандартному обработчику — приложение закрывается как обычно.
+     */
+    public static void installCrashLog(Context ctx) {
+        final File file = new File(ctx.getApplicationContext().getFilesDir(), CRASH_FILE);
+        final Thread.UncaughtExceptionHandler previous = Thread.getDefaultUncaughtExceptionHandler();
+        if (previous != null && previous.getClass().getName().startsWith(Diagnostics.class.getName())) return;
+        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+            @Override public void uncaughtException(Thread thread, Throwable error) {
+                try {
+                    java.io.StringWriter text = new java.io.StringWriter();
+                    java.io.PrintWriter out = new java.io.PrintWriter(text);
+                    out.println(new java.util.Date() + " · поток " + thread.getName());
+                    error.printStackTrace(out);
+                    out.flush();
+                    java.io.FileOutputStream f = new java.io.FileOutputStream(file);
+                    try { f.write(text.toString().getBytes("UTF-8")); } finally { f.close(); }
+                } catch (Throwable ignored) { }
+                if (previous != null) previous.uncaughtException(thread, error);
+            }
+        });
+    }
+
+    private static String lastCrash(Context ctx) {
+        File file = new File(ctx.getFilesDir(), CRASH_FILE);
+        if (!file.isFile()) return null;
+        try {
+            java.io.FileInputStream in = new java.io.FileInputStream(file);
+            try {
+                byte[] data = new byte[(int) Math.min(file.length(), 6000)];
+                int n = in.read(data);
+                return n <= 0 ? null : new String(data, 0, n, "UTF-8");
+            } finally { in.close(); }
+        } catch (Exception e) { return null; }
+    }
+
     @SuppressWarnings("deprecation")
     public static String report(Context ctx) {
         StringBuilder r = new StringBuilder();
@@ -68,6 +108,8 @@ public final class Diagnostics {
                 r.append('\n');
             }
         }
+        String crash = lastCrash(ctx);
+        r.append("\n[Последний вылет]\n").append(crash == null ? "нет\n" : crash);
         return r.toString();
     }
 

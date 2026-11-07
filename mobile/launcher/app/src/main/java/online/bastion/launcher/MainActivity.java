@@ -52,6 +52,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        Diagnostics.installCrashLog(this);
         Ui.init(this);
         cfg = new Config(this);
 

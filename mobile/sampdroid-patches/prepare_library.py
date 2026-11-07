@@ -47,6 +47,15 @@ if count != 1:
 xml = xml.replace('android:exported="true"', 'android:exported="false"', 1)
 # The host launcher owns the application theme; retain SampDroid theme only on its Activity.
 xml = re.sub(r'(<application\b[^>]*?)\s+android:theme="[^"]+"', r'\1', xml, count=1)
-xml = xml.replace('android:name=".ui.MainActivity" android:exported="false"', 'android:name=".ui.MainActivity" android:exported="false" android:theme="@style/Theme.SampDroid"', 1)
+# SampDroid's MainActivity is an AppCompatActivity: without an AppCompat/Material3
+# theme it crashes on start with "You need to use a Theme.AppCompat theme".
+# The attributes are on separate lines upstream, so match the tag, not one line.
+xml, themed = re.subn(
+    r'(<activity\b(?=[^>]*android:name="\.ui\.MainActivity")[^>]*?)(\s*/?>)',
+    lambda m: m.group(1) + ('' if 'android:theme=' in m.group(1)
+                            else '\n            android:theme="@style/Theme.SampDroid"') + m.group(2),
+    xml, count=1, flags=re.S)
+if themed != 1 or 'android:theme="@style/Theme.SampDroid"' not in xml.split('<activity', 1)[1]:
+    raise SystemExit("Could not attach Theme.SampDroid to the embedded SampDroid Activity")
 manifest.write_text(xml, encoding="utf-8")
 print("SampDroid converted to an Android library; its Activity is embedded, not a launcher.")
