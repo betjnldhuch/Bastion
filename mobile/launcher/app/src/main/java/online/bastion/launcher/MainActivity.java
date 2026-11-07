@@ -38,6 +38,7 @@ public class MainActivity extends Activity {
     private final List<ServerCard> cards = new ArrayList<ServerCard>();
     private EditText nickField;
     private TextView playButton;
+    private java.io.File clientConfig;
     private boolean resumed;
 
     private final Runnable poll = new Runnable() {
@@ -451,7 +452,7 @@ public class MainActivity extends Activity {
             notice("Неверный ник", "На сервере нужен РП-ник: Имя_Фамилия латиницей, каждое слово с большой буквы. Например: Ivan_Petrov.", null, null);
             return;
         }
-        cfg.writeClientConfig(this);
+        clientConfig = cfg.writeClientConfig(this);
         openSampClient();
     }
 
@@ -733,47 +734,44 @@ public class MainActivity extends Activity {
     }
 
 
-    /** Opens the installed SA-MP game, falling back to the orange SA-MP Launcher. */
-    private static final String SAMP_GAME_PACKAGE = "com.samp.mobile";
-    private static final String SAMP_LAUNCHER_PACKAGE = "com.samp.mobile";
-
-    private void openSampClient() {
-        Intent game = getPackageManager().getLaunchIntentForPackage(SAMP_GAME_PACKAGE);
-        if (game != null) {
-            try { startActivity(game); }
-            catch (Exception e) { notice("Не удалось открыть игру", e.getMessage(), null, null); }
-            return;
-        }
-
-        Intent sampLauncher = getPackageManager().getLaunchIntentForPackage(SAMP_LAUNCHER_PACKAGE);
-        if (sampLauncher != null) {
-            startActivity(sampLauncher);
-            android.widget.Toast.makeText(this,
-                    "Сначала заверши загрузку клиента в SA-MP Launcher, затем вернись в Bastion.",
-                    android.widget.Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        notice("SA-MP клиент не найден",
-                "Bastion сохранил ник и настройки. Установи оранжевый SA-MP Launcher APK, открой его один раз и дождись загрузки игрового клиента. Затем вернись сюда и нажми «ИГРАТЬ». Google Play не открывается.",
-                null, null);
+    /** Передаёт нативному клиенту ник и выбранный сервер: он сразу откроет подключение. */
+    private Intent withBastionSession(Intent i) {
+        Config.Server s = cfg.servers.get(cfg.selected);
+        i.putExtra("bastion.host", s.host);
+        i.putExtra("bastion.port", s.port);
+        i.putExtra("bastion.name", s.name);
+        i.putExtra("bastion.nick", cfg.nickname);
+        // Папка с игрой, которую скачал и распаковал ZIP-установщик лаунчера.
+        java.io.File gameData = ClientInstaller.findGameDataRoot(this);
+        if (gameData != null) i.putExtra("bastion.game_dir", gameData.getAbsolutePath());
+        // Настройки лаунчера (те же значения записаны в bastion.cfg).
+        i.putExtra("bastion.fps", cfg.fps);
+        i.putExtra("bastion.quality", cfg.quality);
+        i.putExtra("bastion.chat_lines", cfg.chatLines);
+        i.putExtra("bastion.button_size", cfg.buttonSize);
+        if (clientConfig != null) i.putExtra("bastion.config", clientConfig.getAbsolutePath());
+        i.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        return i;
     }
 
+    /** Запускает встроенный SampDroid Activity внутри того же Bastion APK. */
+    private void openSampClient() {
+        try {
+            Intent embeddedClient = new Intent();
+            embeddedClient.setClassName(this, "com.xykal.sampdroid.ui.MainActivity");
+            startActivity(withBastionSession(embeddedClient));
+        } catch (Exception e) {
+            notice("Не удалось открыть игровой клиент",
+                    "Встроенный клиент не запустился: " + e.getMessage(), null, null);
+        }
+    }
+
+    /** Повторное открытие игрового экрана не обращается к отдельному пакету. */
     private void launchInstalledSampClient() {
-        Intent game = getPackageManager().getLaunchIntentForPackage(SAMP_GAME_PACKAGE);
-        if (game != null) {
-            startActivity(game);
-            return;
-        }
-        Intent launcher = getPackageManager().getLaunchIntentForPackage(SAMP_LAUNCHER_PACKAGE);
-        if (launcher != null) {
-            startActivity(launcher);
-            return;
-        }
         openSampClient();
     }
 
-    //  Диагностика: отчёт о телефоне и GTA SA, чтобы скопировать и прислать
+    //  Диагностика устройства и ресурсов Bastion
     // ==================================================================
     private void runDiagnostics() {
         applySettings();

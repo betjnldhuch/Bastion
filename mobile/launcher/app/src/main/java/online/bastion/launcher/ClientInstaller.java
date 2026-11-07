@@ -140,6 +140,38 @@ public final class ClientInstaller {
     }
 
     /**
+     * Корень игровых данных для встроенного клиента: папка, где лежит data/gta.dat
+     * (ищется внутри files/game не глубже 3 уровней, без учёта регистра).
+     * Если gta.dat не найден, возвращается сама папка game — клиент покажет, чего не хватает.
+     */
+    public static File findGameDataRoot(Context context) {
+        File game = gameDir(context);
+        if (game == null || !game.isDirectory()) return null;
+        File found = findGtaDatRoot(game, 0);
+        return found != null ? found : game;
+    }
+
+    private static File findGtaDatRoot(File dir, int depth) {
+        File[] children = dir.listFiles();
+        if (children == null) return null;
+        for (File child : children) {
+            if (child.isFile() && child.getName().equalsIgnoreCase("gta.dat")) return dir;
+            if (child.isDirectory() && child.getName().equalsIgnoreCase("data")) {
+                File[] data = child.listFiles();
+                if (data != null) for (File f : data)
+                    if (f.isFile() && f.getName().equalsIgnoreCase("gta.dat")) return dir;
+            }
+        }
+        if (depth >= 3) return null;
+        for (File child : children) {
+            if (!child.isDirectory()) continue;
+            File found = findGtaDatRoot(child, depth + 1);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    /**
      * Скачивает ZIP (http или https), сверяет MD5 (если он передан), распаковывает
      * папку GAME_ARCHIVE_PREFIX во временную папку и только после успеха
      * заменяет ею files/game. При ошибке старая установка остаётся.

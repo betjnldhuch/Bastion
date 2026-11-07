@@ -6,7 +6,9 @@ import android.os.Build;
 import android.view.Display;
 import android.view.WindowManager;
 
-/** Device-only diagnostics. Does not inspect or require a particular GTA installation. */
+import java.io.File;
+
+/** Диагностика устройства и папки ресурсов Bastion. Не проверяет наличие сторонней внешней игры. */
 public final class Diagnostics {
     private Diagnostics() { }
 
@@ -48,6 +50,24 @@ public final class Diagnostics {
             }
             r.append('\n');
         } catch (Exception ignored) { }
+
+        r.append("\n[Файлы Bastion]\n");
+        File client = ClientInstaller.gameDir(ctx);
+        if (client == null) client = new File(ctx.getFilesDir(), "game");
+        r.append("Папка игры: ").append(client.getAbsolutePath()).append('\n');
+        r.append("Установлено: ").append(ClientInstaller.isGameInstalled(ctx) ? "да" : "нет").append('\n');
+        String[] names = client.list();
+        if (names == null) {
+            r.append(client.exists() ? "Папка есть, но нет доступа\n" : "Ресурсы ещё не загружены\n");
+        } else {
+            r.append("Элементов: ").append(names.length).append('\n');
+            for (int i = 0; i < names.length && i < 30; i++) {
+                File item = new File(client, names[i]);
+                r.append("  ").append(names[i]);
+                if (item.isFile()) r.append(" — ").append(item.length() / (1024 * 1024)).append(" МБ");
+                r.append('\n');
+            }
+        }
         return r.toString();
     }
 

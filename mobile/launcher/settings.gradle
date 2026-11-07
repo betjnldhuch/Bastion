@@ -5,4 +5,5 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
 rootProject.name = "BastionLauncher"
-include ':app'
+include ':app', ':sampdroid'
+project(':sampdroid').projectDir = file('../sampdroid/app')

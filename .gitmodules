@@ -1,0 +1,3 @@
+[submodule "mobile/sampdroid"]
+	path = mobile/sampdroid
+	url = https://github.com/xykal/sampdroid.git

@@ -5,11 +5,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- Android 11+: разрешаем находить установленный SA-MP Mobile client -->
-    <queries>
-        <package android:name="com.samp.mobile" />
-    </queries>
-
     <application
         android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"

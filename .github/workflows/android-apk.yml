@@ -1,11 +1,10 @@
 name: Build Bastion Android APK
 
+# Старая сборка лаунчера без встроенного клиента. После встраивания SampDroid
+# проект собирается только вместе с подготовленным submodule — это делает
+# bastion-single-apk.yml. Здесь остаётся только ручной запуск.
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - "mobile/launcher/**"
-      - ".github/workflows/android-apk.yml"
 
 jobs:
   build:
