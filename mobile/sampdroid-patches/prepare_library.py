@@ -23,7 +23,9 @@ def remove_gradle_block(source: str, block_name: str) -> str:
     raise SystemExit("Unbalanced Gradle block: " + block_name)
 
 text = text.replace('id("com.android.application")', 'id("com.android.library")', 1)
-# The upstream module pins NDK r26; override it so CI uses the r28 toolchain\n# installed by the workflow (r28 defaults to 16 KB ELF segment alignment).\ntext = re.sub(r'(?m)^\\s*ndkVersion\\s*=\\s*"[^"]+"', '    ndkVersion = "28.2.13676358"', text, count=1)\ntext = re.sub(r'(?m)^\s*applicationId\s*=\s*"[^"]+"\s*\n', '', text)
+# The upstream module pins NDK r26; use the workflow-installed r28 toolchain.
+text = re.sub(r'(?m)^\s*ndkVersion\s*=\s*"[^"]+"', '    ndkVersion = "28.2.13676358"', text, count=1)
+text = re.sub(r'(?m)^\s*applicationId\s*=\s*"[^"]+"\s*\n', '', text)
 text = re.sub(r'(?m)^\s*versionCode\s*=\s*\d+\s*\n', '', text)
 text = re.sub(r'(?m)^\s*versionName\s*=\s*"[^"]+"\s*\n', '', text)
 # Library modules cannot own APK signing configuration. The launcher is the
