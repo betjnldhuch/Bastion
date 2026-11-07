@@ -1,0 +1,137 @@
+name: Bastion e2e - native client vs real open.mp + Bastion gamemode
+
+# Runs the exact native client code that goes into the APK (SampDroid + Bastion
+# patches) on the host, against a real open.mp server running server/gamemodes/rp.pwn:
+# connect -> PlayerInit -> RequestClass -> register dialog -> gender dialog ->
+# spawn -> /help, then a second session: login dialog -> spawn.
+# This proves the network/login/class/spawn protocol. It does not render GTA:
+# the in-game world on the phone still has to be checked on a device.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "integrate/**"
+    paths:
+      - "mobile/sampdroid"
+      - "mobile/sampdroid-patches/**"
+      - "server/gamemodes/**"
+      - ".github/workflows/bastion-e2e-openmp.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bastion-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Bastion with pinned SampDroid source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Apply Bastion patches to SampDroid
+        working-directory: mobile/sampdroid
+        run: python3 ../sampdroid-patches/apply.py .
+
+      - name: SampDroid native regression tests (with Bastion patches)
+        working-directory: mobile/sampdroid
+        run: |
+          set -euo pipefail
+          SRCS=$(grep -o 'app/src/main/cpp/[a-z_]*\.cpp' .github/workflows/build-apk.yml | sort -u | tr '\n' ' ')
+          c++ -std=c++17 -O1 -Wall -Wextra -pedantic -pthread -Iapp/src/main/cpp $SRCS \
+            tests/native/raknet_codec_test.cpp -o /tmp/native-tests
+          /tmp/native-tests
+
+      - name: Build host e2e client from the same native sources
+        working-directory: mobile/sampdroid
+        run: |
+          set -euo pipefail
+          SRCS=$(grep -o 'app/src/main/cpp/[a-z_]*\.cpp' .github/workflows/build-apk.yml | sort -u | tr '\n' ' ')
+          c++ -std=c++17 -O1 -Wall -Wextra -pthread -Iapp/src/main/cpp $SRCS \
+            ../sampdroid-patches/e2e/bastion_e2e_client.cpp -o /tmp/bastion-e2e
+
+      - name: Download open.mp server (Linux)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view --repo openmultiplayer/open.mp --json tagName,assets \
+            -q '.tagName + "\n" + ([.assets[].name] | join("\n"))'
+          ASSET=$(gh release view --repo openmultiplayer/open.mp --json assets \
+            -q '[.assets[].name | select(test("linux-x86") and (test("dynssl") | not) and endswith(".tar.gz"))][0]')
+          echo "asset: $ASSET"
+          gh release download --repo openmultiplayer/open.mp --pattern "$ASSET" --dir /tmp
+          mkdir -p /tmp/omp && tar -xzf "/tmp/$ASSET" -C /tmp/omp
+          find /tmp/omp -maxdepth 3 | head -50
+
+      - name: Install 32-bit runtime for open.mp
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libc6:i386 libstdc++6:i386 libgcc-s1:i386 >/dev/null
+
+      - name: Compile the Bastion gamemode with the bundled pawncc
+        run: |
+          set -euo pipefail
+          SERVER=$(dirname "$(find /tmp/omp -name omp-server -type f | head -1)")
+          echo "SERVER=$SERVER" >> "$GITHUB_ENV"
+          cp -r server/gamemodes/. "$SERVER/gamemodes/"
+          cd "$SERVER"
+          ls qawno || true
+          PAWNCC=$(find . -name pawncc -type f | head -1)
+          INC=$(dirname "$(find . -name 'open.mp.inc' | head -1)")
+          chmod +x "$PAWNCC"
+          LD_LIBRARY_PATH="$(dirname "$PAWNCC")" "$PAWNCC" -i"$INC" -igamemodes -ogamemodes/rp \
+            gamemodes/rp.pwn '-;+' '-(+' -d3 -Z-
+          ls -la gamemodes/rp.amx
+
+      - name: Configure and start open.mp with the Bastion gamemode
+        run: |
+          set -euo pipefail
+          cd "$SERVER"
+          chmod +x omp-server
+          mkdir -p scriptfiles
+          [ -f config.json ] || (timeout 5 ./omp-server --default-config || true)
+          python3 - <<'EOF'
+          import json, secrets
+          cfg = json.load(open("config.json"))
+          cfg["name"] = "Bastion Online | CI"
+          cfg["max_players"] = 50
+          cfg.setdefault("network", {})["port"] = 7777
+          cfg.setdefault("pawn", {})["main_scripts"] = ["rp 1"]
+          cfg["pawn"]["side_scripts"] = []
+          cfg["pawn"]["legacy_plugins"] = []
+          cfg.setdefault("rcon", {})["password"] = secrets.token_hex(8)
+          cfg["rcon"]["enable"] = False
+          cfg.setdefault("logging", {})["enable"] = True
+          json.dump(cfg, open("config.json", "w"), indent=2)
+          EOF
+          nohup ./omp-server > /tmp/omp.log 2>&1 &
+          echo $! > /tmp/omp.pid
+          for i in $(seq 1 40); do
+            if grep -q "Started server on\|Legacy Network started" /tmp/omp.log; then break; fi
+            sleep 0.5
+          done
+          sleep 2
+          cat /tmp/omp.log
+
+      - name: "e2e: new player registers, picks gender, spawns"
+        run: /tmp/bastion-e2e 127.0.0.1 7777 Test_Mobile ci_pass_123 register
+
+      - name: "e2e: same player logs in again and spawns"
+        run: |
+          sleep 3
+          /tmp/bastion-e2e 127.0.0.1 7777 Test_Mobile ci_pass_123 login
+
+      - name: Server log
+        if: always()
+        run: |
+          kill "$(cat /tmp/omp.pid)" 2>/dev/null || true
+          sleep 1
+          iconv -f cp1251 -t utf-8 /tmp/omp.log 2>/dev/null || cat /tmp/omp.log

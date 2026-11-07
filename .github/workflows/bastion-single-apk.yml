@@ -73,6 +73,15 @@ jobs:
           sed -i 's/<string name="app_name">SampDroid<\//<string name="app_name">Bastion<\//' app/src/main/res/values/strings.xml
           python3 ../sampdroid-patches/apply.py .
 
+      - name: SampDroid native regression tests (with Bastion patches)
+        working-directory: mobile/sampdroid
+        run: |
+          set -euo pipefail
+          SRCS=$(grep -o 'app/src/main/cpp/[a-z_]*\.cpp' .github/workflows/build-apk.yml | sort -u | tr '\n' ' ')
+          c++ -std=c++17 -O1 -Wall -Wextra -pedantic -pthread -Iapp/src/main/cpp $SRCS \
+            tests/native/raknet_codec_test.cpp -o /tmp/native-tests
+          /tmp/native-tests
+
       - name: Convert SampDroid into an embedded Android library
         working-directory: mobile/sampdroid
         run: python3 ../sampdroid-patches/prepare_library.py

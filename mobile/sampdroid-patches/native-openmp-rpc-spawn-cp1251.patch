@@ -1,0 +1,600 @@
+diff --git a/app/src/main/cpp/client_rpc.cpp b/app/src/main/cpp/client_rpc.cpp
+index bf6f923..6167d5e 100644
+--- a/app/src/main/cpp/client_rpc.cpp
++++ b/app/src/main/cpp/client_rpc.cpp
+@@ -1,6 +1,7 @@
+ #include "client_rpc.h"
+ 
+ #include "raknet_codec.h"
++#include "legacy_text.h"
+ 
+ #include <cmath>
+ #include <cstddef>
+@@ -111,7 +112,9 @@ std::vector<uint8_t> buildPlayerSpawn() {
+   return writer.buffer;
+ }
+ 
+-std::vector<uint8_t> buildChatMessage(const std::string& message) {
++std::vector<uint8_t> buildChatMessage(const std::string& utf8Message) {
++  // Bastion: send Windows-1251 bytes like the PC client.
++  const std::string message = legacytext::utf8ToServerText(utf8Message);
+   if (message.empty() || message.size() > kMaxChatBytes || hasUnsafeChatControlByte(message)) return {};
+   raknet::BitWriter writer;
+   writer.writeBits(kIdRpc, 8);
+@@ -121,7 +124,9 @@ std::vector<uint8_t> buildChatMessage(const std::string& message) {
+   return writer.buffer;
+ }
+ 
+-std::vector<uint8_t> buildCommandMessage(const std::string& command) {
++std::vector<uint8_t> buildCommandMessage(const std::string& utf8Command) {
++  // Bastion: send Windows-1251 bytes like the PC client.
++  const std::string command = legacytext::utf8ToServerText(utf8Command);
+   // The server's legacy handler expects the slash-prefixed command itself and
+   // a u32 byte length; do not silently reclassify malformed chat as a command.
+   if (command.size() < 2 || command.size() > kMaxCommandBytes || command.front() != '/' ||
+@@ -137,7 +142,9 @@ std::vector<uint8_t> buildCommandMessage(const std::string& command) {
+ }
+ 
+ std::vector<uint8_t> buildDialogResponse(int16_t dialogId, bool response, int16_t listItem,
+-                                         const std::string& text) {
++                                         const std::string& utf8Text) {
++  // Bastion: send Windows-1251 bytes like the PC client.
++  const std::string text = legacytext::utf8ToServerText(utf8Text);
+   if (text.size() > kMaxDialogResponseBytes || hasUnsafeDialogControlByte(text)) return {};
+   raknet::BitWriter writer;
+   writer.writeBits(kIdRpc, 8);
+diff --git a/app/src/main/cpp/legacy_text.h b/app/src/main/cpp/legacy_text.h
+new file mode 100644
+index 0000000..ab08f68
+--- /dev/null
++++ b/app/src/main/cpp/legacy_text.h
+@@ -0,0 +1,128 @@
++// Bastion: Windows-1251 <-> UTF-8 for SA-MP/open.mp text.
++//
++// SA-MP strings are raw bytes in the server's ANSI codepage; Russian servers
++// (Bastion Online included) use Windows-1251, exactly what the PC client shows.
++// Android/Java needs UTF-8. Inbound text that is already valid UTF-8 with at
++// least one multi-byte sequence is kept; any other high-byte text is decoded
++// as Windows-1251. Outbound text is encoded back to Windows-1251 when every
++// character is representable, so the server receives the same bytes as from a
++// PC client (chat, commands, dialog input such as passwords).
++#pragma once
++
++#include <cstdint>
++#include <string>
++
++namespace samp::legacytext {
++
++inline constexpr uint16_t kCp1251High[128] = {
++    0x0402, 0x0403, 0x201A, 0x0453, 0x201E, 0x2026, 0x2020, 0x2021,
++    0x20AC, 0x2030, 0x0409, 0x2039, 0x040A, 0x040C, 0x040B, 0x040F,
++    0x0452, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
++    0xFFFD, 0x2122, 0x0459, 0x203A, 0x045A, 0x045C, 0x045B, 0x045F,
++    0x00A0, 0x040E, 0x045E, 0x0408, 0x00A4, 0x0490, 0x00A6, 0x00A7,
++    0x0401, 0x00A9, 0x0404, 0x00AB, 0x00AC, 0x00AD, 0x00AE, 0x0407,
++    0x00B0, 0x00B1, 0x0406, 0x0456, 0x0491, 0x00B5, 0x00B6, 0x00B7,
++    0x0451, 0x2116, 0x0454, 0x00BB, 0x0458, 0x0405, 0x0455, 0x0457,
++    0x0410, 0x0411, 0x0412, 0x0413, 0x0414, 0x0415, 0x0416, 0x0417,
++    0x0418, 0x0419, 0x041A, 0x041B, 0x041C, 0x041D, 0x041E, 0x041F,
++    0x0420, 0x0421, 0x0422, 0x0423, 0x0424, 0x0425, 0x0426, 0x0427,
++    0x0428, 0x0429, 0x042A, 0x042B, 0x042C, 0x042D, 0x042E, 0x042F,
++    0x0430, 0x0431, 0x0432, 0x0433, 0x0434, 0x0435, 0x0436, 0x0437,
++    0x0438, 0x0439, 0x043A, 0x043B, 0x043C, 0x043D, 0x043E, 0x043F,
++    0x0440, 0x0441, 0x0442, 0x0443, 0x0444, 0x0445, 0x0446, 0x0447,
++    0x0448, 0x0449, 0x044A, 0x044B, 0x044C, 0x044D, 0x044E, 0x044F,
++};
++
++inline void appendUtf8(std::string& out, uint32_t cp) {
++  if (cp < 0x80u) {
++    out.push_back(static_cast<char>(cp));
++  } else if (cp < 0x800u) {
++    out.push_back(static_cast<char>(0xC0u | (cp >> 6)));
++    out.push_back(static_cast<char>(0x80u | (cp & 0x3Fu)));
++  } else {
++    out.push_back(static_cast<char>(0xE0u | (cp >> 12)));
++    out.push_back(static_cast<char>(0x80u | ((cp >> 6) & 0x3Fu)));
++    out.push_back(static_cast<char>(0x80u | (cp & 0x3Fu)));
++  }
++}
++
++// Strict UTF-8 check; `multibyte` reports whether any non-ASCII sequence exists.
++inline bool isStrictUtf8(const std::string& input, bool& multibyte) {
++  multibyte = false;
++  for (size_t i = 0; i < input.size();) {
++    const uint8_t c = static_cast<uint8_t>(input[i]);
++    if (c < 0x80u) { ++i; continue; }
++    size_t width = 0;
++    if (c >= 0xC2u && c <= 0xDFu) width = 2;
++    else if (c >= 0xE0u && c <= 0xEFu) width = 3;
++    else if (c >= 0xF0u && c <= 0xF4u) width = 4;
++    if (width == 0 || i + width > input.size()) return false;
++    for (size_t part = 1; part < width; ++part) {
++      if ((static_cast<uint8_t>(input[i + part]) & 0xC0u) != 0x80u) return false;
++    }
++    const uint8_t n = static_cast<uint8_t>(input[i + 1]);
++    if ((c == 0xE0u && n < 0xA0u) || (c == 0xEDu && n >= 0xA0u) ||
++        (c == 0xF0u && n < 0x90u) || (c == 0xF4u && n >= 0x90u)) {
++      return false;
++    }
++    multibyte = true;
++    i += width;
++  }
++  return true;
++}
++
++// Server bytes -> UTF-8. Never returns invalid UTF-8.
++inline std::string serverTextToUtf8(const std::string& input) {
++  bool multibyte = false;
++  if (isStrictUtf8(input, multibyte)) return input;
++  std::string out;
++  out.reserve(input.size() * 2u);
++  for (const char raw : input) {
++    const uint8_t c = static_cast<uint8_t>(raw);
++    if (c < 0x80u) {
++      out.push_back(raw);
++    } else {
++      const uint16_t cp = kCp1251High[c - 0x80u];
++      if (cp == 0xFFFDu) out.push_back('?'); else appendUtf8(out, cp);
++    }
++  }
++  return out;
++}
++
++// UTF-8 from Android -> Windows-1251 bytes. Returns the input unchanged when it
++// is not valid UTF-8 or contains a character outside Windows-1251.
++inline std::string utf8ToServerText(const std::string& input) {
++  bool multibyte = false;
++  if (!isStrictUtf8(input, multibyte) || !multibyte) return input;
++  std::string out;
++  out.reserve(input.size());
++  for (size_t i = 0; i < input.size();) {
++    const uint8_t c = static_cast<uint8_t>(input[i]);
++    uint32_t cp = c;
++    size_t width = 1;
++    if (c >= 0xF0u) {
++      return input;
++    } else if (c >= 0xE0u) {
++      width = 3;
++      cp = ((c & 0x0Fu) << 12) | ((static_cast<uint8_t>(input[i + 1]) & 0x3Fu) << 6) |
++           (static_cast<uint8_t>(input[i + 2]) & 0x3Fu);
++    } else if (c >= 0xC0u) {
++      width = 2;
++      cp = ((c & 0x1Fu) << 6) | (static_cast<uint8_t>(input[i + 1]) & 0x3Fu);
++    }
++    i += width;
++    if (cp < 0x80u) { out.push_back(static_cast<char>(cp)); continue; }
++    bool found = false;
++    for (unsigned index = 0; index < 128u; ++index) {
++      if (kCp1251High[index] == cp) {
++        out.push_back(static_cast<char>(0x80u + index));
++        found = true;
++        break;
++      }
++    }
++    if (!found) return input;
++  }
++  return out;
++}
++
++}  // namespace samp::legacytext
+diff --git a/app/src/main/cpp/raknet_codec.cpp b/app/src/main/cpp/raknet_codec.cpp
+index d79f065..86dc062 100644
+--- a/app/src/main/cpp/raknet_codec.cpp
++++ b/app/src/main/cpp/raknet_codec.cpp
+@@ -298,13 +298,31 @@ bool isOrderedReliability(uint8_t reliability) {
+          reliability == kReliabilityReliableSequenced;
+ }
+ 
++constexpr uint8_t kLegacyIdRpc = 20u;
++
++bool isLogicalRpc(const std::vector<uint8_t>& payload) {
++  return payload.size() >= 2u && payload[0] == kLegacyIdRpc;
++}
++
++// Transport bytes + exact bit count for one application payload. RPCs get the
++// legacy RakPeer::RPC header; every other packet id is sent unchanged.
++RpcWire wirePayload(const std::vector<uint8_t>& payload) {
++  if (isLogicalRpc(payload)) return encodeLegacyRpcWire(payload);
++  RpcWire plain;
++  plain.bytes = payload;
++  plain.bitLength = static_cast<uint16_t>(payload.size() * 8u);
++  return plain;
++}
++
+ bool appendUnsplitFrame(BitWriter& writer, const OutgoingPacket& packet) {
+-  if (packet.payload.empty() || packet.payload.size() > UINT16_MAX / 8u ||
++  if (packet.payload.empty() || packet.payload.size() > UINT16_MAX / 8u - 8u ||
+       packet.reliability < kReliabilityUnreliable ||
+       packet.reliability > kReliabilityReliableSequenced) {
+     return false;
+   }
+   if (isOrderedReliability(packet.reliability) && packet.orderingChannel >= 32u) return false;
++  const RpcWire wire = wirePayload(packet.payload);
++  if (wire.bytes.empty() || wire.bitLength == 0u) return false;
+ 
+   writer.writeBits(packet.messageNumber, 16);
+   writer.writeBits(packet.reliability, 4);
+@@ -313,13 +331,58 @@ bool appendUnsplitFrame(BitWriter& writer, const OutgoingPacket& packet) {
+     writer.writeBits(packet.orderingIndex, 16);
+   }
+   writer.writeBit(false);  // isSplit
+-  writer.writeCompressedU16(static_cast<uint16_t>(packet.payload.size() * 8u));
+-  writer.writeAlignedBytes(packet.payload.data(), packet.payload.size());
++  writer.writeCompressedU16(wire.bitLength);
++  writer.writeAlignedBytes(wire.bytes.data(), wire.bytes.size());
+   return true;
+ }
+ 
+ }  // namespace
+ 
++RpcWire encodeLegacyRpcWire(const std::vector<uint8_t>& logical) {
++  RpcWire out;
++  if (!isLogicalRpc(logical) || logical.size() > UINT16_MAX / 8u - 8u) return out;
++  const uint32_t dataBits = static_cast<uint32_t>(logical.size() - 2u) * 8u;
++  BitWriter writer;
++  writer.writeBits(logical[0], 8);
++  writer.writeBits(logical[1], 8);
++  writer.writeCompressedU32(dataBits);
++  if (dataBits == 0u) {
++    writer.writeCompressedU32(0u);
++  } else {
++    for (size_t index = 2; index < logical.size(); ++index) writer.writeBits(logical[index], 8);
++  }
++  out.bitLength = static_cast<uint16_t>(writer.bitPosition);
++  out.bytes = std::move(writer.buffer);
++  return out;
++}
++
++bool decodeLegacyRpcWire(IncomingPacket& packet) {
++  if (!isLogicalRpc(packet.payload)) return true;
++  const size_t declaredBits =
++      packet.payloadBitLength == 0u ? packet.payload.size() * 8u : packet.payloadBitLength;
++  BitReader reader(packet.payload.data(), packet.payload.size(), declaredBits);
++  reader.readBits(8);
++  const uint8_t rpcId = static_cast<uint8_t>(reader.readBits(8));
++  const uint32_t dataBits = reader.readCompressedU32();
++  if (!reader.ok() || dataBits > declaredBits - reader.bitPosition()) return false;
++  std::vector<uint8_t> logical;
++  logical.reserve(2u + (dataBits + 7u) / 8u);
++  logical.push_back(kLegacyIdRpc);
++  logical.push_back(rpcId);
++  uint32_t remaining = dataBits;
++  while (remaining > 0u) {
++    const int take = remaining >= 8u ? 8 : static_cast<int>(remaining);
++    uint32_t value = 0u;
++    for (int bit = 0; bit < take; ++bit) value = (value << 1) | (reader.readBit() ? 1u : 0u);
++    logical.push_back(static_cast<uint8_t>(value << (8 - take)));
++    remaining -= static_cast<uint32_t>(take);
++  }
++  if (!reader.ok()) return false;
++  packet.payload = std::move(logical);
++  packet.payloadBitLength = static_cast<uint16_t>(16u + dataBits);
++  return true;
++}
++
+ std::vector<uint8_t> buildCoalescedDatagram(const std::vector<OutgoingPacket>& packets) {
+   if (packets.empty()) return {};
+   BitWriter writer;
+@@ -359,8 +422,9 @@ std::vector<uint8_t> buildReliable(uint16_t messageNumber, const std::vector<uin
+   writer.writeBits(messageNumber, 16);
+   writer.writeBits(kReliabilityReliable, 4);
+   writer.writeBit(false);  // isSplit
+-  writer.writeCompressedU16(static_cast<uint16_t>(payload.size() * 8));
+-  writer.writeAlignedBytes(payload.data(), payload.size());
++  const RpcWire wire = wirePayload(payload);
++  writer.writeCompressedU16(wire.bitLength);
++  writer.writeAlignedBytes(wire.bytes.data(), wire.bytes.size());
+   return writer.buffer;
+ }
+ 
+@@ -374,8 +438,9 @@ std::vector<uint8_t> buildReliableOrdered(uint16_t messageNumber, uint8_t orderi
+   writer.writeBits(orderingChannel & 0x1Fu, 5);
+   writer.writeBits(orderingIndex, 16);
+   writer.writeBit(false);  // isSplit
+-  writer.writeCompressedU16(static_cast<uint16_t>(payload.size() * 8));
+-  writer.writeAlignedBytes(payload.data(), payload.size());
++  const RpcWire wire = wirePayload(payload);
++  writer.writeCompressedU16(wire.bitLength);
++  writer.writeAlignedBytes(wire.bytes.data(), wire.bytes.size());
+   return writer.buffer;
+ }
+ 
+@@ -493,6 +558,9 @@ Datagram decodeDatagram(const std::vector<uint8_t>& datagram) {
+         packet.reliability == kReliabilityReliableSequenced) {
+       out.ackMessageNumbers.push_back(packet.messageNumber);
+     }
++    // Split fragments are converted after reassembly. A malformed unsplit RPC
++    // is still ACKed above (the peer must stop resending it) but not delivered.
++    if (!packet.split && !decodeLegacyRpcWire(packet)) continue;
+     out.packets.push_back(std::move(packet));
+   }
+ 
+@@ -510,6 +578,7 @@ std::vector<IncomingPacket> SplitReassembler::push(IncomingPacket packet) {
+   }
+   const size_t payloadBytes = (static_cast<size_t>(packet.payloadBitLength) + 7u) / 8u;
+   if (packet.payloadBitLength > availableBits || packet.payload.size() != payloadBytes) return {};
++  // Unsplit RPCs were already converted to logical form by decodeDatagram.
+   if (!packet.split) return {std::move(packet)};
+   if (overflowed_) return {};
+ 
+@@ -589,6 +658,7 @@ std::vector<IncomingPacket> SplitReassembler::push(IncomingPacket packet) {
+   }
+   pendingBytes_ -= pending.receivedBytes;
+   pending_.erase(it);
++  if (!decodeLegacyRpcWire(assembled)) return {};
+   return {std::move(assembled)};
+ }
+ 
+diff --git a/app/src/main/cpp/raknet_codec.h b/app/src/main/cpp/raknet_codec.h
+index 68d42c4..775c014 100644
+--- a/app/src/main/cpp/raknet_codec.h
++++ b/app/src/main/cpp/raknet_codec.h
+@@ -159,6 +159,24 @@ private:
+   bool overflowed_ = false;
+ };
+ 
++// Legacy RakNet RPC wire framing (open.mp lib/RakNet RakPeer::RPC and
++// HandleRPCPacket with RAKNET_LEGACY): ID_RPC u8, RPC id u8,
++// WriteCompressed(u32 numberOfBitsOfData), then the raw data bits with no
++// alignment. The rest of SampDroid works with the "logical" form
++// [ID_RPC, id, byte-aligned data]; these two helpers convert at the transport
++// boundary so the server can read the length and every decoder sees aligned
++// data. A zero-bit RPC carries a second WriteCompressed(0), exactly as
++// RakPeer::RPC emits it.
++struct RpcWire {
++  std::vector<uint8_t> bytes;
++  uint16_t bitLength = 0;
++};
++RpcWire encodeLegacyRpcWire(const std::vector<uint8_t>& logical);
++// Rewrites `packet.payload` from wire to logical form when it starts with
++// ID_RPC. Returns false for a malformed RPC frame (caller drops it); returns
++// true unchanged for every non-RPC payload.
++bool decodeLegacyRpcWire(IncomingPacket& packet);
++
+ // Builds one legacy UDP datagram with its leading `hasAcks=false` bit followed
+ // by several unsplit internal packets. RakPeer coalesces its accepted-path
+ // NEW_INCOMING/ping/static-data/ClientJoin burst this way. Each packet still
+diff --git a/app/src/main/cpp/raknet_probe.cpp b/app/src/main/cpp/raknet_probe.cpp
+index cd7fb37..aee3ddc 100644
+--- a/app/src/main/cpp/raknet_probe.cpp
++++ b/app/src/main/cpp/raknet_probe.cpp
+@@ -1454,11 +1454,20 @@ void processSessionDatagram(LiveSession& session, const std::vector<uint8_t>& by
+             }
+             rebuildLocalOnFootPreview(session);
+           }
+-          if (event.kind == state::RpcEventKind::SpawnResponse) {
++          if (event.kind == state::RpcEventKind::SpawnResponse || event.serverForcedSpawn) {
+             // This is the authoritative response to the current request. Clear
+             // the UI/retry gate before potentially queuing the separate
+             // PlayerSpawn confirmation RPC below.
+             session.spawnRequestPending = false;
++            if (event.serverForcedSpawn) {
++              // Bastion: TogglePlayerSpectating(false)/SpawnPlayer() is a new
++              // spawn; a stock client sends PlayerSpawn again every time.
++              session.spawnConfirmationSent = false;
++              session.spawnConfirmationAcked = false;
++              session.controls.reset();
++              invalidateLocalGameplay(session);
++              appendBounded(session.stateSummary, "server spawn (spectate off/SpawnPlayer)", 240);
++            }
+             if (session.world.spawnAllowed()) {
+               // PlayerRequestSpawn is only permission. The legacy protocol
+               // requires the client to follow it with empty RPC PlayerSpawn (52).
+diff --git a/app/src/main/cpp/rpc_state.cpp b/app/src/main/cpp/rpc_state.cpp
+index 17fdf6b..f5c1951 100644
+--- a/app/src/main/cpp/rpc_state.cpp
++++ b/app/src/main/cpp/rpc_state.cpp
+@@ -1,6 +1,8 @@
+ // Renderer-independent state reducer for player, class/spawn, chat, and marker RPCs.
+ #include "rpc_state.h"
+ 
++#include "legacy_text.h"
++
+ #include "raknet_codec.h"
+ #include "raknet_string_compressor.h"
+ 
+@@ -283,7 +285,10 @@ bool readFixedMenuText(raknet::BitReader& reader, std::string& out) {
+ // Keep dialog strings safe for Java's UTF-8 boundary while preserving valid
+ // UTF-8 sent by a server. Other legacy/codepage bytes become a visible '?'
+ // rather than being allowed to poison a JNI/JSON string.
+-std::string sanitizeUiText(const std::string& input) {
++std::string sanitizeUiText(const std::string& raw) {
++  // Bastion: Windows-1251 server text (Russian dialogs/chat) becomes UTF-8
++  // instead of a row of '?'; valid UTF-8 from other servers is unchanged.
++  const std::string input = legacytext::serverTextToUtf8(raw);
+   std::string out;
+   out.reserve(input.size());
+   for (size_t i = 0; i < input.size();) {
+@@ -4503,17 +4508,26 @@ bool WorldState::applyRpc(const std::vector<uint8_t>& rpcPayload, RpcEvent& even
+       if (rpcPayload.size() - 2u != 4u) break;
+       const uint32_t enabled = reader.readBits(32);
+       if (!reader.ok() || enabled > 1u) break;
++      const bool wasSpectating = localPlayer_.spectatingKnown && localPlayer_.spectating;
+       localPlayer_.spectatingKnown = true;
+       localPlayer_.spectating = enabled != 0u;
++      if (wasSpectating && !localPlayer_.spectating && initialized_) {
++        // Bastion: leaving spectator mode is a server-owned spawn grant.
++        spawnResponseKnown_ = true;
++        spawnAllowed_ = true;
++        event.serverForcedSpawn = true;
++      }
+       if (!localPlayer_.spectating) {
+         localPlayer_.spectateTargetKnown = false;
+         localPlayer_.spectateTargetVehicle = false;
+         localPlayer_.spectateTargetId = 0;
+         localPlayer_.spectateMode = 0;
+       }
++      const bool forcedSpawn = event.serverForcedSpawn;
+       setEvent(event, RpcEventKind::LocalPlayerChanged,
+                initialized_ ? playerInit_.playerId : 0, "TogglePlayerSpectating");
+       event.localSpectateUpdated = true;
++      event.serverForcedSpawn = forcedSpawn;
+       return true;
+     }
+ 
+@@ -4582,7 +4596,17 @@ bool WorldState::applyRpc(const std::vector<uint8_t>& rpcPayload, RpcEvent& even
+     case kPlayerRequestSpawn: {
+       uint32_t allow = 0;
+       const size_t bodyBytes = rpcPayload.size() - 2;
+-      if (bodyBytes == 1) {
++      if (bodyBytes == 0) {
++        // Bastion: open.mp ImmediatelySpawnPlayer shares id 129 with the
++        // RequestSpawn response but carries no data (Pawn SpawnPlayer()).
++        if (!initialized_) break;
++        spawnResponseKnown_ = true;
++        spawnAllowed_ = true;
++        event.kind = RpcEventKind::SpawnResponse;
++        event.summary = "ImmediatelySpawnPlayer";
++        event.serverForcedSpawn = true;
++        return true;
++      } else if (bodyBytes == 1) {
+         allow = reader.readBits(8);
+       } else if (bodyBytes == 4) {
+         allow = reader.readBits(32);
+diff --git a/app/src/main/cpp/rpc_state.h b/app/src/main/cpp/rpc_state.h
+index 62b1311..60c91a5 100644
+--- a/app/src/main/cpp/rpc_state.h
++++ b/app/src/main/cpp/rpc_state.h
+@@ -113,6 +113,12 @@ struct RpcEvent {
+   // RPC 124/126/127 changes whether the local client may emit gameplay sync
+   // and which copied stream target presentation follows.
+   bool localSpectateUpdated = false;
++  // The server put the client into the spawn flow without a RequestSpawn
++  // round-trip: open.mp TogglePlayerSpectating(false) after spectating, or
++  // ImmediatelySpawnPlayer (RPC 129 without data, Pawn SpawnPlayer()). A stock
++  // client answers both by spawning and sending RPC PlayerSpawn (52); open.mp
++  // has already set toSpawn_ and waits for exactly that RPC.
++  bool serverForcedSpawn = false;
+   // PlayerInit/RPC 146 can change vertical acceleration. A current airborne
+   // prediction must be dropped rather than continue using stale gravity.
+   bool worldGravityUpdated = false;
+diff --git a/tests/native/raknet_codec_test.cpp b/tests/native/raknet_codec_test.cpp
+index 1663a82..cb09a3b 100644
+--- a/tests/native/raknet_codec_test.cpp
++++ b/tests/native/raknet_codec_test.cpp
+@@ -26,6 +26,7 @@
+ #include "sync_decoder.h"
+ #include "rpc_decoder.h"
+ #include "rpc_state.h"
++#include "legacy_text.h"
+ 
+ #include <algorithm>
+ #include <array>
+@@ -2223,6 +2224,39 @@ std::vector<uint8_t> makeEmptyRpc(uint8_t rpcId) {
+   return {20, rpcId};
+ }
+ 
++// Bastion: Russian servers send Windows-1251; Android must show and send it.
++void testBastionLegacyTextAndForcedSpawn() {
++  const std::string cp1251Login("\xC2\xF5\xEE\xE4", 4);  // "Вход"
++  expect(samp::legacytext::serverTextToUtf8(cp1251Login) == "\xD0\x92\xD1\x85\xD0\xBE\xD0\xB4",
++         "Windows-1251 server text must become UTF-8");
++  expect(samp::legacytext::serverTextToUtf8("\xD0\x92\xD1\x85\xD0\xBE\xD0\xB4") ==
++             "\xD0\x92\xD1\x85\xD0\xBE\xD0\xB4",
++         "valid UTF-8 server text must stay unchanged");
++  expect(samp::legacytext::utf8ToServerText("\xD0\x92\xD1\x85\xD0\xBE\xD0\xB4 ok") ==
++             std::string("\xC2\xF5\xEE\xE4 ok", 7),
++         "UTF-8 Android input must be sent as Windows-1251");
++  expect(samp::legacytext::utf8ToServerText("plain") == "plain", "ASCII must stay unchanged");
++  const auto dialog = samp::clientrpc::buildDialogResponse(1, true, -1, "\xD0\xBF\xD0\xB0\xD1\x80\xD0\xBE\xD0\xBB\xD1\x8C");
++  expect(dialog.size() == 2u + 2u + 1u + 2u + 1u + 6u && dialog[7] == 6u &&
++             static_cast<uint8_t>(dialog[8]) == 0xEFu,
++         "dialog response must carry Windows-1251 bytes");
++
++  samp::state::WorldState world;
++  samp::state::RpcEvent event;
++  expect(world.applyRpc(makePlayerInit(), event), "forced-spawn PlayerInit rejected");
++  const std::vector<uint8_t> spectateOn = {20u, 124u, 1u, 0u, 0u, 0u};
++  const std::vector<uint8_t> spectateOff = {20u, 124u, 0u, 0u, 0u, 0u};
++  expect(world.applyRpc(spectateOn, event) && !event.serverForcedSpawn && !world.spawnAllowed(),
++         "entering spectate must not grant spawn");
++  expect(world.applyRpc(spectateOff, event) && event.serverForcedSpawn && world.spawnAllowed(),
++         "TogglePlayerSpectating(false) after spectating must grant a server spawn");
++  samp::state::WorldState fresh;
++  expect(fresh.applyRpc(makePlayerInit(), event), "immediate-spawn PlayerInit rejected");
++  expect(fresh.applyRpc(makeEmptyRpc(129u), event) && event.serverForcedSpawn &&
++             event.kind == samp::state::RpcEventKind::SpawnResponse && fresh.spawnAllowed(),
++         "bodyless RPC 129 (ImmediatelySpawnPlayer) must grant a server spawn");
++}
++
+ void testLegacyHandshakeBuilders() {
+   using samp::handshake::buildClientJoin;
+   using samp::handshake::buildEmptyStaticData;
+@@ -2413,16 +2447,17 @@ void testLegacyHandshakeBuilders() {
+   // NEW_INCOMING/internal-ping/static-data, so its first game RPC is message 5.
+   const auto framedJoin = samp::raknet::buildReliableOrdered(
+       5u, samp::clientrpc::kReliableOrderedChannel, 0u, join);
+-  // Independently emitted by FakeBots' vendored RakNet with RAKNET_LEGACY=1
+-  // for these same fields. Keep this byte fixture separate from a merely
+-  // self-decoded assertion: the 0x48 header carries legacy reliability=9.
++  // RakPeer::RPC (open.mp lib/RakNet, RAKNET_LEGACY) frames an RPC as
++  // ID_RPC, id, WriteCompressed(u32 data bits), raw data bits. Bastion verified
++  // this vector against open.mp's own BitStream/HandleRPCPacket read order;
++  // the previous FakeBots-derived vector omitted the length and open.mp
++  // dropped that ClientJoin. The 0x48 header carries legacy reliability=9.
+   expect(framedJoin == std::vector<uint8_t>({
+-             0x02u, 0x80u, 0x48u, 0x80u, 0x00u, 0x01u, 0x00u, 0x10u,
+-             0x14u, 0x19u, 0xD9u, 0x0Fu, 0x00u, 0x00u, 0x01u, 0x09u,
+-             0x4Eu, 0x61u, 0x74u, 0x69u, 0x76u, 0x65u, 0x5Fu, 0x30u,
+-             0x31u, 0x78u, 0x56u, 0x34u, 0x12u, 0x03u, 0x33u, 0x45u,
+-             0x39u, 0x08u, 0x30u, 0x2Eu, 0x33u, 0x2Eu, 0x37u, 0x2Du,
+-             0x52u, 0x32u,
++             0x02u, 0x80u, 0x48u, 0x80u, 0x00u, 0x02u, 0x30u, 0x10u, 0x14u,
++             0x19u, 0xC0u, 0x00u, 0x3Bu, 0x21u, 0xE0u, 0x00u, 0x00u, 0x21u,
++             0x29u, 0xCCu, 0x2Eu, 0x8Du, 0x2Eu, 0xCCu, 0xABu, 0xE6u, 0x06u,
++             0x2Fu, 0x0Au, 0xC6u, 0x82u, 0x40u, 0x66u, 0x68u, 0xA7u, 0x21u,
++             0x06u, 0x05u, 0xC6u, 0x65u, 0xC6u, 0xE5u, 0xAAu, 0x46u, 0x40u,
+          }), "ClientJoin SyncRPC-channel wire vector changed");
+   const auto decoded = samp::raknet::decodeDatagram(framedJoin);
+   expect(decoded.ok && decoded.packets.size() == 1u &&
+@@ -2449,11 +2484,11 @@ void testLegacyHandshakeBuilders() {
+              0x01u, 0x00u, 0x42u, 0x38u, 0x1Eu, 0x5Eu, 0x17u, 0x91u, 0x89u,
+              0x60u, 0x1Eu, 0x03u, 0x00u, 0x64u, 0x50u, 0x06u, 0x78u, 0x56u,
+              0x34u, 0x12u, 0x04u, 0x00u, 0x87u, 0x00u, 0x29u, 0x05u, 0x00u,
+-             0x91u, 0x00u, 0x00u, 0x02u, 0x00u, 0x20u, 0x14u, 0x19u, 0xD9u,
+-             0x0Fu, 0x00u, 0x00u, 0x01u, 0x09u, 0x4Eu, 0x61u, 0x74u, 0x69u,
+-             0x76u, 0x65u, 0x5Fu, 0x30u, 0x31u, 0x78u, 0x56u, 0x34u, 0x12u,
+-             0x03u, 0x33u, 0x45u, 0x39u, 0x08u, 0x30u, 0x2Eu, 0x33u, 0x2Eu,
+-             0x37u, 0x2Du, 0x52u, 0x32u,
++             0x91u, 0x00u, 0x00u, 0x04u, 0x60u, 0x20u, 0x14u, 0x19u, 0xC0u,
++             0x00u, 0x3Bu, 0x21u, 0xE0u, 0x00u, 0x00u, 0x21u, 0x29u, 0xCCu,
++             0x2Eu, 0x8Du, 0x2Eu, 0xCCu, 0xABu, 0xE6u, 0x06u, 0x2Fu, 0x0Au,
++             0xC6u, 0x82u, 0x40u, 0x66u, 0x68u, 0xA7u, 0x21u, 0x06u, 0x05u,
++             0xC6u, 0x65u, 0xC6u, 0xE5u, 0xAAu, 0x46u, 0x40u,
+          }), "source-equivalent coalesced post-accept bootstrap changed");
+   const auto decodedBootstrap = samp::raknet::decodeDatagram(bootstrap);
+   expect(decodedBootstrap.ok && decodedBootstrap.packets.size() == 4u &&
+@@ -2609,7 +2644,9 @@ void testReliableAndAck() {
+   // Locks the actual five-bit SyncRPC header at channel 2, not merely a
+   // decoder round-trip that could otherwise drift together with its encoder.
+   expect(ordered == std::vector<uint8_t>({
+-             0x01, 0x00, 0x48, 0x84, 0x40, 0x11, 0x00, 0x14, 0x80, 0x03, 0x00}),
++             0x01, 0x00, 0x48, 0x84, 0x40, 0x11, 0x60, 0x14, 0x80,
++             0xE1, 0x00, 0x30, 0x00,
++         }),
+          "SyncRPC channel-2 wire vector changed");
+   const auto orderedDecoded = samp::raknet::decodeDatagram(ordered);
+   expect(orderedDecoded.ok && orderedDecoded.packets.size() == 1,
+@@ -6015,6 +6052,14 @@ void appendLoopbackReliableOrderedFrame(samp::raknet::BitWriter& writer,
+   writer.writeBits(orderingChannel & 0x1Fu, 5);
+   writer.writeBits(orderingIndex, 16);
+   writer.writeBit(false);  // isSplit
++  // A real open.mp server sends RPCs through RakPeer::RPC, which inserts the
++  // compressed data-bit count after the RPC id.
++  if (payload.size() >= 2u && payload[0] == 20u) {
++    const auto wire = samp::raknet::encodeLegacyRpcWire(payload);
++    writer.writeCompressedU16(wire.bitLength);
++    writer.writeAlignedBytes(wire.bytes.data(), wire.bytes.size());
++    return;
++  }
+   writer.writeCompressedU16(static_cast<uint16_t>(payload.size() * 8u));
+   writer.writeAlignedBytes(payload.data(), payload.size());
+ }
+@@ -8933,6 +8978,7 @@ void testSetVehicleVelocityReducer() {
+ }  // namespace
+ 
+ int main() {
++  testBastionLegacyTextAndForcedSpawn();
+   testLegacyHandshakeBuilders();
+   testOpenMpTransportHelpers();
+   testReliableAndAck();

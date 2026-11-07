@@ -7,6 +7,8 @@
    чат, управление, мир). Отладочные экраны остаются как в оригинале.
 4. handling.cfg: секции лодок/мотоциклов/самолётов и нестандартные записи
    пропускаются, а не отвергают всю папку игры.
+0. Нативный клиент: формат RPC open.mp, спавн после входа, кодировка Windows-1251
+   (native-openmp-rpc-spawn-cp1251.patch).
 3. Папка игры от лаунчера: ZIP-установщик Bastion распаковывает файлы в
    Android/data/online.bastion.launcher/files/game, лаунчер передаёт этот путь
    в "bastion.game_dir", и клиент подключает его сам, без ручного выбора папки (SAF).
@@ -22,6 +24,22 @@ from ru_strings import RU  # noqa: E402
 
 root = pathlib.Path(sys.argv[1])
 src = root / "app/src/main/java/com/xykal/sampdroid"
+
+# ---------------------------------------------------------------- 0. нативный клиент
+# native-openmp-rpc-spawn-cp1251.patch (git diff против закреплённого f9daca1):
+#  * RPC в формате RakPeer::RPC open.mp: ID_RPC, id, WriteCompressed(число бит), данные.
+#    Без поля длины open.mp отбрасывал ClientJoin, игрок не создавался и клиент
+#    вечно ждал PlayerInit («Menunggu PlayerInit»).
+#  * Спавн по TogglePlayerSpectating(false) и SpawnPlayer() (RPC 129 без данных):
+#    клиент сам отправляет PlayerSpawn, как ПК-клиент (так спавнит мод Bastion).
+#  * Тексты сервера в Windows-1251 -> UTF-8 (русские окна входа и чат), ввод
+#    игрока -> Windows-1251.
+import subprocess  # noqa: E402
+NATIVE_PATCH = pathlib.Path(__file__).resolve().parent / "native-openmp-rpc-spawn-cp1251.patch"
+if "encodeLegacyRpcWire" not in (root / "app/src/main/cpp/raknet_codec.h").read_text(encoding="utf-8"):
+    r = subprocess.run(["git", "apply", "--whitespace=nowarn", str(NATIVE_PATCH)], cwd=root)
+    if r.returncode != 0:
+        sys.exit("apply.py: не удалось наложить " + NATIVE_PATCH.name + " (обновился SampDroid?)")
 main = src / "ui/MainActivity.kt"
 
 # ---------------------------------------------------------------- 1. автоподключение
@@ -148,6 +166,85 @@ if "// Bastion" not in ht:
             sys.exit("apply.py: не нашёл место для патча handling.cfg (обновился SampDroid?): " + old.strip()[:60])
         ht = ht.replace(old, new)
     hcpp.write_text(ht, encoding="utf-8")
+
+# ---------------------------------------------------------------- 5. окна сервера
+# Мод Bastion пишет в окнах и чате цветовые коды SA-MP вида {33CCFF}. Раньше они
+# показывались как текст. Теперь текст окна раскрашивается (слишком светлые
+# цвета остаются цветом темы, иначе белый текст пропадает на светлом окне), а
+# из заголовка, кнопок, пунктов списка и чата коды просто убираются.
+# Касание мимо окна больше не закрывает его: закрытие = «Отмена», и Bastion за
+# отмену окна входа кикает игрока. Кнопка «Назад» по-прежнему работает как «Отмена».
+ui_dir = src / "ui"
+(ui_dir / "BastionSampText.kt").write_text("""package com.xykal.sampdroid.ui
+
+import android.graphics.Color
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+
+private val bastionSampColorTag = Regex("[{]([0-9A-Fa-f]{6})[}]")
+
+/** Bastion: убирает цветовые коды SA-MP {RRGGBB}. */
+internal fun bastionStripSampColors(text: String): String = text.replace(bastionSampColorTag, "")
+
+/** Bastion: раскрашивает текст по кодам SA-MP {RRGGBB}. */
+internal fun bastionSampColored(text: String): CharSequence {
+    val out = SpannableStringBuilder()
+    var color: Int? = null
+    var start = 0
+    fun flush(end: Int) {
+        if (end <= start) return
+        val from = out.length
+        out.append(text, start, end)
+        color?.let { out.setSpan(ForegroundColorSpan(it), from, out.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE) }
+    }
+    for (match in bastionSampColorTag.findAll(text)) {
+        flush(match.range.first)
+        val rgb = match.groupValues[1].toInt(16)
+        val r = (rgb shr 16) and 0xFF
+        val g = (rgb shr 8) and 0xFF
+        val b = rgb and 0xFF
+        val light = (0.299 * r + 0.587 * g + 0.114 * b) > 200.0
+        color = if (light) null else Color.rgb(r, g, b)
+        start = match.range.last + 1
+    }
+    flush(text.length)
+    return out
+}
+""", encoding="utf-8")
+dlg = ui_dir / "NativeServerDialogController.kt"
+dt = dlg.read_text(encoding="utf-8")
+D_REPL = [
+    ("            text = body.take(MAX_BODY_CHARS)\n",
+     "            text = bastionSampColored(body.take(MAX_BODY_CHARS))\n"),
+    ("        val dialogTitle = serverDialog.title.ifBlank {",
+     "        val dialogTitle = bastionStripSampColors(serverDialog.title).ifBlank {"),
+    ("\\n${tabHeader.replace('\\t', ' ')",
+     "\\n${bastionStripSampColors(tabHeader).replace('\\t', ' ')"),
+    ("            row.replace('\\t', ' ').ifBlank { \" \" }",
+     "            bastionStripSampColors(row).replace('\\t', ' ').ifBlank { \" \" }"),
+    ("        builder.setPositiveButton(serverDialog.button1.ifBlank {",
+     "        builder.setPositiveButton(bastionStripSampColors(serverDialog.button1).ifBlank {"),
+    ("            builder.setNegativeButton(serverDialog.button2) {",
+     "            builder.setNegativeButton(bastionStripSampColors(serverDialog.button2)) {"),
+    ("        dialog.setOnCancelListener { queueResponse(false) }\n",
+     "        dialog.setCanceledOnTouchOutside(false)  // Bastion\n"
+     "        dialog.setOnCancelListener { queueResponse(false) }\n"),
+]
+if "bastionSampColored" not in dt:
+    for old, new in D_REPL:
+        if dt.count(old) != 1:
+            sys.exit("apply.py: не нашёл место в NativeServerDialogController.kt (обновился SampDroid?): " + old.strip()[:60])
+        dt = dt.replace(old, new)
+    dlg.write_text(dt, encoding="utf-8")
+hud = ui_dir / "NativeWorldHudView.kt"
+ht2 = hud.read_text(encoding="utf-8")
+CHAT_OLD = "            val text = sanitize(line.text).take(MAX_CHAT_CHARS)\n"
+if "bastionStripSampColors" not in ht2:
+    if ht2.count(CHAT_OLD) != 1:
+        sys.exit("apply.py: не нашёл вывод чата в NativeWorldHudView.kt (обновился SampDroid?)")
+    hud.write_text(ht2.replace(CHAT_OLD, "            val text = sanitize(bastionStripSampColors(line.text)).take(MAX_CHAT_CHARS)\n"),
+                   encoding="utf-8")
 
 # ---------------------------------------------------------------- 2. перевод
 files = list(src.rglob("*.kt")) + list((root / "app/src/main/res").rglob("*.xml"))

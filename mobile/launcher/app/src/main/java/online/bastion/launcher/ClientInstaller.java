@@ -133,10 +133,31 @@ public final class ClientInstaller {
         return external == null ? null : new File(external, "game");
     }
 
-    /** Игра считается установленной, если установка дошла до конца и есть папка SAMP. */
+    /**
+     * Игра считается установленной, если установка дошла до конца и в ней есть то,
+     * что реально читает встроенный клиент SampDroid: data/gta.dat и models/gta3.img.
+     * Отдельно установленная GTA SA (или папка SAMP от другого клиента) не требуется.
+     */
     public static boolean isGameInstalled(Context context) {
         File dir = gameDir(context);
-        return dir != null && new File(dir, INSTALL_MARKER).exists() && new File(dir, "SAMP").isDirectory();
+        if (dir == null || !new File(dir, INSTALL_MARKER).exists()) return false;
+        File root = findGtaDatRoot(dir, 0);
+        return root != null && hasGta3Img(root);
+    }
+
+    /** models/gta3.img без учёта регистра (в архивах встречается GTA3.IMG). */
+    static boolean hasGta3Img(File root) {
+        File models = childIgnoreCase(root, "models");
+        if (models == null || !models.isDirectory()) return false;
+        File img = childIgnoreCase(models, "gta3.img");
+        return img != null && img.isFile() && img.length() > 0;
+    }
+
+    private static File childIgnoreCase(File dir, String name) {
+        File[] children = dir.listFiles();
+        if (children == null) return null;
+        for (File child : children) if (child.getName().equalsIgnoreCase(name)) return child;
+        return null;
     }
 
     /**
@@ -209,9 +230,19 @@ public final class ClientInstaller {
                     }
 
                     report(callback, "Распаковка файлов игры…");
-                    int count = extractZip(archive, staging, GAME_ARCHIVE_PREFIX, callback);
+                    String prefix = detectArchivePrefix(archive);
+                    if (prefix == null)
+                        throw new IllegalStateException("В архиве нет файлов игры: не найден data/gta.dat"
+                                + " (ни в папке «" + GAME_ARCHIVE_PREFIX + "», ни в другой).");
+                    int count = extractZip(archive, staging, prefix, callback);
                     if (count == 0)
-                        throw new IllegalStateException("В архиве нет папки «" + GAME_ARCHIVE_PREFIX + "».");
+                        throw new IllegalStateException("В архиве нет файлов в папке «" + prefix + "».");
+                    // Проверяем до замены старой установки: клиенту нужны data/gta.dat и models/gta3.img.
+                    File dataRoot = findGtaDatRoot(staging, 0);
+                    if (dataRoot == null)
+                        throw new IllegalStateException("После распаковки не найден data/gta.dat — архив не подходит.");
+                    if (!hasGta3Img(dataRoot))
+                        throw new IllegalStateException("После распаковки не найден models/gta3.img — архив неполный.");
                     if (!new File(staging, INSTALL_MARKER).createNewFile())
                         throw new IllegalStateException("Не удалось отметить завершение установки.");
 
@@ -282,6 +313,35 @@ public final class ClientInstaller {
             target.delete();
             throw e;
         } finally { connection.disconnect(); }
+    }
+
+    /**
+     * Какую папку архива распаковывать. Сначала — папка рабочего установщика
+     * BastionLauncher3 (GAME_ARCHIVE_PREFIX). Если её нет, берётся папка, в которой
+     * лежит data/gta.dat (самая короткая), чтобы подходил и обычный архив с GTA SA.
+     * Пустая строка = корень архива. null = в архиве нет data/gta.dat.
+     */
+    static String detectArchivePrefix(File archive) throws Exception {
+        java.util.zip.ZipInputStream zip = new java.util.zip.ZipInputStream(
+                new BufferedInputStream(new java.io.FileInputStream(archive)));
+        boolean hasDefault = false;
+        String best = null;
+        try {
+            java.util.zip.ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                String name = entry.getName();
+                if (name == null) continue;
+                if (name.startsWith(GAME_ARCHIVE_PREFIX) && name.length() > GAME_ARCHIVE_PREFIX.length()) hasDefault = true;
+                String lower = name.toLowerCase(java.util.Locale.ROOT);
+                if (!entry.isDirectory() && (lower.equals("data/gta.dat") || lower.endsWith("/data/gta.dat"))) {
+                    String prefix = name.substring(0, name.length() - "data/gta.dat".length());
+                    if (best == null || prefix.length() < best.length()) best = prefix;
+                }
+                zip.closeEntry();
+            }
+        } finally { zip.close(); }
+        if (hasDefault && (best == null || best.startsWith(GAME_ARCHIVE_PREFIX))) return GAME_ARCHIVE_PREFIX;
+        return best;
     }
 
     /** Распаковывает только записи внутри prefix (сам prefix отрезается). Возвращает число файлов. */

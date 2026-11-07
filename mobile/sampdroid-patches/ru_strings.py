@@ -126,4 +126,17 @@ RU = {
     r"Buka sesi native untuk menerima state dunia": r"Подключись к серверу, чтобы увидеть мир",
     r"Menunggu posisi authoritative dari server": r"Ждём позицию от сервера",
     r"Memuat scene native…": r"Загружаю сцену…",
+
+    # Bastion: экран подключения и данные игры (видны игроку на пути вход → спавн)
+    r"Alur main native": r"Вход в игру",
+    r"Sesi native aktif": r"Подключено",
+    r"Menunggu PlayerInit…": r"Ждём сервер…",
+    r"Class awal otomatis": r"Класс по умолчанию",
+    r"PlayerSpawn di-ACK": r"Спавн подтверждён",
+    r"PlayerSpawn menunggu ACK": r"Спавн: ждём подтверждения",
+    r"diizinkan, menyiapkan PlayerSpawn": r"разрешён, спавним…",
+    r"PlayerSpawn terkirim · menunggu ACK transport server sebelum kontrol gameplay aktif.": r"Спавн отправлен · ждём подтверждения сервера.",
+    r"Folder GTA perlu disambungkan ulang": r"Файлы игры нужно подключить заново",
+    r"Tidak menemukan data/gta.dat. Pilih folder GTA yang sudah diekstrak, bukan file RAR.": r"Не найден data/gta.dat. Установи файлы игры в лаунчере Bastion (Настройки → Установить файлы клиента).",
+    r"=== STATUS SESI NATIVE ===\n": r"=== СОСТОЯНИЕ ПОДКЛЮЧЕНИЯ ===\n",
 }
