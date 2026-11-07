@@ -38,7 +38,7 @@ jobs:
         run: |
           set -o pipefail
           LD_LIBRARY_PATH="$PAWNC_DIR/lib" "$PAWNC_DIR/bin/pawncc" rp.pwn \
-            -i"$GITHUB_WORKSPACE/omp-stdlib" -i. -o rp.amx -d3 '-;+' '-(+' 2>&1 | tee build.log
+            -i"$GITHUB_WORKSPACE/omp-stdlib" -i. -orp.amx -d3 '-;+' '-(+' 2>&1 | tee build.log
           test -f rp.amx
           if grep -q ' : warning ' build.log; then
             echo "::warning::Compiler warnings, see log above"
