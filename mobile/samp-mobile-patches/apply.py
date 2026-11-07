@@ -129,6 +129,77 @@ if leftovers:
     raise SystemExit("Hard-coded GTA storage path left in native code:\n" + "\n".join(leftovers))
 
 # ---------------------------------------------------------------------------
+# 1b. Upstream is developed on Windows: fix the letter case of #include paths
+#     so the sources build on a case-sensitive file system (Linux CI).
+# ---------------------------------------------------------------------------
+cpp_root = main / "cpp"
+include_dirs = [cpp, cpp / "util", cpp / "vendor/armhook", cpp / "vendor/imgui", cpp / "vendor",
+                cpp / "game/RW", cpp / "game/Core", cpp_root / "opus/include"]
+_listing_cache = {}
+
+
+def _listing(directory: Path):
+    if directory not in _listing_cache:
+        try:
+            _listing_cache[directory] = {p.name.lower(): p.name for p in directory.iterdir()}
+        except OSError:
+            _listing_cache[directory] = {}
+    return _listing_cache[directory]
+
+
+def _resolve_case(base: Path, rel: str):
+    """Return rel with corrected case if base/rel exists case-insensitively."""
+    current, fixed = base, []
+    for part in rel.split("/"):
+        if part in (".", ""):
+            fixed.append(part)
+            continue
+        if part == "..":
+            current = current.parent
+            fixed.append(part)
+            continue
+        if (current / part).exists():
+            real = part
+        else:
+            real = _listing(current).get(part.lower())
+            if real is None:
+                return None
+        fixed.append(real)
+        current = current / real
+    return "/".join(fixed)
+
+
+include_re = re.compile(r'^(\s*#\s*include\s*)([<"])([^>"]+)([>"])', re.M)
+case_fixes = 0
+for source in cpp_root.rglob("*"):
+    if source.suffix.lower() not in {".c", ".cc", ".cpp", ".h", ".hpp", ".inl"} or not source.is_file():
+        continue
+    text = read(source)
+
+    def fix(match):
+        global case_fixes
+        if match.group(2) == "<":
+            return match.group(0)  # <...> may be a system header (e.g. <link.h>): never touch
+        rel = match.group(3).replace("\\", "/")
+        for base in [source.parent] + include_dirs:
+            if (base / rel).is_file():
+                if rel != match.group(3):
+                    case_fixes += 1
+                    return match.group(1) + match.group(2) + rel + match.group(4)
+                return match.group(0)
+        for base in [source.parent] + include_dirs:
+            real = _resolve_case(base, rel)
+            if real is not None and (base / real).is_file():
+                case_fixes += 1
+                return match.group(1) + match.group(2) + real + match.group(4)
+        return match.group(0)  # system / NDK header
+
+    new_text = include_re.sub(fix, text)
+    if new_text != text:
+        write(source, new_text)
+print(f"fixed letter case / separators in {case_fixes} #include directive(s)")
+
+# ---------------------------------------------------------------------------
 # 2. Java: export the storage path before native libraries load
 # ---------------------------------------------------------------------------
 base = main / "java/com/rockstargames/oswrapper/GameActivityBase.java"
