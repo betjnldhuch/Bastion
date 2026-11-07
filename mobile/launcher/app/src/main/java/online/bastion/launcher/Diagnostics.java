@@ -112,8 +112,27 @@ public final class Diagnostics {
                 r.append('\n');
             }
         }
+        if (sampRoot != null) {
+            r.append("\n[Файлы SAMP-Mobile]\n");
+            for (String rel : ClientInstaller.REQUIRED_FILES) {
+                File f = ClientInstaller.resolveIgnoreCase(sampRoot, rel);
+                r.append(f != null && f.isFile() ? "ok   " : "НЕТ  ").append(rel).append('\n');
+            }
+            File texdb = ClientInstaller.resolveIgnoreCase(sampRoot, "texdb");
+            r.append(texdb != null ? "ok   " : "НЕТ  ").append("texdb/\n");
+            File samp = new File(sampRoot, ClientInstaller.SAMP_DIR);
+            String[] sampNames = samp.list();
+            if (sampNames != null) {
+                java.util.Arrays.sort(sampNames);
+                r.append("SAMP/: ");
+                for (int i = 0; i < sampNames.length && i < 60; i++) r.append(i == 0 ? "" : ", ").append(sampNames[i]);
+                r.append('\n');
+            }
+        }
+        String game = GameCrashReport.last(ctx);
+        r.append("\n[Последнее падение игры]\n").append(game == null ? "нет\n" : game);
         String crash = lastCrash(ctx);
-        r.append("\n[Последний вылет]\n").append(crash == null ? "нет\n" : crash);
+        r.append("\n[Последний вылет лаунчера]\n").append(crash == null ? "нет\n" : crash);
         return r.toString();
     }
 

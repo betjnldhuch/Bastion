@@ -211,6 +211,21 @@ replace_exact(base, """        instance = this;
         Log.i(TAG, "[!!] onCreate");""")
 replace_exact(base, "    public static GameActivityBase getInstance() {", """    /** Bastion: tell libsamp.so where the launcher installed the game files. */
     private void exportBastionStorage() {
+        // Java exceptions of the game process -> files/last_crash.txt (shown by the launcher).
+        final File crashFile = new File(getFilesDir(), "last_crash.txt");
+        final Thread.UncaughtExceptionHandler previous = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((thread, error) -> {
+            try {
+                java.io.StringWriter text = new java.io.StringWriter();
+                java.io.PrintWriter out = new java.io.PrintWriter(text);
+                out.println(new java.util.Date() + " [game] thread " + thread.getName());
+                error.printStackTrace(out);
+                out.flush();
+                java.io.FileOutputStream f = new java.io.FileOutputStream(crashFile);
+                try { f.write(text.toString().getBytes("UTF-8")); } finally { f.close(); }
+            } catch (Throwable ignored) { }
+            if (previous != null) previous.uncaughtException(thread, error);
+        });
         try {
             String storage = getIntent() != null ? getIntent().getStringExtra("bastion.storage") : null;
             if (storage == null || storage.isEmpty()) {

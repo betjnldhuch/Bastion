@@ -198,6 +198,61 @@ public final class ClientInstaller {
         return ini;
     }
 
+    /** Файлы, без которых SAMP-Mobile GTA-2.11 падает при старте (пути от корня игры). */
+    static final String[] REQUIRED_FILES = {
+            "SAMP/main.scm", "SAMP/script.img", "SAMP/gta.dat", "SAMP/peds.ide",
+            "SAMP/vehicles.ide", "SAMP/handling.cfg", "SAMP/weapon.dat", "SAMP/fonts/arial_bold.ttf"
+    };
+    /** Шрифт интерфейса клиента: без него ImGui завершает процесс. */
+    static final String SAMP_FONT = "SAMP/fonts/arial_bold.ttf";
+
+    /**
+     * Подготовка к запуску: если в кэше нет шрифта клиента, кладёт шрифт лаунчера
+     * (Russo One, с кириллицей) под именем arial_bold.ttf. Возвращает список
+     * недостающих обязательных файлов (пустой — можно запускать).
+     */
+    public static java.util.List<String> prepareForLaunch(Context ctx, File root) {
+        File font = resolveIgnoreCase(root, SAMP_FONT);
+        if (font == null) {
+            try {
+                File target = new File(root, SAMP_FONT);
+                File dir = target.getParentFile();
+                if (dir != null && !dir.isDirectory()) dir.mkdirs();
+                InputStream in = ctx.getAssets().open("fonts/RussoOne-Regular.ttf");
+                FileOutputStream out = new FileOutputStream(target);
+                try {
+                    byte[] buffer = new byte[16384];
+                    int n;
+                    while ((n = in.read(buffer)) != -1) out.write(buffer, 0, n);
+                } finally { try { in.close(); } finally { out.close(); } }
+            } catch (Exception ignored) { }
+        }
+        java.util.List<String> missing = new java.util.ArrayList<String>();
+        for (String rel : REQUIRED_FILES) {
+            File f = resolveIgnoreCase(root, rel);
+            if (f == null || !f.isFile() || f.length() == 0) missing.add(rel);
+        }
+        File texdb = resolveIgnoreCase(root, "texdb");
+        if (texdb == null || !texdb.isDirectory()) missing.add("texdb/");
+        return missing;
+    }
+
+    /** Находит файл по относительному пути без учёта регистра. */
+    static File resolveIgnoreCase(File root, String rel) {
+        File current = root;
+        for (String part : rel.split("/")) {
+            if (part.length() == 0) continue;
+            File exact = new File(current, part);
+            if (exact.exists()) { current = exact; continue; }
+            String[] names = current.list();
+            File found = null;
+            if (names != null) for (String n : names) if (n.equalsIgnoreCase(part)) { found = new File(current, n); break; }
+            if (found == null) return null;
+            current = found;
+        }
+        return current;
+    }
+
     /** Ставит key=value в секции [section] (без учёта регистра, как inih); создаёт при отсутствии. */
     static void setIni(java.util.List<String> lines, String section, String key, String value) {
         int sectionStart = -1, sectionEnd = lines.size();

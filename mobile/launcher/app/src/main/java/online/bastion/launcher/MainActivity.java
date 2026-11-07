@@ -68,6 +68,7 @@ public class MainActivity extends Activity {
         super.onResume();
         resumed = true;
         updatePlayButton();
+        showGameCrashIfAny();
         hideSystemBars();
         ui.removeCallbacks(poll);
         ui.post(poll);
@@ -459,6 +460,27 @@ public class MainActivity extends Activity {
             notice("Файлы игры повреждены", "Не найдена папка SAMP в установленной игре. Переустанови игру в настройках.", null, null);
             return;
         }
+        List<String> missing = ClientInstaller.prepareForLaunch(this, storage);
+        if (!missing.isEmpty()) {
+            StringBuilder list = new StringBuilder();
+            for (String m : missing) list.append("• ").append(m).append('\n');
+            notice("Не хватает файлов игры",
+                    "В установленном архиве нет файлов, без которых SAMP-Mobile GTA-2.11 закрывается при запуске:\n\n"
+                            + list + "\nНужен кэш именно для SAMP-Mobile GTA-2.11 (содержимое папки GTA/). "
+                            + "Замени архив на сервере и переустанови игру в настройках.",
+                    "Всё равно запустить", new Runnable() {
+                        @Override public void run() { launchPrepared(); }
+                    });
+            return;
+        }
+        launchPrepared();
+    }
+
+    /** Пишет SAMP/settings.ini и открывает клиент (файлы игры уже проверены). */
+    private void launchPrepared() {
+        java.io.File storage = ClientInstaller.findSampStorageRoot(this);
+        if (storage == null) return;
+        String nick = cfg.nickname;
         Config.Server server = cfg.servers.get(cfg.selected);
         try {
             ClientInstaller.writeSampSettings(storage, nick, server.host, server.port, cfg.fps, cfg.chatLines);
@@ -542,6 +564,22 @@ public class MainActivity extends Activity {
                 notice("Ошибка установки", message, null, null);
             }
         });
+    }
+
+    /** Если игра упала после последнего запуска — показывает причину и даёт её скопировать. */
+    private void showGameCrashIfAny() {
+        final String report = GameCrashReport.collectNew(this);
+        if (report == null) return;
+        String brief = report.length() > 700 ? report.substring(0, 700) + "…" : report;
+        notice("Игра закрылась с ошибкой",
+                brief + "\n\nПолный отчёт сохранён и есть в «Диагностике».",
+                "Копировать отчёт", new Runnable() {
+                    @Override public void run() {
+                        android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("Bastion game crash", report));
+                        android.widget.Toast.makeText(MainActivity.this, "Отчёт скопирован", android.widget.Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     /** Своё окно-сообщение поверх экрана, в стиле лаунчера. */
@@ -780,6 +818,7 @@ public class MainActivity extends Activity {
         try {
             Intent embeddedClient = new Intent();
             embeddedClient.setClassName(this, SAMP_ACTIVITY);
+            GameCrashReport.markLaunch(this);
             startActivity(withBastionSession(embeddedClient));
         } catch (Exception e) {
             notice("Не удалось открыть игровой клиент",
