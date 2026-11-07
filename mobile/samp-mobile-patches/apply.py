@@ -125,6 +125,68 @@ replace_exact(cpp / "game/hooks.cpp", 'Log("NVFOpen hook | Error: file not found
               '          FILE* bastionMissing = fopen(bastionList, "a");\n'
               '          if (bastionMissing) { fprintf(bastionMissing, "%s\\n", path); fclose(bastionMissing); } }')
 
+# Android/data on many devices is case-sensitive, while GTA requests names in
+# its own case (e.g. "text/russian.gxt") and caches may ship "Text/RUSSIAN.GXT".
+# If the exact path does not exist, open the real file whose path matches
+# case-insensitively (the same file, not a substitute).
+replace_exact(cpp / "game/hooks.cpp", "char lastFile[123];", r"""char lastFile[123];
+
+#include <dirent.h>
+#include <strings.h>
+#include <unistd.h>
+// Bastion: resolve an absolute path component by component, ignoring case.
+static bool BastionResolveCase(const char* in, char* out, size_t outSize)
+{
+	if (in == nullptr || in[0] != '/') return false;
+	char current[512] = "";
+	const char* p = in + 1;
+	while (*p)
+	{
+		const char* slash = strchr(p, '/');
+		size_t len = slash ? (size_t)(slash - p) : strlen(p);
+		char part[256];
+		if (len == 0 || len >= sizeof(part)) { if (!slash) break; p = slash + 1; continue; }
+		memcpy(part, p, len); part[len] = '\0';
+		char candidate[512];
+		snprintf(candidate, sizeof(candidate), "%s/%s", current, part);
+		if (access(candidate, F_OK) != 0)
+		{
+			DIR* dir = opendir(current[0] ? current : "/");
+			if (dir == nullptr) return false;
+			bool found = false;
+			struct dirent* e;
+			while ((e = readdir(dir)) != nullptr)
+			{
+				if (strcasecmp(e->d_name, part) == 0)
+				{
+					snprintf(candidate, sizeof(candidate), "%s/%s", current, e->d_name);
+					found = true;
+					break;
+				}
+			}
+			closedir(dir);
+			if (!found) return false;
+		}
+		strncpy(current, candidate, sizeof(current) - 1);
+		current[sizeof(current) - 1] = '\0';
+		if (!slash) break;
+		p = slash + 1;
+	}
+	if (strlen(current) + 1 > outSize) return false;
+	strcpy(out, current);
+	return true;
+}""")
+replace_exact(cpp / "game/hooks.cpp", 'FILE *f  = fopen(path, "rb");', r"""FILE *f  = fopen(path, "rb");
+    if (!f)
+    {
+        char real[512];
+        if (BastionResolveCase(path, real, sizeof(real)))
+        {
+            f = fopen(real, "rb");
+            if (f) Log("NvFOpen: %s opened as %s (case differs)", path, real);
+        }
+    }""")
+
 leftovers = []
 for source in cpp.rglob("*"):
     if source.suffix not in {".cpp", ".h", ".c"} or "vendor" in source.parts:

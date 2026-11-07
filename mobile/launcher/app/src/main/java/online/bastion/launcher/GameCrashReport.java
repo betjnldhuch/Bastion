@@ -101,6 +101,9 @@ public final class GameCrashReport {
             File texdb = ClientInstaller.resolveIgnoreCase(root, "texdb");
             r.append(texdb != null ? "ok  " : "НЕТ ").append("texdb/").append('\n');
             String language = ClientInstaller.chooseGameLanguage(root);
+            File text = ClientInstaller.resolveIgnoreCase(root, "text");
+            String[] texts = text == null ? null : text.list();
+            r.append("Папка text: ").append(text == null ? "НЕТ" : text.getName() + "/ " + (texts == null ? "" : java.util.Arrays.toString(texts))).append('\n');
             r.append("Язык игры: ").append(language == null ? "нет ни одного text/*.gxt" : language + " (" + ClientInstaller.gxtFor(language) + ")").append('\n');
         }
         r.append("Устройство: ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL)

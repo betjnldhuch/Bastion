@@ -468,9 +468,7 @@ public class MainActivity extends Activity {
                     "В установленном архиве нет файлов, без которых SAMP-Mobile GTA-2.11 закрывается при запуске:\n\n"
                             + list + "\nНужен кэш именно для SAMP-Mobile GTA-2.11 (содержимое папки GTA/). "
                             + "Замени архив на сервере и переустанови игру в настройках.",
-                    "Всё равно запустить", new Runnable() {
-                        @Override public void run() { launchPrepared(); }
-                    });
+                    null, null);
             return;
         }
         launchPrepared();
