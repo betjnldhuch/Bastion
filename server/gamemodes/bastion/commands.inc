@@ -15,7 +15,8 @@ stock bool:Cmd_Help(playerid)
 	strcat(text, "{FFFFFF}ALT Ч действие р€дом (дом, банкомат, магазин, работа) или меню игрока перед тобой\n");
 	strcat(text, "Y Ч прин€ть / ответить на звонок   N Ч отказатьс€   ¬ машине: 2 Ч двигатель, H Ч шлагбаум\n\n");
 	strcat(text, "{FFFF00}ќбщее\n");
-	strcat(text, "{FFFFFF}/stats Ч статистика   /time Ч врем€   /pay Ч передать деньги   /fps Ч твой FPS\n/report Ч вопрос или жалоба администрации   /admins Ч админы онлайн\n\n");
+	strcat(text, "{FFFFFF}/stats Ч статистика   /time Ч врем€   /pay Ч передать деньги   /fps Ч твой FPS\n/report Ч вопрос или жалоба администрации   /admins Ч админы онлайн\n");
+	strcat(text, "/inv Ч сумка (еда, аптечки, ремкомплекты)   /hunger Ч сытость (поесть: бар или еда из 24/7)\n\n");
 	strcat(text, "{FFFF00}RP-чат\n");
 	strcat(text, "{FFFFFF}ѕросто пиши в чат Ч теб€ услышат игроки р€дом.\n");
 	strcat(text, "/me Ч действие   /do Ч описание   /try Ч попытка   /s Ч крик   /b Ч OOC   /pm Ч Ћ—\n\n");
@@ -35,7 +36,7 @@ stock bool:Cmd_Help(playerid)
 	strcat(text, "/buybiz /sellbiz /bizinfo /bizcash Ч свой бизнес   /turfs /capture Ч районы банд\n\n");
 	strcat(text, "{FFFF00}јдминам\n");
 	strcat(text, "{FFFFFF}/ahelp Ч команды администрации по уровн€м   /amenu Ч панель (удобно с телефона)\n");
-	strcat(text, "/createhouse /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf /addgate /delgate /addfuel /delfuel /setfuel /givelic /addexampoint /clearexam /fpslist");
+	strcat(text, "/createhouse /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf /addgate /delgate /addfuel /delfuel /setfuel /givelic /addexampoint /clearexam /givefood /giveitem /fpslist");
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "ѕомощь", "%s", "«акрыть", "", text);
 	return true;
 }
@@ -52,12 +53,12 @@ stock bool:Cmd_Stats(playerid)
 	else format(car, sizeof car, "модель %d", GetVehicleModel(gPlayerVeh[playerid]));
 
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "—татистика",
-		"{FFFFFF}»м€: {33CCFF}%s\n{FFFFFF}”ровень: %d (опыт %d/%d)\nƒеньги: $%d (в банке $%d)\n“елефон: %s\n–абота: %s\n‘ракци€: %s (%s)\n–озыск: %d зв.\nƒом: %s\nћашина: %s\nјдминка: %d",
+		"{FFFFFF}»м€: {33CCFF}%s\n{FFFFFF}”ровень: %d (опыт %d/%d)\nƒеньги: $%d (в банке $%d)\n“елефон: %s\n–абота: %s\n‘ракци€: %s (%s)\n–озыск: %d зв.\n—ытость: %d%%\nƒом: %s\nћашина: %s\nјдминка: %d",
 		"«акрыть", "",
 		GetRPName(playerid), Player[playerid][pLevel], Player[playerid][pExp], Player[playerid][pLevel] * EXP_PER_LEVEL,
 		GetMoney(playerid), Player[playerid][pBank], phone, Job_GetName(Player[playerid][pJob]),
 		Faction_GetName(Player[playerid][pFaction]), Faction_GetRankName(Player[playerid][pFaction], Player[playerid][pRank]),
-		Player[playerid][pWanted], house, car, Player[playerid][pAdmin]);
+		Player[playerid][pWanted], Needs_GetHunger(playerid), house, car, Player[playerid][pAdmin]);
 	return true;
 }
 
@@ -141,6 +142,8 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/getjob", true))      { Cmd_GetJob(playerid); return 1; }
 	if (!strcmp(cmd, "/quitjob", true))     { Cmd_QuitJob(playerid); return 1; }
 	if (!strcmp(cmd, "/taxi", true))        { Cmd_Taxi(playerid); return 1; }
+	if (!strcmp(cmd, "/inv", true) || !strcmp(cmd, "/i", true)) { Cmd_Inv(playerid); return 1; }
+	if (!strcmp(cmd, "/hunger", true))      { Cmd_Hunger(playerid); return 1; }
 	if (!strcmp(cmd, "/gotaxi", true))      { Cmd_GoTaxi(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/repair", true))      { Cmd_Repair(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/refill", true))      { Cmd_Refill(playerid, cmdtext[pos]); return 1; }
@@ -210,6 +213,8 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/delfuel", true))     { Cmd_DelFuel(playerid); return 1; }
 	if (!strcmp(cmd, "/setfuel", true))     { Cmd_SetFuel(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/givelic", true))     { Cmd_GiveLic(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/givefood", true))    { Cmd_GiveFood(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/giveitem", true))    { Cmd_GiveItem(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/addexampoint", true)) { Cmd_AddExamPoint(playerid); return 1; }
 	if (!strcmp(cmd, "/clearexam", true))   { Cmd_ClearExam(playerid); return 1; }
 	if (!strcmp(cmd, "/delatm", true))      { Cmd_DelAtm(playerid); return 1; }
