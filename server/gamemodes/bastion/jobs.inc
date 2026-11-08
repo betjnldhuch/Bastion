@@ -177,22 +177,29 @@ static Jobs_AddVehicle(job, model, Float:x, Float:y, Float:z, Float:a, c1, c2)
 	if (v != INVALID_VEHICLE_ID && v < MAX_VEHICLES) gVehJob[v] = job;
 }
 
-static Jobs_AddHQ(Float:x, Float:y, Float:z, const title[], const hint[])
+static gJobMk[JOB_MECHANIC + 1] = { -1, ... };     // маркеры работ (двигаются в игре: /markers)
+
+static Jobs_AddHQ(job, Float:x, Float:y, Float:z, const title[], const hint[])
 {
-	CreatePickup(1275, 1, x, y, z, 0);
-	Create3DTextLabel("{FF9900}Работа: %s\n{FFFFFF}ALT — устроиться\n%s", COLOR_WHITE, x, y, z + 0.6, 15.0, 0, true, title, hint);
+	new text[MK_TEXT_LEN], name[32];
+	format(text, sizeof text, "{FF9900}Работа: %s
+{FFFFFF}ALT — устроиться
+%s", title, hint);
+	format(name, sizeof name, "Работа: %s", title);
+	gJobMk[job] = Marker_Create(MK_JOB, job, name, 1275, x, y, z, 0, 0, GPS_JOBS);
+	Marker_SetLabel(gJobMk[job], text);
 }
 
 stock Jobs_Init()
 {
 	DB_AddColumn("accounts", "job_exp", "INTEGER DEFAULT 0");
 
-	Jobs_AddHQ(LOADER_JOB_X, LOADER_JOB_Y, LOADER_JOB_Z, "Грузчик", "/work — начать смену");
-	Jobs_AddHQ(PIZZA_JOB_X, PIZZA_JOB_Y, PIZZA_JOB_Z, "Развозчик пиццы", "Сядь на мопед и введи /work");
-	Jobs_AddHQ(TAXI_JOB_X, TAXI_JOB_Y, TAXI_JOB_Z, "Таксист", "Сядь в такси и введи /work");
-	Jobs_AddHQ(BUS_JOB_X, BUS_JOB_Y, BUS_JOB_Z, "Водитель автобуса", "Сядь в автобус и введи /work");
-	Jobs_AddHQ(TRUCK_JOB_X, TRUCK_JOB_Y, TRUCK_JOB_Z, "Дальнобойщик", "Сядь в грузовик и введи /work");
-	Jobs_AddHQ(MECH_JOB_X, MECH_JOB_Y, MECH_JOB_Z, "Механик", "Сядь в эвакуатор и введи /work");
+	Jobs_AddHQ(JOB_LOADER, LOADER_JOB_X, LOADER_JOB_Y, LOADER_JOB_Z, "Грузчик", "/work — начать смену");
+	Jobs_AddHQ(JOB_PIZZA, PIZZA_JOB_X, PIZZA_JOB_Y, PIZZA_JOB_Z, "Развозчик пиццы", "Сядь на мопед и введи /work");
+	Jobs_AddHQ(JOB_TAXI, TAXI_JOB_X, TAXI_JOB_Y, TAXI_JOB_Z, "Таксист", "Сядь в такси и введи /work");
+	Jobs_AddHQ(JOB_BUS, BUS_JOB_X, BUS_JOB_Y, BUS_JOB_Z, "Водитель автобуса", "Сядь в автобус и введи /work");
+	Jobs_AddHQ(JOB_TRUCKER, TRUCK_JOB_X, TRUCK_JOB_Y, TRUCK_JOB_Z, "Дальнобойщик", "Сядь в грузовик и введи /work");
+	Jobs_AddHQ(JOB_MECHANIC, MECH_JOB_X, MECH_JOB_Y, MECH_JOB_Z, "Механик", "Сядь в эвакуатор и введи /work");
 
 	// Мопеды пиццерии
 	for (new i = 0; i < 4; i++) Jobs_AddVehicle(JOB_PIZZA, PIZZA_BIKE_MODEL, 2097.0 + float(i) * 1.5, -1797.5, 13.0, 0.0, 3, 6);
@@ -229,12 +236,10 @@ stock Job_GetName(job)
 // Значок работы рядом (для ALT и /getjob)
 stock Jobs_GetNearbyHQ(playerid)
 {
-	if (IsPlayerInRangeOfPoint(playerid, 3.0, LOADER_JOB_X, LOADER_JOB_Y, LOADER_JOB_Z)) return JOB_LOADER;
-	if (IsPlayerInRangeOfPoint(playerid, 3.0, PIZZA_JOB_X, PIZZA_JOB_Y, PIZZA_JOB_Z)) return JOB_PIZZA;
-	if (IsPlayerInRangeOfPoint(playerid, 3.0, TAXI_JOB_X, TAXI_JOB_Y, TAXI_JOB_Z)) return JOB_TAXI;
-	if (IsPlayerInRangeOfPoint(playerid, 3.0, BUS_JOB_X, BUS_JOB_Y, BUS_JOB_Z)) return JOB_BUS;
-	if (IsPlayerInRangeOfPoint(playerid, 3.0, TRUCK_JOB_X, TRUCK_JOB_Y, TRUCK_JOB_Z)) return JOB_TRUCKER;
-	if (IsPlayerInRangeOfPoint(playerid, 3.0, MECH_JOB_X, MECH_JOB_Y, MECH_JOB_Z)) return JOB_MECHANIC;
+	for (new j = JOB_LOADER; j <= JOB_MECHANIC; j++)
+	{
+		if (Marker_InRange(playerid, gJobMk[j], 3.0)) return j;
+	}
 	return JOB_NONE;
 }
 
@@ -426,7 +431,7 @@ stock bool:Cmd_Work(playerid)
 	{
 		case JOB_LOADER:
 		{
-			if (!IsPlayerInRangeOfPoint(playerid, 30.0, LOADER_JOB_X, LOADER_JOB_Y, LOADER_JOB_Z))
+			if (!Marker_InRange(playerid, gJobMk[JOB_LOADER], 30.0))
 				return SendClientMessage(playerid, COLOR_GREY, "Смену грузчика можно начать только в порту.");
 			if (IsPlayerInAnyVehicle(playerid))
 				return SendClientMessage(playerid, COLOR_GREY, "Выйди из транспорта.");

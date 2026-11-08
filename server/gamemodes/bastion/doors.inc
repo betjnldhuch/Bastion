@@ -3,7 +3,8 @@
 //
 //  ” двери снаружи и внутри Ч маркер (стрелка) и надпись.
 //  ¬ойти/выйти: ALT р€дом с маркером или /enter, /exit.
-//  Ќовый вход Ч строчка в таблице gDoors ниже (координаты: /pos).
+//  Ќовый вход Ч строчка в конце таблицы gDoors ниже (координаты: /pos).
+//  ћаркеры можно двигать в игре: /markers (место выхода Ч шаг перед маркером, куда он Ђсмотритї).
 // =====================================================================
 
 #define DOOR_RANGE          1.5
@@ -27,19 +28,25 @@ static const gDoors[][E_DOOR] =
 };
 
 
+static gDoorMk[sizeof gDoors][2];      // маркеры двери: [0] снаружи, [1] внутри
+
 stock Doors_Init()
 {
-	new label[64];
+	new label[64], name[32];
 	for (new d = 0; d < sizeof gDoors; d++)
 	{
-		new Float:ox, Float:oy, Float:ix, Float:iy;
-		Door_OuterMarker(d, ox, oy);
-		Door_InnerMarker(d, ix, iy);
-		CreatePickup(DOOR_PICKUP_MODEL, 1, ox, oy, gDoors[d][dOutZ], 0);
-		CreatePickup(DOOR_PICKUP_MODEL, 1, ix, iy, gDoors[d][dInZ], gDoors[d][dWorld]);
+		new Float:x, Float:y, Float:z = gDoors[d][dOutZ];
+		Door_OuterMarker(d, x, y);
+		gDoorMk[d][0] = Marker_Create(MK_DOOR, d * 2, gDoors[d][dName], DOOR_PICKUP_MODEL, x, y, z, 0, 0, GPS_GOV, gDoors[d][dOutA]);
 		format(label, sizeof label, "{FFFF66}%s\n{FFFFFF}ALT Ч войти", gDoors[d][dName]);
-		Create3DTextLabel(label, 0xFFFFFFFF, ox, oy, gDoors[d][dOutZ] + 0.6, 15.0, 0, true);
-		Create3DTextLabel("{FFFFFF}ALT Ч выйти", 0xFFFFFFFF, ix, iy, gDoors[d][dInZ] + 0.6, 10.0, gDoors[d][dWorld], true);
+		Marker_SetLabel(gDoorMk[d][0], label);
+
+		z = gDoors[d][dInZ];
+		Door_InnerMarker(d, x, y);
+		format(name, sizeof name, "%s, выход", gDoors[d][dName]);
+		gDoorMk[d][1] = Marker_Create(MK_DOOR, d * 2 + 1, name, DOOR_PICKUP_MODEL, x, y, z,
+			gDoors[d][dWorld], gDoors[d][dInterior], GPS_NONE, gDoors[d][dInA]);
+		Marker_SetLabel(gDoorMk[d][1], "{FFFFFF}ALT Ч выйти", COLOR_WHITE, 10.0);
 	}
 	printf("[Doors] %d entrances.", sizeof gDoors);
 }
@@ -61,36 +68,33 @@ static Door_InnerMarker(d, &Float:x, &Float:y)
 stock bool:Doors_Try(playerid)
 {
 	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return false;
-	new interior = GetPlayerInterior(playerid), world = GetPlayerVirtualWorld(playerid);
-	new Float:x, Float:y;
 	for (new d = 0; d < sizeof gDoors; d++)
 	{
-		if (interior == 0 && world == 0)
+		if (Marker_InRange(playerid, gDoorMk[d][0], DOOR_RANGE))
 		{
-			Door_OuterMarker(d, x, y);
-			if (IsPlayerInRangeOfPoint(playerid, DOOR_RANGE, x, y, gDoors[d][dOutZ]))
-			{
-				SetPlayerInterior(playerid, gDoors[d][dInterior]);
-				SetPlayerVirtualWorld(playerid, gDoors[d][dWorld]);
-				SetPlayerPos(playerid, gDoors[d][dInX], gDoors[d][dInY], gDoors[d][dInZ]);
-				SetPlayerFacingAngle(playerid, gDoors[d][dInA]);
-				SetCameraBehindPlayer(playerid);
-				return true;
-			}
+			Door_SpawnAt(playerid, gDoorMk[d][1]);
+			return true;
 		}
-		else if (interior == gDoors[d][dInterior] && world == gDoors[d][dWorld])
+		if (Marker_InRange(playerid, gDoorMk[d][1], DOOR_RANGE))
 		{
-			Door_InnerMarker(d, x, y);
-			if (IsPlayerInRangeOfPoint(playerid, DOOR_RANGE, x, y, gDoors[d][dInZ]))
-			{
-				SetPlayerInterior(playerid, 0);
-				SetPlayerVirtualWorld(playerid, 0);
-				SetPlayerPos(playerid, gDoors[d][dOutX], gDoors[d][dOutY], gDoors[d][dOutZ]);
-				SetPlayerFacingAngle(playerid, gDoors[d][dOutA]);
-				SetCameraBehindPlayer(playerid);
-				return true;
-			}
+			Door_SpawnAt(playerid, gDoorMk[d][0]);
+			return true;
 		}
 	}
 	return false;
+}
+
+// ѕоставить игрока на шаг перед маркером двери, лицом по углу маркера
+static Door_SpawnAt(playerid, m)
+{
+	new Float:x, Float:y, Float:z;
+	if (!Marker_GetPos(m, x, y, z)) return;
+	new Float:a = Marker_GetAngle(m);
+	x -= Door_MarkerOffset * floatsin(a, degrees);
+	y += Door_MarkerOffset * floatcos(a, degrees);
+	SetPlayerInterior(playerid, Marker_GetInterior(m));
+	SetPlayerVirtualWorld(playerid, Marker_GetWorld(m));
+	SetPlayerPos(playerid, x, y, z);
+	SetPlayerFacingAngle(playerid, a);
+	SetCameraBehindPlayer(playerid);
 }
