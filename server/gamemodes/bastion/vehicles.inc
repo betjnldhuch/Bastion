@@ -17,6 +17,8 @@
 #define DEALER_SPAWN_Z      25.3
 #define DEALER_SPAWN_A      0.0
 
+static gDealerMk = -1;          // маркер автосалона (двигается в игре: /markers)
+
 #define PERSONAL_RESPAWN    600     // через сколько секунд брошенная машина вернётся на парковку
 
 // Функции из fuel.inc, которые нужны здесь раньше, чем он подключён
@@ -59,9 +61,16 @@ stock Vehicles_Init()
 	AddStaticVehicleEx(462, 2499.0, -1680.0, 13.0, 0.0, -1, -1, 300);    // Faggio
 
 	// Автосалон
-	CreatePickup(1274, 1, DEALER_X, DEALER_Y, DEALER_Z, 0);
-	Create3DTextLabel("{FFFF00}Автосалон\n{FFFFFF}ALT — купить машину", COLOR_WHITE,
-		DEALER_X, DEALER_Y, DEALER_Z + 0.6, 15.0, 0, true);
+	new Float:dx = DEALER_X, Float:dy = DEALER_Y, Float:dz = DEALER_Z;
+	gDealerMk = Marker_Create(MK_DEALER, 0, "Автосалон", 1274, dx, dy, dz, 0, 0, GPS_TRANSPORT);
+	Marker_SetLabel(gDealerMk, "{FFFF00}Автосалон
+{FFFFFF}ALT — купить машину");
+}
+
+// Игрок у автосалона
+stock Vehicles_IsNearDealer(playerid)
+{
+	return Marker_InRange(playerid, gDealerMk, 3.0);
 }
 
 // Применить "двери закрыты / открыты" к машине
@@ -183,7 +192,7 @@ stock bool:Cmd_Engine(playerid)
 
 stock bool:Cmd_BuyCar(playerid)
 {
-	if (!IsPlayerInRangeOfPoint(playerid, 3.0, DEALER_X, DEALER_Y, DEALER_Z))
+	if (!Vehicles_IsNearDealer(playerid))
 		return SendClientMessage(playerid, COLOR_GREY, "Ты должен быть в автосалоне (значок доллара).");
 	if (gPlayerVeh[playerid] != INVALID_VEHICLE_ID)
 		return SendClientMessage(playerid, COLOR_GREY, "У тебя уже есть машина. Продать: /sellcar");
@@ -299,7 +308,7 @@ stock bool:Cmd_SellCar(playerid)
 {
 	new v = gPlayerVeh[playerid];
 	if (v == INVALID_VEHICLE_ID) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет машины.");
-	if (!IsPlayerInRangeOfPoint(playerid, 3.0, DEALER_X, DEALER_Y, DEALER_Z))
+	if (!Vehicles_IsNearDealer(playerid))
 		return SendClientMessage(playerid, COLOR_GREY, "Продать машину можно в автосалоне.");
 
 	new model = GetVehicleModel(v), refund = 1000;

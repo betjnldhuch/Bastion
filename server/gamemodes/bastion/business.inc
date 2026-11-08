@@ -92,8 +92,7 @@ enum E_BIZ
 	Float:bY,
 	Float:bZ,
 	bTill,                      // деньги в кассе
-	bPickup,
-	Text3D:bLabel
+	bMarker                     // маркер (markers.inc)
 }
 new Biz[MAX_BUSINESSES][E_BIZ];
 new gBizCount = 0;
@@ -129,21 +128,36 @@ stock Biz_GetTypeName(type)
 
 stock Biz_Refresh(b)
 {
-	if (Biz[b][bPickup] != INVALID_PICKUP) DestroyPickup(Biz[b][bPickup]);
-	if (Biz[b][bLabel] != INVALID_3DTEXT_ID) Delete3DTextLabel(Biz[b][bLabel]);
-
-	Biz[b][bPickup] = CreatePickup(1239, 1, Biz[b][bX], Biz[b][bY], Biz[b][bZ], 0);
+	new text[MK_TEXT_LEN];
 	if (Biz[b][bOwner] == 0)
 	{
-		Biz[b][bLabel] = Create3DTextLabel("{FF9900}%s\n{FFFFFF}%s\nALT Ч купить товар\nЅизнес продаЄтс€: ${FFFF00}%d{FFFFFF} (/buybiz)",
-			COLOR_WHITE, Biz[b][bX], Biz[b][bY], Biz[b][bZ] + 0.6, 15.0, 0, true,
+		format(text, sizeof text, "{FF9900}%s\n{FFFFFF}%s\nALT Ч купить товар\nЅизнес продаЄтс€: ${FFFF00}%d{FFFFFF} (/buybiz)",
 			Biz[b][bName], Biz_GetTypeName(Biz[b][bType]), Biz[b][bPrice]);
 	}
 	else
 	{
-		Biz[b][bLabel] = Create3DTextLabel("{FF9900}%s\n{FFFFFF}%s\nALT Ч купить товар\n¬ладелец: %s",
-			COLOR_WHITE, Biz[b][bX], Biz[b][bY], Biz[b][bZ] + 0.6, 15.0, 0, true,
+		format(text, sizeof text, "{FF9900}%s\n{FFFFFF}%s\nALT Ч купить товар\n¬ладелец: %s",
 			Biz[b][bName], Biz_GetTypeName(Biz[b][bType]), Biz[b][bOwnerName]);
+	}
+	if (Biz[b][bMarker] == -1)
+	{
+		new gps = GPS_SHOPS;
+		if (Biz[b][bType] == BIZ_BAR) gps = GPS_FUN;
+		Biz[b][bMarker] = Marker_Create(MK_BIZ, Biz[b][bDbId], Biz[b][bName], 1239, Biz[b][bX], Biz[b][bY], Biz[b][bZ], 0, 0, gps);
+	}
+	Marker_SetLabel(Biz[b][bMarker], text);
+}
+
+// јдмин перенЄс маркер бизнеса (/markers)
+stock Biz_OnMarkerMoved(dbid, Float:x, Float:y, Float:z)
+{
+	for (new b = 0; b < gBizCount; b++)
+	{
+		if (Biz[b][bDbId] != dbid) continue;
+		Biz[b][bX] = x;
+		Biz[b][bY] = y;
+		Biz[b][bZ] = z;
+		return;
 	}
 }
 
@@ -163,8 +177,7 @@ stock Biz_Add(dbid, const name[], type, owner, const ownerName[], price, Float:x
 	Biz[b][bY] = y;
 	Biz[b][bZ] = z;
 	Biz[b][bTill] = till;
-	Biz[b][bPickup] = INVALID_PICKUP;
-	Biz[b][bLabel] = INVALID_3DTEXT_ID;
+	Biz[b][bMarker] = -1;
 	Biz_Refresh(b);
 	return b;
 }
@@ -465,8 +478,7 @@ stock bool:Cmd_DelBiz(playerid)
 	new b = Biz_GetNearby(playerid);
 	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "ѕодойди к бизнесу.");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM businesses WHERE id = %d", Biz[b][bDbId]));
-	DestroyPickup(Biz[b][bPickup]);
-	Delete3DTextLabel(Biz[b][bLabel]);
+	Marker_Destroy(Biz[b][bMarker], true);
 	SendClientMessage(playerid, COLOR_ADMIN, "Ѕизнес Ђ%sї удалЄн.", Biz[b][bName]);
 	new last = gBizCount - 1;
 	if (b != last) Biz[b] = Biz[last];

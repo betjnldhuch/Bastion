@@ -43,6 +43,7 @@ static const gLicColumns[LIC_COUNT][] = { "", "lic_car", "lic_moto", "lic_boat",
 static const gLicPrices[LIC_COUNT] = { 0, LIC_PRICE_CAR, LIC_PRICE_MOTO, LIC_PRICE_BOAT, LIC_PRICE_GUN };
 
 static bool:gLic[MAX_PLAYERS][LIC_COUNT];
+static gSchoolMk = -1;                  // маркер автошколы (двигаетс€ в игре: /markers)
 static gExamType[MAX_PLAYERS];          // какую лицензию сдаЄт (0 = не сдаЄт)
 static gExamStep[MAX_PLAYERS];          // номер вопроса / чекпоинта
 static gExamCorrect[MAX_PLAYERS];
@@ -102,9 +103,10 @@ stock Licenses_Init()
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS exam_route (id INTEGER PRIMARY KEY AUTOINCREMENT, x REAL, y REAL, z REAL)"));
 	Licenses_LoadRoute();
 
-	CreatePickup(1239, 1, LIC_SCHOOL_X, LIC_SCHOOL_Y, LIC_SCHOOL_Z, 0);
-	Create3DTextLabel("{33CCFF}јвтошкола\n{FFFFFF}ALT Ч сдать на права и лицензии", COLOR_WHITE,
-		LIC_SCHOOL_X, LIC_SCHOOL_Y, LIC_SCHOOL_Z + 0.6, 15.0, 0, true);
+	new Float:sx = LIC_SCHOOL_X, Float:sy = LIC_SCHOOL_Y, Float:sz = LIC_SCHOOL_Z;
+	gSchoolMk = Marker_Create(MK_SCHOOL, 0, "јвтошкола", 1239, sx, sy, sz, 0, 0, GPS_GOV);
+	Marker_SetLabel(gSchoolMk, "{33CCFF}јвтошкола
+{FFFFFF}ALT Ч сдать на права и лицензии");
 	SetTimer("Licenses_OnSecond", 1000, true);
 }
 
@@ -208,7 +210,7 @@ stock Licenses_OnBecomeDriver(playerid)
 // ---------------------------------------------------------------------
 stock bool:Licenses_IsNearSchool(playerid)
 {
-	return IsPlayerInRangeOfPoint(playerid, 3.0, LIC_SCHOOL_X, LIC_SCHOOL_Y, LIC_SCHOOL_Z);
+	return Marker_InRange(playerid, gSchoolMk, 3.0) != 0;
 }
 
 stock bool:Cmd_Exam(playerid)

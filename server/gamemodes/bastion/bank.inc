@@ -53,9 +53,8 @@ enum E_ATM
 	Float:aY,
 	Float:aZ,
 	Float:aA,           // угол; меньше 0 Ч без объекта (только значок)
-	aPickup,
-	aObject,
-	Text3D:aLabel
+	aMarker,           // маркер (markers.inc)
+	aObject
 }
 new Atm[MAX_ATMS][E_ATM];
 new gAtmCount = 0;
@@ -79,28 +78,53 @@ stock Atm_Create(dbid, Float:x, Float:y, Float:z, Float:a = -1.0)
 	Atm[n][aY] = y;
 	Atm[n][aZ] = z;
 	Atm[n][aA] = a;
-	Atm[n][aPickup] = -1;
 	Atm[n][aObject] = INVALID_OBJECT_ID;
+	// Ѕез аппарата Ч значок $, с аппаратом Ч только надпись
+	new model = 1274;
+	if (a >= 0.0) model = 0;
+	Atm[n][aMarker] = Marker_Create(MK_ATM, dbid, "Ѕанкомат", model, Atm[n][aX], Atm[n][aY], Atm[n][aZ], 0, 0, GPS_ATM, (a >= 0.0) ? a : 0.0);
+	Marker_SetLabel(Atm[n][aMarker], "{33AA33}Ѕанкомат\n{FFFFFF}ALT Ч открыть счЄт");
 	if (a >= 0.0)
 	{
-		// јппарат стоит в метре перед точкой, лицом к игроку
-		new Float:ox = x - floatsin(a, degrees) * 1.0;
-		new Float:oy = y + floatcos(a, degrees) * 1.0;
-		Atm[n][aObject] = CreateObject(ATM_OBJECT_MODEL, ox, oy, z - 0.35, 0.0, 0.0, a + 180.0, 150.0);
+		Atm[n][aA] = Marker_GetAngle(Atm[n][aMarker]);
+		Atm_BuildObject(n);
 	}
-	else
-	{
-		Atm[n][aPickup] = CreatePickup(1274, 1, x, y, z, 0);
-	}
-	Atm[n][aLabel] = Create3DTextLabel("{33AA33}Ѕанкомат\n{FFFFFF}ALT Ч открыть счЄт", COLOR_WHITE, x, y, z + 0.6, 15.0, 0, true);
 	return n;
+}
+
+// јппарат стоит в метре перед точкой, лицом к игроку
+static Atm_BuildObject(n)
+{
+	if (Atm[n][aObject] != INVALID_OBJECT_ID) DestroyObject(Atm[n][aObject]);
+	new Float:a = Atm[n][aA];
+	new Float:ox = Atm[n][aX] - floatsin(a, degrees) * 1.0;
+	new Float:oy = Atm[n][aY] + floatcos(a, degrees) * 1.0;
+	Atm[n][aObject] = CreateObject(ATM_OBJECT_MODEL, ox, oy, Atm[n][aZ] - 0.35, 0.0, 0.0, a + 180.0, 150.0);
 }
 
 stock Atm_Destroy(n)
 {
-	if (Atm[n][aPickup] != -1) DestroyPickup(Atm[n][aPickup]);
+	Marker_Destroy(Atm[n][aMarker], true);
 	if (Atm[n][aObject] != INVALID_OBJECT_ID) DestroyObject(Atm[n][aObject]);
-	Delete3DTextLabel(Atm[n][aLabel]);
+	Atm[n][aObject] = INVALID_OBJECT_ID;
+}
+
+// јдмин перенЄс маркер банкомата (/markers): аппарат встаЄт перед новым местом
+stock Atm_OnMarkerMoved(dbid, Float:x, Float:y, Float:z, Float:a)
+{
+	for (new n = 0; n < gAtmCount; n++)
+	{
+		if (Atm[n][aDbId] != dbid) continue;
+		Atm[n][aX] = x;
+		Atm[n][aY] = y;
+		Atm[n][aZ] = z;
+		if (Atm[n][aA] >= 0.0)
+		{
+			Atm[n][aA] = a;
+			Atm_BuildObject(n);
+		}
+		return;
+	}
 }
 
 stock Bank_Init()
