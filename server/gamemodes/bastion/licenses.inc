@@ -200,7 +200,7 @@ stock Licenses_OnBecomeDriver(playerid)
 			return;
 		}
 	}
-	if (v == gExamVehicle[playerid] || gVehFaction[v] != 0 || gVehAdmin[v] || v == Player[playerid][pWorkVehicle]) return;
+	if (v == gExamVehicle[playerid] || gVehFaction[v] != 0 || gVehAdmin[v] || v == Player[playerid][pWorkVehicle] || Jobs_GetVehicleJob(v) != JOB_NONE) return;
 
 	new lic = Licenses_ForModel(GetVehicleModel(v));
 	if (lic != 0 && !gLic[playerid][lic])

@@ -129,6 +129,7 @@ public OnPlayerDisconnect(playerid, reason)
 {
 	Platform_OnDisconnect(playerid);
 	Job_Stop(playerid);
+	Jobs_OnDisconnect(playerid);
 	Licenses_Abort(playerid);
 	Phone_HangUp(playerid);
 	Account_Save(playerid);
@@ -233,6 +234,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Keys_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Fuel_OnDialog(playerid, dialogid, response, inputtext)) return 1;
 	if (Licenses_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Jobs_OnDialog(playerid, dialogid, response)) return 1;
 	return 0;
 }
 
@@ -256,7 +258,12 @@ public OnPlayerStateChange(playerid, PLAYER_STATE:newstate, PLAYER_STATE:oldstat
 	if (newstate == PLAYER_STATE_DRIVER)
 	{
 		if (!Factions_OnBecomeDriver(playerid)) Vehicles_OnBecomeDriver(playerid);
+		Jobs_OnBecomeDriver(playerid);      // рабочие машины — только работникам
 		Licenses_OnBecomeDriver(playerid);  // учебная машина, предупреждение без прав
+	}
+	else if (newstate == PLAYER_STATE_PASSENGER)
+	{
+		Jobs_OnBecomePassenger(playerid);   // оплата такси
 	}
 	return 1;
 }

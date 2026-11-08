@@ -113,7 +113,7 @@ stock bool:Fuel_IsEmpty(vehicleid)
 stock Fuel_OnVehicleSpawn(vehicleid)
 {
 	if (gVehOwner[vehicleid] != 0) return;      // личная машина помнит свой бензин
-	if (gVehFaction[vehicleid] != 0 || gVehAdmin[vehicleid]) Fuel_ResetVehicle(vehicleid);
+	if (gVehFaction[vehicleid] != 0 || gVehAdmin[vehicleid] || Jobs_GetVehicleJob(vehicleid) != JOB_NONE) Fuel_ResetVehicle(vehicleid);
 	else Fuel_Set(vehicleid, float(FUEL_TANK / 2 + random(FUEL_TANK / 2 + 1)));
 }
 
