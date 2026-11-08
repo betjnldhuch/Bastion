@@ -428,6 +428,7 @@ stock bool:Cmd_SellHouse(playerid)
 
 stock bool:Cmd_Enter(playerid)
 {
+	if (Doors_Try(playerid)) return true;     // здания с интерьером (doors.inc)
 	new h = House_GetNearby(playerid);
 	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет входа.");
 	if (House[h][hOwner] == 0) return SendClientMessage(playerid, COLOR_GREY, "Дом продаётся и закрыт. Купить: /buyhouse");
@@ -452,6 +453,7 @@ stock bool:Cmd_Enter(playerid)
 
 stock bool:Cmd_Exit(playerid)
 {
+	if (Doors_Try(playerid)) return true;     // здания с интерьером (doors.inc)
 	new h = Player[playerid][pHouseInside];
 	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Ты не в доме.");
 	if (!IsPlayerInRangeOfPoint(playerid, 3.0, House[h][hIX], House[h][hIY], House[h][hIZ]))

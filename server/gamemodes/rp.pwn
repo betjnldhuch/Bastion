@@ -25,6 +25,7 @@
 //    bastion/admin_tools.inc Ч телепорты (метка на карте, /tp) и инструменты админов
 //    bastion/dev.inc       Ч разработка в игре: координаты /pos, маппинг /mo
 //    bastion/textures.inc  Ч перекраска объектов маппинга: текстуры, цвет, надписи /mt
+//    bastion/doors.inc     Ч входы в здани€ со стандартными интерьерами (LSPD)
 //    bastion/commands.inc  Ч список команд
 //
 //   омпил€ци€: открой этот файл в Qawno и нажми F5.
@@ -52,6 +53,7 @@
 #include "bastion/admin_tools.inc"
 #include "bastion/dev.inc"         // разработка в игре: /pos, /dev, маппинг /mo
 #include "bastion/textures.inc"    // перекраска объектов маппинга: /mt
+#include "bastion/doors.inc"       // входы в здани€: LSPD
 #include "bastion/factions.inc"   // после admin.inc: использует Admin_Check
 #include "bastion/turfs.inc"
 #include "bastion/bank.inc"
@@ -102,6 +104,7 @@ public OnGameModeInit()
 	Licenses_Init();
 	Needs_Init();
 	Dev_Init();           // свои объекты карты, убранные здани€
+	Doors_Init();         // входы в здани€ (маркеры LSPD)
 	Econ_Init();          // казна, налоги, журнал денег
 	Garage_Init();        // —“ќ, штрафсто€нка, пол€ тюнинга в vehicles
 	Fuel_Init();          // после всех машин: им выдаЄтс€ бензин
