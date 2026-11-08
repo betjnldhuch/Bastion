@@ -1,0 +1,27 @@
+# Собирает наш LSPD: берёт оригинальные genintintpolicea.txd / genintintpoliceb.txd
+# (из models/gta_int.img игрока) и заменяет в них текстуры на наши из ../lspd/src.
+#   python build_lspd.py <папка с оригинальными txd> <папка для результата>
+# Оригинальные файлы GTA в репозиторий не кладём.
+import os, sys
+from PIL import Image
+HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
+import txdpatch
+S = os.path.join(HERE, '..', 'lspd', 'src')
+L = lambda n: Image.open(os.path.join(S, n))
+src_dir, out_dir = sys.argv[1], sys.argv[2]
+os.makedirs(out_dir, exist_ok=True)
+sheet = L('_sheet_chatgpt.png').convert('RGB')
+wall = L('bpd_wall.png').resize((256, 256), Image.LANCZOS)
+wains = sheet.crop((6, 524, 370, 702)).resize((256, 256), Image.LANCZOS)
+floor = L('bpd_floor.png').resize((256, 256), Image.LANCZOS)
+bars = L('bpd_bars.png').resize((256, 256), Image.LANCZOS)
+board = Image.new('RGB', (512, 512), (120, 90, 60))
+board.paste(L('bpd_wanted.png'), (0, 0)); board.paste(L('bpd_rules.png'), (256, 0))
+logo = L('bpd_logo.png'); bg = Image.new('RGB', (256, 256), (30, 45, 90)); bg.paste(logo, (0, 0), logo)
+board.paste(bg, (0, 256)); board.paste(L('bpd_rules.png'), (256, 256))
+desk = L('bpd_desk.png').crop((200, 60, 330, 190)).resize((128, 128), Image.LANCZOS)
+txdpatch.patch(os.path.join(src_dir, 'genintintpoliceb.txd'), os.path.join(out_dir, 'genintintpoliceb.txd'),
+               {'coptop_blue': wall, 'copbtm_green': wains, 'p_floor4': floor, 'p_countr': desk})
+txdpatch.patch(os.path.join(src_dir, 'genintintpolicea.txd'), os.path.join(out_dir, 'genintintpolicea.txd'),
+               {'copcell_bars': bars, 'cop_notice': board})
+print('ok')

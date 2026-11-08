@@ -24,5 +24,19 @@
 | bpd_wanted.png | 256×256 | плакат «Разыскивается» | нет |
 | bpd_rules.png | 256×256 | плакат «Правила участка» | нет |
 
-Следующий шаг: узнать имена текстур стандартного интерьера LSPD (из gta3.img)
-и собрать `.txd` с этими именами.
+### Какие текстуры игры заменяются
+
+Интерьер полиции берёт текстуры из `genintintpolicea.txd` и `genintintpoliceb.txd`
+(архив `models/gta_int.img`). Мы меняем:
+
+| Текстура GTA | Файл | Наша картинка |
+|---|---|---|
+| coptop_blue | genintintpoliceb.txd | стена (bpd_wall) |
+| copbtm_green | genintintpoliceb.txd | синяя панель низа стены |
+| p_floor4 | genintintpoliceb.txd | пол (bpd_floor) |
+| p_countr | genintintpoliceb.txd | дерево стойки |
+| copcell_bars | genintintpolicea.txd | решётка камеры (с прозрачностью) |
+| cop_notice | genintintpolicea.txd | доска объявлений: «Разыскивается», правила, эмблема |
+
+Сборка: `python client-mods/tools/build_lspd.py <папка с оригинальными txd> <папка для результата>`.
+Готовые `.txd` в репозиторий не кладём: в них остаются оригинальные текстуры Rockstar.
