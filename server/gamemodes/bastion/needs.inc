@@ -274,6 +274,7 @@ stock bool:Cmd_GiveFood(playerid, const params[])
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Использование: /givefood [id]");
 	Needs_Feed(target, 100);
+	Admin_Log(playerid, "givefood", target);
 	SendClientMessage(target, COLOR_ADMIN, "Администратор тебя накормил.");
 	SendClientMessage(playerid, COLOR_ADMIN, "%s накормлен.", GetRPName(target));
 	return true;
@@ -289,6 +290,7 @@ stock bool:Cmd_GiveItem(playerid, const params[])
 	NextIntParam(params, pos, amount);
 	if (amount < 1) amount = 1;
 	if (!Inv_Add(target, item, amount)) return SendClientMessage(playerid, COLOR_GREY, "Не помещается (максимум %d штук).", INV_MAX_STACK);
+	Admin_Log(playerid, "giveitem", target, gInvNames[item], amount);
 	SendClientMessage(target, COLOR_ADMIN, "Администратор выдал тебе: %s x%d.", gInvNames[item], amount);
 	SendClientMessage(playerid, COLOR_ADMIN, "Выдано %s: %s x%d.", GetRPName(target), gInvNames[item], amount);
 	return true;

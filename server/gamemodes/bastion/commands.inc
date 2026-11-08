@@ -15,7 +15,8 @@ stock bool:Cmd_Help(playerid)
 	strcat(text, "{FFFFFF}ALT Ч действие р€дом (дом, банкомат, магазин, работа) или меню игрока перед тобой\n");
 	strcat(text, "Y Ч прин€ть / ответить на звонок   N Ч отказатьс€   ¬ машине: 2 Ч двигатель, H Ч шлагбаум\n\n");
 	strcat(text, "{FFFF00}ќбщее\n");
-	strcat(text, "{FFFFFF}/stats Ч статистика   /time Ч врем€   /pay Ч передать деньги   /admins Ч админы   /fps Ч твой FPS\n/inv Ч сумка (еда, аптечки, ремкомплекты)   /hunger Ч сытость (поесть: бар или еда из 24/7)\n\n");
+	strcat(text, "{FFFFFF}/stats Ч статистика   /time Ч врем€   /pay Ч передать деньги   /fps Ч твой FPS\n/report Ч вопрос или жалоба администрации   /admins Ч админы онлайн\n");
+	strcat(text, "/inv Ч сумка (еда, аптечки, ремкомплекты)   /hunger Ч сытость (поесть: бар или еда из 24/7)\n\n");
 	strcat(text, "{FFFF00}RP-чат\n");
 	strcat(text, "{FFFFFF}ѕросто пиши в чат Ч теб€ услышат игроки р€дом.\n");
 	strcat(text, "/me Ч действие   /do Ч описание   /try Ч попытка   /s Ч крик   /b Ч OOC   /pm Ч Ћ—\n\n");
@@ -34,8 +35,8 @@ stock bool:Cmd_Help(playerid)
 	strcat(text, "{FFFFFF}/bank Ч банкомат   /buy Ч купить в магазине   /call /sms /p /h /number /911 Ч телефон\n");
 	strcat(text, "/buybiz /sellbiz /bizinfo /bizcash Ч свой бизнес   /turfs /capture Ч районы банд\n\n");
 	strcat(text, "{FFFF00}јдминам\n");
-	strcat(text, "{FFFFFF}/a /goto /gethere /kick /sethp /setskin /veh /dveh /createhouse /givemoney /makeadmin /jail /makeleader /fpslist\n");
-	strcat(text, "/ban /unban /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf /addgate /delgate /addfuel /delfuel /setfuel /givelic /addexampoint /clearexam /givefood /giveitem");
+	strcat(text, "{FFFFFF}/ahelp Ч команды администрации по уровн€м   /amenu Ч панель (удобно с телефона)\n");
+	strcat(text, "/createhouse /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf /addgate /delgate /addfuel /delfuel /setfuel /givelic /addexampoint /clearexam /givefood /giveitem /fpslist");
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "ѕомощь", "%s", "«акрыть", "", text);
 	return true;
 }
@@ -118,12 +119,14 @@ stock Commands_Process(playerid, const cmdtext[])
 	NextParam(cmdtext, pos, cmd);
 	// cmd = "/команда", а cmdtext[pos] Ч всЄ, что после неЄ (параметры)
 
+	// --- администраци€ (admin.inc): мут, /report, все админ-команды ---
+	if (Admin_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
+
 	// --- общее ---
 	if (!strcmp(cmd, "/help", true))        { Cmd_Help(playerid); return 1; }
 	if (!strcmp(cmd, "/stats", true))       { Cmd_Stats(playerid); return 1; }
 	if (!strcmp(cmd, "/time", true))        { Cmd_Time(playerid); return 1; }
 	if (!strcmp(cmd, "/pay", true))         { Cmd_Pay(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/admins", true))      { Cmd_Admins(playerid); return 1; }
 	if (!strcmp(cmd, "/fps", true))         { Cmd_Fps(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fpslist", true))     { Cmd_FpsList(playerid); return 1; }
 
@@ -239,19 +242,7 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/addgate", true))     { Cmd_AddGate(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delgate", true))     { Cmd_DelGate(playerid); return 1; }
 
-	// --- админы (admin.inc) ---
-	if (!strcmp(cmd, "/ban", true))         { Cmd_Ban(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/unban", true))       { Cmd_Unban(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/a", true))           { Cmd_AdminChat(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/makeadmin", true))   { Cmd_MakeAdmin(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/goto", true))        { Cmd_Goto(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/gethere", true))     { Cmd_GetHere(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/kick", true))        { Cmd_Kick(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/veh", true))         { Cmd_Veh(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/dveh", true))        { Cmd_DVeh(playerid); return 1; }
-	if (!strcmp(cmd, "/givemoney", true))   { Cmd_GiveMoney(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/sethp", true))       { Cmd_SetHP(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/setskin", true))     { Cmd_SetSkin(playerid, cmdtext[pos]); return 1; }
+	// --- админы (admin.inc): остальные команды Ч в Admin_OnCommand ---
 	if (!strcmp(cmd, "/createhouse", true))
 	{
 		if (Admin_Check(playerid, 4)) Cmd_CreateHouse(playerid, cmdtext[pos]);

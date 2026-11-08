@@ -494,6 +494,7 @@ stock bool:Cmd_GiveLic(playerid, const params[])
 		return SendClientMessage(playerid, COLOR_GREY, "Использование: /givelic [id] [1 авто, 2 мото, 3 лодки, 4 оружие]");
 	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
 	Licenses_Set(target, lic, true);
+	Admin_Log(playerid, "givelic", target, gLicNames[lic], lic);
 	SendClientMessage(target, COLOR_ADMIN, "Администратор выдал тебе лицензию «%s».", gLicNames[lic]);
 	SendClientMessage(playerid, COLOR_ADMIN, "Лицензия «%s» выдана %s.", gLicNames[lic], GetRPName(target));
 	return true;
