@@ -382,7 +382,7 @@ stock PayDay()
 	{
 		if (!IsPlayerConnected(i) || !Player[i][pLogged]) continue;
 
-		GiveMoney(i, PAYDAY_SALARY, "зарплата (PayDay)");
+		Bank_Salary(i, PAYDAY_SALARY);
 		Player[i][pExp]++;
 		SendClientMessage(i, COLOR_YELLOW, "===== PayDay =====");
 		SendClientMessage(i, COLOR_WHITE, "Зарплата: $%d. Опыт: %d/%d.", PAYDAY_SALARY,
@@ -391,17 +391,18 @@ stock PayDay()
 		new fpay = Factions_GetSalary(i);
 		if (fpay > 0)
 		{
-			GiveMoney(i, fpay, "зарплата фракции");
+			Bank_Salary(i, fpay);
 			SendClientMessage(i, COLOR_WHITE, "Зарплата во фракции (%s): $%d.", Faction_GetRankName(Player[i][pFaction], Player[i][pRank]), fpay);
 		}
 		new tpay = Turfs_GetIncome(i);
 		if (tpay > 0)
 		{
-			GiveMoney(i, tpay, "доход банды с районов");
+			Bank_Salary(i, tpay);
 			SendClientMessage(i, COLOR_WHITE, "Доход банды с районов (%d): $%d.", tpay / TURF_INCOME, tpay);
 		}
 
 		Econ_PayDay(i, PAYDAY_SALARY + fpay);   // налоги (economy.inc)
+		Bank_PayDay(i);         // проценты по счёту и баланс (bank.inc)
 
 		if (Player[i][pExp] >= Player[i][pLevel] * EXP_PER_LEVEL)
 		{

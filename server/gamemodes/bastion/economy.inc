@@ -119,7 +119,12 @@ stock Econ_PayDay(playerid, salary)
 	new itax = salary * gTaxIncome / 100;
 	if (itax > 0)
 	{
+#if PAYDAY_TO_BANK
+		// зарплата пришла на счёт (bank.inc) — налог тоже со счёта
+		if (!Econ_Charge(playerid, itax, "подоходный налог")) GiveMoney(playerid, -itax, "подоходный налог");
+#else
 		GiveMoney(playerid, -itax, "подоходный налог");
+#endif
 		Econ_ToTreasury(itax);
 		SendClientMessage(playerid, COLOR_WHITE, "Подоходный налог %d%%: -$%d.", gTaxIncome, itax);
 	}
