@@ -246,6 +246,7 @@ stock Commands_Process(playerid, const cmdtext[])
 
 	// --- бизнесы (business.inc) ---
 	if (!strcmp(cmd, "/buy", true))         { Cmd_Buy(playerid); return 1; }
+	if (!strcmp(cmd, "/rob", true))         { Cmd_Rob(playerid); return 1; }
 	if (!strcmp(cmd, "/buybiz", true))      { Cmd_BuyBiz(playerid); return 1; }
 	if (!strcmp(cmd, "/sellbiz", true))     { Cmd_SellBiz(playerid); return 1; }
 	if (!strcmp(cmd, "/bizinfo", true))     { Cmd_BizInfo(playerid); return 1; }

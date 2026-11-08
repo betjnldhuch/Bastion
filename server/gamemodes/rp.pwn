@@ -64,6 +64,7 @@
 #include "bastion/gps.inc"        // /markers Ч правка маркеров в игре, /gps
 #include "bastion/economy.inc"
 #include "bastion/wounded.inc"    // ранение вместо смерти, /revive, /aid
+#include "bastion/robbery.inc"    // /rob Ч ограбление магазинов
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
 #include "bastion/fps.inc"
@@ -115,6 +116,7 @@ public OnGameModeInit()
 	Gps_Init();
 	Fuel_Init();          // после всех машин: им выдаЄтс€ бензин
 	Wound_Init();
+	Robbery_Init();
 
 	new hour;
 	gettime(hour);
@@ -170,6 +172,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Inv_UiReset(playerid);
 	Gps_OnDisconnect(playerid);
 	Wound_Reset(playerid);
+	Rob_OnDisconnect(playerid);
 	Player[playerid][pLogged] = false;
 	return 1;
 }
