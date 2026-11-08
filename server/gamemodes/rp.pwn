@@ -17,6 +17,7 @@
 //    bastion/phone.inc     — телефон: звонки, SMS, 911
 //    bastion/business.inc  — бизнесы: 24/7, бар, одежда, оружие
 //    bastion/garage.inc    — СТО (ремонт, тюнинг) и штрафстоянка
+//    bastion/economy.inc   — казна, налоги, журнал денег
 //    bastion/gates.inc     — шлагбаумы и ворота фракций
 //    bastion/keys.inc      — управление кнопками: ALT, Y, N, H, 2
 //    bastion/chat.inc      — RP-чат
@@ -53,6 +54,7 @@
 #include "bastion/phone.inc"
 #include "bastion/business.inc"
 #include "bastion/garage.inc"
+#include "bastion/economy.inc"
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
 #include "bastion/fps.inc"
@@ -95,6 +97,7 @@ public OnGameModeInit()
 	Fps_Init();
 	Licenses_Init();
 	Needs_Init();
+	Econ_Init();          // казна, налоги, журнал денег
 	Garage_Init();        // СТО, штрафстоянка, поля тюнинга в vehicles
 	Fuel_Init();          // после всех машин: им выдаётся бензин
 
@@ -206,7 +209,8 @@ public OnPlayerSpawn(playerid)
 	{
 		Player[playerid][pDied] = false;
 		Needs_OnHospital(playerid);         // в больнице покормили (needs.inc)
-		GiveMoney(playerid, -HOSPITAL_FEE);
+		GiveMoney(playerid, -HOSPITAL_FEE, "счёт больницы");
+		Econ_ToTreasury(HOSPITAL_FEE);
 		SendClientMessage(playerid, COLOR_WHITE, "Тебя вылечили в больнице. Счёт за лечение: $%d.", HOSPITAL_FEE);
 	}
 
@@ -344,7 +348,7 @@ stock PayDay()
 	{
 		if (!IsPlayerConnected(i) || !Player[i][pLogged]) continue;
 
-		GiveMoney(i, PAYDAY_SALARY);
+		GiveMoney(i, PAYDAY_SALARY, "зарплата (PayDay)");
 		Player[i][pExp]++;
 		SendClientMessage(i, COLOR_YELLOW, "===== PayDay =====");
 		SendClientMessage(i, COLOR_WHITE, "Зарплата: $%d. Опыт: %d/%d.", PAYDAY_SALARY,
@@ -353,15 +357,17 @@ stock PayDay()
 		new fpay = Factions_GetSalary(i);
 		if (fpay > 0)
 		{
-			GiveMoney(i, fpay);
+			GiveMoney(i, fpay, "зарплата фракции");
 			SendClientMessage(i, COLOR_WHITE, "Зарплата во фракции (%s): $%d.", Faction_GetRankName(Player[i][pFaction], Player[i][pRank]), fpay);
 		}
 		new tpay = Turfs_GetIncome(i);
 		if (tpay > 0)
 		{
-			GiveMoney(i, tpay);
+			GiveMoney(i, tpay, "доход банды с районов");
 			SendClientMessage(i, COLOR_WHITE, "Доход банды с районов (%d): $%d.", tpay / TURF_INCOME, tpay);
 		}
+
+		Econ_PayDay(i, PAYDAY_SALARY + fpay);   // налоги (economy.inc)
 
 		if (Player[i][pExp] >= Player[i][pLevel] * EXP_PER_LEVEL)
 		{

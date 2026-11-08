@@ -36,6 +36,16 @@ static const gDealerModels[] = { 462, 410, 401, 516, 405, 560 };
 static const gDealerPrices[] = { 3000, 9000, 12000, 18000, 25000, 60000 };
 static const gDealerNames[][] = { "Faggio (мопед)", "Manana", "Bravura", "Nebula", "Sentinel", "Sultan" };
 
+// ÷ена модели в автосалоне (дл€ налога на машину; 10000, если модели нет в салоне)
+stock Vehicles_GetModelPrice(model)
+{
+	for (new i = 0; i < sizeof (gDealerModels); i++)
+	{
+		if (gDealerModels[i] == model) return gDealerPrices[i];
+	}
+	return 10000;
+}
+
 // ---------------------------------------------------------------------
 stock Vehicles_Init()
 {
@@ -214,7 +224,7 @@ stock Vehicles_OnDialog(playerid, dialogid, response, listitem)
 		return 1;
 	}
 
-	GiveMoney(playerid, -price);
+	GiveMoney(playerid, -price, "покупка машины");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB,
 		"INSERT INTO vehicles (owner, model, x, y, z, a, c1, c2) VALUES (%d, %d, %f, %f, %f, %f, %d, %d)",
 		Player[playerid][pDbId], model, DEALER_SPAWN_X, DEALER_SPAWN_Y, DEALER_SPAWN_Z, DEALER_SPAWN_A, c1, c2));
@@ -299,7 +309,7 @@ stock bool:Cmd_SellCar(playerid)
 	}
 	Vehicles_UnloadForPlayer(playerid);
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM vehicles WHERE owner = %d", Player[playerid][pDbId]));
-	GiveMoney(playerid, refund);
+	GiveMoney(playerid, refund, "продажа машины");
 	Account_Save(playerid);
 	SendClientMessage(playerid, COLOR_GREEN, "ћашина продана за $%d.", refund);
 	return true;

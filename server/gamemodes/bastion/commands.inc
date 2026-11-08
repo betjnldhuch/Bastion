@@ -15,7 +15,7 @@ stock bool:Cmd_Help(playerid)
 	strcat(text, "{FFFFFF}ALT Ч действие р€дом (дом, банкомат, магазин, работа) или меню игрока перед тобой\n");
 	strcat(text, "Y Ч прин€ть / ответить на звонок   N Ч отказатьс€   ¬ машине: 2 Ч двигатель, H Ч шлагбаум\n\n");
 	strcat(text, "{FFFF00}ќбщее\n");
-	strcat(text, "{FFFFFF}/stats Ч статистика   /time Ч врем€   /pay Ч передать деньги   /fps Ч твой FPS\n/report Ч вопрос или жалоба администрации   /admins Ч админы онлайн\n");
+	strcat(text, "{FFFFFF}/stats Ч статистика   /time Ч врем€   /taxes Ч налоги и казна   /pay Ч передать деньги   /fps Ч твой FPS\n/report Ч вопрос или жалоба администрации   /admins Ч админы онлайн\n");
 	strcat(text, "/inv Ч сумка (еда, аптечки, ремкомплекты)   /hunger Ч сытость (поесть: бар или еда из 24/7)\n\n");
 	strcat(text, "{FFFF00}RP-чат\n");
 	strcat(text, "{FFFFFF}ѕросто пиши в чат Ч теб€ услышат игроки р€дом.\n");
@@ -88,8 +88,11 @@ stock bool:Cmd_Pay(playerid, const params[])
 	GetPlayerPos(target, x, y, z);
 	if (!IsPlayerInRangeOfPoint(playerid, 5.0, x, y, z)) return SendClientMessage(playerid, COLOR_GREY, "»грок слишком далеко.");
 
-	GiveMoney(playerid, -amount);
-	GiveMoney(target, amount);
+	new reason[64];
+	format(reason, sizeof reason, "/pay -> %s", GetRPName(target));
+	GiveMoney(playerid, -amount, reason);
+	format(reason, sizeof reason, "/pay <- %s", GetRPName(playerid));
+	GiveMoney(target, amount, reason);
 	Account_Save(playerid);
 	Account_Save(target);
 
@@ -129,6 +132,9 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/help", true))        { Cmd_Help(playerid); return 1; }
 	if (!strcmp(cmd, "/stats", true))       { Cmd_Stats(playerid); return 1; }
 	if (!strcmp(cmd, "/time", true))        { Cmd_Time(playerid); return 1; }
+	if (!strcmp(cmd, "/taxes", true))       { Cmd_Taxes(playerid); return 1; }
+	if (!strcmp(cmd, "/settax", true))      { Cmd_SetTax(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/moneylog", true))    { Cmd_MoneyLog(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/pay", true))         { Cmd_Pay(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fps", true))         { Cmd_Fps(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fpslist", true))     { Cmd_FpsList(playerid); return 1; }

@@ -262,7 +262,7 @@ static Licenses_StartPractice(playerid)
 	if (v == INVALID_VEHICLE_ID)
 	{
 		SendClientMessage(playerid, COLOR_RED, "Нет свободной учебной машины, попробуй позже. Деньги возвращены.");
-		GiveMoney(playerid, gLicPrices[gExamType[playerid]]);
+		GiveMoney(playerid, gLicPrices[gExamType[playerid]], "возврат за экзамен");
 		gExamType[playerid] = 0;
 		return;
 	}
@@ -335,7 +335,8 @@ stock Licenses_OnDialog(playerid, dialogid, response, listitem)
 			SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", gLicPrices[lic]);
 			return 1;
 		}
-		GiveMoney(playerid, -gLicPrices[lic]);
+		GiveMoney(playerid, -gLicPrices[lic], "экзамен в автошколе");
+		Econ_ToTreasury(gLicPrices[lic]);
 		Account_Save(playerid);
 		Licenses_StartTheory(playerid, lic);
 		return 1;

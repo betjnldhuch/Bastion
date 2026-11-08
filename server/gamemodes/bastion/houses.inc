@@ -343,7 +343,7 @@ stock Houses_PayDay()
 			SendClientMessage(i, COLOR_RED, "Нечем платить за аренду ($%d). Тебя выселили из дома №%d.", rent, House[h][hDbId]);
 			continue;
 		}
-		GiveMoney(i, -rent);
+		GiveMoney(i, -rent, "аренда комнаты");
 		House[h][hBalance] += rent;
 		Account_Save(i);
 		SendClientMessage(i, COLOR_WHITE, "Аренда комнаты в доме №%d: -$%d.", House[h][hDbId], rent);
@@ -354,6 +354,7 @@ stock Houses_PayDay()
 		if (House[h][hOwner] == 0) continue;
 		new tax = House_GetTax(h);
 		House[h][hBalance] -= tax;
+		Econ_ToTreasury(tax);           // налог в казну (economy.inc)
 		new owner = House_FindOnline(House[h][hOwner]);
 
 		if (House[h][hBalance] < -tax * HOUSE_DEBT_HOURS)
@@ -388,7 +389,7 @@ stock bool:Cmd_BuyHouse(playerid)
 	if (House_GetOwned(playerid) != -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя уже есть дом. Сначала продай его: /sellhouse");
 	if (GetMoney(playerid) < House[h][hPrice]) return SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", House[h][hPrice]);
 
-	GiveMoney(playerid, -House[h][hPrice]);
+	GiveMoney(playerid, -House[h][hPrice], "покупка дома");
 	if (gRentHouse[playerid] != -1) House_SetRent(playerid, -1);   // съезжает со съёмной комнаты
 	House[h][hOwner] = Player[playerid][pDbId];
 	House[h][hLocked] = false;
@@ -416,7 +417,7 @@ stock bool:Cmd_SellHouse(playerid)
 	new refund = House[h][hPrice] / 2 + House[h][hSafe] + House[h][hBalance];
 	if (refund < 0) refund = 0;
 	House_GiveStoredWeapons(h, playerid);
-	GiveMoney(playerid, refund);
+	GiveMoney(playerid, refund, "продажа дома");
 	House_Free(h);
 	Account_Save(playerid);
 	Account_SetNormalSpawn(playerid);
@@ -486,7 +487,7 @@ static bool:House_Deposit(playerid, h, amount)
 {
 	if (amount < 1 || amount > 1000000) return SendClientMessage(playerid, COLOR_GREY, "Сумма от $1 до $1000000.");
 	if (GetMoney(playerid) < amount) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет столько денег.");
-	GiveMoney(playerid, -amount);
+	GiveMoney(playerid, -amount, "на счёт дома");
 	House[h][hBalance] += amount;
 	House_Save(h);
 	Account_Save(playerid);
@@ -542,7 +543,7 @@ stock bool:Cmd_Rent(playerid)
 	if (gRentHouse[playerid] == h) return SendClientMessage(playerid, COLOR_GREY, "Ты уже снимаешь здесь комнату.");
 	if (GetMoney(playerid) < House[h][hRent]) return SendClientMessage(playerid, COLOR_GREY, "Нужно $%d за первый час.", House[h][hRent]);
 
-	GiveMoney(playerid, -House[h][hRent]);
+	GiveMoney(playerid, -House[h][hRent], "аренда комнаты");
 	House[h][hBalance] += House[h][hRent];
 	House_Save(h);
 	House_SetRent(playerid, h);
@@ -775,7 +776,7 @@ stock Houses_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			else if (House[h][hSafe] + amount > HOUSE_SAFE_MAX) SendClientMessage(playerid, COLOR_GREY, "В сейф помещается не больше $%d.", HOUSE_SAFE_MAX);
 			else
 			{
-				GiveMoney(playerid, -amount);
+				GiveMoney(playerid, -amount, "в сейф дома");
 				House[h][hSafe] += amount;
 				House_Save(h);
 				Account_Save(playerid);
@@ -788,7 +789,7 @@ stock Houses_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			else
 			{
 				House[h][hSafe] -= amount;
-				GiveMoney(playerid, amount);
+				GiveMoney(playerid, amount, "из сейфа дома");
 				House_Save(h);
 				Account_Save(playerid);
 				SendClientMessage(playerid, COLOR_GREEN, "Ты взял из сейфа $%d. Осталось $%d.", amount, House[h][hSafe]);
@@ -801,7 +802,7 @@ stock Houses_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			else
 			{
 				House[h][hBalance] -= amount;
-				GiveMoney(playerid, amount);
+				GiveMoney(playerid, amount, "со счёта дома");
 				House_Save(h);
 				Account_Save(playerid);
 				SendClientMessage(playerid, COLOR_GREEN, "Ты снял со счёта дома $%d. Осталось $%d.", amount, House[h][hBalance]);
