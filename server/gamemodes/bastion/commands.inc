@@ -10,7 +10,7 @@
 
 stock bool:Cmd_Help(playerid)
 {
-	new text[2200];
+	new text[2700];
 	strcat(text, "{FFFF00} нопки\n");
 	strcat(text, "{FFFFFF}ALT Ч действие р€дом (дом, банкомат, магазин, работа) или меню игрока перед тобой\n");
 	strcat(text, "Y Ч прин€ть / ответить на звонок   N Ч отказатьс€   ¬ машине: 2 Ч двигатель, H Ч шлагбаум\n\n");
@@ -26,9 +26,11 @@ stock bool:Cmd_Help(playerid)
 	strcat(text, "{FFFF00}“ранспорт\n");
 	strcat(text, "{FFFFFF}/engine Ч двигатель   /buycar Ч автосалон   /park Ч парковка   /lock Ч замок   /sellcar\n");
 	strcat(text, "ј«—: H в машине Ч заправка, ALT Ч канистра, /canister Ч залить, /fuel Ч бак, /speedo Ч спидометр\n");
+	strcat(text, "—“ќ: H за рулЄм (или /tune) Ч ремонт, покраска, нитро, диски   Ўтрафсто€нка у LSPD: ALT или /unimpound\n");
 	strcat(text, "јвтошкола у мэрии: /exam Ч права и лицензии, /licenses Ч мои, /showlic Ч показать\n\n");
 	strcat(text, "{FFFF00}ƒом\n");
-	strcat(text, "{FFFFFF}/buyhouse   /sellhouse   /enter   /exit   /lock\n\n");
+	strcat(text, "{FFFFFF}/buyhouse   /sellhouse   /enter   /exit   /lock   /house Ч меню (шкаф, сейф, счЄт) Ч или ALT внутри\n");
+	strcat(text, "/housepay Ч оплатить налог   /rent /unrent Ч сн€ть комнату   ¬ладельцу: /setrent /tenants /evict /evictall\n\n");
 	strcat(text, "{FFFF00}‘ракции\n");
 	strcat(text, "{FFFFFF}ѕолици€, больница, банды Grove / Ballas / Aztecas. ¬се команды фракций: /fhelp\n\n");
 	strcat(text, "{FFFF00}ƒеньги, телефон, бизнес\n");
@@ -36,7 +38,7 @@ stock bool:Cmd_Help(playerid)
 	strcat(text, "/buybiz /sellbiz /bizinfo /bizcash Ч свой бизнес   /turfs /capture Ч районы банд\n\n");
 	strcat(text, "{FFFF00}јдминам\n");
 	strcat(text, "{FFFFFF}/ahelp Ч команды администрации по уровн€м   /amenu Ч панель (удобно с телефона)\n");
-	strcat(text, "/createhouse /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf /addgate /delgate /addfuel /delfuel /setfuel /givelic /addexampoint /clearexam /givefood /giveitem /fpslist");
+	strcat(text, "/createhouse /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf /addgate /delgate /addfuel /delfuel /setfuel /givelic /addexampoint /clearexam /givefood /giveitem /addgarage /delgarage /fpslist");
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "ѕомощь", "%s", "«акрыть", "", text);
 	return true;
 }
@@ -47,8 +49,9 @@ stock bool:Cmd_Stats(playerid)
 	if (Player[playerid][pPhone] == 0) strcat(phone, "нет");
 	else format(phone, sizeof phone, "%d", Player[playerid][pPhone]);
 	new h = House_GetOwned(playerid);
-	if (h == -1) strcat(house, "нет");
-	else format(house, sizeof house, "є%d", House[h][hDbId]);
+	if (h != -1) format(house, sizeof house, "є%d", House[h][hDbId]);
+	else if (House_GetRented(playerid) != -1) format(house, sizeof house, "снимает комнату в є%d", House[House_GetRented(playerid)][hDbId]);
+	else strcat(house, "нет");
 	if (gPlayerVeh[playerid] == INVALID_VEHICLE_ID) strcat(car, "нет");
 	else format(car, sizeof car, "модель %d", GetVehicleModel(gPlayerVeh[playerid]));
 
@@ -170,6 +173,21 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/enter", true))       { Cmd_Enter(playerid); return 1; }
 	if (!strcmp(cmd, "/exit", true))        { Cmd_Exit(playerid); return 1; }
 	if (!strcmp(cmd, "/lock", true))        { Cmd_Lock(playerid); return 1; }
+	if (!strcmp(cmd, "/house", true))       { Cmd_House(playerid); return 1; }
+	if (!strcmp(cmd, "/housepay", true))    { Cmd_HousePay(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/rent", true))        { Cmd_Rent(playerid); return 1; }
+	if (!strcmp(cmd, "/unrent", true))      { Cmd_Unrent(playerid); return 1; }
+	if (!strcmp(cmd, "/setrent", true))     { Cmd_SetRent(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/tenants", true))     { Cmd_Tenants(playerid); return 1; }
+	if (!strcmp(cmd, "/evict", true))       { Cmd_Evict(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/evictall", true))    { Cmd_EvictAll(playerid); return 1; }
+
+	// --- —“ќ и штрафсто€нка (garage.inc) ---
+	if (!strcmp(cmd, "/tune", true))        { Cmd_Tune(playerid); return 1; }
+	if (!strcmp(cmd, "/impound", true))     { Cmd_Impound(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/unimpound", true))   { Cmd_Unimpound(playerid); return 1; }
+	if (!strcmp(cmd, "/addgarage", true))   { Cmd_AddGarage(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/delgarage", true))   { Cmd_DelGarage(playerid); return 1; }
 
 	// --- фракции (factions.inc) ---
 	if (!strcmp(cmd, "/fhelp", true))       { Cmd_FHelp(playerid); return 1; }
