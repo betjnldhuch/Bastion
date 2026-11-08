@@ -298,7 +298,7 @@ stock Keys_OnKeyStateChange(playerid, newkeys, oldkeys)
 
 	if (st == PLAYER_STATE_ONFOOT)
 	{
-		if (Player[playerid][pCuffed]) return 0;
+		if (Player[playerid][pCuffed] || Wound_IsWounded(playerid)) return 0;
 		if (KeyPressed(newkeys, oldkeys, _:KEY_WALK))
 		{
 			Keys_Interact(playerid);

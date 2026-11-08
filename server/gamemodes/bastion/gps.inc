@@ -581,6 +581,12 @@ static Gps_Set(playerid, Float:x, Float:y, Float:z, const name[])
 	SendClientMessage(playerid, COLOR_YELLOW, "GPS: метка «%s» на карте и радаре. Убрать: /gps", name);
 }
 
+// Поставить метку GPS из других модулей
+stock Gps_SetPoint(playerid, Float:x, Float:y, Float:z, const name[])
+{
+	Gps_Set(playerid, x, y, z, name);
+}
+
 stock Gps_Clear(playerid)
 {
 	if (!gGpsOn[playerid]) return;
