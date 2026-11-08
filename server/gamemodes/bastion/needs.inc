@@ -332,10 +332,10 @@ stock bool:Inv_ShowList(playerid)
 	return true;
 }
 
-// —умка: на ѕ  Ч окно с модел€ми вещей, на телефоне Ч список
+// —умка: окно с модел€ми вещей (списком Ч /invlist)
 stock bool:Cmd_Inv(playerid)
 {
-	if (!IsPlayerMobile[playerid] && Inv_ShowUI(playerid)) return true;
+	if (Inv_ShowUI(playerid)) return true;
 	return Inv_ShowList(playerid);
 }
 

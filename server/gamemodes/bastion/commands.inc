@@ -8,39 +8,10 @@
 //  3. —компилируй (F5) и перезапусти сервер.
 // =====================================================================
 
+// —правка: разделы со всеми командами (help.inc)
 stock bool:Cmd_Help(playerid)
 {
-	new text[2700];
-	strcat(text, "{FFFF00} нопки\n");
-	strcat(text, "{FFFFFF}ALT Ч действие р€дом (дом, банкомат, магазин, работа) или меню игрока перед тобой\n");
-	strcat(text, "Y Ч прин€ть / ответить на звонок, иначе сумка   N Ч отказатьс€   ¬ машине: 2 Ч двигатель, H Ч шлагбаум\n\n");
-	strcat(text, "{FFFF00}ќбщее\n");
-	strcat(text, "{FFFFFF}/stats Ч статистика   /time Ч врем€   /taxes Ч налоги и казна   /gps Ч навигатор   /pay Ч передать деньги   /fps Ч твой FPS\n/report Ч вопрос или жалоба администрации   /admins Ч админы онлайн\n");
-	strcat(text, "Y или /inv Ч сумка на экране (/invlist Ч списком), одежда: использовать, надеть, передать, выбросить (подн€ть: ALT или /pickup)   /hunger Ч сытость (поесть: бар или еда из 24/7)\n\n");
-	strcat(text, "{FFFF00}RP-чат\n");
-	strcat(text, "{FFFFFF}ѕросто пиши в чат Ч теб€ услышат игроки р€дом.\n");
-	strcat(text, "/me Ч действие   /do Ч описание   /try Ч попытка   /s Ч крик   /b Ч OOC   /pm Ч Ћ—\n\n");
-	strcat(text, "{FFFF00}–абота\n");
-	strcat(text, "{FFFFFF}/getjob Ч устроитьс€   /work Ч начать/закончить смену   /quitjob Ч уволитьс€\n");
-	strcat(text, "√рузчик и дальнобойщик Ч порт. ѕицца и механик Ч Idlewood. “акси и автобус Ч Unity Station.\n/taxi Ч вызвать такси   ћеханику: /repair /refill [id]   “аксисту: /gotaxi [id]\n\n");
-	strcat(text, "{FFFF00}“ранспорт\n");
-	strcat(text, "{FFFFFF}/engine Ч двигатель   /buycar Ч автосалон   /park Ч парковка   /lock Ч замок   /sellcar\n");
-	strcat(text, "ј«—: H в машине Ч заправка, ALT Ч канистра, /canister Ч залить, /fuel Ч бак, /speedo Ч спидометр\n");
-	strcat(text, "—“ќ: H за рулЄм (или /tune) Ч ремонт, покраска, нитро, диски   Ўтрафсто€нка у LSPD: ALT или /unimpound\n");
-	strcat(text, "јвтошкола у мэрии: /exam Ч права и лицензии, /licenses Ч мои, /showlic Ч показать\n\n");
-	strcat(text, "{FFFF00}ƒом\n");
-	strcat(text, "{FFFFFF}/buyhouse   /sellhouse   /enter   /exit   /lock   /house Ч меню (шкаф, сейф, счЄт) Ч или ALT внутри\n");
-	strcat(text, "/housepay Ч оплатить налог   /rent /unrent Ч сн€ть комнату   ¬ладельцу: /setrent /tenants /evict /evictall\n\n");
-	strcat(text, "{FFFF00}‘ракции\n");
-	strcat(text, "{FFFFFF}ѕолици€, больница, банды Grove / Ballas / Aztecas. ¬се команды фракций: /fhelp\n\n");
-	strcat(text, "{FFFF00}ƒеньги, телефон, бизнес\n");
-	strcat(text, "{FFFFFF}/bank Ч банкомат   /buy Ч купить в магазине   /call /sms /p /h /number /911 Ч телефон\n");
-	strcat(text, "/buybiz /sellbiz /bizinfo /bizcash Ч свой бизнес   /turfs /capture Ч районы банд\n\n");
-	strcat(text, "{FFFF00}јдминам\n");
-	strcat(text, "{FFFFFF}/ahelp Ч команды администрации по уровн€м   /amenu Ч панель (удобно с телефона)\n");
-	strcat(text, "/createhouse /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf /addgate /delgate /addfuel /delfuel /setfuel /givelic /addexampoint /clearexam /givefood /giveitem /addgarage /delgarage /fpslist\n–азработка в игре: /pos /points /dev /mo Ч справка по маппингу   /markers Ч двигать маркеры и править GPS");
-	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "ѕомощь", "%s", "«акрыть", "", text);
-	return true;
+	return Help_Show(playerid);
 }
 
 stock bool:Cmd_Stats(playerid)

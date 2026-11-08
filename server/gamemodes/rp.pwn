@@ -66,6 +66,7 @@
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
 #include "bastion/fps.inc"
+#include "bastion/help.inc"       // /help: разделы со всеми командами
 #include "bastion/commands.inc"
 
 new gLastPayDayHour = -1;
@@ -319,6 +320,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Tex_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Houses_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Garage_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Help_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Markers_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Factions_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	return 0;
