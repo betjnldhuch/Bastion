@@ -53,7 +53,14 @@ static const gBizItems[][E_BIZ_ITEM] =
 	{ BIZ_SHOP,    "Бургер (в сумку)",  60,   ITEM_INV,    INV_BURGER, 1 },
 	{ BIZ_SHOP,    "Хот-дог (в сумку)", 30,   ITEM_INV,    INV_HOTDOG, 1 },
 	{ BIZ_SHOP,    "Ремкомплект",       400,  ITEM_INV,    INV_REPAIRKIT, 1 },
-	{ BIZ_SHOP,    "Цветы",             50,   ITEM_WEAPON, 14, 1   },
+	{ BIZ_SHOP,    "Пицца (в сумку)",   90,   ITEM_INV,    INV_PIZZA, 1 },
+	{ BIZ_SHOP,    "Вода (в сумку)",    10,   ITEM_INV,    INV_WATER, 1 },
+	{ BIZ_SHOP,    "Пиво (в сумку)",    25,   ITEM_INV,    INV_BEER, 1 },
+	{ BIZ_SHOP,    "Сигареты (10 шт.)", 40,   ITEM_INV,    INV_CIGARETTES, 10 },
+	{ BIZ_SHOP,    "Бинт",              50,   ITEM_INV,    INV_BANDAGE, 1 },
+	{ BIZ_SHOP,    "Цветы (в сумку)",   50,   ITEM_INV,    INV_FLOWERS, 1 },
+	{ BIZ_SHOP,    "Игральные кости",   30,   ITEM_INV,    INV_DICE, 1 },
+	{ BIZ_SHOP,    "Маска",             500,  ITEM_INV,    INV_MASK, 1 },
 	{ BIZ_SHOP,    "Бита",              200,  ITEM_WEAPON, 5,  1   },
 	{ BIZ_BAR,     "Пиво (+10 HP)",     20,   ITEM_FOOD,   10, 5   },
 	{ BIZ_BAR,     "Виски (+25 HP)",    50,   ITEM_FOOD,   25, 5   },
@@ -271,9 +278,9 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 		}
 		case ITEM_INV:
 		{
-			if (Inv_Count(playerid, gBizItems[item][biValue]) + gBizItems[item][biValue2] > INV_MAX_STACK)
+			if (Inv_Count(playerid, gBizItems[item][biValue]) + gBizItems[item][biValue2] > Inv_GetMax(gBizItems[item][biValue]))
 			{
-				SendClientMessage(playerid, COLOR_GREY, "В сумке нет места: больше %d штук не унести (/inv).", INV_MAX_STACK);
+				SendClientMessage(playerid, COLOR_GREY, "В сумке нет места: больше %d штук не унести (/inv).", Inv_GetMax(gBizItems[item][biValue]));
 				return 1;
 			}
 		}
