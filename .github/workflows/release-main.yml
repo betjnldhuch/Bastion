@@ -2,6 +2,7 @@ name: Release main
 
 # Every push to main is saved as a permanent GitHub Release:
 #   - Bastion APK (launcher + SAMP-Mobile client)
+#   - PC launcher folder (BastionLauncher) as a zip
 #   - compiled gamemode rp.amx and the server/gamemodes sources as a zip
 # Releases do not expire, unlike workflow artifacts (30 days).
 # The same commit is also kept as a branch release/<date>-<sha>.
@@ -24,6 +25,12 @@ env:
 jobs:
   apk:
     uses: ./.github/workflows/bastion-single-apk.yml
+    # game.zip URL, MD5 and download key (cloud/download-worker) for the installer
+    secrets: inherit
+
+  pc:
+    uses: ./.github/workflows/pc-launcher.yml
+    secrets: inherit
 
   server:
     runs-on: ubuntu-22.04
@@ -61,7 +68,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: [apk, server]
+    needs: [apk, pc, server]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -79,6 +86,7 @@ jobs:
           mkdir -p rel
           cp dl/Bastion-Launcher-SAMP-Mobile-debug/Bastion-Launcher-SAMP-Mobile-debug.apk "rel/Bastion-Launcher-${SHORT}-debug.apk"
           cp dl/Bastion-gamemodes/Bastion-gamemodes.zip "rel/Bastion-gamemodes-${SHORT}.zip"
+          (cd dl/BastionLauncher-PC && zip -qr "../../rel/BastionLauncher-PC-${SHORT}.zip" BastionLauncher)
           (cd dl/Bastion-native-symbols && zip -qr "../../rel/Bastion-native-symbols-${SHORT}.zip" .)
           (cd rel && sha256sum * > SHA256SUMS.txt)
           gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/heads/release/${DATE}-${SHORT}" -f sha="$GITHUB_SHA" >/dev/null
@@ -88,6 +96,7 @@ jobs:
             --notes "Сборка ветки main, коммит ${GITHUB_SHA}.
 
           - Bastion-Launcher-*.apk: мобильный лаунчер со встроенным клиентом (debug-подпись).
+          - BastionLauncher-PC-*.zip: лаунчер для Windows. Распаковать и запустить BastionLauncher.exe.
           - Bastion-gamemodes-*.zip: папка gamemodes (rp.pwn, bastion/*.inc) и готовый rp.amx. Распаковать в папку сервера open.mp.
           - Bastion-native-symbols-*.zip: библиотеки для разбора крашей.
 
