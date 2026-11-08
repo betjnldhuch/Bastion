@@ -258,7 +258,7 @@ stock Keys_Interact(playerid)
 		Cmd_GetJob(playerid);
 		return;
 	}
-	if (IsPlayerInRangeOfPoint(playerid, 3.0, DEALER_X, DEALER_Y, DEALER_Z))
+	if (Vehicles_IsNearDealer(playerid))
 	{
 		Cmd_BuyCar(playerid);
 		return;
@@ -325,6 +325,7 @@ stock Keys_OnKeyStateChange(playerid, newkeys, oldkeys)
 	{
 		if (Player[playerid][pCallState] == CALL_INCOMING) Cmd_PickUp(playerid);
 		else if (Player[playerid][pOfferType] != OFFER_NONE) Cmd_Accept(playerid);
+		else if (st == PLAYER_STATE_ONFOOT) Cmd_Inv(playerid);      // Y пешком Ч сумка
 		return 1;
 	}
 	if (KeyPressed(newkeys, oldkeys, _:KEY_NO))

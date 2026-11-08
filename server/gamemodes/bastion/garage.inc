@@ -39,8 +39,7 @@ enum E_GARAGE
 	gaDbId,
 	gaType,
 	Float:gaX, Float:gaY, Float:gaZ,
-	gaPickup,
-	Text3D:gaLabel
+	gaMarker                    // маркер (markers.inc)
 }
 static Garage[MAX_GARAGES][E_GARAGE];
 static gGarageCount = 0;
@@ -106,15 +105,28 @@ static Garage_CreateMarker(g)
 {
 	if (Garage[g][gaType] == GARAGE_IMPOUND)
 	{
-		Garage[g][gaPickup] = CreatePickup(1239, 1, Garage[g][gaX], Garage[g][gaY], Garage[g][gaZ], 0);
-		Garage[g][gaLabel] = Create3DTextLabel("{FF9900}Штрафстоянка\n{FFFFFF}ALT — забрать машину", COLOR_WHITE,
-			Garage[g][gaX], Garage[g][gaY], Garage[g][gaZ] + 0.6, 20.0, 0, true);
+		Garage[g][gaMarker] = Marker_Create(MK_GARAGE, Garage[g][gaDbId], "Штрафстоянка", 1239,
+			Garage[g][gaX], Garage[g][gaY], Garage[g][gaZ], 0, 0, GPS_TRANSPORT);
+		Marker_SetLabel(Garage[g][gaMarker], "{FF9900}Штрафстоянка\n{FFFFFF}ALT — забрать машину", COLOR_WHITE, 20.0);
 	}
 	else
 	{
-		Garage[g][gaPickup] = CreatePickup(1239, 1, Garage[g][gaX], Garage[g][gaY], Garage[g][gaZ], 0);
-		Garage[g][gaLabel] = Create3DTextLabel("{33CCFF}СТО\n{FFFFFF}Ремонт, покраска, тюнинг\nЗаедь за рулём и нажми H", COLOR_WHITE,
-			Garage[g][gaX], Garage[g][gaY], Garage[g][gaZ] + 0.6, 20.0, 0, true);
+		Garage[g][gaMarker] = Marker_Create(MK_GARAGE, Garage[g][gaDbId], "СТО", 1239,
+			Garage[g][gaX], Garage[g][gaY], Garage[g][gaZ], 0, 0, GPS_TRANSPORT);
+		Marker_SetLabel(Garage[g][gaMarker], "{33CCFF}СТО\n{FFFFFF}Ремонт, покраска, тюнинг\nЗаедь за рулём и нажми H", COLOR_WHITE, 20.0);
+	}
+}
+
+// Админ перенёс маркер СТО или штрафстоянки (/markers)
+stock Garage_OnMarkerMoved(dbid, Float:x, Float:y, Float:z)
+{
+	for (new g = 0; g < gGarageCount; g++)
+	{
+		if (Garage[g][gaDbId] != dbid) continue;
+		Garage[g][gaX] = x;
+		Garage[g][gaY] = y;
+		Garage[g][gaZ] = z;
+		return;
 	}
 }
 
@@ -493,8 +505,7 @@ stock bool:Cmd_DelGarage(playerid)
 	if (g == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет СТО или штрафстоянки.");
 
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM garages WHERE id = %d", Garage[g][gaDbId]));
-	DestroyPickup(Garage[g][gaPickup]);
-	Delete3DTextLabel(Garage[g][gaLabel]);
+	Marker_Destroy(Garage[g][gaMarker], true);
 	Admin_Log(playerid, "delgarage", INVALID_PLAYER_ID, "", Garage[g][gaDbId]);
 	SendClientMessage(playerid, COLOR_ADMIN, "Точка №%d удалена.", Garage[g][gaDbId]);
 

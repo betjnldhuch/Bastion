@@ -15,10 +15,16 @@ wall = L('bpd_wall.png').resize((256, 256), Image.LANCZOS)
 wains = sheet.crop((6, 524, 370, 702)).resize((256, 256), Image.LANCZOS)
 floor = L('bpd_floor.png').resize((256, 256), Image.LANCZOS)
 bars = L('bpd_bars.png').resize((256, 256), Image.LANCZOS)
-board = Image.new('RGB', (512, 512), (120, 90, 60))
-board.paste(L('bpd_wanted.png'), (0, 0)); board.paste(L('bpd_rules.png'), (256, 0))
+# Доска объявлений: модель int_policea02 берёт из cop_notice только две четверти
+# (правая верхняя и левая нижняя) и натягивает их зеркально, поэтому каждую
+# картинку отражаем по горизонтали.
+mirror = lambda im: im.transpose(Image.FLIP_LEFT_RIGHT)
 logo = L('bpd_logo.png'); bg = Image.new('RGB', (256, 256), (30, 45, 90)); bg.paste(logo, (0, 0), logo)
-board.paste(bg, (0, 256)); board.paste(L('bpd_rules.png'), (256, 256))
+board = Image.new('RGB', (512, 512), (120, 90, 60))
+board.paste(mirror(bg), (0, 0))                          # не используется моделью
+board.paste(mirror(L('bpd_rules.png')), (256, 0))        # правила
+board.paste(mirror(L('bpd_wanted.png')), (0, 256))       # «Разыскивается»
+board.paste(mirror(bg), (256, 256))                      # не используется моделью
 desk = L('bpd_desk.png').crop((200, 60, 330, 190)).resize((128, 128), Image.LANCZOS)
 txdpatch.patch(os.path.join(src_dir, 'genintintpoliceb.txd'), os.path.join(out_dir, 'genintintpoliceb.txd'),
                {'coptop_blue': wall, 'copbtm_green': wains, 'p_floor4': floor, 'p_countr': desk})

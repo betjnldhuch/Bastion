@@ -36,7 +36,7 @@
 | p_floor4 | genintintpoliceb.txd | пол (bpd_floor) |
 | p_countr | genintintpoliceb.txd | дерево стойки |
 | copcell_bars | genintintpolicea.txd | решётка камеры (с прозрачностью) |
-| cop_notice | genintintpolicea.txd | доска объявлений: «Разыскивается», правила, эмблема |
+| cop_notice | genintintpolicea.txd | доска объявлений: правила и «Разыскивается» (зеркально — модель натягивает текстуру отражённой) |
 
 Сборка: `python client-mods/tools/build_lspd.py <папка с оригинальными txd> <папка для результата>`.
 Готовые `.txd` в репозиторий не кладём: в них остаются оригинальные текстуры Rockstar.

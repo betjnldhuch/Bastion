@@ -362,6 +362,7 @@ static Map_Help(playerid)
 	strcat(text, "{FFFF00}«дани€ GTA и выгрузка\n{FFFFFF}/mo remove [радиус] Ч убрать здани€ вокруг   /mo unremove Ч вернуть последние\n");
 	strcat(text, "/mo export Ч выгрузить карту в scriptfiles/map_export.txt\n\n");
 	strcat(text, "{FFFF00}ѕерекраска\n{FFFFFF}/mt Ч текстуры, цвет и надписи на объекте (справка: /mt help)\n\n");
+	strcat(text, "{FFFF00}ћаркеры и GPS\n{FFFFFF}/markers (/mk) Ч у маркера: перенести, вид, значок на карте, раздел GPS; вдали Ч своЄ место или список всех\n\n");
 	strcat(text, "{AFAFAF}Ѕез номера команда берЄт объект, который ты сейчас двигаешь, или ближайший.\nћодели объектов: dev.prineside.com/ru/gtasa_samp_model_id/");
 	ShowPlayerDialog(playerid, DIALOG_DEV_HELP, DIALOG_STYLE_MSGBOX, "–азработка в игре", "%s", "«акрыть", "", text);
 }
