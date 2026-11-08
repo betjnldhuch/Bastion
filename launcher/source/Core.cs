@@ -49,6 +49,19 @@ namespace BastionLauncher
         public string Site = "";
         public string NewsUrl = "";
         public string ServersUrl = "";
+        public string GameUrl = "";
+        public string GameMd5 = "";
+
+        // Архив игры: game_url из launcher.ini, иначе адрес, вшитый при сборке
+        public string EffectiveGameUrl { get { return GameUrl.Length > 0 ? GameUrl : Secrets.GameUrl; } }
+        public string EffectiveGameMd5
+        {
+            get
+            {
+                if (GameMd5.Length > 0) return GameMd5;
+                return EffectiveGameUrl == Secrets.GameUrl ? Secrets.GameMd5 : "";
+            }
+        }
         public List<ServerEntry> Servers = new List<ServerEntry>();
 
         public static string IniPath
@@ -76,6 +89,8 @@ namespace BastionLauncher
                 else if (key == "site") c.Site = val;
                 else if (key == "news_url") c.NewsUrl = val;
                 else if (key == "servers_url") c.ServersUrl = val;
+                else if (key == "game_url") c.GameUrl = val;
+                else if (key == "game_md5") c.GameMd5 = val;
                 else if (key == "require_rp_name") c.RequireRpName = (val == "1" || val.ToLowerInvariant() == "true");
                 else if (key == "server")
                 {
@@ -184,6 +199,11 @@ namespace BastionLauncher
 "; заменяет строки server ниже. Пусто = только строки ниже. Готовый адрес:\r\n" +
 "; https://raw.githubusercontent.com/the-gta-man/Bastion/main/launcher/remote/servers.ini\r\n" +
 "servers_url =\r\n" +
+"\r\n" +
+"; Архив игры для кнопки УСТАНОВИТЬ (ZIP с gta_sa.exe и samp.exe) и его MD5.\r\n" +
+"; Пусто = архив Bastion, вшитый в лаунчер при сборке.\r\n" +
+"game_url =\r\n" +
+"game_md5 =\r\n" +
 "\r\n" +
 "; Сервера:  server = Название | адрес | порт | описание\r\n" +
 "; Адрес: 127.0.0.1 — свой компьютер; IP из Radmin VPN — для друзей;\r\n" +

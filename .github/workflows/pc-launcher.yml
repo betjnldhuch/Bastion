@@ -18,6 +18,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Адрес архива игры и ключ закрытой раздачи — из секретов репозитория,
+      # в исходниках их нет. Без секретов кнопка УСТАНОВИТЬ берёт game_url из launcher.ini.
+      - name: Inject download secrets
+        shell: pwsh
+        working-directory: launcher/source
+        env:
+          BASTION_GAME_URL: ${{ secrets.BASTION_GAME_URL }}
+          BASTION_GAME_MD5: ${{ secrets.BASTION_GAME_MD5 }}
+          BASTION_DOWNLOAD_KEY: ${{ secrets.BASTION_DOWNLOAD_KEY }}
+        run: |
+          function Lit([string]$v) { '"' + ($v.Trim() -replace '\\', '\\' -replace '"', '\"') + '"' }
+          $src = @"
+          namespace BastionLauncher
+          {
+              static class Secrets
+              {
+                  public const string GameUrl = $(Lit $env:BASTION_GAME_URL);
+                  public const string GameMd5 = $(Lit $env:BASTION_GAME_MD5);
+                  public const string DownloadKey = $(Lit $env:BASTION_DOWNLOAD_KEY);
+              }
+          }
+          "@
+          Set-Content -Path Secrets.cs -Value $src -Encoding utf8
+
       # Тот же компилятор .NET Framework 4, что и в build.bat у игрока
       - name: Compile BastionLauncher.exe
         shell: pwsh
@@ -26,7 +50,8 @@ jobs:
           $csc = "$env:WINDIR\Microsoft.NET\Framework\v4.0.30319\csc.exe"
           & $csc /nologo /codepage:65001 /target:winexe /platform:x86 /optimize+ `
             /r:System.Windows.Forms.dll /r:System.Drawing.dll `
-            /out:..\BastionLauncher.exe Core.cs Ui.cs
+            /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll `
+            /out:..\BastionLauncher.exe Core.cs Ui.cs Installer.cs Secrets.cs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Package BastionLauncher folder
@@ -35,7 +60,11 @@ jobs:
           $out = "dist\BastionLauncher"
           New-Item -ItemType Directory -Force $out | Out-Null
           Copy-Item launcher\BastionLauncher.exe, launcher\launcher.ini, launcher\news.txt, launcher\README.txt $out
-          Copy-Item -Recurse launcher\fonts, launcher\fps, launcher\source $out
+          Copy-Item -Recurse launcher\fonts, launcher\fps $out
+          # исходники без файла с ключом
+          New-Item -ItemType Directory -Force "$out\source" | Out-Null
+          git show HEAD:launcher/source/Secrets.cs | Set-Content "$out\source\Secrets.cs" -Encoding utf8
+          Get-ChildItem launcher\source -Exclude Secrets.cs | Copy-Item -Destination "$out\source"
 
       - name: Upload launcher
         uses: actions/upload-artifact@v4
