@@ -463,6 +463,9 @@ stock Fuel_OnDialog(playerid, dialogid, response, const inputtext[])
 	return 1;
 }
 
+// Сколько канистр у игрока (для инвентаря, needs.inc)
+stock Fuel_GetCanister(playerid) { return gPlayerCanister[playerid]; }
+
 // ---------------------------------------------------------------------
 //  Команды игрока
 // ---------------------------------------------------------------------

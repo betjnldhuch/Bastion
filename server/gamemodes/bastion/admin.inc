@@ -1299,8 +1299,8 @@ stock bool:Cmd_AHelp(playerid)
 	strcat(text, "{FF66FF}1 Ч ’елпер\n{FFFFFF}/a Ч админ-чат   /amenu Ч панель (удобно с телефона)   /reports /ans Ч репорты\n");
 	strcat(text, "/check /spec /specoff /goto /kick /mute /unmute /admins\n\n");
 	strcat(text, "{FF66FF}2 Ч ћодератор\n{FFFFFF}/warn /ajail /unajail /freeze /unfreeze /slap /gethere /sethp /setskin /jail /unjail\n\n");
-	strcat(text, "{FF66FF}3 Ч јдминистратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /veh /dveh\n\n");
-	strcat(text, "{FF66FF}4 Ч —т. администратор\n{FFFFFF}/unban, бан навсегда (0 дней), фракции, дома, бизнесы, ј«—, банкоматы, районы\n\n");
+	strcat(text, "{FF66FF}3 Ч јдминистратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /veh /dveh\n/givelic Ч выдать лицензию   /setfuel Ч заправить машину\n\n");
+	strcat(text, "{FF66FF}4 Ч —т. администратор\n{FFFFFF}/unban, бан навсегда (0 дней), фракции, дома, бизнесы, ј«—, банкоматы, районы\n/givefood /giveitem Ч еда и вещи   /addexampoint /clearexam Ч маршрут экзамена\n\n");
 	strcat(text, "{FF66FF}5 Ч √л. администратор\n{FFFFFF}/makeadmin /givemoney\n\n");
 	strcat(text, "{AFAFAF}¬се наказани€ и выдачи пишутс€ в лог (/alog). Ќаказать админа своего уровн€ или выше нельз€.");
 	Admin_ShowInfo(playerid, " оманды администрации", text);
