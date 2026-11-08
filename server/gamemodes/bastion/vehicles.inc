@@ -4,6 +4,8 @@
 //  * Общественные машины стоят у спавна
 //  * Автосалон: /buycar, своя машина: /park /lock /sellcar
 //  * Админ-машины: /veh /dveh (admin.inc)
+//  * Бензин, АЗС, спидометр — fuel.inc
+//  * СТО (ремонт, тюнинг) и штрафстоянка — garage.inc
 // =====================================================================
 
 // Автосалон (Coutt & Schutz, Лос-Сантос)
@@ -16,6 +18,13 @@
 #define DEALER_SPAWN_A      0.0
 
 #define PERSONAL_RESPAWN    600     // через сколько секунд брошенная машина вернётся на парковку
+
+// Функции из fuel.inc, которые нужны здесь раньше, чем он подключён
+forward Float:Fuel_Get(vehicleid);
+forward bool:Fuel_IsEmpty(vehicleid);
+// ...и из factions.inc и admin.inc (для fuel.inc, licenses.inc, jobs.inc)
+forward bool:IsPlayerNearPlayer(playerid, target, Float:range);
+forward bool:Admin_Check(playerid, level);
 
 new gVehOwner[MAX_VEHICLES];        // id аккаунта владельца (0 = общая машина)
 new bool:gVehLocked[MAX_VEHICLES];
@@ -59,6 +68,8 @@ stock Vehicle_Clear(vehicleid)
 	gVehLocked[vehicleid] = false;
 	gVehAdmin[vehicleid] = false;
 	gVehFaction[vehicleid] = 0;
+	Fuel_ResetVehicle(vehicleid);     // fuel.inc: новая машина — полный бак
+	Garage_ResetVehicle(vehicleid);   // garage.inc: без тюнинга
 }
 
 // Создать личную машину игрока
@@ -71,22 +82,37 @@ stock Vehicles_SpawnPersonal(playerid, model, Float:x, Float:y, Float:z, Float:a
 	gVehLocked[v] = locked;
 	Vehicle_ApplyLock(v);
 	gPlayerVeh[playerid] = v;
+	Garage_LoadMods(playerid, v);     // покраска и тюнинг (garage.inc)
+	return v;
+}
+
+// Создать личную машину из базы (если она не на штрафстоянке)
+stock Vehicles_SpawnFromDb(playerid)
+{
+	new v = INVALID_VEHICLE_ID;
+	new DBResult:r = DB_ExecuteQuery(gDB,
+		"SELECT model, x, y, z, a, c1, c2, locked FROM vehicles WHERE owner = %d AND impound = 0", Player[playerid][pDbId]);
+	if (r == DBResult:0) return v;
+	if (DB_GetRowCount(r) > 0)
+	{
+		v = Vehicles_SpawnPersonal(playerid, DB_GetFieldInt(r, 0),
+			DB_GetFieldFloat(r, 1), DB_GetFieldFloat(r, 2), DB_GetFieldFloat(r, 3), DB_GetFieldFloat(r, 4),
+			DB_GetFieldInt(r, 5), DB_GetFieldInt(r, 6), DB_GetFieldInt(r, 7) != 0);
+	}
+	DB_FreeResultSet(r);
 	return v;
 }
 
 // После входа в аккаунт (accounts.inc)
 stock Vehicles_LoadForPlayer(playerid)
 {
-	new DBResult:r = DB_ExecuteQuery(gDB,
-		"SELECT model, x, y, z, a, c1, c2, locked FROM vehicles WHERE owner = %d", Player[playerid][pDbId]);
-	if (r == DBResult:0) return;
-	if (DB_GetRowCount(r) > 0)
-	{
-		Vehicles_SpawnPersonal(playerid, DB_GetFieldInt(r, 0),
-			DB_GetFieldFloat(r, 1), DB_GetFieldFloat(r, 2), DB_GetFieldFloat(r, 3), DB_GetFieldFloat(r, 4),
-			DB_GetFieldInt(r, 5), DB_GetFieldInt(r, 6), DB_GetFieldInt(r, 7) != 0);
-	}
-	DB_FreeResultSet(r);
+	Vehicles_SpawnFromDb(playerid);
+	Fuel_LoadPlayer(playerid);          // бензин машины и канистра (fuel.inc)
+	Licenses_LoadPlayer(playerid);      // лицензии (licenses.inc)
+	Jobs_LoadPlayer(playerid);          // стаж на работе (jobs.inc)
+	Needs_LoadPlayer(playerid);         // сытость и инвентарь (needs.inc)
+	Houses_LoadPlayer(playerid);        // съёмная комната (houses.inc)
+	Garage_LoadPlayer(playerid);        // машина на штрафстоянке (garage.inc)
 }
 
 // При выходе игрока машина пропадает (и появится снова при входе)
@@ -95,6 +121,7 @@ stock Vehicles_UnloadForPlayer(playerid)
 	new v = gPlayerVeh[playerid];
 	if (v != INVALID_VEHICLE_ID)
 	{
+		Fuel_SavePersonal(playerid);
 		Vehicle_Clear(v);
 		DestroyVehicle(v);
 		gPlayerVeh[playerid] = INVALID_VEHICLE_ID;
@@ -104,7 +131,11 @@ stock Vehicles_UnloadForPlayer(playerid)
 // Вызывается из OnVehicleSpawn: после респавна вернуть замок
 stock Vehicles_OnSpawn(vehicleid)
 {
-	if (gVehOwner[vehicleid] != 0) Vehicle_ApplyLock(vehicleid);
+	if (gVehOwner[vehicleid] != 0)
+	{
+		Vehicle_ApplyLock(vehicleid);
+		Garage_ApplyMods(vehicleid);    // респавн снимает тюнинг — вешаем обратно
+	}
 }
 
 // Подсказка при посадке за руль (из OnPlayerStateChange)
@@ -129,6 +160,8 @@ stock bool:Cmd_Engine(playerid)
 	new engine, lights, alarm, doors, bonnet, boot, objective;
 	GetVehicleParamsEx(v, engine, lights, alarm, doors, bonnet, boot, objective);
 	engine = (engine == 1) ? 0 : 1;
+	if (engine == 1 && Fuel_IsEmpty(v))
+		return SendClientMessage(playerid, COLOR_RED, "Бак пуст. Купи канистру на АЗС (/canister) или вызови помощь.");
 	SetVehicleParamsEx(v, engine, engine, alarm, doors, bonnet, boot, objective);   // фары вместе с двигателем
 
 	new msg[96];
@@ -144,6 +177,8 @@ stock bool:Cmd_BuyCar(playerid)
 		return SendClientMessage(playerid, COLOR_GREY, "Ты должен быть в автосалоне (значок доллара).");
 	if (gPlayerVeh[playerid] != INVALID_VEHICLE_ID)
 		return SendClientMessage(playerid, COLOR_GREY, "У тебя уже есть машина. Продать: /sellcar");
+	if (Garage_GetImpound(playerid) > 0)
+		return SendClientMessage(playerid, COLOR_GREY, "Твоя машина на штрафстоянке. Сначала забери её.");
 
 	new list[512] = "Модель\tЦена\n";
 	new line[64];
@@ -216,10 +251,16 @@ stock bool:Cmd_Park(playerid)
 		DB_FreeResultSet(r);
 	}
 	new bool:locked = gVehLocked[v];
+	new Float:fuel = Fuel_Get(v);
 	Vehicle_Clear(v);
 	DestroyVehicle(v);
 	gPlayerVeh[playerid] = INVALID_VEHICLE_ID;
-	Vehicles_SpawnPersonal(playerid, model, x, y, z, a, c1, c2, locked);
+	new nv = Vehicles_SpawnPersonal(playerid, model, x, y, z, a, c1, c2, locked);
+	if (nv != INVALID_VEHICLE_ID)
+	{
+		Fuel_Set(nv, fuel);
+		Fuel_SavePersonal(playerid);
+	}
 
 	SendClientMessage(playerid, COLOR_GREEN, "Машина припаркована. Здесь она будет появляться.");
 	return true;

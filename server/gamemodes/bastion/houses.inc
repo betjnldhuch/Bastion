@@ -1,13 +1,41 @@
 // =====================================================================
-//  houses.inc — дома: покупка, продажа, вход/выход, замок.
+//  houses.inc — дома: покупка, продажа, вход/выход, замок,
+//  налог, аренда комнат, шкаф с оружием и сейф.
 //
 //  Дома хранятся в таблице houses. При первом запуске создаются
 //  несколько домов на Grove Street. Админ (4+) может добавить дом
 //  там, где стоит: /createhouse [цена] [тип интерьера 1-5]
+//
+//  Счёт дома (houses.balance): с него каждый PayDay списывается налог
+//  (0.1% цены, не меньше HOUSE_TAX_MIN), на него же приходит плата
+//  жильцов. Пополнить: /housepay [сумма] откуда угодно. Если долг
+//  больше налога за HOUSE_DEBT_HOURS часов — дом уходит государству.
+//
+//  Аренда: владелец ставит цену /setrent [сумма в час] (0 — закрыть),
+//  игрок у двери пишет /rent. Жилец платит каждый PayDay, пока он
+//  в игре, может входить в закрытый дом и появляется у него.
+//  /unrent — съехать, владельцу: /tenants /evict [id] /evictall.
+//
+//  Меню дома: /house или ALT внутри дома (не у двери). Шкаф на
+//  HOUSE_WEAPON_SLOTS оружий и сейф с деньгами — только владельцу.
 // =====================================================================
 
 #define MAX_HOUSES          200
 #define HOUSE_WORLD_OFFSET  1000    // вирт. мир интерьера = 1000 + номер дома
+
+#define HOUSE_TAX_MIN       20      // налог в час не меньше этой суммы
+#define HOUSE_DEBT_HOURS    168     // сколько часов долга терпит государство (7 дней)
+#define HOUSE_RENT_MAX      1000    // максимальная аренда в час
+#define HOUSE_WEAPON_SLOTS  5       // мест в шкафу
+#define HOUSE_SAFE_MAX      500000  // максимум денег в сейфе
+
+#define DIALOG_HOUSE_MENU       1140
+#define DIALOG_HOUSE_TAKEGUN    1141
+#define DIALOG_HOUSE_SAFE_IN    1142
+#define DIALOG_HOUSE_SAFE_OUT   1143
+#define DIALOG_HOUSE_PAY        1144
+#define DIALOG_HOUSE_WITHDRAW   1145
+#define DIALOG_HOUSE_RENT       1146
 
 enum E_HOUSE
 {
@@ -19,11 +47,17 @@ enum E_HOUSE
 	Float:hIX, Float:hIY, Float:hIZ,    // точка внутри
 	hInterior,
 	bool:hLocked,
+	hRent,                      // аренда в час (0 = не сдаётся)
+	hBalance,                   // счёт дома (может быть в минусе — долг по налогу)
+	hSafe,                      // деньги в сейфе
 	hPickup,
 	Text3D:hLabel
 }
 new House[MAX_HOUSES][E_HOUSE];
 new gHouseCount = 0;
+
+static gRentHouse[MAX_PLAYERS] = { -1, ... };          // какой дом снимает игрок (-1 = нет)
+static gHouseGunSlot[MAX_PLAYERS][HOUSE_WEAPON_SLOTS];  // пункты списка "взять оружие"
 
 // Готовые интерьеры для /createhouse (номер интерьера и координаты внутри)
 static const gHouseIntId[] = { 1, 2, 3, 5, 8 };
@@ -37,8 +71,22 @@ static const Float:gHouseIntPos[][3] =
 };
 
 // ---------------------------------------------------------------------
+//  Новые поля базы (старая база дополняется сама)
+// ---------------------------------------------------------------------
+static Houses_Init()
+{
+	DB_AddColumn("houses", "rent", "INTEGER DEFAULT 0");
+	DB_AddColumn("houses", "balance", "INTEGER DEFAULT 0");
+	DB_AddColumn("houses", "safe", "INTEGER DEFAULT 0");
+	DB_AddColumn("accounts", "rent_house", "INTEGER DEFAULT 0");
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS house_weapons (house INTEGER NOT NULL, slot INTEGER NOT NULL, weapon INTEGER, ammo INTEGER, PRIMARY KEY (house, slot))"));
+}
+
+// ---------------------------------------------------------------------
 stock Houses_Load()
 {
+	Houses_Init();
+
 	// Если домов нет совсем — создаём стартовые
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT COUNT(*) FROM houses");
 	new count = 0;
@@ -55,7 +103,7 @@ stock Houses_Load()
 		print("[Houses] Default houses created.");
 	}
 
-	r = DB_ExecuteQuery(gDB, "SELECT h.id, h.owner, h.price, h.x, h.y, h.z, h.ix, h.iy, h.iz, h.interior, h.locked, IFNULL(a.name, '') FROM houses h LEFT JOIN accounts a ON a.id = h.owner ORDER BY h.id");
+	r = DB_ExecuteQuery(gDB, "SELECT h.id, h.owner, h.price, h.x, h.y, h.z, h.ix, h.iy, h.iz, h.interior, h.locked, IFNULL(a.name, ''), h.rent, h.balance, h.safe FROM houses h LEFT JOIN accounts a ON a.id = h.owner ORDER BY h.id");
 	if (r == DBResult:0) return;
 
 	if (DB_GetRowCount(r) > 0)
@@ -76,6 +124,9 @@ stock Houses_Load()
 			House[h][hInterior] = DB_GetFieldInt(r, 9);
 			House[h][hLocked]   = (DB_GetFieldInt(r, 10) != 0);
 			DB_GetFieldString(r, 11, House[h][hOwnerName], MAX_PLAYER_NAME);
+			House[h][hRent]     = DB_GetFieldInt(r, 12);
+			House[h][hBalance]  = DB_GetFieldInt(r, 13);
+			House[h][hSafe]     = DB_GetFieldInt(r, 14);
 			House[h][hPickup] = INVALID_PICKUP;
 			House[h][hLabel]  = INVALID_3DTEXT_ID;
 			House_Refresh(h);
@@ -94,6 +145,36 @@ stock Houses_InsertDefault(Float:x, Float:y, Float:z, price, type)
 		price, x, y, z, gHouseIntPos[t][0], gHouseIntPos[t][1], gHouseIntPos[t][2], gHouseIntId[t]));
 }
 
+// Номер дома в массиве по id в базе (-1 = нет)
+static House_FindByDbId(dbid)
+{
+	if (dbid <= 0) return -1;
+	for (new h = 0; h < gHouseCount; h++)
+	{
+		if (House[h][hDbId] == dbid) return h;
+	}
+	return -1;
+}
+
+// Игрок онлайн с этим аккаунтом (INVALID_PLAYER_ID = нет)
+static House_FindOnline(accountId)
+{
+	if (accountId <= 0) return INVALID_PLAYER_ID;
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && Player[i][pLogged] && Player[i][pDbId] == accountId) return i;
+	}
+	return INVALID_PLAYER_ID;
+}
+
+// Налог в час
+stock House_GetTax(h)
+{
+	new tax = House[h][hPrice] / 1000;
+	if (tax < HOUSE_TAX_MIN) tax = HOUSE_TAX_MIN;
+	return tax;
+}
+
 // Пересоздать иконку и надпись над домом (после покупки/продажи)
 stock House_Refresh(h)
 {
@@ -104,13 +185,20 @@ stock House_Refresh(h)
 	{
 		// 1273 — зелёный домик (продаётся)
 		House[h][hPickup] = CreatePickup(1273, 1, House[h][hX], House[h][hY], House[h][hZ], 0);
-		House[h][hLabel] = Create3DTextLabel("{33AA33}Дом №%d продаётся\n{FFFFFF}Цена: ${FFFF00}%d\n{FFFFFF}ALT — купить",
+		House[h][hLabel] = Create3DTextLabel("{33AA33}Дом №%d продаётся\n{FFFFFF}Цена: ${FFFF00}%d\n{FFFFFF}Налог: $%d в час\nALT — купить",
 			COLOR_WHITE, House[h][hX], House[h][hY], House[h][hZ] + 0.6, 15.0, 0, true,
-			House[h][hDbId], House[h][hPrice]);
+			House[h][hDbId], House[h][hPrice], House_GetTax(h));
+	}
+	else if (House[h][hRent] > 0)
+	{
+		// 1272 — синий домик (занят)
+		House[h][hPickup] = CreatePickup(1272, 1, House[h][hX], House[h][hY], House[h][hZ], 0);
+		House[h][hLabel] = Create3DTextLabel("{33CCFF}Дом №%d\n{FFFFFF}Владелец: %s\n{FFFF00}Сдаются комнаты: $%d в час (/rent)\n{FFFFFF}ALT — войти",
+			COLOR_WHITE, House[h][hX], House[h][hY], House[h][hZ] + 0.6, 15.0, 0, true,
+			House[h][hDbId], House[h][hOwnerName], House[h][hRent]);
 	}
 	else
 	{
-		// 1272 — синий домик (занят)
 		House[h][hPickup] = CreatePickup(1272, 1, House[h][hX], House[h][hY], House[h][hZ], 0);
 		House[h][hLabel] = Create3DTextLabel("{33CCFF}Дом №%d\n{FFFFFF}Владелец: %s\nALT — войти",
 			COLOR_WHITE, House[h][hX], House[h][hY], House[h][hZ] + 0.6, 15.0, 0, true,
@@ -140,10 +228,17 @@ stock House_GetOwned(playerid)
 	return -1;
 }
 
-// Для спавна у дома (вызывается из accounts.inc)
+// Дом, который снимает игрок (-1 = нет)
+stock House_GetRented(playerid)
+{
+	return gRentHouse[playerid];
+}
+
+// Для спавна у дома (вызывается из accounts.inc): свой дом важнее съёмного
 stock Houses_GetSpawn(playerid, &Float:x, &Float:y, &Float:z, &Float:a)
 {
 	new h = House_GetOwned(playerid);
+	if (h == -1) h = gRentHouse[playerid];
 	if (h == -1) return 0;
 	x = House[h][hX] + 1.0;
 	y = House[h][hY];
@@ -154,8 +249,132 @@ stock Houses_GetSpawn(playerid, &Float:x, &Float:y, &Float:z, &Float:a)
 
 stock House_Save(h)
 {
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE houses SET owner = %d, locked = %d WHERE id = %d",
-		House[h][hOwner], House[h][hLocked] ? 1 : 0, House[h][hDbId]));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE houses SET owner = %d, locked = %d, rent = %d, balance = %d, safe = %d WHERE id = %d",
+		House[h][hOwner], House[h][hLocked] ? 1 : 0, House[h][hRent], House[h][hBalance], House[h][hSafe], House[h][hDbId]));
+}
+
+// После входа в аккаунт (из Vehicles_LoadForPlayer): какой дом снимает
+stock Houses_LoadPlayer(playerid)
+{
+	gRentHouse[playerid] = -1;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT rent_house FROM accounts WHERE id = %d", Player[playerid][pDbId]);
+	if (r == DBResult:0) return;
+	new dbid = 0;
+	if (DB_GetRowCount(r) > 0) dbid = DB_GetFieldInt(r, 0);
+	DB_FreeResultSet(r);
+	if (dbid == 0) return;
+
+	new h = House_FindByDbId(dbid);
+	if (h == -1 || House[h][hOwner] == 0 || House[h][hOwner] == Player[playerid][pDbId])
+	{
+		House_SetRent(playerid, -1);
+		return;
+	}
+	gRentHouse[playerid] = h;
+}
+
+// Записать, какой дом снимает игрок (-1 = съехал)
+static House_SetRent(playerid, h)
+{
+	gRentHouse[playerid] = h;
+	new dbid = 0;
+	if (h != -1) dbid = House[h][hDbId];
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET rent_house = %d WHERE id = %d", dbid, Player[playerid][pDbId]));
+}
+
+// Выселить всех жильцов дома (и онлайн, и оффлайн)
+static House_EvictAll(h, const reason[])
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET rent_house = 0 WHERE rent_house = %d", House[h][hDbId]));
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (!IsPlayerConnected(i) || gRentHouse[i] != h) continue;
+		gRentHouse[i] = -1;
+		SendClientMessage(i, COLOR_ORANGE, "Ты больше не снимаешь комнату в доме №%d: %s", House[h][hDbId], reason);
+		Account_SetNormalSpawn(i);
+	}
+}
+
+// Отдать оружие из шкафа игроку (при продаже дома)
+static House_GiveStoredWeapons(h, playerid)
+{
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT weapon, ammo FROM house_weapons WHERE house = %d", House[h][hDbId]);
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new i = 0; i < rows; i++)
+		{
+			GivePlayerWeapon(playerid, WEAPON:DB_GetFieldInt(r, 0), DB_GetFieldInt(r, 1));
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM house_weapons WHERE house = %d", House[h][hDbId]));
+}
+
+// Освободить дом (продажа или долг): владельца нет, всё обнулено
+static House_Free(h)
+{
+	House_EvictAll(h, "дом сменил владельца.");
+	House[h][hOwner] = 0;
+	House[h][hOwnerName][0] = '\0';
+	House[h][hLocked] = false;
+	House[h][hRent] = 0;
+	House[h][hBalance] = 0;
+	House[h][hSafe] = 0;
+	House_Save(h);
+	House_Refresh(h);
+}
+
+// ---------------------------------------------------------------------
+//  PayDay (из rp.pwn): аренда с жильцов онлайн, потом налог со всех домов
+// ---------------------------------------------------------------------
+stock Houses_PayDay()
+{
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		new h = gRentHouse[i];
+		if (h == -1 || !IsPlayerConnected(i) || !Player[i][pLogged]) continue;
+		new rent = House[h][hRent];
+		if (GetMoney(i) < rent)
+		{
+			House_SetRent(i, -1);
+			Account_SetNormalSpawn(i);
+			SendClientMessage(i, COLOR_RED, "Нечем платить за аренду ($%d). Тебя выселили из дома №%d.", rent, House[h][hDbId]);
+			continue;
+		}
+		GiveMoney(i, -rent);
+		House[h][hBalance] += rent;
+		Account_Save(i);
+		SendClientMessage(i, COLOR_WHITE, "Аренда комнаты в доме №%d: -$%d.", House[h][hDbId], rent);
+	}
+
+	for (new h = 0; h < gHouseCount; h++)
+	{
+		if (House[h][hOwner] == 0) continue;
+		new tax = House_GetTax(h);
+		House[h][hBalance] -= tax;
+		new owner = House_FindOnline(House[h][hOwner]);
+
+		if (House[h][hBalance] < -tax * HOUSE_DEBT_HOURS)
+		{
+			DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM house_weapons WHERE house = %d", House[h][hDbId]));
+			if (owner != INVALID_PLAYER_ID)
+				SendClientMessage(owner, COLOR_RED, "Долг по налогу на дом №%d слишком большой. Дом забрало государство.", House[h][hDbId]);
+			printf("[Houses] House %d seized for tax debt (owner %d).", House[h][hDbId], House[h][hOwner]);
+			House_Free(h);
+			if (owner != INVALID_PLAYER_ID) Account_SetNormalSpawn(owner);
+			continue;
+		}
+		House_Save(h);
+
+		if (owner == INVALID_PLAYER_ID) continue;
+		if (House[h][hBalance] < 0)
+			SendClientMessage(owner, COLOR_ORANGE, "Налог на дом: -$%d. Долг $%d. Оплати: /housepay [сумма], иначе через %d ч. дом заберут.",
+				tax, -House[h][hBalance], (House[h][hBalance] + tax * HOUSE_DEBT_HOURS) / tax);
+		else
+			SendClientMessage(owner, COLOR_WHITE, "Налог на дом: -$%d. На счёте дома $%d.", tax, House[h][hBalance]);
+	}
 }
 
 // ---------------------------------------------------------------------
@@ -170,15 +389,20 @@ stock bool:Cmd_BuyHouse(playerid)
 	if (GetMoney(playerid) < House[h][hPrice]) return SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", House[h][hPrice]);
 
 	GiveMoney(playerid, -House[h][hPrice]);
+	if (gRentHouse[playerid] != -1) House_SetRent(playerid, -1);   // съезжает со съёмной комнаты
 	House[h][hOwner] = Player[playerid][pDbId];
 	House[h][hLocked] = false;
+	House[h][hRent] = 0;
+	House[h][hBalance] = 0;
+	House[h][hSafe] = 0;
 	GetPlayerName(playerid, House[h][hOwnerName], MAX_PLAYER_NAME);
 	House_Save(h);
 	House_Refresh(h);
 	Account_Save(playerid);
 	Account_SetNormalSpawn(playerid);   // теперь спавн у дома
 
-	SendClientMessage(playerid, COLOR_GREEN, "Поздравляем! Ты купил дом №%d за $%d. Войти: /enter, замок: /lock", House[h][hDbId], House[h][hPrice]);
+	SendClientMessage(playerid, COLOR_GREEN, "Поздравляем! Ты купил дом №%d за $%d. Войти: /enter, замок: /lock, меню: /house", House[h][hDbId], House[h][hPrice]);
+	SendClientMessage(playerid, COLOR_WHITE, "Налог $%d в час списывается со счёта дома. Пополнить: /housepay [сумма]", House_GetTax(h));
 	return true;
 }
 
@@ -188,17 +412,16 @@ stock bool:Cmd_SellHouse(playerid)
 	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
 	if (House_GetNearby(playerid) != h) return SendClientMessage(playerid, COLOR_GREY, "Подойди к своему дому.");
 
-	new refund = House[h][hPrice] / 2;
+	// половина цены + сейф + остаток на счёте (или минус долг по налогу)
+	new refund = House[h][hPrice] / 2 + House[h][hSafe] + House[h][hBalance];
+	if (refund < 0) refund = 0;
+	House_GiveStoredWeapons(h, playerid);
 	GiveMoney(playerid, refund);
-	House[h][hOwner] = 0;
-	House[h][hOwnerName][0] = '\0';
-	House[h][hLocked] = false;
-	House_Save(h);
-	House_Refresh(h);
+	House_Free(h);
 	Account_Save(playerid);
 	Account_SetNormalSpawn(playerid);
 
-	SendClientMessage(playerid, COLOR_GREEN, "Ты продал дом государству за $%d (половина цены).", refund);
+	SendClientMessage(playerid, COLOR_GREEN, "Ты продал дом государству. Получено $%d (половина цены, сейф и счёт дома). Оружие из шкафа у тебя.", refund);
 	return true;
 }
 
@@ -207,15 +430,22 @@ stock bool:Cmd_Enter(playerid)
 	new h = House_GetNearby(playerid);
 	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет входа.");
 	if (House[h][hOwner] == 0) return SendClientMessage(playerid, COLOR_GREY, "Дом продаётся и закрыт. Купить: /buyhouse");
-	if (House[h][hLocked] && House[h][hOwner] != Player[playerid][pDbId])
+	if (House[h][hLocked] && House[h][hOwner] != Player[playerid][pDbId] && gRentHouse[playerid] != h)
+	{
+		if (House[h][hRent] > 0)
+			return SendClientMessage(playerid, COLOR_GREY, "Дверь заперта. Здесь сдаются комнаты: /rent ($%d в час).", House[h][hRent]);
 		return SendClientMessage(playerid, COLOR_GREY, "Дверь заперта.");
+	}
 
 	SetPlayerInterior(playerid, House[h][hInterior]);
 	SetPlayerVirtualWorld(playerid, HOUSE_WORLD_OFFSET + h);
 	SetPlayerPos(playerid, House[h][hIX], House[h][hIY], House[h][hIZ]);
 	SetCameraBehindPlayer(playerid);
 	Player[playerid][pHouseInside] = h;
-	SendClientMessage(playerid, COLOR_WHITE, "Выйти из дома: /exit (стоя у двери)");
+	if (House[h][hOwner] == Player[playerid][pDbId])
+		SendClientMessage(playerid, COLOR_WHITE, "Выйти: /exit у двери. Меню дома (шкаф, сейф, налог, аренда): ALT или /house");
+	else
+		SendClientMessage(playerid, COLOR_WHITE, "Выйти из дома: /exit (стоя у двери)");
 	return true;
 }
 
@@ -249,6 +479,339 @@ stock bool:Cmd_Lock(playerid)
 	return Vehicles_ToggleLock(playerid);
 }
 
+// ---------------------------------------------------------------------
+//  Налог и аренда
+// ---------------------------------------------------------------------
+static bool:House_Deposit(playerid, h, amount)
+{
+	if (amount < 1 || amount > 1000000) return SendClientMessage(playerid, COLOR_GREY, "Сумма от $1 до $1000000.");
+	if (GetMoney(playerid) < amount) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет столько денег.");
+	GiveMoney(playerid, -amount);
+	House[h][hBalance] += amount;
+	House_Save(h);
+	Account_Save(playerid);
+	SendClientMessage(playerid, COLOR_GREEN, "Счёт дома пополнен на $%d. Теперь на счёте $%d (хватит примерно на %d ч.).",
+		amount, House[h][hBalance], House[h][hBalance] > 0 ? House[h][hBalance] / House_GetTax(h) : 0);
+	return true;
+}
+
+static bool:House_SetRentPrice(playerid, h, price)
+{
+	if (price < 0 || price > HOUSE_RENT_MAX) return SendClientMessage(playerid, COLOR_GREY, "Аренда от $0 (не сдавать) до $%d в час.", HOUSE_RENT_MAX);
+	House[h][hRent] = price;
+	House_Save(h);
+	House_Refresh(h);
+	if (price == 0)
+	{
+		House_EvictAll(h, "владелец больше не сдаёт комнаты.");
+		SendClientMessage(playerid, COLOR_WHITE, "Комнаты больше не сдаются, жильцы выселены.");
+	}
+	else SendClientMessage(playerid, COLOR_GREEN, "Комнаты сдаются за $%d в час. Плата идёт на счёт дома.", price);
+	return true;
+}
+
+stock bool:Cmd_HousePay(playerid, const params[])
+{
+	new h = House_GetOwned(playerid);
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
+	new pos = 0, amount;
+	if (!NextIntParam(params, pos, amount) || amount < 1)
+	{
+		SendClientMessage(playerid, COLOR_WHITE, "Счёт дома №%d: $%d. Налог $%d в час.", House[h][hDbId], House[h][hBalance], House_GetTax(h));
+		return SendClientMessage(playerid, COLOR_GREY, "Пополнить: /housepay [сумма]");
+	}
+	return House_Deposit(playerid, h, amount);
+}
+
+stock bool:Cmd_SetRent(playerid, const params[])
+{
+	new h = House_GetOwned(playerid);
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
+	new pos = 0, price;
+	if (!NextIntParam(params, pos, price)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /setrent [сумма в час] (0 — не сдавать)");
+	return House_SetRentPrice(playerid, h, price);
+}
+
+stock bool:Cmd_Rent(playerid)
+{
+	new h = House_GetNearby(playerid);
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Подойди к двери дома, где сдаются комнаты.");
+	if (House[h][hOwner] == 0 || House[h][hRent] <= 0) return SendClientMessage(playerid, COLOR_GREY, "В этом доме комнаты не сдаются.");
+	if (House[h][hOwner] == Player[playerid][pDbId]) return SendClientMessage(playerid, COLOR_GREY, "Это твой дом.");
+	if (House_GetOwned(playerid) != -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя есть свой дом.");
+	if (gRentHouse[playerid] == h) return SendClientMessage(playerid, COLOR_GREY, "Ты уже снимаешь здесь комнату.");
+	if (GetMoney(playerid) < House[h][hRent]) return SendClientMessage(playerid, COLOR_GREY, "Нужно $%d за первый час.", House[h][hRent]);
+
+	GiveMoney(playerid, -House[h][hRent]);
+	House[h][hBalance] += House[h][hRent];
+	House_Save(h);
+	House_SetRent(playerid, h);
+	Account_Save(playerid);
+	Account_SetNormalSpawn(playerid);
+	SendClientMessage(playerid, COLOR_GREEN, "Ты снял комнату в доме №%d за $%d в час (оплата каждый PayDay). Съехать: /unrent", House[h][hDbId], House[h][hRent]);
+
+	new owner = House_FindOnline(House[h][hOwner]);
+	if (owner != INVALID_PLAYER_ID) SendClientMessage(owner, COLOR_BLUE, "%s снял комнату в твоём доме.", GetRPName(playerid));
+	return true;
+}
+
+stock bool:Cmd_Unrent(playerid)
+{
+	new h = gRentHouse[playerid];
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Ты не снимаешь комнату.");
+	House_SetRent(playerid, -1);
+	Account_SetNormalSpawn(playerid);
+	SendClientMessage(playerid, COLOR_WHITE, "Ты съехал из дома №%d.", House[h][hDbId]);
+	return true;
+}
+
+stock bool:Cmd_Tenants(playerid)
+{
+	new h = House_GetOwned(playerid);
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT name FROM accounts WHERE rent_house = %d ORDER BY name LIMIT 20", House[h][hDbId]);
+	if (r == DBResult:0) return true;
+	new rows = DB_GetRowCount(r);
+	if (rows == 0) SendClientMessage(playerid, COLOR_WHITE, "Жильцов нет. Аренда: $%d в час (/setrent).", House[h][hRent]);
+	else
+	{
+		SendClientMessage(playerid, COLOR_YELLOW, "Жильцы дома №%d (аренда $%d в час):", House[h][hDbId], House[h][hRent]);
+		new name[MAX_PLAYER_NAME];
+		for (new i = 0; i < rows; i++)
+		{
+			DB_GetFieldString(r, 0, name, sizeof name);
+			SendClientMessage(playerid, COLOR_WHITE, " %s", name);
+			DB_SelectNextRow(r);
+		}
+		SendClientMessage(playerid, COLOR_GREY, "Выселить: /evict [id] (онлайн) или /evictall (всех).");
+	}
+	DB_FreeResultSet(r);
+	return true;
+}
+
+stock bool:Cmd_Evict(playerid, const params[])
+{
+	new h = House_GetOwned(playerid);
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
+	new pos = 0;
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /evict [id]   Всех сразу: /evictall");
+	if (gRentHouse[target] != h) return SendClientMessage(playerid, COLOR_GREY, "Этот игрок не живёт в твоём доме.");
+	House_SetRent(target, -1);
+	Account_SetNormalSpawn(target);
+	SendClientMessage(target, COLOR_ORANGE, "Владелец выселил тебя из дома №%d.", House[h][hDbId]);
+	SendClientMessage(playerid, COLOR_WHITE, "%s выселен.", GetRPName(target));
+	return true;
+}
+
+stock bool:Cmd_EvictAll(playerid)
+{
+	new h = House_GetOwned(playerid);
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
+	House_EvictAll(h, "владелец выселил всех жильцов.");
+	SendClientMessage(playerid, COLOR_WHITE, "Все жильцы выселены.");
+	return true;
+}
+
+// ---------------------------------------------------------------------
+//  Меню дома: шкаф, сейф, счёт, аренда
+// ---------------------------------------------------------------------
+stock bool:Cmd_House(playerid)
+{
+	new h = House_GetOwned(playerid);
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
+	if (Player[playerid][pHouseInside] != h) return SendClientMessage(playerid, COLOR_GREY, "Меню дома открывается внутри твоего дома.");
+
+	ShowPlayerDialog(playerid, DIALOG_HOUSE_MENU, DIALOG_STYLE_LIST, "Дом",
+		"Шкаф: положить оружие из рук\nШкаф: взять оружие\nСейф: положить деньги (сейчас $%d)\nСейф: взять деньги\nСчёт дома: пополнить (сейчас $%d, налог $%d/час)\nСчёт дома: снять деньги\nАренда: изменить цену (сейчас $%d/час)\nЖильцы",
+		"Выбрать", "Закрыть", House[h][hSafe], House[h][hBalance], House_GetTax(h), House[h][hRent]);
+	return true;
+}
+
+// ALT внутри дома (keys.inc): 1 — меню открыто
+stock House_TryMenu(playerid)
+{
+	new h = Player[playerid][pHouseInside];
+	if (h == -1 || House[h][hOwner] != Player[playerid][pDbId]) return 0;
+	Cmd_House(playerid);
+	return 1;
+}
+
+static House_PutGun(playerid, h)
+{
+	if (Player[playerid][pDuty])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Служебное оружие в шкаф класть нельзя. Сначала сними форму.");
+		return 0;
+	}
+	new WEAPON:weapon = GetPlayerWeapon(playerid);
+	new ammo = GetPlayerAmmo(playerid);
+	if (weapon == WEAPON:0 || ammo <= 0)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Возьми оружие в руки (колесо мыши), потом выбери этот пункт.");
+		return 0;
+	}
+
+	new used[HOUSE_WEAPON_SLOTS];
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT slot FROM house_weapons WHERE house = %d", House[h][hDbId]);
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new i = 0; i < rows; i++)
+		{
+			new s = DB_GetFieldInt(r, 0);
+			if (s >= 0 && s < HOUSE_WEAPON_SLOTS) used[s] = 1;
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	new slot = -1;
+	for (new s = 0; s < HOUSE_WEAPON_SLOTS; s++)
+	{
+		if (!used[s]) { slot = s; break; }
+	}
+	if (slot == -1)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Шкаф полный (%d мест).", HOUSE_WEAPON_SLOTS);
+		return 0;
+	}
+
+	RemovePlayerWeapon(playerid, weapon);
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO house_weapons (house, slot, weapon, ammo) VALUES (%d, %d, %d, %d)",
+		House[h][hDbId], slot, _:weapon, ammo));
+	new name[32];
+	GetWeaponName(weapon, name, sizeof name);
+	SendClientMessage(playerid, COLOR_GREEN, "%s (%d патр.) убран в шкаф.", name, ammo);
+	return 1;
+}
+
+static House_ShowGuns(playerid, h)
+{
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT slot, weapon, ammo FROM house_weapons WHERE house = %d ORDER BY slot", House[h][hDbId]);
+	if (r == DBResult:0) return 0;
+	new rows = DB_GetRowCount(r);
+	if (rows == 0)
+	{
+		DB_FreeResultSet(r);
+		SendClientMessage(playerid, COLOR_GREY, "В шкафу пусто.");
+		return 0;
+	}
+	new list[256], line[48], name[32];
+	for (new i = 0; i < rows && i < HOUSE_WEAPON_SLOTS; i++)
+	{
+		gHouseGunSlot[playerid][i] = DB_GetFieldInt(r, 0);
+		GetWeaponName(WEAPON:DB_GetFieldInt(r, 1), name, sizeof name);
+		format(line, sizeof line, "%s (%d патр.)\n", name, DB_GetFieldInt(r, 2));
+		strcat(list, line);
+		DB_SelectNextRow(r);
+	}
+	DB_FreeResultSet(r);
+	ShowPlayerDialog(playerid, DIALOG_HOUSE_TAKEGUN, DIALOG_STYLE_LIST, "Шкаф", "%s", "Взять", "Назад", list);
+	return 1;
+}
+
+static House_TakeGun(playerid, h, listitem)
+{
+	if (listitem < 0 || listitem >= HOUSE_WEAPON_SLOTS) return 0;
+	new slot = gHouseGunSlot[playerid][listitem];
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT weapon, ammo FROM house_weapons WHERE house = %d AND slot = %d", House[h][hDbId], slot);
+	if (r == DBResult:0) return 0;
+	if (DB_GetRowCount(r) == 0)
+	{
+		DB_FreeResultSet(r);
+		return 0;
+	}
+	new WEAPON:weapon = WEAPON:DB_GetFieldInt(r, 0), ammo = DB_GetFieldInt(r, 1);
+	DB_FreeResultSet(r);
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM house_weapons WHERE house = %d AND slot = %d", House[h][hDbId], slot));
+	GivePlayerWeapon(playerid, weapon, ammo);
+	new name[32];
+	GetWeaponName(weapon, name, sizeof name);
+	SendClientMessage(playerid, COLOR_GREEN, "Ты взял из шкафа %s (%d патр.).", name, ammo);
+	return 1;
+}
+
+// Ответы на окна дома (из OnDialogResponse)
+stock Houses_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
+{
+	if (dialogid < DIALOG_HOUSE_MENU || dialogid > DIALOG_HOUSE_RENT) return 0;
+	new h = House_GetOwned(playerid);
+	if (h == -1 || Player[playerid][pHouseInside] != h) return 1;
+
+	if (dialogid == DIALOG_HOUSE_MENU)
+	{
+		if (!response) return 1;
+		switch (listitem)
+		{
+			case 0: House_PutGun(playerid, h);
+			case 1: House_ShowGuns(playerid, h);
+			case 2: ShowPlayerDialog(playerid, DIALOG_HOUSE_SAFE_IN, DIALOG_STYLE_INPUT, "Сейф", "{FFFFFF}Сколько положить в сейф?\nВ сейфе: $%d, у тебя: $%d", "Положить", "Назад", House[h][hSafe], GetMoney(playerid));
+			case 3: ShowPlayerDialog(playerid, DIALOG_HOUSE_SAFE_OUT, DIALOG_STYLE_INPUT, "Сейф", "{FFFFFF}Сколько взять из сейфа?\nВ сейфе: $%d", "Взять", "Назад", House[h][hSafe]);
+			case 4: ShowPlayerDialog(playerid, DIALOG_HOUSE_PAY, DIALOG_STYLE_INPUT, "Счёт дома", "{FFFFFF}С этого счёта платится налог $%d в час, сюда же приходит аренда.\nНа счёте: $%d\n\nСколько положить?", "Пополнить", "Назад", House_GetTax(h), House[h][hBalance]);
+			case 5: ShowPlayerDialog(playerid, DIALOG_HOUSE_WITHDRAW, DIALOG_STYLE_INPUT, "Счёт дома", "{FFFFFF}На счёте: $%d\n\nСколько снять?", "Снять", "Назад", House[h][hBalance]);
+			case 6: ShowPlayerDialog(playerid, DIALOG_HOUSE_RENT, DIALOG_STYLE_INPUT, "Аренда", "{FFFFFF}Цена комнаты в час (0 — не сдавать, максимум $%d).\nСейчас: $%d", "Готово", "Назад", HOUSE_RENT_MAX, House[h][hRent]);
+			case 7: Cmd_Tenants(playerid);
+		}
+		return 1;
+	}
+
+	if (!response)
+	{
+		Cmd_House(playerid);
+		return 1;
+	}
+	if (dialogid == DIALOG_HOUSE_TAKEGUN)
+	{
+		House_TakeGun(playerid, h, listitem);
+		return 1;
+	}
+
+	new amount = strval(inputtext);
+	switch (dialogid)
+	{
+		case DIALOG_HOUSE_SAFE_IN:
+		{
+			if (amount < 1 || GetMoney(playerid) < amount) SendClientMessage(playerid, COLOR_GREY, "Неверная сумма.");
+			else if (House[h][hSafe] + amount > HOUSE_SAFE_MAX) SendClientMessage(playerid, COLOR_GREY, "В сейф помещается не больше $%d.", HOUSE_SAFE_MAX);
+			else
+			{
+				GiveMoney(playerid, -amount);
+				House[h][hSafe] += amount;
+				House_Save(h);
+				Account_Save(playerid);
+				SendClientMessage(playerid, COLOR_GREEN, "Ты положил в сейф $%d. В сейфе $%d.", amount, House[h][hSafe]);
+			}
+		}
+		case DIALOG_HOUSE_SAFE_OUT:
+		{
+			if (amount < 1 || amount > House[h][hSafe]) SendClientMessage(playerid, COLOR_GREY, "Неверная сумма.");
+			else
+			{
+				House[h][hSafe] -= amount;
+				GiveMoney(playerid, amount);
+				House_Save(h);
+				Account_Save(playerid);
+				SendClientMessage(playerid, COLOR_GREEN, "Ты взял из сейфа $%d. Осталось $%d.", amount, House[h][hSafe]);
+			}
+		}
+		case DIALOG_HOUSE_PAY: House_Deposit(playerid, h, amount);
+		case DIALOG_HOUSE_WITHDRAW:
+		{
+			if (amount < 1 || amount > House[h][hBalance]) SendClientMessage(playerid, COLOR_GREY, "Неверная сумма (на счёте $%d).", House[h][hBalance]);
+			else
+			{
+				House[h][hBalance] -= amount;
+				GiveMoney(playerid, amount);
+				House_Save(h);
+				Account_Save(playerid);
+				SendClientMessage(playerid, COLOR_GREEN, "Ты снял со счёта дома $%d. Осталось $%d.", amount, House[h][hBalance]);
+			}
+		}
+		case DIALOG_HOUSE_RENT: House_SetRentPrice(playerid, h, amount);
+	}
+	return 1;
+}
+
 stock bool:Cmd_CreateHouse(playerid, const params[])
 {
 	new pos = 0, price, type;
@@ -274,6 +837,9 @@ stock bool:Cmd_CreateHouse(playerid, const params[])
 	House[h][hIZ] = gHouseIntPos[t][2];
 	House[h][hInterior] = gHouseIntId[t];
 	House[h][hLocked] = false;
+	House[h][hRent] = 0;
+	House[h][hBalance] = 0;
+	House[h][hSafe] = 0;
 	House[h][hPickup] = INVALID_PICKUP;
 	House[h][hLabel] = INVALID_3DTEXT_ID;
 	House_Refresh(h);

@@ -1,0 +1,94 @@
+name: Release main
+
+# Every push to main is saved as a permanent GitHub Release:
+#   - Bastion APK (launcher + SAMP-Mobile client)
+#   - compiled gamemode rp.amx and the server/gamemodes sources as a zip
+# Releases do not expire, unlike workflow artifacts (30 days).
+# The same commit is also kept as a branch release/<date>-<sha>.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+env:
+  PAWNC_VERSION: 3.10.11
+
+jobs:
+  apk:
+    uses: ./.github/workflows/bastion-single-apk.yml
+
+  server:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download pawn compiler and open.mp includes
+        run: |
+          set -e
+          curl -sSLf -o pawnc.tar.gz \
+            "https://github.com/openmultiplayer/compiler/releases/download/v${PAWNC_VERSION}/pawnc-${PAWNC_VERSION}-linux.tar.gz"
+          tar xzf pawnc.tar.gz
+          echo "PAWNC_DIR=$PWD/pawnc-${PAWNC_VERSION}-linux" >> "$GITHUB_ENV"
+          git clone --depth 1 https://github.com/openmultiplayer/omp-stdlib.git omp-stdlib
+
+      - name: Compile rp.pwn
+        working-directory: server/gamemodes
+        run: |
+          set -o pipefail
+          LD_LIBRARY_PATH="$PAWNC_DIR/lib" "$PAWNC_DIR/bin/pawncc" rp.pwn \
+            -i"$GITHUB_WORKSPACE/omp-stdlib" -i. -orp.amx -d3 '-;+' '-(+' 2>&1 | tee build.log
+          test -f rp.amx
+
+      - name: Pack gamemodes
+        run: |
+          set -e
+          mkdir -p out
+          (cd server && zip -qr ../out/Bastion-gamemodes.zip gamemodes -x 'gamemodes/build.log')
+          unzip -l out/Bastion-gamemodes.zip | tail -3
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bastion-gamemodes
+          path: out/Bastion-gamemodes.zip
+          if-no-files-found: error
+
+  release:
+    needs: [apk, server]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dl
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          SHORT=${GITHUB_SHA::7}
+          DATE=$(date -u +%Y-%m-%d)
+          TAG="main-${DATE}-${SHORT}"
+          mkdir -p rel
+          cp dl/Bastion-Launcher-SAMP-Mobile-debug/Bastion-Launcher-SAMP-Mobile-debug.apk "rel/Bastion-Launcher-${SHORT}-debug.apk"
+          cp dl/Bastion-gamemodes/Bastion-gamemodes.zip "rel/Bastion-gamemodes-${SHORT}.zip"
+          (cd dl/Bastion-native-symbols && zip -qr "../../rel/Bastion-native-symbols-${SHORT}.zip" .)
+          (cd rel && sha256sum * > SHA256SUMS.txt)
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/heads/release/${DATE}-${SHORT}" -f sha="$GITHUB_SHA" >/dev/null
+          gh release create "$TAG" rel/* \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
+            --title "Bastion ${DATE} (${SHORT})" \
+            --notes "Сборка ветки main, коммит ${GITHUB_SHA}.
+
+          - Bastion-Launcher-*.apk: мобильный лаунчер со встроенным клиентом (debug-подпись).
+          - Bastion-gamemodes-*.zip: папка gamemodes (rp.pwn, bastion/*.inc) и готовый rp.amx. Распаковать в папку сервера open.mp.
+          - Bastion-native-symbols-*.zip: библиотеки для разбора крашей.
+
+          Сборка: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
