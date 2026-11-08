@@ -276,6 +276,14 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 				return 1;
 			}
 		}
+		case ITEM_SKIN:
+		{
+			if (Outfit_FreeSlots(playerid) == 0)
+			{
+				SendClientMessage(playerid, COLOR_GREY, "В сумке нет места для одежды. Выброси или передай старую (/inv).");
+				return 1;
+			}
+		}
 		case ITEM_INV:
 		{
 			if (Inv_Count(playerid, gBizItems[item][biValue]) + gBizItems[item][biValue2] > Inv_GetMax(gBizItems[item][biValue]))
@@ -330,9 +338,8 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 		}
 		case ITEM_SKIN:
 		{
-			Player[playerid][pSkin] = gBizItems[item][biValue];
-			if (!Player[playerid][pDuty]) SetPlayerSkin(playerid, Player[playerid][pSkin]);
-			Account_SetNormalSpawn(playerid);
+			Outfit_Add(playerid, gBizItems[item][biValue]);    // одежда в сумку (needs.inc)
+			SendClientMessage(playerid, COLOR_WHITE, "Одежда (скин %d) в сумке. Надеть: /inv", gBizItems[item][biValue]);
 		}
 	}
 

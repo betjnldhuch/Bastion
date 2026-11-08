@@ -15,6 +15,8 @@
 //  Маска прячет ник над головой (снимается в сумке или при смерти).
 //  Хранится в таблице inventory (owner, item, amount), у каждой вещи свой
 //  максимум (gInvMax).
+//  Одежда: купленная в магазине одежды ложится в сумку (до MAX_OUTFITS штук),
+//  надеть — из /inv, снятая одежда возвращается в сумку. Таблица outfits.
 //  Админы (4+): /givefood [id] — накормить, /giveitem [id] [вещь] [кол-во].
 // =====================================================================
 
@@ -70,7 +72,10 @@ static bool:gMasked[MAX_PLAYERS];
 static gHunger[MAX_PLAYERS];
 static gHungerTick[MAX_PLAYERS];
 static gInv[MAX_PLAYERS][INV_TYPES];
-static gInvMenu[MAX_PLAYERS][INV_TYPES];
+#define MAX_OUTFITS         5       // одежды в сумке (не считая надетой)
+#define INV_OUTFIT          100     // в меню и на земле: одежда (100 + слот / скин в drAmount)
+static gInvMenu[MAX_PLAYERS][INV_TYPES + MAX_OUTFITS + 1];
+static gOutfit[MAX_PLAYERS][MAX_OUTFITS];     // скины в сумке, -1 = пусто
 
 // ---------------------------------------------------------------------
 //  Загрузка и сохранение
@@ -79,6 +84,7 @@ stock Needs_Init()
 {
 	DB_AddColumn("accounts", "hunger", "INTEGER DEFAULT 100");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS inventory (owner INTEGER NOT NULL, item INTEGER NOT NULL, amount INTEGER DEFAULT 0, PRIMARY KEY (owner, item))"));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS outfits (id INTEGER PRIMARY KEY AUTOINCREMENT, owner INTEGER NOT NULL, skin INTEGER NOT NULL)"));
 }
 
 // После входа в аккаунт (из Vehicles_LoadForPlayer)
@@ -87,6 +93,18 @@ stock Needs_LoadPlayer(playerid)
 	gHunger[playerid] = 100;
 	gHungerTick[playerid] = 0;
 	for (new i = 0; i < INV_TYPES; i++) gInv[playerid][i] = 0;
+	for (new i = 0; i < MAX_OUTFITS; i++) gOutfit[playerid][i] = -1;
+	new DBResult:ro = DB_ExecuteQuery(gDB, "SELECT skin FROM outfits WHERE owner = %d ORDER BY id LIMIT %d", Player[playerid][pDbId], MAX_OUTFITS);
+	if (ro != DBResult:0)
+	{
+		new rows = DB_GetRowCount(ro);
+		for (new i = 0; i < rows; i++)
+		{
+			gOutfit[playerid][i] = DB_GetFieldInt(ro, 0);
+			DB_SelectNextRow(ro);
+		}
+		DB_FreeResultSet(ro);
+	}
 
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT hunger FROM accounts WHERE id = %d", Player[playerid][pDbId]);
 	if (r != DBResult:0)
@@ -226,6 +244,60 @@ static Inv_Take(playerid, item, amount)
 	Inv_Save(playerid, item);
 }
 
+// ---------------------------------------------------------------------
+//  Одежда в сумке
+// ---------------------------------------------------------------------
+stock Outfit_FreeSlots(playerid)
+{
+	new n = 0;
+	for (new i = 0; i < MAX_OUTFITS; i++) if (gOutfit[playerid][i] == -1) n++;
+	return n;
+}
+
+// Положить одежду в сумку. false — сумка полная
+stock bool:Outfit_Add(playerid, skin)
+{
+	for (new i = 0; i < MAX_OUTFITS; i++)
+	{
+		if (gOutfit[playerid][i] != -1) continue;
+		gOutfit[playerid][i] = skin;
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO outfits (owner, skin) VALUES (%d, %d)", Player[playerid][pDbId], skin));
+		return true;
+	}
+	return false;
+}
+
+static Outfit_Remove(playerid, slot)
+{
+	new skin = gOutfit[playerid][slot];
+	if (skin == -1) return;
+	gOutfit[playerid][slot] = -1;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM outfits WHERE id = (SELECT id FROM outfits WHERE owner = %d AND skin = %d LIMIT 1)", Player[playerid][pDbId], skin));
+}
+
+// Надеть одежду из сумки, снятая ложится на её место
+static Outfit_Wear(playerid, slot)
+{
+	new skin = gOutfit[playerid][slot];
+	if (skin == -1) return 0;
+	if (Player[playerid][pDuty]) { SendClientMessage(playerid, COLOR_GREY, "Сначала сними рабочую форму (/duty)."); return 0; }
+	if (IsPlayerInAnyVehicle(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Переодеться можно только пешком."); return 0; }
+
+	new old = Player[playerid][pSkin];
+	Outfit_Remove(playerid, slot);
+	gOutfit[playerid][slot] = old;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO outfits (owner, skin) VALUES (%d, %d)", Player[playerid][pDbId], old));
+
+	Player[playerid][pSkin] = skin;
+	SetPlayerSkin(playerid, skin);
+	Account_Save(playerid);
+	Account_SetNormalSpawn(playerid);
+	new msg[96];
+	format(msg, sizeof msg, "%s переодевается.", GetRPName(playerid));
+	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
+	return 1;
+}
+
 stock bool:Cmd_Inv(playerid)
 {
 	new list[1200] = "Вещь\tКол-во\tЧто даёт\n", line[96], n = 0;
@@ -243,8 +315,15 @@ stock bool:Cmd_Inv(playerid)
 		strcat(list, line);
 		gInvMenu[playerid][n++] = INV_NONE;
 	}
-	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "Сумка пуста. Еду, воду, аптечки и другие вещи продают в магазинах 24/7.");
-	for (new i = n; i < INV_TYPES; i++) gInvMenu[playerid][i] = -1;
+	for (new i = 0; i < MAX_OUTFITS; i++)
+	{
+		if (gOutfit[playerid][i] == -1) continue;
+		format(line, sizeof line, "Одежда: скин %d\t1\tнадеть\n", gOutfit[playerid][i]);
+		strcat(list, line);
+		gInvMenu[playerid][n++] = INV_OUTFIT + i;
+	}
+	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "Сумка пуста. Еду, воду, аптечки и другие вещи продают в магазинах 24/7, одежду — в магазинах одежды.");
+	for (new i = n; i < sizeof (gInvMenu[]); i++) gInvMenu[playerid][i] = -1;
 
 	new title[48];
 	format(title, sizeof title, "Сумка (сытость %d%%)", gHunger[playerid]);
@@ -473,6 +552,22 @@ stock Inv_TryPickup(playerid)
 		if (gDrop[d][drItem] == INV_NONE) continue;
 		if (!IsPlayerInRangeOfPoint(playerid, 1.8, gDrop[d][drX], gDrop[d][drY], gDrop[d][drZ])) continue;
 
+		if (gDrop[d][drItem] == INV_OUTFIT)
+		{
+			new skin = gDrop[d][drAmount];
+			if (!Outfit_Add(playerid, skin))
+			{
+				SendClientMessage(playerid, COLOR_GREY, "В сумке нет места для одежды (максимум %d).", MAX_OUTFITS);
+				return 1;
+			}
+			Inv_RemoveDrop(d);
+			ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
+			new omsg[128];
+			format(omsg, sizeof omsg, "%s поднимает с земли одежду.", GetRPName(playerid));
+			SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, omsg);
+			return 1;
+		}
+
 		new item = gDrop[d][drItem], amount = gDrop[d][drAmount];
 		new space = gInvMax[item] - gInv[playerid][item];
 		if (space <= 0)
@@ -513,6 +608,102 @@ static Inv_DropsTick()
 	}
 }
 
+static Outfit_ShowActions(playerid, slot)
+{
+	gInvSelected[playerid] = INV_OUTFIT + slot;
+	new title[48];
+	format(title, sizeof title, "Одежда: скин %d", gOutfit[playerid][slot]);
+	ShowPlayerDialog(playerid, DIALOG_INV_ACTION, DIALOG_STYLE_LIST, title, "Надеть\nПередать игроку\nВыбросить", "Выбрать", "Назад");
+}
+
+static Outfit_Drop(playerid, slot)
+{
+	if (GetPlayerVirtualWorld(playerid) != 0 || GetPlayerInterior(playerid) != 0 || IsPlayerInAnyVehicle(playerid))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Выбросить вещь можно только на улице и пешком.");
+		return 0;
+	}
+	new d = -1;
+	for (new i = 0; i < MAX_DROPS; i++)
+	{
+		if (gDrop[i][drItem] == INV_NONE) { d = i; break; }
+	}
+	if (d == -1)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "На земле и так слишком много вещей. Попробуй позже.");
+		return 0;
+	}
+	new skin = gOutfit[playerid][slot];
+	new Float:x, Float:y, Float:z;
+	GetPlayerPos(playerid, x, y, z);
+	gDrop[d][drItem] = INV_OUTFIT;
+	gDrop[d][drAmount] = skin;
+	gDrop[d][drX] = x;
+	gDrop[d][drY] = y;
+	gDrop[d][drZ] = z;
+	gDrop[d][drMinutes] = DROP_MINUTES;
+	gDrop[d][drObject] = CreateObject(DROP_MODEL, x, y, z - 0.95, 0.0, 0.0, 0.0, 50.0);
+	gDrop[d][drLabel] = Create3DTextLabel("{FFFFFF}Одежда (скин %d)\n{AFAFAF}ALT — поднять", COLOR_WHITE, x, y, z - 0.6, 8.0, 0, true, skin);
+	Outfit_Remove(playerid, slot);
+	new msg[96];
+	format(msg, sizeof msg, "%s кладёт на землю одежду.", GetRPName(playerid));
+	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
+	return 1;
+}
+
+static Outfit_Give(playerid, slot, const input[])
+{
+	new pos = 0;
+	new target = NextPlayerParam(input, pos);
+	if (target == INVALID_PLAYER_ID || target == playerid || !Player[target][pLogged])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Нужно ввести id игрока.");
+		return 0;
+	}
+	if (!IsPlayerNearPlayer(playerid, target, 3.0))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Подойди ближе к игроку.");
+		return 0;
+	}
+	new skin = gOutfit[playerid][slot];
+	if (!Outfit_Add(target, skin))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "У %s нет места для одежды.", GetRPName(target));
+		return 0;
+	}
+	Outfit_Remove(playerid, slot);
+	new msg[128];
+	format(msg, sizeof msg, "%s передаёт %s одежду.", GetRPName(playerid), GetRPName(target));
+	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
+	return 1;
+}
+
+static Outfit_OnDialog(playerid, dialogid, response, listitem, const inputtext[], slot)
+{
+	if (slot < 0 || slot >= MAX_OUTFITS || gOutfit[playerid][slot] == -1) return 1;
+	if (!response)
+	{
+		if (dialogid == DIALOG_INV_ACTION) Cmd_Inv(playerid);
+		else Outfit_ShowActions(playerid, slot);
+		return 1;
+	}
+	switch (dialogid)
+	{
+		case DIALOG_INV_ACTION:
+		{
+			switch (listitem)
+			{
+				case 0: Outfit_Wear(playerid, slot);
+				case 1: ShowPlayerDialog(playerid, DIALOG_INV_GIVE, DIALOG_STYLE_INPUT, "Передать одежду",
+					"{FFFFFF}Введи id игрока, которому передать одежду (скин %d).", "Передать", "Назад", gOutfit[playerid][slot]);
+				case 2: Outfit_Drop(playerid, slot);
+			}
+		}
+		case DIALOG_INV_GIVE: Outfit_Give(playerid, slot, inputtext);
+	}
+	return 1;
+}
+
 static Inv_ShowActions(playerid, item)
 {
 	gInvSelected[playerid] = item;
@@ -532,8 +723,13 @@ stock Needs_OnDialog(playerid, dialogid, response, listitem, const inputtext[] =
 
 	if (dialogid == DIALOG_INVENTORY)
 	{
-		if (!response || listitem < 0 || listitem >= INV_TYPES) return 1;
+		if (!response || listitem < 0 || listitem >= sizeof (gInvMenu[])) return 1;
 		new item = gInvMenu[playerid][listitem];
+		if (item >= INV_OUTFIT)
+		{
+			Outfit_ShowActions(playerid, item - INV_OUTFIT);
+			return 1;
+		}
 		if (item == INV_NONE)
 		{
 			SendClientMessage(playerid, COLOR_GREY, "Канистру заливают командой /canister, стоя у машины.");
@@ -544,6 +740,7 @@ stock Needs_OnDialog(playerid, dialogid, response, listitem, const inputtext[] =
 	}
 
 	new item = gInvSelected[playerid];
+	if (item >= INV_OUTFIT) return Outfit_OnDialog(playerid, dialogid, response, listitem, inputtext, item - INV_OUTFIT);
 	if (item <= INV_NONE || item >= INV_TYPES || gInv[playerid][item] <= 0) return 1;
 	if (!response)
 	{
