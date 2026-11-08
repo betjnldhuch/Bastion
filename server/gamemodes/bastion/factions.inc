@@ -206,8 +206,7 @@ enum E_FACTION
 	Float:fDutyX,
 	Float:fDutyY,
 	Float:fDutyZ,
-	fPickup,
-	Text3D:fLabel,
+	fMk,                // маркер раздевалки (markers.inc)
 	bool:fMarker,       // значок раздевалки уже создан
 	fName[32],          // название (из базы)
 	fColor,             // цвет (из базы)
@@ -460,15 +459,29 @@ stock Faction_Uncuff(playerid)
 // =====================================================================
 stock Faction_CreateMarker(f)
 {
+	new text[MK_TEXT_LEN];
+	format(text, sizeof text, "%s\n{FFFFFF}ALT Ч переодетьс€ и вз€ть снар€жение", Faction_GetName(f));
 	if (Faction[f][fMarker])
 	{
-		DestroyPickup(Faction[f][fPickup]);
-		Delete3DTextLabel(Faction[f][fLabel]);
+		Marker_SetPos(Faction[f][fMk], Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ]);
 	}
-	Faction[f][fPickup] = CreatePickup(1275, 1, Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ], 0);
-	Faction[f][fLabel] = Create3DTextLabel("%s\n{FFFFFF}ALT Ч переодетьс€ и вз€ть снар€жение", Faction_GetColor(f),
-		Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ] + 0.6, 15.0, 0, true, Faction_GetName(f));
-	Faction[f][fMarker] = true;
+	else
+	{
+		Faction[f][fMk] = Marker_Create(MK_FACTION, f, Faction_GetName(f), 1275,
+			Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ], 0, 0, GPS_FACTIONS);
+		Faction[f][fMarker] = true;
+	}
+	Marker_SetLabel(Faction[f][fMk], text, Faction_GetColor(f));
+}
+
+// јдмин перенЄс маркер раздевалки (/markers)
+stock Faction_OnMarkerMoved(f, Float:x, Float:y, Float:z)
+{
+	if (f < 1 || f >= MAX_FACTIONS) return;
+	Faction[f][fDutyX] = x;
+	Faction[f][fDutyY] = y;
+	Faction[f][fDutyZ] = z;
+	Faction_SaveBase(f);
 }
 
 stock Faction_SpawnVehicle(dbid, f, model, Float:x, Float:y, Float:z, Float:a, c1, c2)

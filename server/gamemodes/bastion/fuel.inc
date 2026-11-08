@@ -37,8 +37,7 @@ enum E_FUEL_STATION
 	Float:fsY,
 	Float:fsZ,
 	fsPrice,
-	fsPickup,
-	Text3D:fsLabel
+	fsMarker                    // маркер (markers.inc)
 }
 new FuelStation[MAX_FUEL_STATIONS][E_FUEL_STATION];
 
@@ -165,11 +164,10 @@ static Fuel_SaveCanister(playerid)
 // ---------------------------------------------------------------------
 static Fuel_UpdateLabel(s)
 {
-	if (FuelStation[s][fsLabel] != Text3D:INVALID_3DTEXT_ID) Delete3DTextLabel(FuelStation[s][fsLabel]);
-	FuelStation[s][fsLabel] = Create3DTextLabel(
-		"{FFCC00}АЗС\n{FFFFFF}Бензин: ${FFFF00}%d{FFFFFF} за литр\nH в машине или /fill — заправка\nALT — канистра (%d л)",
-		COLOR_WHITE, FuelStation[s][fsX], FuelStation[s][fsY], FuelStation[s][fsZ] + 0.8, 25.0, 0, true,
+	new text[MK_TEXT_LEN];
+	format(text, sizeof text, "{FFCC00}АЗС\n{FFFFFF}Бензин: ${FFFF00}%d{FFFFFF} за литр\nH в машине или /fill — заправка\nALT — канистра (%d л)",
 		FuelStation[s][fsPrice], FUEL_CANISTER);
+	Marker_SetLabel(FuelStation[s][fsMarker], text, COLOR_WHITE, 25.0, 0.8);
 }
 
 static Fuel_AddStation(dbid, Float:x, Float:y, Float:z, price)
@@ -183,8 +181,7 @@ static Fuel_AddStation(dbid, Float:x, Float:y, Float:z, price)
 		FuelStation[s][fsY] = y;
 		FuelStation[s][fsZ] = z;
 		FuelStation[s][fsPrice] = price;
-		FuelStation[s][fsPickup] = CreatePickup(1650, 1, x, y, z, 0);    // канистра
-		FuelStation[s][fsLabel] = Text3D:INVALID_3DTEXT_ID;
+		FuelStation[s][fsMarker] = Marker_Create(MK_FUEL, dbid, "АЗС", 1650, FuelStation[s][fsX], FuelStation[s][fsY], FuelStation[s][fsZ], 0, 0, GPS_FUEL);    // канистра
 		Fuel_UpdateLabel(s);
 		return s;
 	}
@@ -200,6 +197,19 @@ stock Fuel_GetNearbyStation(playerid, Float:range = FUEL_STATION_RANGE)
 			return s;
 	}
 	return -1;
+}
+
+// Админ перенёс маркер АЗС (/markers)
+stock Fuel_OnMarkerMoved(dbid, Float:x, Float:y, Float:z)
+{
+	for (new s = 0; s < MAX_FUEL_STATIONS; s++)
+	{
+		if (!FuelStation[s][fsUsed] || FuelStation[s][fsDbId] != dbid) continue;
+		FuelStation[s][fsX] = x;
+		FuelStation[s][fsY] = y;
+		FuelStation[s][fsZ] = z;
+		return;
+	}
 }
 
 forward Fuel_OnSecond();
@@ -550,8 +560,7 @@ stock bool:Cmd_DelFuel(playerid)
 	new s = Fuel_GetNearbyStation(playerid);
 	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет АЗС.");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM fuel_stations WHERE id = %d", FuelStation[s][fsDbId]));
-	DestroyPickup(FuelStation[s][fsPickup]);
-	if (FuelStation[s][fsLabel] != Text3D:INVALID_3DTEXT_ID) Delete3DTextLabel(FuelStation[s][fsLabel]);
+	Marker_Destroy(FuelStation[s][fsMarker], true);
 	SendClientMessage(playerid, COLOR_ADMIN, "АЗС №%d удалена.", FuelStation[s][fsDbId]);
 	FuelStation[s][fsUsed] = false;
 	return true;

@@ -41,6 +41,7 @@
 #include "bastion/base.inc"
 #include "bastion/platform.inc"   // ПК или телефон: IsPlayerMobile[playerid]
 #include "bastion/database.inc"
+#include "bastion/markers.inc"    // все маркеры (значки и надписи) в одном месте
 #include "bastion/accounts.inc"
 #include "bastion/vehicles.inc"
 #include "bastion/fuel.inc"
@@ -60,6 +61,7 @@
 #include "bastion/phone.inc"
 #include "bastion/business.inc"
 #include "bastion/garage.inc"
+#include "bastion/gps.inc"        // /markers — правка маркеров в игре, /gps
 #include "bastion/economy.inc"
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
@@ -82,6 +84,7 @@ public OnGameModeInit()
 {
 	SetGameModeText(MODE_TEXT);
 	DB_Init();
+	Markers_Init();       // таблица markers: правки маркеров из игры
 	Admin_Init();         // таблицы admin_log, reports, сроки банов
 
 	ShowPlayerMarkers(PLAYER_MARKERS_MODE_STREAMED);
@@ -107,6 +110,7 @@ public OnGameModeInit()
 	Doors_Init();         // входы в здания (маркеры LSPD)
 	Econ_Init();          // казна, налоги, журнал денег
 	Garage_Init();        // СТО, штрафстоянка, поля тюнинга в vehicles
+	Gps_Init();
 	Fuel_Init();          // после всех машин: им выдаётся бензин
 
 	new hour;
@@ -138,6 +142,7 @@ public OnPlayerConnect(playerid)
 	Admin_OnConnect(playerid);
 	Dev_OnConnect(playerid);            // убранные здания GTA (dev.inc)
 	Tex_OnConnect(playerid);
+	Gps_OnConnect(playerid);            // значки на карте, сброс GPS
 	if (!Account_OnConnect(playerid))
 	{
 		Player[playerid][pAuthShown] = true;    // игрока кикают — окно входа не показываем
@@ -159,6 +164,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Vehicles_UnloadForPlayer(playerid);
 	Fuel_OnDisconnect(playerid);
 	Inv_ResetMask(playerid);
+	Gps_OnDisconnect(playerid);
 	Player[playerid][pLogged] = false;
 	return 1;
 }
@@ -298,6 +304,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Tex_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Houses_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Garage_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Markers_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Factions_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	return 0;
 }

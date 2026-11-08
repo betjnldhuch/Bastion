@@ -50,8 +50,7 @@ enum E_HOUSE
 	hRent,                      // аренда в час (0 = не сдаётся)
 	hBalance,                   // счёт дома (может быть в минусе — долг по налогу)
 	hSafe,                      // деньги в сейфе
-	hPickup,
-	Text3D:hLabel
+	hMarker                     // маркер входа (markers.inc)
 }
 new House[MAX_HOUSES][E_HOUSE];
 new gHouseCount = 0;
@@ -127,8 +126,7 @@ stock Houses_Load()
 			House[h][hRent]     = DB_GetFieldInt(r, 12);
 			House[h][hBalance]  = DB_GetFieldInt(r, 13);
 			House[h][hSafe]     = DB_GetFieldInt(r, 14);
-			House[h][hPickup] = INVALID_PICKUP;
-			House[h][hLabel]  = INVALID_3DTEXT_ID;
+			House[h][hMarker] = -1;
 			House_Refresh(h);
 		}
 		while (DB_SelectNextRow(r));
@@ -178,31 +176,46 @@ stock House_GetTax(h)
 // Пересоздать иконку и надпись над домом (после покупки/продажи)
 stock House_Refresh(h)
 {
-	if (House[h][hPickup] != INVALID_PICKUP) DestroyPickup(House[h][hPickup]);
-	if (House[h][hLabel] != INVALID_3DTEXT_ID) Delete3DTextLabel(House[h][hLabel]);
-
+	new text[MK_TEXT_LEN], model;
 	if (House[h][hOwner] == 0)
 	{
-		// 1273 — зелёный домик (продаётся)
-		House[h][hPickup] = CreatePickup(1273, 1, House[h][hX], House[h][hY], House[h][hZ], 0);
-		House[h][hLabel] = Create3DTextLabel("{33AA33}Дом №%d продаётся\n{FFFFFF}Цена: ${FFFF00}%d\n{FFFFFF}Налог: $%d в час\nALT — купить",
-			COLOR_WHITE, House[h][hX], House[h][hY], House[h][hZ] + 0.6, 15.0, 0, true,
+		model = 1273;   // зелёный домик (продаётся)
+		format(text, sizeof text, "{33AA33}Дом №%d продаётся\n{FFFFFF}Цена: ${FFFF00}%d\n{FFFFFF}Налог: $%d в час\nALT — купить",
 			House[h][hDbId], House[h][hPrice], House_GetTax(h));
 	}
 	else if (House[h][hRent] > 0)
 	{
-		// 1272 — синий домик (занят)
-		House[h][hPickup] = CreatePickup(1272, 1, House[h][hX], House[h][hY], House[h][hZ], 0);
-		House[h][hLabel] = Create3DTextLabel("{33CCFF}Дом №%d\n{FFFFFF}Владелец: %s\n{FFFF00}Сдаются комнаты: $%d в час (/rent)\n{FFFFFF}ALT — войти",
-			COLOR_WHITE, House[h][hX], House[h][hY], House[h][hZ] + 0.6, 15.0, 0, true,
+		model = 1272;   // синий домик (занят)
+		format(text, sizeof text, "{33CCFF}Дом №%d\n{FFFFFF}Владелец: %s\n{FFFF00}Сдаются комнаты: $%d в час (/rent)\n{FFFFFF}ALT — войти",
 			House[h][hDbId], House[h][hOwnerName], House[h][hRent]);
 	}
 	else
 	{
-		House[h][hPickup] = CreatePickup(1272, 1, House[h][hX], House[h][hY], House[h][hZ], 0);
-		House[h][hLabel] = Create3DTextLabel("{33CCFF}Дом №%d\n{FFFFFF}Владелец: %s\nALT — войти",
-			COLOR_WHITE, House[h][hX], House[h][hY], House[h][hZ] + 0.6, 15.0, 0, true,
+		model = 1272;
+		format(text, sizeof text, "{33CCFF}Дом №%d\n{FFFFFF}Владелец: %s\nALT — войти",
 			House[h][hDbId], House[h][hOwnerName]);
+	}
+
+	if (House[h][hMarker] == -1)
+	{
+		new name[32];
+		format(name, sizeof name, "Дом №%d", House[h][hDbId]);
+		House[h][hMarker] = Marker_Create(MK_HOUSE, House[h][hDbId], name, model, House[h][hX], House[h][hY], House[h][hZ]);
+	}
+	else Marker_SetDefaultModel(House[h][hMarker], model);
+	Marker_SetLabel(House[h][hMarker], text);
+}
+
+// Админ перенёс маркер дома (/markers)
+stock House_OnMarkerMoved(dbid, Float:x, Float:y, Float:z)
+{
+	for (new h = 0; h < gHouseCount; h++)
+	{
+		if (House[h][hDbId] != dbid) continue;
+		House[h][hX] = x;
+		House[h][hY] = y;
+		House[h][hZ] = z;
+		return;
 	}
 }
 
@@ -843,8 +856,7 @@ stock bool:Cmd_CreateHouse(playerid, const params[])
 	House[h][hRent] = 0;
 	House[h][hBalance] = 0;
 	House[h][hSafe] = 0;
-	House[h][hPickup] = INVALID_PICKUP;
-	House[h][hLabel] = INVALID_3DTEXT_ID;
+	House[h][hMarker] = -1;
 	House_Refresh(h);
 
 	SendClientMessage(playerid, COLOR_GREEN, "Дом №%d создан. Цена $%d, интерьер %d.", House[h][hDbId], price, type);

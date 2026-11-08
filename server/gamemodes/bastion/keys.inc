@@ -258,7 +258,7 @@ stock Keys_Interact(playerid)
 		Cmd_GetJob(playerid);
 		return;
 	}
-	if (IsPlayerInRangeOfPoint(playerid, 3.0, DEALER_X, DEALER_Y, DEALER_Z))
+	if (Vehicles_IsNearDealer(playerid))
 	{
 		Cmd_BuyCar(playerid);
 		return;
