@@ -244,6 +244,14 @@ static Inv_Take(playerid, item, amount)
 	Inv_Save(playerid, item);
 }
 
+// Забрать одну вещь из сумки. false — такой вещи нет
+stock bool:Inv_TakeOne(playerid, item)
+{
+	if (item <= INV_NONE || item >= INV_TYPES || gInv[playerid][item] <= 0) return false;
+	Inv_Take(playerid, item, 1);
+	return true;
+}
+
 // ---------------------------------------------------------------------
 //  Одежда в сумке
 // ---------------------------------------------------------------------

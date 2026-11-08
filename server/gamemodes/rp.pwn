@@ -63,6 +63,7 @@
 #include "bastion/garage.inc"
 #include "bastion/gps.inc"        // /markers Ч правка маркеров в игре, /gps
 #include "bastion/economy.inc"
+#include "bastion/wounded.inc"    // ранение вместо смерти, /revive, /aid
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
 #include "bastion/fps.inc"
@@ -113,6 +114,7 @@ public OnGameModeInit()
 	Garage_Init();        // —“ќ, штрафсто€нка, пол€ тюнинга в vehicles
 	Gps_Init();
 	Fuel_Init();          // после всех машин: им выдаЄтс€ бензин
+	Wound_Init();
 
 	new hour;
 	gettime(hour);
@@ -167,6 +169,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Inv_ResetMask(playerid);
 	Inv_UiReset(playerid);
 	Gps_OnDisconnect(playerid);
+	Wound_Reset(playerid);
 	Player[playerid][pLogged] = false;
 	return 1;
 }
@@ -257,6 +260,7 @@ public OnPlayerSpawn(playerid)
 	Factions_OnSpawn(playerid);         // цвет ника, розыск, тюрьма
 	Admin_OnSpawn(playerid);            // деморган, возврат после /spec
 	Turfs_ShowForPlayer(playerid);      // районы банд на радаре
+	Wound_OnSpawn(playerid);            // после смерти Ч лежит раненым на месте
 	return 1;
 }
 
@@ -268,6 +272,8 @@ public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 	Phone_HangUp(playerid);
 	Inv_ResetMask(playerid);            // маска слетает (needs.inc)
 	Turfs_OnDeath(playerid, killerid);
+
+	if (Wound_OnDeath(playerid)) return 1;  // по€витс€ раненым на месте (wounded.inc)
 
 	Player[playerid][pDied] = true;
 	SetSpawnInfo(playerid, NO_TEAM, Player[playerid][pSkin], HOSPITAL_X, HOSPITAL_Y, HOSPITAL_Z, 0.0);
@@ -321,6 +327,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Houses_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Garage_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Help_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Wound_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Markers_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Factions_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	return 0;
