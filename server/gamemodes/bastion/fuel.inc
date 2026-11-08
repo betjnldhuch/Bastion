@@ -45,8 +45,6 @@ static Float:gVehFuel[MAX_VEHICLES] = { -1.0, ... };    // -1 = полный бак
 static bool:gVehFuelWarned[MAX_VEHICLES];
 static gPlayerCanister[MAX_PLAYERS];
 static gFuelStationFor[MAX_PLAYERS] = { -1, ... };      // АЗС, на которой открыто окно
-static PlayerText:gSpeedo[MAX_PLAYERS] = { INVALID_PLAYER_TEXT_DRAW, ... };
-static bool:gSpeedoHidden[MAX_PLAYERS];
 
 // Стандартные АЗС San Andreas — создаются при первом запуске
 static const Float:gDefaultStations[][3] =
@@ -128,7 +126,6 @@ stock Fuel_SavePersonal(playerid)
 stock Fuel_LoadPlayer(playerid)
 {
 	gPlayerCanister[playerid] = 0;
-	gSpeedoHidden[playerid] = false;
 	gFuelStationFor[playerid] = -1;
 
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT canister FROM accounts WHERE id = %d", Player[playerid][pDbId]);
@@ -276,46 +273,9 @@ stock Fuel_GetSpeed(vehicleid)
 	return floatround(floatsqroot(vx * vx + vy * vy + vz * vz) * 180.0);    // км/ч
 }
 
-static Fuel_ShowSpeedo(playerid, speed, Float:fuel, bool:usesFuel)
-{
-	if (gSpeedo[playerid] == INVALID_PLAYER_TEXT_DRAW)
-	{
-		// На телефоне справа внизу кнопки газа и тормоза — там спидометр не виден,
-		// поэтому мобильным игрокам (platform.inc) показываем его сверху по центру.
-		if (IsPlayerMobile[playerid])
-		{
-			gSpeedo[playerid] = CreatePlayerTextDraw(playerid, 320.0, 8.0, "_");
-			PlayerTextDrawAlignment(playerid, gSpeedo[playerid], TEXT_DRAW_ALIGN_CENTER);
-		}
-		else
-		{
-			gSpeedo[playerid] = CreatePlayerTextDraw(playerid, 630.0, 400.0, "_");
-			PlayerTextDrawAlignment(playerid, gSpeedo[playerid], TEXT_DRAW_ALIGN_RIGHT);
-		}
-		PlayerTextDrawFont(playerid, gSpeedo[playerid], TEXT_DRAW_FONT_1);
-		PlayerTextDrawLetterSize(playerid, gSpeedo[playerid], 0.3, 1.3);
-		PlayerTextDrawSetOutline(playerid, gSpeedo[playerid], 1);
-		PlayerTextDrawSetProportional(playerid, gSpeedo[playerid], true);
-	}
-	new text[64];
-	if (!usesFuel) format(text, sizeof text, "~w~%d ~y~km/h", speed);
-	else if (fuel < FUEL_LOW_WARNING) format(text, sizeof text, "~w~%d ~y~km/h~n~~r~Fuel %d / %d L", speed, floatround(fuel, floatround_floor), FUEL_TANK);
-	else format(text, sizeof text, "~w~%d ~y~km/h~n~~w~Fuel ~g~%d ~w~/ %d L", speed, floatround(fuel, floatround_floor), FUEL_TANK);
-	PlayerTextDrawSetString(playerid, gSpeedo[playerid], text);
-	PlayerTextDrawShow(playerid, gSpeedo[playerid]);
-}
-
-static Fuel_HideSpeedo(playerid)
-{
-	if (gSpeedo[playerid] == INVALID_PLAYER_TEXT_DRAW) return;
-	PlayerTextDrawDestroy(playerid, gSpeedo[playerid]);
-	gSpeedo[playerid] = INVALID_PLAYER_TEXT_DRAW;
-}
-
 // Из OnPlayerDisconnect: textdraw игрока удаляется сам, сбрасываем ссылку
 stock Fuel_OnDisconnect(playerid)
 {
-	gSpeedo[playerid] = INVALID_PLAYER_TEXT_DRAW;
 	gFuelStationFor[playerid] = -1;
 }
 
@@ -326,7 +286,6 @@ public Fuel_OnSecond()
 		if (!IsPlayerConnected(i)) continue;
 		if (!Player[i][pLogged] || GetPlayerState(i) != PLAYER_STATE_DRIVER)
 		{
-			Fuel_HideSpeedo(i);
 			continue;
 		}
 
@@ -356,8 +315,7 @@ public Fuel_OnSecond()
 			}
 		}
 
-		if (gSpeedoHidden[i]) Fuel_HideSpeedo(i);
-		else Fuel_ShowSpeedo(i, speed, Fuel_Get(v), usesFuel);
+		// Спидометр рисует hud.inc
 	}
 	return 1;
 }
@@ -488,11 +446,11 @@ stock bool:Cmd_Fuel(playerid)
 	return true;
 }
 
+forward bool:Hud_ToggleSpeedo(playerid);    // hud.inc
+
 stock bool:Cmd_Speedo(playerid)
 {
-	gSpeedoHidden[playerid] = !gSpeedoHidden[playerid];
-	if (gSpeedoHidden[playerid]) Fuel_HideSpeedo(playerid);
-	if (gSpeedoHidden[playerid]) SendClientMessage(playerid, COLOR_WHITE, "Спидометр спрятан. Вернуть: /speedo");
+	if (Hud_ToggleSpeedo(playerid)) SendClientMessage(playerid, COLOR_WHITE, "Спидометр спрятан. Вернуть: /speedo");
 	else SendClientMessage(playerid, COLOR_WHITE, "Спидометр включён.");
 	return true;
 }
