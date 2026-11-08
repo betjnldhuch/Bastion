@@ -950,6 +950,8 @@ stock Inv_ShowUI(playerid)
 	gInvUiCells[playerid] = n;
 	gInvUiOpen[playerid] = true;
 	SelectTextDraw(playerid, 0xFFCC66FF);
+	printf("[inv-ui] id=%d cells=%d mobile=%d", playerid, n, IsPlayerMobile[playerid] ? 1 : 0);
+	SendClientMessage(playerid, COLOR_GREY, "—умка открыта на экране (%d вещ.). Ќе видно окна Ч /invlist, закрыть Ч ESC.", n);
 	return 1;
 }
 

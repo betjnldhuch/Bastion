@@ -1,7 +1,7 @@
 // =====================================================================
 //  help.inc — /help: разделы со всеми командами сервера.
 //
-//  Окно со списком разделов (листается колесиком), в разделе — таблица
+//  Окно со списком разделов (листается колесиком), в разделе — список
 //  «команда — что делает». Пока видны все разделы, в том числе админские.
 //  Новая команда — строчка в gHelp ниже: { раздел, "команда", "что делает" }.
 // =====================================================================
@@ -323,15 +323,15 @@ stock bool:Help_Show(playerid)
 
 static Help_ShowTopic(playerid, t)
 {
-	new text[4000], line[160];
-	strcat(text, "Команда\tЧто делает");
+	new text[3800], line[160], title[64];
 	for (new i = 0; i < sizeof gHelp; i++)
 	{
 		if (gHelp[i][hpTopic] != t) continue;
-		format(line, sizeof line, "\n{FFFF00}%s\t{FFFFFF}%s", gHelp[i][hpCmd], gHelp[i][hpDesc]);
+		format(line, sizeof line, "{FFFF00}%s{FFFFFF} — %s\n", gHelp[i][hpCmd], gHelp[i][hpDesc]);
 		strcat(text, line);
 	}
-	ShowPlayerDialog(playerid, DIALOG_HELP_TOPIC, DIALOG_STYLE_TABLIST_HEADERS, gHelpTopics[t], "%s", "Назад", "Закрыть", text);
+	format(title, sizeof title, "Помощь: %s", gHelpTopics[t]);
+	ShowPlayerDialog(playerid, DIALOG_HELP_TOPIC, DIALOG_STYLE_MSGBOX, title, "%s", "Назад", "Закрыть", text);
 }
 
 stock Help_OnDialog(playerid, dialogid, response, listitem)
