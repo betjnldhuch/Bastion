@@ -33,6 +33,7 @@
 
 #include "bastion/config.inc"
 #include "bastion/base.inc"
+#include "bastion/platform.inc"   // ѕ  или телефон: IsPlayerMobile[playerid]
 #include "bastion/database.inc"
 #include "bastion/accounts.inc"
 #include "bastion/vehicles.inc"
@@ -109,6 +110,7 @@ public OnGameModeExit()
 public OnPlayerConnect(playerid)
 {
 	Fps_Reset(playerid);
+	Platform_OnConnect(playerid);
 	if (!Account_OnConnect(playerid))
 	{
 		Player[playerid][pAuthShown] = true;    // игрока кикают Ч окно входа не показываем
@@ -120,6 +122,7 @@ public OnPlayerConnect(playerid)
 
 public OnPlayerDisconnect(playerid, reason)
 {
+	Platform_OnDisconnect(playerid);
 	Job_Stop(playerid);
 	Phone_HangUp(playerid);
 	Account_Save(playerid);
