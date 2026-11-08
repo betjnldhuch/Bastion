@@ -1,0 +1,57 @@
+name: Compile server gamemode
+
+# Проверка, что мод сервера (server/gamemodes/rp.pwn) компилируется
+# компилятором из официального релиза open.mp. Готовый rp.amx можно скачать
+# из артефактов запуска.
+on:
+  push:
+    paths:
+      - "server/**"
+      - ".github/workflows/server-compile.yml"
+  pull_request:
+    paths:
+      - "server/**"
+  workflow_dispatch:
+
+jobs:
+  compile:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install 32-bit runtime for pawncc
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libc6:i386 libstdc++6:i386
+
+      - name: Download open.mp server (compiler and includes)
+        run: |
+          mkdir -p "$RUNNER_TEMP/omp"
+          curl -sSL -o "$RUNNER_TEMP/omp.tar.gz" \
+            https://github.com/openmultiplayer/open.mp/releases/latest/download/open.mp-linux-x86.tar.gz
+          tar -xzf "$RUNNER_TEMP/omp.tar.gz" -C "$RUNNER_TEMP/omp"
+          PAWNCC=$(find "$RUNNER_TEMP/omp" -type f -name pawncc | head -1)
+          INC=$(dirname "$(find "$RUNNER_TEMP/omp" -type f -name open.mp.inc | head -1)")
+          echo "PAWNCC=$PAWNCC" >> "$GITHUB_ENV"
+          echo "OMP_INC=$INC" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$(dirname "$PAWNCC")" >> "$GITHUB_ENV"
+          chmod +x "$PAWNCC"
+          echo "pawncc: $PAWNCC"; echo "includes: $INC"
+
+      - name: Compile rp.pwn
+        working-directory: server/gamemodes
+        run: |
+          set -o pipefail
+          "$PAWNCC" rp.pwn -i"$OMP_INC" -orp.amx "-;+" "-(+" -d3 2>&1 | tee compile.log
+          test -f rp.amx
+          echo "Warnings: $(grep -c ' : warning ' compile.log || true)"
+
+      - name: Upload rp.amx
+        uses: actions/upload-artifact@v4
+        with:
+          name: rp-amx
+          path: |
+            server/gamemodes/rp.amx
+            server/gamemodes/compile.log
