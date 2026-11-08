@@ -10,7 +10,7 @@
 //    N   — отказаться / сбросить звонок
 //  В машине (за рулём):
 //    2   — двигатель
-//    H   — на АЗС заправка, иначе открыть шлагбаум или ворота своей фракции
+//    H   — на АЗС заправка, на СТО меню СТО, иначе шлагбаум или ворота своей фракции
 //
 //  Сервер видит только игровые кнопки GTA, поэтому E, L, цифры 1-9 и т.п.
 //  использовать нельзя. Все команды (/enter, /bank, ...) тоже работают.
@@ -210,6 +210,8 @@ stock Keys_Interact(playerid)
 		Cmd_Exit(playerid);
 		return;
 	}
+	// 1а. Внутри своего дома — меню дома (шкаф, сейф, налог, аренда)
+	if (House_TryMenu(playerid)) return;
 
 	// 2. Дверь дома: продаётся — предложить купить, иначе войти
 	h = House_GetNearby(playerid);
@@ -264,7 +266,10 @@ stock Keys_Interact(playerid)
 		return;
 	}
 
-	// 7. АЗС — купить канистру (fuel.inc)
+	// 7. Штрафстоянка (garage.inc)
+	if (Garage_TryImpoundLot(playerid)) return;
+
+	// 7а. АЗС — купить канистру (fuel.inc)
 	if (Fuel_TryCanisterShop(playerid)) return;
 
 	// 8. Шлагбаум пешком
@@ -303,7 +308,8 @@ stock Keys_OnKeyStateChange(playerid, newkeys, oldkeys)
 		}
 		if (KeyPressed(newkeys, oldkeys, _:KEY_CROUCH))     // H в машине (это ещё и гудок)
 		{
-			if (!Fuel_TryFill(playerid)) Gates_TryOpen(playerid);   // на АЗС — заправка, иначе шлагбаум
+			// на АЗС — заправка, на СТО — меню СТО, иначе шлагбаум
+			if (!Fuel_TryFill(playerid) && !Garage_TryOpen(playerid)) Gates_TryOpen(playerid);
 			return 1;
 		}
 	}

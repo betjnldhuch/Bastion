@@ -16,6 +16,7 @@
 //    bastion/bank.inc      Ч банк и банкоматы
 //    bastion/phone.inc     Ч телефон: звонки, SMS, 911
 //    bastion/business.inc  Ч бизнесы: 24/7, бар, одежда, оружие
+//    bastion/garage.inc    Ч —“ќ (ремонт, тюнинг) и штрафсто€нка
 //    bastion/gates.inc     Ч шлагбаумы и ворота фракций
 //    bastion/keys.inc      Ч управление кнопками: ALT, Y, N, H, 2
 //    bastion/chat.inc      Ч RP-чат
@@ -49,6 +50,7 @@
 #include "bastion/bank.inc"
 #include "bastion/phone.inc"
 #include "bastion/business.inc"
+#include "bastion/garage.inc"
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
 #include "bastion/fps.inc"
@@ -91,6 +93,7 @@ public OnGameModeInit()
 	Fps_Init();
 	Licenses_Init();
 	Needs_Init();
+	Garage_Init();        // —“ќ, штрафсто€нка, пол€ тюнинга в vehicles
 	Fuel_Init();          // после всех машин: им выдаЄтс€ бензин
 
 	new hour;
@@ -245,6 +248,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Licenses_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Jobs_OnDialog(playerid, dialogid, response)) return 1;
 	if (Needs_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Houses_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Garage_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	return 0;
 }
 
@@ -324,6 +329,7 @@ public OnMinuteTimer()
 stock PayDay()
 {
 	Business_PayDay();      // доход в кассы бизнесов
+	Houses_PayDay();        // аренда комнат и налог на дома
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!IsPlayerConnected(i) || !Player[i][pLogged]) continue;
