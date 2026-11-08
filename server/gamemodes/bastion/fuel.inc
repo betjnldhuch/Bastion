@@ -167,7 +167,7 @@ static Fuel_UpdateLabel(s)
 {
 	if (FuelStation[s][fsLabel] != Text3D:INVALID_3DTEXT_ID) Delete3DTextLabel(FuelStation[s][fsLabel]);
 	FuelStation[s][fsLabel] = Create3DTextLabel(
-		"{FFCC00}ј«—\n{FFFFFF}Ѕензин: ${FFFF00}%d{FFFFFF} за литр\nH в машине Ч заправка\nALT Ч канистра (%d л)",
+		"{FFCC00}ј«—\n{FFFFFF}Ѕензин: ${FFFF00}%d{FFFFFF} за литр\nH в машине или /fill Ч заправка\nALT Ч канистра (%d л)",
 		COLOR_WHITE, FuelStation[s][fsX], FuelStation[s][fsY], FuelStation[s][fsZ] + 0.8, 25.0, 0, true,
 		FuelStation[s][fsPrice], FUEL_CANISTER);
 }
@@ -270,8 +270,18 @@ static Fuel_ShowSpeedo(playerid, speed, Float:fuel, bool:usesFuel)
 {
 	if (gSpeedo[playerid] == INVALID_PLAYER_TEXT_DRAW)
 	{
-		gSpeedo[playerid] = CreatePlayerTextDraw(playerid, 630.0, 400.0, "_");
-		PlayerTextDrawAlignment(playerid, gSpeedo[playerid], TEXT_DRAW_ALIGN_RIGHT);
+		// Ќа телефоне справа внизу кнопки газа и тормоза Ч там спидометр не виден,
+		// поэтому мобильным игрокам (platform.inc) показываем его сверху по центру.
+		if (IsPlayerMobile[playerid])
+		{
+			gSpeedo[playerid] = CreatePlayerTextDraw(playerid, 320.0, 8.0, "_");
+			PlayerTextDrawAlignment(playerid, gSpeedo[playerid], TEXT_DRAW_ALIGN_CENTER);
+		}
+		else
+		{
+			gSpeedo[playerid] = CreatePlayerTextDraw(playerid, 630.0, 400.0, "_");
+			PlayerTextDrawAlignment(playerid, gSpeedo[playerid], TEXT_DRAW_ALIGN_RIGHT);
+		}
 		PlayerTextDrawFont(playerid, gSpeedo[playerid], TEXT_DRAW_FONT_1);
 		PlayerTextDrawLetterSize(playerid, gSpeedo[playerid], 0.3, 1.3);
 		PlayerTextDrawSetOutline(playerid, gSpeedo[playerid], 1);
