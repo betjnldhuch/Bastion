@@ -152,6 +152,7 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/lock", true))        { Cmd_Lock(playerid); return 1; }
 
 	// --- фракции (factions.inc) ---
+	if (Factions_OnCommand(playerid, cmd, cmdtext[pos])) return 1;   // /lmenu /fbank /fstorage /fedit
 	if (!strcmp(cmd, "/fhelp", true))       { Cmd_FHelp(playerid); return 1; }
 	if (!strcmp(cmd, "/f", true))           { Cmd_FactionChat(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/members", true))     { Cmd_Members(playerid); return 1; }

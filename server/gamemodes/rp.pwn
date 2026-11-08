@@ -220,6 +220,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Bank_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Business_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Keys_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Factions_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	return 0;
 }
 

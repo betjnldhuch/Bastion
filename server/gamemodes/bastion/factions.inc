@@ -18,10 +18,88 @@
 //  Базы и машины фракций хранятся в базе данных. Если точка стоит
 //  криво — встань в нужное место и введи /setfspawn или /setfduty.
 //  Машину фракции можно добавить так: /veh 596, сесть в неё и /addfcar 1
+//
+//  Основа фракций (всё хранится в базе rp.db):
+//    - название, цвет, названия рангов, скины и зарплаты рангов
+//      (таблицы factions и faction_ranks). При первом запуске туда
+//      записываются значения по умолчанию из этого файла.
+//    - общак (бюджет) фракции: /fbank на базе. Госструктуры получают
+//      FACTION_STATE_BUDGET каждый PayDay, банды — FACTION_TURF_BANK
+//      за каждый свой район. Зарплаты на PayDay платятся из общака.
+//    - склад фракции: /fstorage на базе. Лидер и зам закупают снаряжение
+//      за деньги общака, члены фракции берут его с нужного ранга.
+//    - выговоры: FACTION_MAX_WARNS выговоров — автоматическое увольнение.
+//    - журнал действий фракции (кто кого принял, уволил, что взял со склада).
+//    - панель лидера /lmenu: состав (и оффлайн), ранги, зарплаты, скины,
+//      выговоры, общак, склад, журнал.
+//  Админы (4+): /fedit [фракция] name|color|bank — название, цвет, общак.
 // =====================================================================
 
 #define FACTION_DUTY_RANGE      3.0     // как близко подойти к раздевалке
 #define FACTION_VEH_RESPAWN     300     // через сколько секунд брошенная машина фракции вернётся
+#define FACTION_BASE_RANGE      10.0    // как близко к раздевалке работают /fbank и /fstorage
+
+#define FACTION_STATE_BUDGET    15000   // в общак полиции и больницы каждый PayDay
+#define FACTION_TURF_BANK       300     // в общак банды за каждый её район каждый PayDay
+#define FACTION_START_BANK      30000   // стартовый общак госструктур (только при первом запуске)
+#define FACTION_BANK_MAX        100000000
+#define FACTION_MAX_WARNS       3       // столько выговоров — и игрок уволен
+#define FACTION_MAX_SALARY      20000   // максимальная зарплата ранга, которую может поставить лидер
+#define FACTION_LOG_SHOW        25      // сколько последних записей журнала показывать
+#define FACTION_LIST_MAX        40      // сколько членов фракции показывать в /lmenu
+
+// Окна (диалоги) фракций. Номера с 700, чтобы не пересекаться с config.inc.
+enum
+{
+	DIALOG_LMENU = 700,
+	DIALOG_FBANK,
+	DIALOG_FBANK_DEPOSIT,
+	DIALOG_FBANK_WITHDRAW,
+	DIALOG_FSTORE,
+	DIALOG_FSTORE_BUY,
+	DIALOG_FSTORE_BUY_QTY,
+	DIALOG_FSTORE_RANK,
+	DIALOG_LMEMBERS,
+	DIALOG_LMEMBER_ACT,
+	DIALOG_LMEMBER_RANK,
+	DIALOG_LMEMBER_WARN,
+	DIALOG_LRANKS,
+	DIALOG_LRANK_ACT,
+	DIALOG_LRANK_NAME,
+	DIALOG_LRANK_SALARY,
+	DIALOG_LRANK_SKIN,
+	DIALOG_LLOGS,
+	DIALOG_FACTION_LAST
+}
+
+// Снаряжение на складе фракции
+enum
+{
+	FITEM_ARMOUR,
+	FITEM_MEDKIT,
+	FITEM_DEAGLE,
+	FITEM_SHOTGUN,
+	FITEM_MP5,
+	FITEM_M4,
+	FITEM_RIFLE,
+	MAX_FITEMS
+}
+static const gFItemName[MAX_FITEMS][24] =
+{
+	"Бронежилет",
+	"Аптечка",
+	"Desert Eagle",
+	"Дробовик",
+	"MP5",
+	"M4",
+	"Винтовка"
+};
+static const WEAPON:gFItemWeapon[MAX_FITEMS] =
+{
+	WEAPON_FIST, WEAPON_FIST, WEAPON_DEAGLE, WEAPON_SHOTGUN, WEAPON_MP5, WEAPON_M4, WEAPON_RIFLE
+};
+static const gFItemAmmo[MAX_FITEMS]  = { 0,   0,   35,  20,  150,  150,  15   };
+static const gFItemPrice[MAX_FITEMS] = { 500, 300, 600, 800, 1200, 2000, 2500 };   // цена закупки за 1 шт. из общака
 
 // Тюремная камера (в здании LSPD, интерьер 6)
 #define JAIL_X                  264.0
@@ -42,7 +120,8 @@ enum
 	OFFER_HANDSHAKE     // пожать руку
 }
 
-static const gFactionNames[MAX_FACTIONS][32] =
+// Значения по умолчанию. Потом их меняют лидер (/lmenu) и админ (/fedit) — они хранятся в базе.
+static const gFactionDefName[MAX_FACTIONS][32] =
 {
 	"Нет",
 	"Полиция LSPD",
@@ -52,7 +131,7 @@ static const gFactionNames[MAX_FACTIONS][32] =
 	"Varrios Los Aztecas"
 };
 
-static const gFactionColors[MAX_FACTIONS] =
+static const gFactionDefColor[MAX_FACTIONS] =
 {
 	COLOR_CIVIL,
 	0x3A6EFFFF,     // полиция — синий
@@ -63,7 +142,7 @@ static const gFactionColors[MAX_FACTIONS] =
 };
 
 // Скин для каждого ранга (1..6)
-static const gFactionSkins[MAX_FACTIONS][MAX_RANK] =
+static const gFactionDefSkin[MAX_FACTIONS][MAX_RANK] =
 {
 	{ 0,   0,   0,   0,   0,   0   },
 	{ 280, 280, 281, 282, 288, 265 },   // полиция
@@ -74,7 +153,7 @@ static const gFactionSkins[MAX_FACTIONS][MAX_RANK] =
 };
 
 // Названия рангов: 0 — полиция, 1 — медики, 2 — банды
-static const gRankNames[3][MAX_RANK][24] =
+static const gDefRankNames[3][MAX_RANK][24] =
 {
 	{ "Кадет", "Офицер", "Сержант", "Лейтенант", "Капитан", "Шеф полиции" },
 	{ "Интерн", "Фельдшер", "Врач", "Хирург", "Зам. главврача", "Главврач" },
@@ -129,9 +208,28 @@ enum E_FACTION
 	Float:fDutyZ,
 	fPickup,
 	Text3D:fLabel,
-	bool:fMarker        // значок раздевалки уже создан
+	bool:fMarker,       // значок раздевалки уже создан
+	fName[32],          // название (из базы)
+	fColor,             // цвет (из базы)
+	fBank,              // общак
+	fStoreRank          // с какого ранга можно брать со склада
 }
 new Faction[MAX_FACTIONS][E_FACTION];
+
+// Ранги (из базы faction_ranks). Индекс ранга: 0..MAX_RANK-1 (ранг 1 = индекс 0)
+new gRankName[MAX_FACTIONS][MAX_RANK][24];
+new gRankSkin[MAX_FACTIONS][MAX_RANK];
+new gRankSalary[MAX_FACTIONS][MAX_RANK];
+
+// Склад фракции
+new gFStore[MAX_FACTIONS][MAX_FITEMS];
+
+// Что игрок выбрал в окнах /lmenu
+new gLMemberIds[MAX_PLAYERS][FACTION_LIST_MAX];  // номера аккаунтов в списке состава
+new gLSelMember[MAX_PLAYERS];                    // выбранный аккаунт
+new gLSelRank[MAX_PLAYERS];                      // выбранный ранг (1..6)
+new gLSelItem[MAX_PLAYERS];                      // выбранный предмет склада
+new gFactionBudgetHour = -1;                     // час последнего начисления бюджета
 
 new gVehFactionDb[MAX_VEHICLES];    // номер машины фракции в таблице fvehicles
 
@@ -151,14 +249,15 @@ stock bool:Faction_IsGang(f)
 stock Faction_GetName(f)
 {
 	new name[32];
-	if (f >= 0 && f < MAX_FACTIONS) strcat(name, gFactionNames[f]);
+	if (f == FACTION_NONE) strcat(name, "Нет");
+	else if (Faction_IsValid(f)) strcat(name, Faction[f][fName]);
 	return name;
 }
 
 stock Faction_GetColor(f)
 {
-	if (f < 0 || f >= MAX_FACTIONS) return COLOR_CIVIL;
-	return gFactionColors[f];
+	if (!Faction_IsValid(f)) return COLOR_CIVIL;
+	return Faction[f][fColor];
 }
 
 stock Faction_GetRankName(f, rank)
@@ -169,11 +268,101 @@ stock Faction_GetRankName(f, rank)
 		strcat(name, "-");
 		return name;
 	}
-	new t = 2;
-	if (f == FACTION_POLICE) t = 0;
-	else if (f == FACTION_EMS) t = 1;
-	strcat(name, gRankNames[t][rank - 1]);
+	strcat(name, gRankName[f][rank - 1]);
 	return name;
+}
+
+// Госструктура (получает бюджет от штата)
+stock bool:Faction_IsState(f)
+{
+	return (f == FACTION_POLICE || f == FACTION_EMS);
+}
+
+// Найти игрока онлайн по номеру аккаунта. INVALID_PLAYER_ID — не в сети.
+stock Faction_FindOnline(dbid)
+{
+	if (dbid <= 0) return INVALID_PLAYER_ID;
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && Player[i][pLogged] && Player[i][pDbId] == dbid) return i;
+	}
+	return INVALID_PLAYER_ID;
+}
+
+// Стоит ли игрок на базе своей фракции (у раздевалки)
+stock bool:Faction_AtBase(playerid)
+{
+	new f = Player[playerid][pFaction];
+	if (!Faction_IsValid(f)) return false;
+	if (GetPlayerVirtualWorld(playerid) != 0 || GetPlayerInterior(playerid) != 0) return false;
+	return IsPlayerInRangeOfPoint(playerid, FACTION_BASE_RANGE, Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ]);
+}
+
+// ---------------------------------------------------------------------
+//  Журнал, общак, склад, выговоры — запись в базу
+// ---------------------------------------------------------------------
+
+// Записать строку в журнал фракции (видно в /lmenu > Журнал)
+stock Faction_Log(f, const text[])
+{
+	if (!Faction_IsValid(f)) return;
+	new day, month, year, hour, minute, second, line[160];
+	getdate(year, month, day);
+	gettime(hour, minute, second);
+	format(line, sizeof line, "%02d.%02d %02d:%02d  %s", day, month, hour, minute, text);
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO faction_logs (faction, date, text) VALUES (%d, %d, '%q')", f, gettime(), line));
+}
+
+stock Faction_SaveBank(f)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE factions SET bank = %d WHERE id = %d", Faction[f][fBank], f));
+}
+
+// Изменить общак на amount (может быть отрицательным). false — не хватает денег.
+stock bool:Faction_AddBank(f, amount)
+{
+	if (!Faction_IsValid(f)) return false;
+	new nb = Faction[f][fBank] + amount;
+	if (nb < 0 || nb > FACTION_BANK_MAX) return false;
+	Faction[f][fBank] = nb;
+	Faction_SaveBank(f);
+	return true;
+}
+
+stock Faction_SaveStore(f, item)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO faction_storage (faction, item, amount) VALUES (%d, %d, %d)",
+		f, item, gFStore[f][item]));
+}
+
+stock Faction_SaveRank(f, rank)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE faction_ranks SET name = '%q', skin = %d, salary = %d WHERE faction = %d AND rank = %d",
+		gRankName[f][rank - 1], gRankSkin[f][rank - 1], gRankSalary[f][rank - 1], f, rank));
+}
+
+stock Faction_SaveInfo(f)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE factions SET name = '%q', color = %d, store_rank = %d WHERE id = %d",
+		Faction[f][fName], Faction[f][fColor], Faction[f][fStoreRank], f));
+}
+
+// Выговоры хранятся в accounts.fwarns
+stock Faction_GetWarns(dbid)
+{
+	new w = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT fwarns FROM accounts WHERE id = %d", dbid);
+	if (r != DBResult:0)
+	{
+		if (DB_GetRowCount(r) > 0) w = DB_GetFieldInt(r, 0);
+		DB_FreeResultSet(r);
+	}
+	return w;
+}
+
+stock Faction_SetWarns(dbid, warns)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET fwarns = %d WHERE id = %d", warns, dbid));
 }
 
 // Стоят ли два игрока рядом (и в одном мире/интерьере)
@@ -250,6 +439,7 @@ stock Faction_EndDuty(playerid)
 stock Faction_SetMember(playerid, f, rank)
 {
 	Faction_EndDuty(playerid);
+	if (Player[playerid][pFaction] != f) Faction_SetWarns(Player[playerid][pDbId], 0);   // новая фракция — выговоры с нуля
 	Player[playerid][pFaction] = f;
 	Player[playerid][pRank] = (f == FACTION_NONE) ? 0 : rank;
 	Faction_UpdateColor(playerid);
@@ -293,6 +483,8 @@ stock Faction_SpawnVehicle(dbid, f, model, Float:x, Float:y, Float:z, Float:a, c
 
 stock Factions_Init()
 {
+	Factions_CreateTables();
+
 	// Первый запуск: записываем базы и машины по умолчанию
 	new count = 0;
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT COUNT(*) FROM factions");
@@ -352,7 +544,7 @@ stock Factions_Init()
 		}
 		DB_FreeResultSet(r);
 	}
-	for (new f = 1; f < MAX_FACTIONS; f++) Faction_CreateMarker(f);
+	// Значки раздевалок создаются в Factions_LoadData (нужны названия и цвета)
 
 	// Машины фракций
 	new loaded = 0;
@@ -374,6 +566,146 @@ stock Factions_Init()
 		DB_FreeResultSet(r);
 	}
 	printf("[Factions] Loaded %d faction vehicles.", loaded);
+
+	Factions_LoadData();
+}
+
+// Таблицы основы фракций: название, цвет, общак, ранги, склад, журнал, выговоры.
+// Старая база дополняется сама, данные игроков не трогаются.
+stock Factions_CreateTables()
+{
+	DB_AddColumn("factions", "name", "TEXT");
+	DB_AddColumn("factions", "color", "INTEGER DEFAULT 0");
+	DB_AddColumn("factions", "bank", "INTEGER DEFAULT 0");
+	DB_AddColumn("factions", "store_rank", "INTEGER DEFAULT 2");
+	DB_AddColumn("accounts", "fwarns", "INTEGER DEFAULT 0");
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_ranks (faction INTEGER NOT NULL, rank INTEGER NOT NULL, name TEXT, skin INTEGER DEFAULT 0, salary INTEGER DEFAULT 0, PRIMARY KEY (faction, rank))"));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_storage (faction INTEGER NOT NULL, item INTEGER NOT NULL, amount INTEGER DEFAULT 0, PRIMARY KEY (faction, item))"));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, faction INTEGER NOT NULL, date INTEGER DEFAULT 0, text TEXT)"));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE INDEX IF NOT EXISTS faction_logs_f ON faction_logs (faction, id)"));
+}
+
+// Загрузить название, цвет, общак, ранги и склад. Пустые значения
+// заполняются значениями по умолчанию (первый запуск после обновления).
+stock Factions_LoadData()
+{
+	for (new f = 1; f < MAX_FACTIONS; f++)
+	{
+		// Название и цвет по умолчанию — только если их ещё нет в базе
+		new startBank = Faction_IsState(f) ? FACTION_START_BANK : 0;
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE factions SET name = '%q', color = %d, bank = %d WHERE id = %d AND name IS NULL",
+			gFactionDefName[f], gFactionDefColor[f], startBank, f));
+
+		// Ранги по умолчанию
+		new t = 2;
+		if (f == FACTION_POLICE) t = 0;
+		else if (f == FACTION_EMS) t = 1;
+		for (new rk = 1; rk <= MAX_RANK; rk++)
+		{
+			new salary = Faction_IsState(f) ? (FACTION_SALARY_BASE + rk * FACTION_SALARY_RANK) : 0;
+			DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR IGNORE INTO faction_ranks (faction, rank, name, skin, salary) VALUES (%d, %d, '%q', %d, %d)",
+				f, rk, gDefRankNames[t][rk - 1], gFactionDefSkin[f][rk - 1], salary));
+		}
+
+		// Запасные значения на случай пустой базы
+		Faction[f][fName][0] = '\0';
+		strcat(Faction[f][fName], gFactionDefName[f], 32);
+		Faction[f][fColor] = gFactionDefColor[f];
+		Faction[f][fBank] = 0;
+		Faction[f][fStoreRank] = 2;
+		for (new rk = 0; rk < MAX_RANK; rk++)
+		{
+			gRankName[f][rk][0] = '\0';
+			strcat(gRankName[f][rk], gDefRankNames[t][rk], 24);
+			gRankSkin[f][rk] = gFactionDefSkin[f][rk];
+			gRankSalary[f][rk] = 0;
+		}
+		for (new it = 0; it < MAX_FITEMS; it++) gFStore[f][it] = 0;
+	}
+
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, name, color, bank, store_rank FROM factions");
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new i = 0; i < rows; i++)
+		{
+			new f = DB_GetFieldInt(r, 0);
+			if (Faction_IsValid(f))
+			{
+				new name[32];
+				DB_GetFieldString(r, 1, name, sizeof name);
+				if (name[0] != '\0')
+				{
+					Faction[f][fName][0] = '\0';
+					strcat(Faction[f][fName], name, 32);
+				}
+				Faction[f][fColor] = DB_GetFieldInt(r, 2);
+				Faction[f][fBank] = DB_GetFieldInt(r, 3);
+				Faction[f][fStoreRank] = DB_GetFieldInt(r, 4);
+				if (Faction[f][fStoreRank] < 1 || Faction[f][fStoreRank] > MAX_RANK) Faction[f][fStoreRank] = 2;
+			}
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+
+	r = DB_ExecuteQuery(gDB, "SELECT faction, rank, name, skin, salary FROM faction_ranks");
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new i = 0; i < rows; i++)
+		{
+			new f = DB_GetFieldInt(r, 0), rk = DB_GetFieldInt(r, 1);
+			if (Faction_IsValid(f) && rk >= 1 && rk <= MAX_RANK)
+			{
+				new name[24];
+				DB_GetFieldString(r, 2, name, sizeof name);
+				if (name[0] != '\0')
+				{
+					gRankName[f][rk - 1][0] = '\0';
+					strcat(gRankName[f][rk - 1], name, 24);
+				}
+				gRankSkin[f][rk - 1] = DB_GetFieldInt(r, 3);
+				gRankSalary[f][rk - 1] = DB_GetFieldInt(r, 4);
+			}
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+
+	r = DB_ExecuteQuery(gDB, "SELECT faction, item, amount FROM faction_storage");
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new i = 0; i < rows; i++)
+		{
+			new f = DB_GetFieldInt(r, 0), it = DB_GetFieldInt(r, 1);
+			if (Faction_IsValid(f) && it >= 0 && it < MAX_FITEMS) gFStore[f][it] = DB_GetFieldInt(r, 2);
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+
+	// Значки раздевалок создавались до загрузки названий — пересоздаём с новыми
+	for (new f = 1; f < MAX_FACTIONS; f++) Faction_CreateMarker(f);
+	print("[Factions] Loaded names, ranks, banks and storage.");
+}
+
+// Бюджет на PayDay: госструктурам — от штата, бандам — с районов.
+// Вызывается из Factions_OnMinute до зарплат (OnMinuteTimer вызывает её раньше PayDay).
+stock Factions_PayDayBudget()
+{
+	new msg[144];
+	for (new f = 1; f < MAX_FACTIONS; f++)
+	{
+		new income = 0;
+		if (Faction_IsState(f)) income = FACTION_STATE_BUDGET;
+		else if (Faction_IsGang(f)) income = Turf_CountOwned(f) * FACTION_TURF_BANK;
+		if (income <= 0) continue;
+		if (!Faction_AddBank(f, income)) continue;
+		format(msg, sizeof msg, "PayDay: в общак поступило $%d. Общак: $%d.", income, Faction[f][fBank]);
+		Faction_Log(f, msg);
+	}
 }
 
 // =====================================================================
@@ -452,6 +784,15 @@ stock Factions_OnBecomeDriver(playerid)
 // Раз в минуту (из OnMinuteTimer): тюремный срок
 stock Factions_OnMinute()
 {
+	// Начало PayDay (в :00) — сначала бюджет в общаки, потом зарплаты из них
+	new hour, minute;
+	gettime(hour, minute);
+	if (minute == 0 && hour != gFactionBudgetHour)
+	{
+		gFactionBudgetHour = hour;
+		Factions_PayDayBudget();
+	}
+
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!IsPlayerConnected(i) || !Player[i][pLogged] || Player[i][pJail] <= 0) continue;
@@ -472,11 +813,21 @@ stock Factions_OnMinute()
 }
 
 // Зарплата фракции на PayDay (только госструктуры). Возвращает сумму.
+// Зарплата фракции на PayDay. Размер задаёт лидер для каждого ранга (/lmenu > Ранги),
+// деньги берутся из общака. Если в общаке не хватает — зарплаты нет.
 stock Factions_GetSalary(playerid)
 {
 	new f = Player[playerid][pFaction];
-	if (f != FACTION_POLICE && f != FACTION_EMS) return 0;
-	return FACTION_SALARY_BASE + Player[playerid][pRank] * FACTION_SALARY_RANK;
+	new rank = Player[playerid][pRank];
+	if (!Faction_IsValid(f) || rank < 1 || rank > MAX_RANK) return 0;
+	new salary = gRankSalary[f][rank - 1];
+	if (salary <= 0) return 0;
+	if (!Faction_AddBank(f, -salary))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "В общаке фракции не хватает денег на зарплату ($%d). Сообщи лидеру.", salary);
+		return 0;
+	}
+	return salary;
 }
 
 // =====================================================================
@@ -529,7 +880,7 @@ stock bool:Cmd_Duty(playerid)
 	new rank = Player[playerid][pRank];
 	if (rank < 1 || rank > MAX_RANK) rank = 1;
 	Player[playerid][pDuty] = true;
-	SetPlayerSkin(playerid, gFactionSkins[f][rank - 1]);
+	SetPlayerSkin(playerid, gRankSkin[f][rank - 1]);
 	ResetPlayerWeapons(playerid);
 
 	switch (f)
@@ -596,6 +947,7 @@ stock bool:Cmd_Uninvite(playerid, const params[])
 	new msg[144];
 	format(msg, sizeof msg, "[Фракция] %s уволил %s.", GetRPName(playerid), GetRPName(target));
 	Faction_Message(f, Faction_GetColor(f), msg);
+	Faction_Log(f, msg[10]);
 	return true;
 }
 
@@ -619,6 +971,7 @@ stock bool:Cmd_GiveRank(playerid, const params[])
 	format(msg, sizeof msg, "[Фракция] %s назначил %s на ранг «%s» (%d).", GetRPName(playerid), GetRPName(target),
 		Faction_GetRankName(f, rank), rank);
 	Faction_Message(f, Faction_GetColor(f), msg);
+	Faction_Log(f, msg[10]);
 	return true;
 }
 
@@ -631,6 +984,7 @@ stock bool:Cmd_FLeave(playerid)
 	new msg[144];
 	format(msg, sizeof msg, "[Фракция] %s ушёл из фракции.", GetRPName(playerid));
 	Faction_Message(f, Faction_GetColor(f), msg);
+	Faction_Log(f, msg[10]);
 	return true;
 }
 
@@ -659,6 +1013,7 @@ stock bool:Cmd_Accept(playerid)
 			new msg[144];
 			format(msg, sizeof msg, "[Фракция] %s принял %s во фракцию.", GetRPName(from), GetRPName(playerid));
 			Faction_Message(f, Faction_GetColor(f), msg);
+			Faction_Log(f, msg[10]);
 		}
 		case OFFER_HEAL:
 		{
@@ -937,16 +1292,686 @@ stock bool:Cmd_Heal(playerid, const params[])
 }
 
 // =====================================================================
+//  Общак фракции (/fbank)
+// =====================================================================
+stock bool:Cmd_FBank(playerid)
+{
+	new f = Player[playerid][pFaction];
+	if (!Faction_IsValid(f)) return SendClientMessage(playerid, COLOR_GREY, "Ты не состоишь во фракции.");
+	if (!Faction_AtBase(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Общак доступен только на базе фракции (у раздевалки).");
+	new title[64];
+	format(title, sizeof title, "Общак фракции — $%d", Faction[f][fBank]);
+	ShowPlayerDialog(playerid, DIALOG_FBANK, DIALOG_STYLE_LIST, title,
+		"Положить деньги в общак\nСнять деньги из общака {AFAFAF}(лидер)", "Выбрать", "Закрыть");
+	return true;
+}
+
+// =====================================================================
+//  Склад фракции (/fstorage)
+// =====================================================================
+stock bool:Cmd_FStorage(playerid)
+{
+	new f = Player[playerid][pFaction];
+	if (!Faction_IsValid(f)) return SendClientMessage(playerid, COLOR_GREY, "Ты не состоишь во фракции.");
+	if (!Faction_AtBase(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Склад доступен только на базе фракции (у раздевалки).");
+
+	new body[900], line[96];
+	strcat(body, "Снаряжение\tНа складе\tЦена закупки\n");
+	for (new it = 0; it < MAX_FITEMS; it++)
+	{
+		format(line, sizeof line, "%s\t%d шт.\t$%d\n", gFItemName[it], gFStore[f][it], gFItemPrice[it]);
+		strcat(body, line);
+	}
+	strcat(body, "{FFFF00}» Закупить снаряжение из общака\t{AFAFAF}лидер и зам\t");
+	new title[64];
+	format(title, sizeof title, "Склад фракции (брать можно с ранга %d)", Faction[f][fStoreRank]);
+	ShowPlayerDialog(playerid, DIALOG_FSTORE, DIALOG_STYLE_TABLIST_HEADERS, title, "%s", "Взять", "Закрыть", body);
+	return true;
+}
+
+stock Faction_TakeItem(playerid, it)
+{
+	new f = Player[playerid][pFaction];
+	if (!Faction_IsValid(f) || it < 0 || it >= MAX_FITEMS) return 0;
+	if (!Faction_AtBase(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от склада.");
+	if (Player[playerid][pRank] < Faction[f][fStoreRank])
+		return SendClientMessage(playerid, COLOR_GREY, "Брать со склада можно с ранга %d.", Faction[f][fStoreRank]);
+	if (Faction_IsState(f) && !Player[playerid][pDuty])
+		return SendClientMessage(playerid, COLOR_GREY, "Сначала заступи на смену: /duty.");
+	if (gFStore[f][it] <= 0) return SendClientMessage(playerid, COLOR_GREY, "На складе нет: %s. Лидер может закупить в /fstorage.", gFItemName[it]);
+
+	switch (it)
+	{
+		case FITEM_ARMOUR: SetPlayerArmour(playerid, 100.0);
+		case FITEM_MEDKIT: SetPlayerHealth(playerid, 100.0);
+		default: GivePlayerWeapon(playerid, gFItemWeapon[it], gFItemAmmo[it]);
+	}
+	gFStore[f][it]--;
+	Faction_SaveStore(f, it);
+
+	new msg[144];
+	format(msg, sizeof msg, "%s берёт со склада: %s.", GetRPName(playerid), gFItemName[it]);
+	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
+	format(msg, sizeof msg, "%s взял со склада: %s (осталось %d).", GetRPName(playerid), gFItemName[it], gFStore[f][it]);
+	Faction_Log(f, msg);
+	return 1;
+}
+
+stock Faction_ShowBuyList(playerid)
+{
+	new f = Player[playerid][pFaction];
+	new body[700], line[96];
+	strcat(body, "Снаряжение\tЦена за 1 шт.\tНа складе\n");
+	for (new it = 0; it < MAX_FITEMS; it++)
+	{
+		format(line, sizeof line, "%s\t$%d\t%d шт.\n", gFItemName[it], gFItemPrice[it], gFStore[f][it]);
+		strcat(body, line);
+	}
+	new title[64];
+	format(title, sizeof title, "Закупка (общак: $%d)", Faction[f][fBank]);
+	ShowPlayerDialog(playerid, DIALOG_FSTORE_BUY, DIALOG_STYLE_TABLIST_HEADERS, title, "%s", "Выбрать", "Назад", body);
+}
+
+// =====================================================================
+//  Панель лидера (/lmenu)
+// =====================================================================
+stock bool:Faction_IsLeader(playerid)
+{
+	return (Faction_IsValid(Player[playerid][pFaction]) && Player[playerid][pRank] >= MAX_RANK);
+}
+
+stock bool:Cmd_LMenu(playerid)
+{
+	if (!Faction_NeedLeader(playerid)) return true;
+	new f = Player[playerid][pFaction];
+	new title[64];
+	format(title, sizeof title, "Панель лидера — %s", Faction_GetName(f));
+	ShowPlayerDialog(playerid, DIALOG_LMENU, DIALOG_STYLE_LIST, title,
+		"Состав фракции (и оффлайн)\nРанги, зарплаты и скины {AFAFAF}(лидер)\nОбщак: {33AA33}$%d {AFAFAF}(на базе)\nСклад {AFAFAF}(на базе)\nДоступ к складу: с ранга %d {AFAFAF}(лидер)\nЖурнал фракции",
+		"Выбрать", "Закрыть", Faction[f][fBank], Faction[f][fStoreRank]);
+	return true;
+}
+
+// Список членов фракции из базы (онлайн и оффлайн)
+stock Faction_ShowMembers(playerid)
+{
+	new f = Player[playerid][pFaction];
+	new body[3200], line[96], name[MAX_PLAYER_NAME];
+	strcat(body, "Имя\tРанг\tВыговоры\tСтатус\n");
+	for (new i = 0; i < FACTION_LIST_MAX; i++) gLMemberIds[playerid][i] = 0;
+
+	new count = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, name, frank, fwarns FROM accounts WHERE faction = %d ORDER BY frank DESC, name LIMIT %d", f, FACTION_LIST_MAX);
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new i = 0; i < rows; i++)
+		{
+			new dbid = DB_GetFieldInt(r, 0);
+			DB_GetFieldString(r, 1, name, sizeof name);
+			new rank = DB_GetFieldInt(r, 2);
+			new online = Faction_FindOnline(dbid);
+			if (online != INVALID_PLAYER_ID) rank = Player[online][pRank];
+			if (online != INVALID_PLAYER_ID)
+				format(line, sizeof line, "%s\t%d. %s\t%d/%d\t{33AA33}онлайн [%d]\n", name, rank, Faction_GetRankName(f, rank), DB_GetFieldInt(r, 3), FACTION_MAX_WARNS, online);
+			else
+				format(line, sizeof line, "%s\t%d. %s\t%d/%d\t{AFAFAF}оффлайн\n", name, rank, Faction_GetRankName(f, rank), DB_GetFieldInt(r, 3), FACTION_MAX_WARNS);
+			strcat(body, line);
+			gLMemberIds[playerid][count++] = dbid;
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	if (count == 0) return SendClientMessage(playerid, COLOR_GREY, "Во фракции никого нет.");
+	new title[64];
+	format(title, sizeof title, "Состав фракции (%d)", count);
+	ShowPlayerDialog(playerid, DIALOG_LMEMBERS, DIALOG_STYLE_TABLIST_HEADERS, title, "%s", "Выбрать", "Назад", body);
+	return 1;
+}
+
+// Прочитать члена фракции: имя, ранг, фракцию (онлайн — из памяти, оффлайн — из базы)
+stock bool:Faction_GetMember(dbid, name[], &rank, &faction, size = sizeof (name))
+{
+	name[0] = '\0';
+	rank = 0;
+	faction = FACTION_NONE;
+	new online = Faction_FindOnline(dbid);
+	if (online != INVALID_PLAYER_ID)
+	{
+		GetPlayerName(online, name, size);
+		rank = Player[online][pRank];
+		faction = Player[online][pFaction];
+		return true;
+	}
+	new bool:found = false;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT name, frank, faction FROM accounts WHERE id = %d", dbid);
+	if (r != DBResult:0)
+	{
+		if (DB_GetRowCount(r) > 0)
+		{
+			DB_GetFieldString(r, 0, name, size);
+			rank = DB_GetFieldInt(r, 1);
+			faction = DB_GetFieldInt(r, 2);
+			found = true;
+		}
+		DB_FreeResultSet(r);
+	}
+	return found;
+}
+
+// Можно ли лидеру/заму управлять этим членом фракции
+stock bool:Faction_CanManage(playerid, dbid, name[], &rank, size = sizeof (name))
+{
+	new faction;
+	if (!Faction_NeedLeader(playerid)) return false;
+	if (!Faction_GetMember(dbid, name, rank, faction, size) || faction != Player[playerid][pFaction])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Этот человек уже не в твоей фракции.");
+		return false;
+	}
+	if (dbid == Player[playerid][pDbId])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Себя менять нельзя.");
+		return false;
+	}
+	if (rank >= Player[playerid][pRank])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Нельзя управлять равным или старшим по рангу.");
+		return false;
+	}
+	return true;
+}
+
+stock Faction_ShowMemberActions(playerid)
+{
+	new name[MAX_PLAYER_NAME], rank;
+	if (!Faction_CanManage(playerid, gLSelMember[playerid], name, rank)) return;
+	new title[96];
+	format(title, sizeof title, "%s — %s (выговоры: %d/%d)",
+		name, Faction_GetRankName(Player[playerid][pFaction], rank), Faction_GetWarns(gLSelMember[playerid]), FACTION_MAX_WARNS);
+	ShowPlayerDialog(playerid, DIALOG_LMEMBER_ACT, DIALOG_STYLE_LIST, title,
+		"Изменить ранг\nВыговор\nСнять выговор\n{FF6347}Уволить", "Выбрать", "Назад");
+}
+
+// Уволить (онлайн или оффлайн)
+stock Faction_Fire(playerid, dbid, const name[], const reason[])
+{
+	new f = Player[playerid][pFaction];
+	new target = Faction_FindOnline(dbid);
+	if (target != INVALID_PLAYER_ID)
+	{
+		Faction_SetMember(target, FACTION_NONE, 0);
+		SendClientMessage(target, COLOR_RED, "%s уволил тебя из фракции «%s». Причина: %s", GetRPName(playerid), Faction_GetName(f), reason);
+	}
+	else
+	{
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET faction = 0, frank = 0, fwarns = 0 WHERE id = %d", dbid));
+	}
+	new msg[144];
+	format(msg, sizeof msg, "%s уволил %s. Причина: %s", GetRPName(playerid), name, reason);
+	Faction_Log(f, msg);
+	format(msg, sizeof msg, "[Фракция] %s уволил %s. Причина: %s", GetRPName(playerid), name, reason);
+	Faction_Message(f, Faction_GetColor(f), msg);
+}
+
+stock Faction_SetMemberRank(playerid, dbid, const name[], rank)
+{
+	new f = Player[playerid][pFaction];
+	new target = Faction_FindOnline(dbid);
+	if (target != INVALID_PLAYER_ID)
+	{
+		Player[target][pRank] = rank;
+		Account_Save(target);
+	}
+	else
+	{
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET frank = %d WHERE id = %d", rank, dbid));
+	}
+	new msg[144];
+	format(msg, sizeof msg, "%s назначил %s на ранг «%s» (%d).", GetRPName(playerid), name, Faction_GetRankName(f, rank), rank);
+	Faction_Log(f, msg);
+	format(msg, sizeof msg, "[Фракция] %s назначил %s на ранг «%s» (%d).", GetRPName(playerid), name, Faction_GetRankName(f, rank), rank);
+	Faction_Message(f, Faction_GetColor(f), msg);
+}
+
+stock Faction_ShowRanks(playerid)
+{
+	new f = Player[playerid][pFaction];
+	new body[800], line[96];
+	strcat(body, "Ранг\tНазвание\tЗарплата\tСкин\n");
+	for (new rk = 1; rk <= MAX_RANK; rk++)
+	{
+		format(line, sizeof line, "%d\t%s\t$%d\t%d\n", rk, gRankName[f][rk - 1], gRankSalary[f][rk - 1], gRankSkin[f][rk - 1]);
+		strcat(body, line);
+	}
+	ShowPlayerDialog(playerid, DIALOG_LRANKS, DIALOG_STYLE_TABLIST_HEADERS, "Ранги (зарплата — из общака на PayDay)", "%s", "Изменить", "Назад", body);
+}
+
+stock Faction_ShowLogs(playerid)
+{
+	new f = Player[playerid][pFaction];
+	new body[3600], line[160];
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT text FROM faction_logs WHERE faction = %d ORDER BY id DESC LIMIT %d", f, FACTION_LOG_SHOW);
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new i = 0; i < rows; i++)
+		{
+			DB_GetFieldString(r, 0, line, sizeof line);
+			strcat(body, line);
+			strcat(body, "\n");
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	if (body[0] == '\0') strcat(body, "Журнал пока пуст.");
+	ShowPlayerDialog(playerid, DIALOG_LLOGS, DIALOG_STYLE_MSGBOX, "Журнал фракции (последние записи)", "%s", "Назад", "", body);
+}
+
+// Проверка длины и символов в названии (без цветовых кодов и знака %)
+stock bool:Faction_IsGoodName(const text[], minLen, maxLen)
+{
+	new len = strlen(text);
+	if (len < minLen || len > maxLen) return false;
+	for (new i = 0; i < len; i++)
+	{
+		if (text[i] == '{' || text[i] == '}' || text[i] == '%' || text[i] == '\t' || text[i] == '\n') return false;
+	}
+	return true;
+}
+
+// =====================================================================
+//  Окна фракций. Вызывается из OnDialogResponse (rp.pwn).
+//  Возвращает 1, если окно наше.
+// =====================================================================
+stock Factions_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
+{
+	if (dialogid < DIALOG_LMENU || dialogid >= DIALOG_FACTION_LAST) return 0;
+	new f = Player[playerid][pFaction];
+	if (!Faction_IsValid(f)) return 1;
+	new amount, msg[144];
+
+	switch (dialogid)
+	{
+		case DIALOG_FBANK:
+		{
+			if (!response) return 1;
+			if (listitem == 0)
+			{
+				ShowPlayerDialog(playerid, DIALOG_FBANK_DEPOSIT, DIALOG_STYLE_INPUT, "Положить в общак",
+					"Сколько положить в общак фракции?\nУ тебя: $%d", "Положить", "Назад", GetMoney(playerid));
+			}
+			else
+			{
+				if (!Faction_IsLeader(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Снимать деньги из общака может только лидер."); return 1; }
+				ShowPlayerDialog(playerid, DIALOG_FBANK_WITHDRAW, DIALOG_STYLE_INPUT, "Снять из общака",
+					"Сколько снять из общака?\nВ общаке: $%d", "Снять", "Назад", Faction[f][fBank]);
+			}
+		}
+		case DIALOG_FBANK_DEPOSIT:
+		{
+			if (!response) { Cmd_FBank(playerid); return 1; }
+			if (!Faction_AtBase(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от базы."); return 1; }
+			if (!IsNumeric(inputtext) || (amount = strval(inputtext)) < 1 || amount > 1000000)
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Сумма от $1 до $1000000.");
+				return 1;
+			}
+			if (GetMoney(playerid) < amount) { SendClientMessage(playerid, COLOR_GREY, "У тебя нет столько денег."); return 1; }
+			if (!Faction_AddBank(f, amount)) { SendClientMessage(playerid, COLOR_GREY, "Общак переполнен."); return 1; }
+			GiveMoney(playerid, -amount);
+			Account_Save(playerid);
+			SendClientMessage(playerid, COLOR_GREEN, "Ты положил $%d в общак. В общаке: $%d.", amount, Faction[f][fBank]);
+			format(msg, sizeof msg, "%s положил в общак $%d (стало $%d).", GetRPName(playerid), amount, Faction[f][fBank]);
+			Faction_Log(f, msg);
+		}
+		case DIALOG_FBANK_WITHDRAW:
+		{
+			if (!response) { Cmd_FBank(playerid); return 1; }
+			if (!Faction_IsLeader(playerid)) return 1;
+			if (!Faction_AtBase(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от базы."); return 1; }
+			if (!IsNumeric(inputtext) || (amount = strval(inputtext)) < 1 || amount > 1000000)
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Сумма от $1 до $1000000.");
+				return 1;
+			}
+			if (!Faction_AddBank(f, -amount)) { SendClientMessage(playerid, COLOR_GREY, "В общаке нет столько денег."); return 1; }
+			GiveMoney(playerid, amount);
+			Account_Save(playerid);
+			SendClientMessage(playerid, COLOR_GREEN, "Ты снял $%d из общака. В общаке: $%d.", amount, Faction[f][fBank]);
+			format(msg, sizeof msg, "%s снял из общака $%d (осталось $%d).", GetRPName(playerid), amount, Faction[f][fBank]);
+			Faction_Log(f, msg);
+			format(msg, sizeof msg, "[Фракция] Лидер %s снял из общака $%d.", GetRPName(playerid), amount);
+			Faction_Message(f, Faction_GetColor(f), msg);
+		}
+		case DIALOG_FSTORE:
+		{
+			if (!response) return 1;
+			if (listitem >= 0 && listitem < MAX_FITEMS)
+			{
+				Faction_TakeItem(playerid, listitem);
+				return 1;
+			}
+			if (!Faction_NeedLeader(playerid)) return 1;
+			Faction_ShowBuyList(playerid);
+		}
+		case DIALOG_FSTORE_BUY:
+		{
+			if (!response) { Cmd_FStorage(playerid); return 1; }
+			if (listitem < 0 || listitem >= MAX_FITEMS) return 1;
+			gLSelItem[playerid] = listitem;
+			ShowPlayerDialog(playerid, DIALOG_FSTORE_BUY_QTY, DIALOG_STYLE_INPUT, "Закупка",
+				"%s — $%d за 1 шт.\nСколько закупить? (1-100)\nВ общаке: $%d", "Купить", "Назад",
+				gFItemName[listitem], gFItemPrice[listitem], Faction[f][fBank]);
+		}
+		case DIALOG_FSTORE_BUY_QTY:
+		{
+			if (!response) { Faction_ShowBuyList(playerid); return 1; }
+			if (!Faction_NeedLeader(playerid)) return 1;
+			if (!Faction_AtBase(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от базы."); return 1; }
+			new it = gLSelItem[playerid];
+			if (it < 0 || it >= MAX_FITEMS) return 1;
+			if (!IsNumeric(inputtext) || (amount = strval(inputtext)) < 1 || amount > 100)
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Количество от 1 до 100.");
+				return 1;
+			}
+			new cost = amount * gFItemPrice[it];
+			if (!Faction_AddBank(f, -cost)) { SendClientMessage(playerid, COLOR_GREY, "В общаке не хватает денег: нужно $%d.", cost); return 1; }
+			gFStore[f][it] += amount;
+			Faction_SaveStore(f, it);
+			SendClientMessage(playerid, COLOR_GREEN, "Закуплено: %s x%d за $%d. На складе: %d.", gFItemName[it], amount, cost, gFStore[f][it]);
+			format(msg, sizeof msg, "%s закупил на склад: %s x%d за $%d.", GetRPName(playerid), gFItemName[it], amount, cost);
+			Faction_Log(f, msg);
+			Cmd_FStorage(playerid);
+		}
+		case DIALOG_FSTORE_RANK:
+		{
+			if (!response) { Cmd_LMenu(playerid); return 1; }
+			if (!Faction_IsLeader(playerid)) return 1;
+			if (!IsNumeric(inputtext) || (amount = strval(inputtext)) < 1 || amount > MAX_RANK)
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Ранг от 1 до %d.", MAX_RANK);
+				return 1;
+			}
+			Faction[f][fStoreRank] = amount;
+			Faction_SaveInfo(f);
+			SendClientMessage(playerid, COLOR_GREEN, "Теперь брать со склада можно с ранга %d.", amount);
+			format(msg, sizeof msg, "%s разрешил брать со склада с ранга %d.", GetRPName(playerid), amount);
+			Faction_Log(f, msg);
+			Cmd_LMenu(playerid);
+		}
+		case DIALOG_LMENU:
+		{
+			if (!response) return 1;
+			if (!Faction_NeedLeader(playerid)) return 1;
+			switch (listitem)
+			{
+				case 0: Faction_ShowMembers(playerid);
+				case 1:
+				{
+					if (!Faction_IsLeader(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Ранги и зарплаты настраивает только лидер."); return 1; }
+					Faction_ShowRanks(playerid);
+				}
+				case 2: Cmd_FBank(playerid);
+				case 3: Cmd_FStorage(playerid);
+				case 4:
+				{
+					if (!Faction_IsLeader(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Это может только лидер."); return 1; }
+					ShowPlayerDialog(playerid, DIALOG_FSTORE_RANK, DIALOG_STYLE_INPUT, "Доступ к складу",
+						"С какого ранга можно брать снаряжение со склада? (1-%d)\nСейчас: с ранга %d", "Сохранить", "Назад",
+						MAX_RANK, Faction[f][fStoreRank]);
+				}
+				case 5: Faction_ShowLogs(playerid);
+			}
+		}
+		case DIALOG_LLOGS:
+		{
+			Cmd_LMenu(playerid);
+		}
+		case DIALOG_LMEMBERS:
+		{
+			if (!response) { Cmd_LMenu(playerid); return 1; }
+			if (listitem < 0 || listitem >= FACTION_LIST_MAX || gLMemberIds[playerid][listitem] == 0) return 1;
+			gLSelMember[playerid] = gLMemberIds[playerid][listitem];
+			Faction_ShowMemberActions(playerid);
+		}
+		case DIALOG_LMEMBER_ACT:
+		{
+			if (!response) { Faction_ShowMembers(playerid); return 1; }
+			new name[MAX_PLAYER_NAME], rank;
+			if (!Faction_CanManage(playerid, gLSelMember[playerid], name, rank)) return 1;
+			switch (listitem)
+			{
+				case 0:
+				{
+					ShowPlayerDialog(playerid, DIALOG_LMEMBER_RANK, DIALOG_STYLE_INPUT, "Ранг",
+						"Новый ранг для %s (1-%d)\nСейчас: %d. %s", "Сохранить", "Назад",
+						name, Player[playerid][pRank] - 1, rank, Faction_GetRankName(f, rank));
+				}
+				case 1:
+				{
+					ShowPlayerDialog(playerid, DIALOG_LMEMBER_WARN, DIALOG_STYLE_INPUT, "Выговор",
+						"Выговор для %s. Напиши причину.\nНа %d-м выговоре игрок будет уволен.", "Выдать", "Назад",
+						name, FACTION_MAX_WARNS);
+				}
+				case 2:
+				{
+					new warns = Faction_GetWarns(gLSelMember[playerid]);
+					if (warns <= 0) { SendClientMessage(playerid, COLOR_GREY, "У него нет выговоров."); Faction_ShowMemberActions(playerid); return 1; }
+					Faction_SetWarns(gLSelMember[playerid], warns - 1);
+					format(msg, sizeof msg, "%s снял выговор с %s (%d/%d).", GetRPName(playerid), name, warns - 1, FACTION_MAX_WARNS);
+					Faction_Log(f, msg);
+					SendClientMessage(playerid, COLOR_GREEN, "Выговор снят. Осталось: %d/%d.", warns - 1, FACTION_MAX_WARNS);
+					new target = Faction_FindOnline(gLSelMember[playerid]);
+					if (target != INVALID_PLAYER_ID) SendClientMessage(target, COLOR_GREEN, "%s снял с тебя выговор (%d/%d).", GetRPName(playerid), warns - 1, FACTION_MAX_WARNS);
+					Faction_ShowMemberActions(playerid);
+				}
+				case 3:
+				{
+					Faction_Fire(playerid, gLSelMember[playerid], name, "решение руководства");
+				}
+			}
+		}
+		case DIALOG_LMEMBER_RANK:
+		{
+			if (!response) { Faction_ShowMemberActions(playerid); return 1; }
+			new name[MAX_PLAYER_NAME], rank;
+			if (!Faction_CanManage(playerid, gLSelMember[playerid], name, rank)) return 1;
+			if (!IsNumeric(inputtext) || (amount = strval(inputtext)) < 1 || amount >= Player[playerid][pRank])
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Ранг должен быть от 1 до %d.", Player[playerid][pRank] - 1);
+				return 1;
+			}
+			Faction_SetMemberRank(playerid, gLSelMember[playerid], name, amount);
+			Faction_ShowMemberActions(playerid);
+		}
+		case DIALOG_LMEMBER_WARN:
+		{
+			if (!response) { Faction_ShowMemberActions(playerid); return 1; }
+			new name[MAX_PLAYER_NAME], rank, reason[64];
+			if (!Faction_CanManage(playerid, gLSelMember[playerid], name, rank)) return 1;
+			if (!RestParam(inputtext, 0, reason) || !Faction_IsGoodName(reason, 2, 60))
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Напиши причину: от 2 до 60 символов, без фигурных скобок и знака процента.");
+				return 1;
+			}
+			new warns = Faction_GetWarns(gLSelMember[playerid]) + 1;
+			new target = Faction_FindOnline(gLSelMember[playerid]);
+			if (warns >= FACTION_MAX_WARNS)
+			{
+				new why[96];
+				format(why, sizeof why, "%d/%d выговоров (последний: %s)", warns, FACTION_MAX_WARNS, reason);
+				Faction_Fire(playerid, gLSelMember[playerid], name, why);
+				return 1;
+			}
+			Faction_SetWarns(gLSelMember[playerid], warns);
+			format(msg, sizeof msg, "%s выдал выговор %s (%d/%d). Причина: %s", GetRPName(playerid), name, warns, FACTION_MAX_WARNS, reason);
+			Faction_Log(f, msg);
+			SendClientMessage(playerid, COLOR_WHITE, "Выговор выдан (%d/%d).", warns, FACTION_MAX_WARNS);
+			if (target != INVALID_PLAYER_ID)
+				SendClientMessage(target, COLOR_RED, "%s выдал тебе выговор (%d/%d). Причина: %s", GetRPName(playerid), warns, FACTION_MAX_WARNS, reason);
+			Faction_ShowMemberActions(playerid);
+		}
+		case DIALOG_LRANKS:
+		{
+			if (!response) { Cmd_LMenu(playerid); return 1; }
+			if (!Faction_IsLeader(playerid) || listitem < 0 || listitem >= MAX_RANK) return 1;
+			gLSelRank[playerid] = listitem + 1;
+			new title[64];
+			format(title, sizeof title, "Ранг %d — %s", listitem + 1, gRankName[f][listitem]);
+			ShowPlayerDialog(playerid, DIALOG_LRANK_ACT, DIALOG_STYLE_LIST, title,
+				"Название\nЗарплата: $%d\nСкин формы: %d", "Выбрать", "Назад",
+				gRankSalary[f][listitem], gRankSkin[f][listitem]);
+		}
+		case DIALOG_LRANK_ACT:
+		{
+			if (!response) { Faction_ShowRanks(playerid); return 1; }
+			if (!Faction_IsLeader(playerid)) return 1;
+			new rk = gLSelRank[playerid];
+			if (rk < 1 || rk > MAX_RANK) return 1;
+			switch (listitem)
+			{
+				case 0: ShowPlayerDialog(playerid, DIALOG_LRANK_NAME, DIALOG_STYLE_INPUT, "Название ранга",
+					"Новое название ранга %d (2-23 символа)\nСейчас: %s", "Сохранить", "Назад", rk, gRankName[f][rk - 1]);
+				case 1: ShowPlayerDialog(playerid, DIALOG_LRANK_SALARY, DIALOG_STYLE_INPUT, "Зарплата ранга",
+					"Зарплата ранга %d на PayDay (0-%d). Платится из общака.\nСейчас: $%d", "Сохранить", "Назад", rk, FACTION_MAX_SALARY, gRankSalary[f][rk - 1]);
+				case 2: ShowPlayerDialog(playerid, DIALOG_LRANK_SKIN, DIALOG_STYLE_INPUT, "Скин ранга",
+					"Скин формы для ранга %d (0-311)\nСейчас: %d", "Сохранить", "Назад", rk, gRankSkin[f][rk - 1]);
+			}
+		}
+		case DIALOG_LRANK_NAME, DIALOG_LRANK_SALARY, DIALOG_LRANK_SKIN:
+		{
+			if (!response) { Faction_ShowRanks(playerid); return 1; }
+			if (!Faction_IsLeader(playerid)) return 1;
+			new rk = gLSelRank[playerid];
+			if (rk < 1 || rk > MAX_RANK) return 1;
+			if (dialogid == DIALOG_LRANK_NAME)
+			{
+				new text[24];
+				if (!RestParam(inputtext, 0, text) || !Faction_IsGoodName(text, 2, 23))
+				{
+					SendClientMessage(playerid, COLOR_GREY, "Название: от 2 до 23 символов, без фигурных скобок и знака процента.");
+					return 1;
+				}
+				gRankName[f][rk - 1][0] = '\0';
+				strcat(gRankName[f][rk - 1], text, 24);
+				format(msg, sizeof msg, "%s переименовал ранг %d в «%s».", GetRPName(playerid), rk, text);
+			}
+			else if (dialogid == DIALOG_LRANK_SALARY)
+			{
+				if (!IsNumeric(inputtext) || (amount = strval(inputtext)) < 0 || amount > FACTION_MAX_SALARY)
+				{
+					SendClientMessage(playerid, COLOR_GREY, "Зарплата от $0 до $%d.", FACTION_MAX_SALARY);
+					return 1;
+				}
+				gRankSalary[f][rk - 1] = amount;
+				format(msg, sizeof msg, "%s поставил зарплату рангу %d: $%d.", GetRPName(playerid), rk, amount);
+			}
+			else
+			{
+				if (!IsNumeric(inputtext) || (amount = strval(inputtext)) < 0 || amount > 311 || amount == 74)
+				{
+					SendClientMessage(playerid, COLOR_GREY, "Скин от 0 до 311 (кроме 74).");
+					return 1;
+				}
+				gRankSkin[f][rk - 1] = amount;
+				format(msg, sizeof msg, "%s поставил скин %d рангу %d.", GetRPName(playerid), amount, rk);
+			}
+			Faction_SaveRank(f, rk);
+			Faction_Log(f, msg);
+			SendClientMessage(playerid, COLOR_GREEN, "Сохранено.");
+			Faction_ShowRanks(playerid);
+		}
+	}
+	return 1;
+}
+
+// =====================================================================
+//  Админ: /fedit [фракция] name [название] | color [RRGGBB] | bank [сумма]
+// =====================================================================
+stock bool:Cmd_FEdit(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, f, what[16], value[32];
+	if (!NextIntParam(params, pos, f) || !Faction_IsValid(f) || !NextParam(params, pos, what) || !RestParam(params, pos, value))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Использование: /fedit [фракция 1-%d] name [название] | color [RRGGBB] | bank [сумма]", MAX_FACTIONS - 1);
+		return true;
+	}
+
+	new msg[144];
+	if (!strcmp(what, "name", true))
+	{
+		if (!Faction_IsGoodName(value, 2, 31)) return SendClientMessage(playerid, COLOR_GREY, "Название: от 2 до 31 символа, без фигурных скобок и знака процента.");
+		Faction[f][fName][0] = '\0';
+		strcat(Faction[f][fName], value, 32);
+		format(msg, sizeof msg, "Администратор %s переименовал фракцию в «%s».", GetRPName(playerid), value);
+	}
+	else if (!strcmp(what, "color", true))
+	{
+		new rgb = 0, len = strlen(value);
+		if (len != 6) return SendClientMessage(playerid, COLOR_GREY, "Цвет — 6 знаков RRGGBB, например 3A6EFF.");
+		for (new i = 0; i < 6; i++)
+		{
+			new c = value[i], d;
+			if (c >= '0' && c <= '9') d = c - '0';
+			else if (c >= 'a' && c <= 'f') d = c - 'a' + 10;
+			else if (c >= 'A' && c <= 'F') d = c - 'A' + 10;
+			else return SendClientMessage(playerid, COLOR_GREY, "Цвет — 6 знаков RRGGBB, например 3A6EFF.");
+			rgb = (rgb << 4) | d;
+		}
+		Faction[f][fColor] = (rgb << 8) | 0xFF;
+		format(msg, sizeof msg, "Администратор %s сменил цвет фракции на %s.", GetRPName(playerid), value);
+	}
+	else if (!strcmp(what, "bank", true))
+	{
+		if (!IsNumeric(value)) return SendClientMessage(playerid, COLOR_GREY, "Сумма — число.");
+		new amount = strval(value);
+		if (amount < 0 || amount > FACTION_BANK_MAX) return SendClientMessage(playerid, COLOR_GREY, "Сумма от 0 до %d.", FACTION_BANK_MAX);
+		Faction[f][fBank] = amount;
+		Faction_SaveBank(f);
+		format(msg, sizeof msg, "Администратор %s установил общак: $%d.", GetRPName(playerid), amount);
+	}
+	else return SendClientMessage(playerid, COLOR_GREY, "Можно менять: name, color, bank.");
+
+	Faction_SaveInfo(f);
+	Faction_CreateMarker(f);
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && Player[i][pLogged] && Player[i][pFaction] == f) Faction_UpdateColor(i);
+	}
+	Faction_Log(f, msg);
+	SendClientMessage(playerid, COLOR_ADMIN, "Фракция %d: %s", f, msg);
+	return true;
+}
+
+// =====================================================================
+//  Команды основы фракций. Вызывается из Commands_Process (commands.inc).
+//  Возвращает 1, если команда наша.
+// =====================================================================
+stock Factions_OnCommand(playerid, const cmd[], const params[])
+{
+	if (!strcmp(cmd, "/lmenu", true))       { Cmd_LMenu(playerid); return 1; }
+	if (!strcmp(cmd, "/fbank", true))       { Cmd_FBank(playerid); return 1; }
+	if (!strcmp(cmd, "/fstorage", true) || !strcmp(cmd, "/fsklad", true)) { Cmd_FStorage(playerid); return 1; }
+	if (!strcmp(cmd, "/fedit", true))       { Cmd_FEdit(playerid, params); return 1; }
+	return 0;
+}
+
+// =====================================================================
 //  Справка
 // =====================================================================
 stock bool:Cmd_FHelp(playerid)
 {
-	new text[1400];
+	new text[2000];
 	strcat(text, "{FFFF00}Все фракции\n");
 	strcat(text, "{FFFFFF}/f — рация   /members — кто онлайн   /duty — смена (в раздевалке)   /fleave — уйти\n");
-	strcat(text, "/accept — принять приглашение или лечение\n\n");
+	strcat(text, "/accept — принять приглашение или лечение\n");
+	strcat(text, "/fbank — общак (на базе)   /fstorage — склад: оружие, бронежилет, аптечка (на базе)\n\n");
 	strcat(text, "{FFFF00}Лидер и заместитель (ранг 5-6)\n");
-	strcat(text, "{FFFFFF}/invite [id]   /uninvite [id]   /giverank [id] [ранг]\n\n");
+	strcat(text, "{FFFFFF}/lmenu — панель лидера: состав (и оффлайн), выговоры, ранги, зарплаты, склад, журнал\n");
+	strcat(text, "/invite [id]   /uninvite [id]   /giverank [id] [ранг]\n\n");
 	strcat(text, "{3A6EFF}Полиция LSPD\n");
 	strcat(text, "{FFFFFF}/su [id] [звёзды] [причина] — розыск   /clear [id] — снять розыск   /wanted — список\n");
 	strcat(text, "/cuff /uncuff [id] — наручники   /putcar [id] — посадить в машину\n");
@@ -954,9 +1979,9 @@ stock bool:Cmd_FHelp(playerid)
 	strcat(text, "{FF8080}Больница (EMS)\n");
 	strcat(text, "{FFFFFF}/heal [id] — предложить лечение\n\n");
 	strcat(text, "{10A010}Банды\n");
-	strcat(text, "{FFFFFF}/duty на базе — форма банды и оружие. Войны за районы — скоро.\n\n");
+	strcat(text, "{FFFFFF}/duty на базе — форма банды и оружие. /turfs /capture — войны за районы, районы пополняют общак.\n\n");
 	strcat(text, "{FF66FF}Админам (4+)\n");
-	strcat(text, "{FFFFFF}/makeleader /setfaction /setfspawn /setfduty /addfcar /delfcar   (2+) /jail /unjail");
+	strcat(text, "{FFFFFF}/makeleader /setfaction /setfspawn /setfduty /addfcar /delfcar /fedit   (2+) /jail /unjail");
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Фракции", "%s", "Закрыть", "", text);
 	return true;
 }
@@ -1001,6 +2026,9 @@ stock bool:Cmd_MakeLeader(playerid, const params[])
 
 	Faction_SetMember(target, f, MAX_RANK);
 	SendClientMessageToAll(Faction_GetColor(f), "%s назначен лидером фракции «%s».", GetRPName(target), Faction_GetName(f));
+	new msg[144];
+	format(msg, sizeof msg, "Администратор %s назначил лидером %s.", GetRPName(playerid), GetRPName(target));
+	Faction_Log(f, msg);
 	return true;
 }
 
