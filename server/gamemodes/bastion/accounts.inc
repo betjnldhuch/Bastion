@@ -206,6 +206,7 @@ stock Account_FinishLogin(playerid)
 	Account_Save(playerid);
 
 	Vehicles_LoadForPlayer(playerid);   // личная машина, если есть (vehicles.inc)
+	Admin_OnLogin(playerid);            // мут, варны, деморган (admin.inc)
 
 	Account_SetNormalSpawn(playerid);
 	TogglePlayerSpectating(playerid, false);  // выход из режима наблюдения = спавн

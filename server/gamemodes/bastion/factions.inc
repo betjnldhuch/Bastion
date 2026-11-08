@@ -1975,7 +1975,8 @@ stock bool:Cmd_FHelp(playerid)
 	strcat(text, "{3A6EFF}ѕолици€ LSPD\n");
 	strcat(text, "{FFFFFF}/su [id] [звЄзды] [причина] Ч розыск   /clear [id] Ч сн€ть розыск   /wanted Ч список\n");
 	strcat(text, "/cuff /uncuff [id] Ч наручники   /putcar [id] Ч посадить в машину\n");
-	strcat(text, "/arrest [id] Ч посадить в тюрьму (у участка)   /m Ч мегафон\n\n");
+	strcat(text, "/arrest [id] Ч посадить в тюрьму (у участка)   /m Ч мегафон\n");
+	strcat(text, "/impound [штраф] Ч эвакуировать личную машину на штрафсто€нку (сто€ р€дом)\n\n");
 	strcat(text, "{FF8080}Ѕольница (EMS)\n");
 	strcat(text, "{FFFFFF}/heal [id] Ч предложить лечение\n\n");
 	strcat(text, "{10A010}Ѕанды\n");
