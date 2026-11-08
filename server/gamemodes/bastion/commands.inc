@@ -145,6 +145,7 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/delpoint", true))    { Cmd_DelPoint(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/dev", true))         { Cmd_Dev(playerid); return 1; }
 	if (!strcmp(cmd, "/mo", true))          { Cmd_Mo(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/mt", true))          { Cmd_Mt(playerid, cmdtext[pos]); return 1; }
 
 	// --- чат (chat.inc) ---
 	if (!strcmp(cmd, "/me", true))          { Cmd_Me(playerid, cmdtext[pos]); return 1; }

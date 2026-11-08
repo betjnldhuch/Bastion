@@ -24,6 +24,7 @@
 //    bastion/admin.inc     Ч администраци€: наказани€, логи, репорты
 //    bastion/admin_tools.inc Ч телепорты (метка на карте, /tp) и инструменты админов
 //    bastion/dev.inc       Ч разработка в игре: координаты /pos, маппинг /mo
+//    bastion/textures.inc  Ч перекраска объектов маппинга: текстуры, цвет, надписи /mt
 //    bastion/commands.inc  Ч список команд
 //
 //   омпил€ци€: открой этот файл в Qawno и нажми F5.
@@ -50,6 +51,7 @@
 #include "bastion/admin.inc"
 #include "bastion/admin_tools.inc"
 #include "bastion/dev.inc"         // разработка в игре: /pos, /dev, маппинг /mo
+#include "bastion/textures.inc"    // перекраска объектов маппинга: /mt
 #include "bastion/factions.inc"   // после admin.inc: использует Admin_Check
 #include "bastion/turfs.inc"
 #include "bastion/bank.inc"
@@ -132,6 +134,7 @@ public OnPlayerConnect(playerid)
 	Platform_OnConnect(playerid);
 	Admin_OnConnect(playerid);
 	Dev_OnConnect(playerid);            // убранные здани€ GTA (dev.inc)
+	Tex_OnConnect(playerid);
 	if (!Account_OnConnect(playerid))
 	{
 		Player[playerid][pAuthShown] = true;    // игрока кикают Ч окно входа не показываем
@@ -280,6 +283,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Jobs_OnDialog(playerid, dialogid, response)) return 1;
 	if (Needs_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Dev_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Tex_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Houses_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Garage_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	return 0;
