@@ -16,7 +16,7 @@ stock bool:Cmd_Help(playerid)
 	strcat(text, "Y Ч прин€ть / ответить на звонок   N Ч отказатьс€   ¬ машине: 2 Ч двигатель, H Ч шлагбаум\n\n");
 	strcat(text, "{FFFF00}ќбщее\n");
 	strcat(text, "{FFFFFF}/stats Ч статистика   /time Ч врем€   /taxes Ч налоги и казна   /pay Ч передать деньги   /fps Ч твой FPS\n/report Ч вопрос или жалоба администрации   /admins Ч админы онлайн\n");
-	strcat(text, "/inv Ч сумка (еда, аптечки, ремкомплекты)   /hunger Ч сытость (поесть: бар или еда из 24/7)\n\n");
+	strcat(text, "/inv Ч сумка и одежда: использовать, надеть, передать, выбросить (подн€ть: ALT или /pickup)   /hunger Ч сытость (поесть: бар или еда из 24/7)\n\n");
 	strcat(text, "{FFFF00}RP-чат\n");
 	strcat(text, "{FFFFFF}ѕросто пиши в чат Ч теб€ услышат игроки р€дом.\n");
 	strcat(text, "/me Ч действие   /do Ч описание   /try Ч попытка   /s Ч крик   /b Ч OOC   /pm Ч Ћ—\n\n");
@@ -160,6 +160,7 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/taxi", true))        { Cmd_Taxi(playerid); return 1; }
 	if (!strcmp(cmd, "/inv", true) || !strcmp(cmd, "/i", true)) { Cmd_Inv(playerid); return 1; }
 	if (!strcmp(cmd, "/hunger", true))      { Cmd_Hunger(playerid); return 1; }
+	if (!strcmp(cmd, "/pickup", true))      { Cmd_Pickup(playerid); return 1; }
 	if (!strcmp(cmd, "/gotaxi", true))      { Cmd_GoTaxi(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/repair", true))      { Cmd_Repair(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/refill", true))      { Cmd_Refill(playerid, cmdtext[pos]); return 1; }
