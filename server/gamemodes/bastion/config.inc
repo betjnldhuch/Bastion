@@ -40,6 +40,23 @@
 #define FUEL_PRICE          5                // цена литра на новых АЗС (у каждой АЗС можно своя: /addfuel)
 #define FUEL_CANISTER       20               // литров в канистре
 
+// Лицензии и автошкола (licenses.inc)
+#define LIC_PRICE_CAR       1500
+#define LIC_PRICE_MOTO      1000
+#define LIC_PRICE_BOAT      2000
+#define LIC_PRICE_GUN       5000
+#define LIC_GUN_MIN_LEVEL   2                // с какого уровня можно сдать на оружие
+#define LIC_TAKE_MIN_RANK   2                // с какого ранга полиция забирает лицензии (/takelic)
+#define LIC_SCHOOL_X        1481.0           // автошкола — у мэрии Лос-Сантоса
+#define LIC_SCHOOL_Y        -1771.3
+#define LIC_SCHOOL_Z        18.8
+#define LIC_CAR_SPAWN_X     1477.0           // где появляется учебная машина
+#define LIC_CAR_SPAWN_Y     -1738.0
+#define LIC_CAR_SPAWN_Z     13.4
+#define LIC_CAR_SPAWN_A     270.0
+#define LIC_CAR_MODEL       410              // Manana
+#define LIC_MOTO_MODEL      461              // PCJ-600
+
 // Фракции (factions.inc)
 #define FACTION_SALARY_BASE 300              // зарплата полиции и медиков на PayDay...
 #define FACTION_SALARY_RANK 100              // ...плюс столько за каждый ранг

@@ -93,7 +93,8 @@ stock Vehicles_LoadForPlayer(playerid)
 			DB_GetFieldInt(r, 5), DB_GetFieldInt(r, 6), DB_GetFieldInt(r, 7) != 0);
 	}
 	DB_FreeResultSet(r);
-	Fuel_LoadPlayer(playerid);          // бензин машины и канистра (fuel.inc)
+	Fuel_LoadPlayer(playerid);
+	Licenses_LoadPlayer(playerid);      // лицензии (licenses.inc)          // бензин машины и канистра (fuel.inc)
 }
 
 // При выходе игрока машина пропадает (и появится снова при входе)
