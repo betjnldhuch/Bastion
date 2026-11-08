@@ -15,8 +15,8 @@ stock bool:Cmd_Help(playerid)
 	strcat(text, "{FFFFFF}ALT Ч действие р€дом (дом, банкомат, магазин, работа) или меню игрока перед тобой\n");
 	strcat(text, "Y Ч прин€ть / ответить на звонок   N Ч отказатьс€   ¬ машине: 2 Ч двигатель, H Ч шлагбаум\n\n");
 	strcat(text, "{FFFF00}ќбщее\n");
-	strcat(text, "{FFFFFF}/stats Ч статистика   /time Ч врем€   /pay Ч передать деньги   /fps Ч твой FPS\n/report Ч вопрос или жалоба администрации   /admins Ч админы онлайн\n");
-	strcat(text, "/inv Ч сумка (еда, аптечки, ремкомплекты)   /hunger Ч сытость (поесть: бар или еда из 24/7)\n\n");
+	strcat(text, "{FFFFFF}/stats Ч статистика   /time Ч врем€   /taxes Ч налоги и казна   /pay Ч передать деньги   /fps Ч твой FPS\n/report Ч вопрос или жалоба администрации   /admins Ч админы онлайн\n");
+	strcat(text, "/inv Ч сумка и одежда: использовать, надеть, передать, выбросить (подн€ть: ALT или /pickup)   /hunger Ч сытость (поесть: бар или еда из 24/7)\n\n");
 	strcat(text, "{FFFF00}RP-чат\n");
 	strcat(text, "{FFFFFF}ѕросто пиши в чат Ч теб€ услышат игроки р€дом.\n");
 	strcat(text, "/me Ч действие   /do Ч описание   /try Ч попытка   /s Ч крик   /b Ч OOC   /pm Ч Ћ—\n\n");
@@ -38,7 +38,7 @@ stock bool:Cmd_Help(playerid)
 	strcat(text, "/buybiz /sellbiz /bizinfo /bizcash Ч свой бизнес   /turfs /capture Ч районы банд\n\n");
 	strcat(text, "{FFFF00}јдминам\n");
 	strcat(text, "{FFFFFF}/ahelp Ч команды администрации по уровн€м   /amenu Ч панель (удобно с телефона)\n");
-	strcat(text, "/createhouse /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf /addgate /delgate /addfuel /delfuel /setfuel /givelic /addexampoint /clearexam /givefood /giveitem /addgarage /delgarage /fpslist");
+	strcat(text, "/createhouse /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf /addgate /delgate /addfuel /delfuel /setfuel /givelic /addexampoint /clearexam /givefood /giveitem /addgarage /delgarage /fpslist\n–азработка в игре: /pos /points /dev /mo Ч справка по маппингу");
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "ѕомощь", "%s", "«акрыть", "", text);
 	return true;
 }
@@ -88,8 +88,11 @@ stock bool:Cmd_Pay(playerid, const params[])
 	GetPlayerPos(target, x, y, z);
 	if (!IsPlayerInRangeOfPoint(playerid, 5.0, x, y, z)) return SendClientMessage(playerid, COLOR_GREY, "»грок слишком далеко.");
 
-	GiveMoney(playerid, -amount);
-	GiveMoney(target, amount);
+	new reason[64];
+	format(reason, sizeof reason, "/pay -> %s", GetRPName(target));
+	GiveMoney(playerid, -amount, reason);
+	format(reason, sizeof reason, "/pay <- %s", GetRPName(playerid));
+	GiveMoney(target, amount, reason);
 	Account_Save(playerid);
 	Account_Save(target);
 
@@ -129,9 +132,19 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/help", true))        { Cmd_Help(playerid); return 1; }
 	if (!strcmp(cmd, "/stats", true))       { Cmd_Stats(playerid); return 1; }
 	if (!strcmp(cmd, "/time", true))        { Cmd_Time(playerid); return 1; }
+	if (!strcmp(cmd, "/taxes", true))       { Cmd_Taxes(playerid); return 1; }
+	if (!strcmp(cmd, "/settax", true))      { Cmd_SetTax(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/moneylog", true))    { Cmd_MoneyLog(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/pay", true))         { Cmd_Pay(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fps", true))         { Cmd_Fps(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fpslist", true))     { Cmd_FpsList(playerid); return 1; }
+
+	// --- разработка в игре (dev.inc) ---
+	if (!strcmp(cmd, "/pos", true))         { Cmd_Pos(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/points", true))      { Cmd_Points(playerid); return 1; }
+	if (!strcmp(cmd, "/delpoint", true))    { Cmd_DelPoint(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/dev", true))         { Cmd_Dev(playerid); return 1; }
+	if (!strcmp(cmd, "/mo", true))          { Cmd_Mo(playerid, cmdtext[pos]); return 1; }
 
 	// --- чат (chat.inc) ---
 	if (!strcmp(cmd, "/me", true))          { Cmd_Me(playerid, cmdtext[pos]); return 1; }
@@ -147,6 +160,7 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/taxi", true))        { Cmd_Taxi(playerid); return 1; }
 	if (!strcmp(cmd, "/inv", true) || !strcmp(cmd, "/i", true)) { Cmd_Inv(playerid); return 1; }
 	if (!strcmp(cmd, "/hunger", true))      { Cmd_Hunger(playerid); return 1; }
+	if (!strcmp(cmd, "/pickup", true))      { Cmd_Pickup(playerid); return 1; }
 	if (!strcmp(cmd, "/gotaxi", true))      { Cmd_GoTaxi(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/repair", true))      { Cmd_Repair(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/refill", true))      { Cmd_Refill(playerid, cmdtext[pos]); return 1; }

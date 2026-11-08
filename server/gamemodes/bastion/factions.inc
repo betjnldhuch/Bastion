@@ -667,8 +667,8 @@ stock bool:Cmd_Accept(playerid)
 				return SendClientMessage(playerid, COLOR_GREY, "Медик ушёл или закончил смену.");
 			if (GetMoney(playerid) < price) return SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", price);
 
-			GiveMoney(playerid, -price);
-			GiveMoney(from, price);
+			GiveMoney(playerid, -price, "лечение у медика");
+			GiveMoney(from, price, "оплата лечения");
 			SetPlayerHealth(playerid, 100.0);
 			Account_Save(playerid);
 			Account_Save(from);
@@ -901,7 +901,7 @@ stock bool:Cmd_Arrest(playerid, const params[])
 	Jail_PutInCell(target);
 	Account_Save(target);
 
-	GiveMoney(playerid, stars * ARREST_REWARD);
+	GiveMoney(playerid, stars * ARREST_REWARD, "премия за арест");
 	Account_Save(playerid);
 
 	SendClientMessage(target, COLOR_RED, "Тебя посадили в тюрьму на %d мин.", minutes);

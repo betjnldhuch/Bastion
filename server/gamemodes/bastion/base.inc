@@ -95,11 +95,13 @@ stock GetRPName(playerid)
 //  ƒеньги. ¬—≈√ƒј мен€й деньги только через GiveMoney Ч тогда
 //  сервер знает точную сумму, и читерские деньги ничего не дадут.
 // ---------------------------------------------------------------------
-stock GiveMoney(playerid, amount)
+//  reason Ч за что (пишетс€ в журнал денег, economy.inc: /moneylog).
+stock GiveMoney(playerid, amount, const reason[] = "")
 {
 	Player[playerid][pMoney] += amount;
 	ResetPlayerMoney(playerid);
 	GivePlayerMoney(playerid, Player[playerid][pMoney]);
+	Econ_LogMoney(playerid, amount, reason);
 }
 
 stock GetMoney(playerid)

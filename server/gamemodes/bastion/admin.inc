@@ -1317,9 +1317,9 @@ stock bool:Cmd_AHelp(playerid)
 	strcat(text, "/check /spec /specoff /goto /kick /mute /unmute /admins /aduty\n");
 	strcat(text, "“елепорт: метка на карте (выкл. /maptp), /tp Ч список точек, /back Ч назад\n\n");
 	strcat(text, "{FF66FF}2 Ч ћодератор\n{FFFFFF}/warn /ajail /unajail /freeze /unfreeze /slap /gethere /sethp /setskin /jail /unjail\n/sendto /gotocar /fixveh /flip\n\n");
-	strcat(text, "{FF66FF}3 Ч јдминистратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /veh /dveh\n/ao /gotocoord /respawncars /setweather\n/givelic Ч выдать лицензию   /setfuel Ч заправить машину\n\n");
-	strcat(text, "{FF66FF}4 Ч —т. администратор\n{FFFFFF}/unban, бан навсегда (0 дней), /addtp /deltp, фракции, дома, бизнесы, ј«—, банкоматы, районы\n/givefood /giveitem Ч еда и вещи   /addexampoint /clearexam Ч маршрут экзамена\n/addgarage [1-2] /delgarage Ч —“ќ и штрафсто€нки\n\n");
-	strcat(text, "{FF66FF}5 Ч √л. администратор\n{FFFFFF}/makeadmin /givemoney\n\n");
+	strcat(text, "{FF66FF}3 Ч јдминистратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /moneylog /veh /dveh\n/ao /gotocoord /respawncars /setweather\n/givelic Ч выдать лицензию   /setfuel Ч заправить машину\n\n");
+	strcat(text, "{FF66FF}4 Ч —т. администратор\n{FFFFFF}/unban, бан навсегда (0 дней), /addtp /deltp, фракции, дома, бизнесы, ј«—, банкоматы, районы\n/givefood /giveitem Ч еда и вещи   /addexampoint /clearexam Ч маршрут экзамена\n/addgarage [1-2] /delgarage Ч —“ќ и штрафсто€нки\n/pos [название] /points /dev Ч координаты   /mo Ч маппинг (объекты, удаление зданий, выгрузка)\n\n");
+	strcat(text, "{FF66FF}5 Ч √л. администратор\n{FFFFFF}/makeadmin /givemoney /settax Ч налоги\n\n");
 	strcat(text, "{AFAFAF}¬се наказани€ и выдачи пишутс€ в лог (/alog). Ќаказать админа своего уровн€ или выше нельз€.");
 	Admin_ShowInfo(playerid, " оманды администрации", text);
 	return true;
@@ -1373,7 +1373,9 @@ stock bool:Cmd_GiveMoney(playerid, const params[])
 		return SendClientMessage(playerid, COLOR_GREY, "»спользование: /givemoney [id] [сумма]");
 	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "»грок ещЄ не вошЄл в аккаунт.");
 
-	GiveMoney(target, amount);
+	new reason[64];
+	format(reason, sizeof reason, "админ %s (/givemoney)", GetRPName(playerid));
+	GiveMoney(target, amount, reason);
 	Account_Save(target);
 	Admin_Log(playerid, "givemoney", target, "", amount);
 	SendClientMessage(target, COLOR_ADMIN, "јдминистратор %s выдал тебе $%d.", GetRPName(playerid), amount);

@@ -157,6 +157,14 @@ stock Bank_Log(account, type, amount, other = 0)
 		account, type, amount, other, gettime()));
 }
 
+// Запись в общий журнал денег (economy.inc, /moneylog). cash — наличные на руках.
+stock Bank_MoneyLog(account, amount, cash, const reason[])
+{
+	if (account <= 0 || amount == 0) return;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO money_log (time, account, amount, cash, reason) VALUES (%d, %d, %d, %d, 'банк: %q')",
+		gettime(), account, amount, cash, reason));
+}
+
 // Комиссия от суммы (в процентах), не меньше $1, если процент не 0
 stock Bank_Fee(amount, pct)
 {
@@ -183,6 +191,8 @@ stock bool:Bank_Credit(playerid, amount, type, other = 0)
 	if (Player[playerid][pBank] > BANK_MAX_BALANCE - amount) return false;
 	Player[playerid][pBank] += amount;
 	Bank_Log(Player[playerid][pDbId], type, amount, other);
+	if (type == BANKLOG_SALARY) Bank_MoneyLog(Player[playerid][pDbId], amount, Player[playerid][pMoney], "зарплата на счёт");
+	else if (type == BANKLOG_INTEREST) Bank_MoneyLog(Player[playerid][pDbId], amount, Player[playerid][pMoney], "проценты");
 	return true;
 }
 
@@ -193,7 +203,7 @@ stock Bank_Salary(playerid, amount)
 #if PAYDAY_TO_BANK
 	if (Bank_Credit(playerid, amount, BANKLOG_SALARY)) return;
 #endif
-	GiveMoney(playerid, amount);  // счёт переполнен или выключено — наличными
+	GiveMoney(playerid, amount, "зарплата (PayDay)");  // счёт переполнен или выключено — наличными
 }
 
 // Проценты на остаток (из PayDay, после зарплаты)
@@ -300,12 +310,21 @@ stock Bank_Transfer(playerid, dbid, amount)
 		if (!ok) return 1;
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET bank = bank + %d WHERE id = %d", amount, dbid));
 		Bank_Log(dbid, BANKLOG_TRANSFER_IN, amount, Player[playerid][pDbId]);
+		Bank_MoneyLog(dbid, amount, 0, "перевод от счёта (игрок не в сети)");
 		for (new i = 0; tname[i] != '\0'; i++) if (tname[i] == '_') tname[i] = ' ';
 	}
 
 	Player[playerid][pBank] -= amount + fee;
 	Bank_Log(Player[playerid][pDbId], BANKLOG_TRANSFER_OUT, amount, dbid);
 	if (fee > 0) Bank_Log(Player[playerid][pDbId], BANKLOG_FEE, fee);
+	new reason[64];
+	format(reason, sizeof (reason), "перевод -> %s (комиссия $%d)", tname, fee);
+	Bank_MoneyLog(Player[playerid][pDbId], -(amount + fee), Player[playerid][pMoney], reason);
+	if (target != INVALID_PLAYER_ID)
+	{
+		format(reason, sizeof (reason), "перевод <- %s", GetRPName(playerid));
+		Bank_MoneyLog(dbid, amount, Player[target][pMoney], reason);
+	}
 	Account_Save(playerid);
 
 	SendClientMessage(playerid, COLOR_GREEN, "Ты перевёл $%d на счёт №%d (%s). Комиссия $%d. На счёте: $%d.",
@@ -374,7 +393,7 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 				SendClientMessage(playerid, COLOR_GREY, "Счёт переполнен (максимум $%d).", BANK_MAX_BALANCE);
 				return 1;
 			}
-			GiveMoney(playerid, -amount);
+			GiveMoney(playerid, -amount, "банк: пополнение счёта");
 			Account_Save(playerid);
 			SendClientMessage(playerid, COLOR_GREEN, "Ты положил $%d. На счёте: $%d.", amount, Player[playerid][pBank]);
 		}
@@ -389,7 +408,8 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 				return 1;
 			}
 			Player[playerid][pBank] -= amount + fee;
-			GiveMoney(playerid, amount);
+			GiveMoney(playerid, amount, "банк: снятие со счёта");
+			if (fee > 0) Bank_MoneyLog(Player[playerid][pDbId], -fee, Player[playerid][pMoney], "комиссия банкомата");
 			Bank_Log(Player[playerid][pDbId], BANKLOG_WITHDRAW, amount);
 			if (fee > 0) Bank_Log(Player[playerid][pDbId], BANKLOG_FEE, fee);
 			Account_Save(playerid);

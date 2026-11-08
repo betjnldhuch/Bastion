@@ -213,14 +213,14 @@ static Garage_ShowTune(playerid)
 	}
 }
 
-static bool:Garage_Pay(playerid, price)
+static bool:Garage_Pay(playerid, price, const reason[] = "СТО")
 {
 	if (GetMoney(playerid) < price)
 	{
 		SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", price);
 		return false;
 	}
-	GiveMoney(playerid, -price);
+	GiveMoney(playerid, -price, reason);
 	Account_Save(playerid);
 	return true;
 }
@@ -399,7 +399,7 @@ stock bool:Cmd_Impound(playerid, const params[])
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET impound = %d WHERE owner = %d", fine, Player[owner][pDbId]));
 	gImpoundFine[owner] = fine;
 
-	GiveMoney(playerid, IMPOUND_REWARD);
+	GiveMoney(playerid, IMPOUND_REWARD, "премия за эвакуацию");
 	Account_Save(playerid);
 
 	new msg[144];
@@ -434,7 +434,8 @@ static Garage_Unimpound(playerid)
 	new g = Garage_GetNearby(playerid, GARAGE_IMPOUND, 3.0);
 	new fine = gImpoundFine[playerid];
 	if (g == -1 || fine <= 0) return 0;
-	if (!Garage_Pay(playerid, fine)) return 0;
+	if (!Garage_Pay(playerid, fine, "штраф штрафстоянки")) return 0;
+	Econ_ToTreasury(fine);
 
 	new Float:x = Garage[g][gaX] + 4.0, Float:y = Garage[g][gaY], Float:z = Garage[g][gaZ] + 0.5;
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET impound = 0, x = %f, y = %f, z = %f, a = 0.0 WHERE owner = %d",

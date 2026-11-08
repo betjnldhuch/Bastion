@@ -17,11 +17,13 @@
 //    bastion/phone.inc     Ч телефон: звонки, SMS, 911
 //    bastion/business.inc  Ч бизнесы: 24/7, бар, одежда, оружие
 //    bastion/garage.inc    Ч —“ќ (ремонт, тюнинг) и штрафсто€нка
+//    bastion/economy.inc   Ч казна, налоги, журнал денег
 //    bastion/gates.inc     Ч шлагбаумы и ворота фракций
 //    bastion/keys.inc      Ч управление кнопками: ALT, Y, N, H, 2
 //    bastion/chat.inc      Ч RP-чат
 //    bastion/admin.inc     Ч администраци€: наказани€, логи, репорты
 //    bastion/admin_tools.inc Ч телепорты (метка на карте, /tp) и инструменты админов
+//    bastion/dev.inc       Ч разработка в игре: координаты /pos, маппинг /mo
 //    bastion/commands.inc  Ч список команд
 //
 //   омпил€ци€: открой этот файл в Qawno и нажми F5.
@@ -47,12 +49,14 @@
 #include "bastion/chat.inc"
 #include "bastion/admin.inc"
 #include "bastion/admin_tools.inc"
+#include "bastion/dev.inc"         // разработка в игре: /pos, /dev, маппинг /mo
 #include "bastion/factions.inc"   // после admin.inc: использует Admin_Check
 #include "bastion/turfs.inc"
 #include "bastion/bank.inc"
 #include "bastion/phone.inc"
 #include "bastion/business.inc"
 #include "bastion/garage.inc"
+#include "bastion/economy.inc"
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
 #include "bastion/fps.inc"
@@ -95,6 +99,8 @@ public OnGameModeInit()
 	Fps_Init();
 	Licenses_Init();
 	Needs_Init();
+	Dev_Init();           // свои объекты карты, убранные здани€
+	Econ_Init();          // казна, налоги, журнал денег
 	Garage_Init();        // —“ќ, штрафсто€нка, пол€ тюнинга в vehicles
 	Fuel_Init();          // после всех машин: им выдаЄтс€ бензин
 
@@ -125,6 +131,7 @@ public OnPlayerConnect(playerid)
 	Fps_Reset(playerid);
 	Platform_OnConnect(playerid);
 	Admin_OnConnect(playerid);
+	Dev_OnConnect(playerid);            // убранные здани€ GTA (dev.inc)
 	if (!Account_OnConnect(playerid))
 	{
 		Player[playerid][pAuthShown] = true;    // игрока кикают Ч окно входа не показываем
@@ -145,6 +152,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Account_Save(playerid);
 	Vehicles_UnloadForPlayer(playerid);
 	Fuel_OnDisconnect(playerid);
+	Inv_ResetMask(playerid);
 	Player[playerid][pLogged] = false;
 	return 1;
 }
@@ -161,6 +169,26 @@ public OnPlayerUpdate(playerid)
 public OnPlayerClickMap(playerid, Float:fX, Float:fY, Float:fZ)
 {
 	AdminTools_OnClickMap(playerid, fX, fY, fZ);
+	return 1;
+}
+
+// »грок по€вилс€ р€дом с другим: если он в маске Ч ник не показываем (needs.inc)
+public OnPlayerStreamIn(playerid, forplayerid)
+{
+	Inv_OnStreamIn(playerid, forplayerid);
+	return 1;
+}
+
+// ћаппинг: объект подвинули мышью / выбрали кликом (dev.inc)
+public OnPlayerEditObject(playerid, playerobject, objectid, EDIT_RESPONSE:response, Float:fX, Float:fY, Float:fZ, Float:fRotX, Float:fRotY, Float:fRotZ)
+{
+	if (!playerobject) Dev_OnEditObject(playerid, objectid, response, fX, fY, fZ, fRotX, fRotY, fRotZ);
+	return 1;
+}
+
+public OnPlayerSelectObject(playerid, SELECT_OBJECT:type, objectid, modelid, Float:fX, Float:fY, Float:fZ)
+{
+	Dev_OnSelectObject(playerid, type, objectid);
 	return 1;
 }
 
@@ -206,7 +234,8 @@ public OnPlayerSpawn(playerid)
 	{
 		Player[playerid][pDied] = false;
 		Needs_OnHospital(playerid);         // в больнице покормили (needs.inc)
-		GiveMoney(playerid, -HOSPITAL_FEE);
+		GiveMoney(playerid, -HOSPITAL_FEE, "счЄт больницы");
+		Econ_ToTreasury(HOSPITAL_FEE);
 		SendClientMessage(playerid, COLOR_WHITE, "“еб€ вылечили в больнице. —чЄт за лечение: $%d.", HOSPITAL_FEE);
 	}
 
@@ -223,6 +252,7 @@ public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 	Licenses_Abort(playerid);
 	Factions_OnDeath(playerid);
 	Phone_HangUp(playerid);
+	Inv_ResetMask(playerid);            // маска слетает (needs.inc)
 	Turfs_OnDeath(playerid, killerid);
 
 	Player[playerid][pDied] = true;
@@ -257,7 +287,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Fuel_OnDialog(playerid, dialogid, response, inputtext)) return 1;
 	if (Licenses_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Jobs_OnDialog(playerid, dialogid, response)) return 1;
-	if (Needs_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Needs_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Dev_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Houses_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Garage_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	return 0;
@@ -363,7 +394,8 @@ stock PayDay()
 			SendClientMessage(i, COLOR_WHITE, "ƒоход банды с районов (%d): $%d.", tpay / TURF_INCOME, tpay);
 		}
 
-		Bank_PayDay(i);         // проценты по счЄту (bank.inc)
+		Econ_PayDay(i, PAYDAY_SALARY + fpay);   // налоги (economy.inc)
+		Bank_PayDay(i);         // проценты по счЄту и баланс (bank.inc)
 
 		if (Player[i][pExp] >= Player[i][pLevel] * EXP_PER_LEVEL)
 		{
