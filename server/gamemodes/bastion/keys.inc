@@ -269,6 +269,9 @@ stock Keys_Interact(playerid)
 		return;
 	}
 
+	// 6а. Вещь на земле (needs.inc)
+	if (Inv_TryPickup(playerid)) return;
+
 	// 7. Штрафстоянка (garage.inc)
 	if (Garage_TryImpoundLot(playerid)) return;
 

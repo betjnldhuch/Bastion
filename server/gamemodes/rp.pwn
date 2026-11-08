@@ -158,6 +158,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Account_Save(playerid);
 	Vehicles_UnloadForPlayer(playerid);
 	Fuel_OnDisconnect(playerid);
+	Inv_ResetMask(playerid);
 	Player[playerid][pLogged] = false;
 	return 1;
 }
@@ -174,6 +175,13 @@ public OnPlayerUpdate(playerid)
 public OnPlayerClickMap(playerid, Float:fX, Float:fY, Float:fZ)
 {
 	AdminTools_OnClickMap(playerid, fX, fY, fZ);
+	return 1;
+}
+
+// Игрок появился рядом с другим: если он в маске — ник не показываем (needs.inc)
+public OnPlayerStreamIn(playerid, forplayerid)
+{
+	Inv_OnStreamIn(playerid, forplayerid);
 	return 1;
 }
 
@@ -250,6 +258,7 @@ public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 	Licenses_Abort(playerid);
 	Factions_OnDeath(playerid);
 	Phone_HangUp(playerid);
+	Inv_ResetMask(playerid);            // маска слетает (needs.inc)
 	Turfs_OnDeath(playerid, killerid);
 
 	Player[playerid][pDied] = true;
@@ -284,7 +293,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Fuel_OnDialog(playerid, dialogid, response, inputtext)) return 1;
 	if (Licenses_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Jobs_OnDialog(playerid, dialogid, response)) return 1;
-	if (Needs_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Needs_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Dev_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Tex_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Houses_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
