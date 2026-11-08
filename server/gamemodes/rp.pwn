@@ -164,6 +164,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Vehicles_UnloadForPlayer(playerid);
 	Fuel_OnDisconnect(playerid);
 	Inv_ResetMask(playerid);
+	Inv_UiReset(playerid);
 	Gps_OnDisconnect(playerid);
 	Player[playerid][pLogged] = false;
 	return 1;
@@ -286,6 +287,20 @@ public OnPlayerText(playerid, text[])
 public OnPlayerCommandText(playerid, cmdtext[])
 {
 	return Commands_Process(playerid, cmdtext);
+}
+
+//  лик по текстдраву игрока (окно сумки)
+public OnPlayerClickPlayerTextDraw(playerid, PlayerText:playertextid)
+{
+	if (Inv_OnClickPlayerTD(playerid, playertextid)) return 1;
+	return 0;
+}
+
+//  лик по общему текстдраву; INVALID_TEXT_DRAW Ч игрок нажал ESC
+public OnPlayerClickTextDraw(playerid, Text:clickedid)
+{
+	if (Inv_OnClickTD(playerid, clickedid)) return 1;
+	return 0;
 }
 
 public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])

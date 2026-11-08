@@ -325,6 +325,7 @@ stock Keys_OnKeyStateChange(playerid, newkeys, oldkeys)
 	{
 		if (Player[playerid][pCallState] == CALL_INCOMING) Cmd_PickUp(playerid);
 		else if (Player[playerid][pOfferType] != OFFER_NONE) Cmd_Accept(playerid);
+		else if (st == PLAYER_STATE_ONFOOT) Cmd_Inv(playerid);      // Y пешком Ч сумка
 		return 1;
 	}
 	if (KeyPressed(newkeys, oldkeys, _:KEY_NO))
