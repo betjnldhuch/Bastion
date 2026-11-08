@@ -148,7 +148,7 @@ stock Garage_ApplyMods(vehicleid)
 	if (gModNitro[vehicleid]) AddVehicleComponent(vehicleid, gModNitro[vehicleid]);
 	if (gModHydra[vehicleid]) AddVehicleComponent(vehicleid, gModHydra[vehicleid]);
 	if (gModWheels[vehicleid]) AddVehicleComponent(vehicleid, gModWheels[vehicleid]);
-	if (gModC1[vehicleid] != -1) ChangeVehicleColor(vehicleid, gModC1[vehicleid], gModC2[vehicleid]);
+	if (gModC1[vehicleid] != -1) ChangeVehicleColours(vehicleid, gModC1[vehicleid], gModC2[vehicleid]);
 }
 
 // Из Vehicles_SpawnPersonal: тюнинг из базы
@@ -321,7 +321,7 @@ stock Garage_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		if (!Garage_Pay(playerid, TUNE_PAINT_PRICE)) return 1;
 		gModC1[v] = c1;
 		gModC2[v] = c2;
-		ChangeVehicleColor(v, c1, c2);
+		ChangeVehicleColours(v, c1, c2);
 		Garage_SaveMods(playerid, v);
 		SendClientMessage(playerid, COLOR_GREEN, "Машина перекрашена за $%d.", TUNE_PAINT_PRICE);
 		return 1;
