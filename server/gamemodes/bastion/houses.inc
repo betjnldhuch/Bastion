@@ -53,6 +53,8 @@ enum E_HOUSE
 	hMarker                     // маркер входа (markers.inc)
 }
 new House[MAX_HOUSES][E_HOUSE];
+
+forward bool:Doors_Try(playerid);     // doors.inc подключён позже
 new gHouseCount = 0;
 
 static gRentHouse[MAX_PLAYERS] = { -1, ... };          // какой дом снимает игрок (-1 = нет)
