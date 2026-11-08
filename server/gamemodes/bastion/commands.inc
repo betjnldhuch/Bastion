@@ -38,7 +38,7 @@ stock bool:Cmd_Help(playerid)
 	strcat(text, "/buybiz /sellbiz /bizinfo /bizcash Ч свой бизнес   /turfs /capture Ч районы банд\n\n");
 	strcat(text, "{FFFF00}јдминам\n");
 	strcat(text, "{FFFFFF}/ahelp Ч команды администрации по уровн€м   /amenu Ч панель (удобно с телефона)\n");
-	strcat(text, "/createhouse /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf /addgate /delgate /addfuel /delfuel /setfuel /givelic /addexampoint /clearexam /givefood /giveitem /addgarage /delgarage /fpslist");
+	strcat(text, "/createhouse /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf /addgate /delgate /addfuel /delfuel /setfuel /givelic /addexampoint /clearexam /givefood /giveitem /addgarage /delgarage /fpslist\n–азработка в игре: /pos /points /dev /mo Ч справка по маппингу");
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "ѕомощь", "%s", "«акрыть", "", text);
 	return true;
 }
@@ -138,6 +138,13 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/pay", true))         { Cmd_Pay(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fps", true))         { Cmd_Fps(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fpslist", true))     { Cmd_FpsList(playerid); return 1; }
+
+	// --- разработка в игре (dev.inc) ---
+	if (!strcmp(cmd, "/pos", true))         { Cmd_Pos(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/points", true))      { Cmd_Points(playerid); return 1; }
+	if (!strcmp(cmd, "/delpoint", true))    { Cmd_DelPoint(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/dev", true))         { Cmd_Dev(playerid); return 1; }
+	if (!strcmp(cmd, "/mo", true))          { Cmd_Mo(playerid, cmdtext[pos]); return 1; }
 
 	// --- чат (chat.inc) ---
 	if (!strcmp(cmd, "/me", true))          { Cmd_Me(playerid, cmdtext[pos]); return 1; }
