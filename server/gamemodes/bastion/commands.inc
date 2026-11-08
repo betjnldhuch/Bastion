@@ -21,7 +21,7 @@ stock bool:Cmd_Help(playerid)
 	strcat(text, "/me Ч действие   /do Ч описание   /try Ч попытка   /s Ч крик   /b Ч OOC   /pm Ч Ћ—\n\n");
 	strcat(text, "{FFFF00}–абота\n");
 	strcat(text, "{FFFFFF}/getjob Ч устроитьс€   /work Ч начать/закончить смену   /quitjob Ч уволитьс€\n");
-	strcat(text, "√рузчик Ч порт Ocean Docks. –азвозчик пиццы Ч пиццери€ Idlewood.\n\n");
+	strcat(text, "√рузчик и дальнобойщик Ч порт. ѕицца и механик Ч Idlewood. “акси и автобус Ч Unity Station.\n/taxi Ч вызвать такси   ћеханику: /repair /refill [id]   “аксисту: /gotaxi [id]\n\n");
 	strcat(text, "{FFFF00}“ранспорт\n");
 	strcat(text, "{FFFFFF}/engine Ч двигатель   /buycar Ч автосалон   /park Ч парковка   /lock Ч замок   /sellcar\n");
 	strcat(text, "ј«—: H в машине Ч заправка, ALT Ч канистра, /canister Ч залить, /fuel Ч бак, /speedo Ч спидометр\n");
@@ -138,6 +138,10 @@ stock Commands_Process(playerid, const cmdtext[])
 	// --- работа (jobs.inc) ---
 	if (!strcmp(cmd, "/getjob", true))      { Cmd_GetJob(playerid); return 1; }
 	if (!strcmp(cmd, "/quitjob", true))     { Cmd_QuitJob(playerid); return 1; }
+	if (!strcmp(cmd, "/taxi", true))        { Cmd_Taxi(playerid); return 1; }
+	if (!strcmp(cmd, "/gotaxi", true))      { Cmd_GoTaxi(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/repair", true))      { Cmd_Repair(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/refill", true))      { Cmd_Refill(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/work", true))        { Cmd_Work(playerid); return 1; }
 
 	// --- транспорт (vehicles.inc) ---

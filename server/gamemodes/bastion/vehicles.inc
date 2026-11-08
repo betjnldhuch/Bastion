@@ -21,6 +21,9 @@
 // Функции из fuel.inc, которые нужны здесь раньше, чем он подключён
 forward Float:Fuel_Get(vehicleid);
 forward bool:Fuel_IsEmpty(vehicleid);
+// ...и из factions.inc и admin.inc (для fuel.inc, licenses.inc, jobs.inc)
+forward bool:IsPlayerNearPlayer(playerid, target, Float:range);
+forward bool:Admin_Check(playerid, level);
 
 new gVehOwner[MAX_VEHICLES];        // id аккаунта владельца (0 = общая машина)
 new bool:gVehLocked[MAX_VEHICLES];
@@ -94,7 +97,8 @@ stock Vehicles_LoadForPlayer(playerid)
 	}
 	DB_FreeResultSet(r);
 	Fuel_LoadPlayer(playerid);
-	Licenses_LoadPlayer(playerid);      // лицензии (licenses.inc)          // бензин машины и канистра (fuel.inc)
+	Licenses_LoadPlayer(playerid);      // лицензии (licenses.inc)
+	Jobs_LoadPlayer(playerid);          // стаж на работе (jobs.inc)          // бензин машины и канистра (fuel.inc)
 }
 
 // При выходе игрока машина пропадает (и появится снова при входе)

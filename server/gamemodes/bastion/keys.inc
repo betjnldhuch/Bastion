@@ -248,8 +248,7 @@ stock Keys_Interact(playerid)
 	}
 
 	// 6. Работа и автосалон
-	if (IsPlayerInRangeOfPoint(playerid, 3.0, LOADER_JOB_X, LOADER_JOB_Y, LOADER_JOB_Z)
-		|| IsPlayerInRangeOfPoint(playerid, 3.0, PIZZA_JOB_X, PIZZA_JOB_Y, PIZZA_JOB_Z))
+	if (Jobs_GetNearbyHQ(playerid) != JOB_NONE)
 	{
 		Cmd_GetJob(playerid);
 		return;

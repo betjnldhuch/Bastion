@@ -7,7 +7,11 @@ enum
 {
 	JOB_NONE,
 	JOB_LOADER,     // грузчик в порту
-	JOB_PIZZA       // развозчик пиццы
+	JOB_PIZZA,      // развозчик пиццы
+	JOB_TAXI,       // таксист
+	JOB_BUS,        // водитель автобуса
+	JOB_TRUCKER,    // дальнобойщик
+	JOB_MECHANIC    // механик
 }
 
 // ‘ракции (подробности Ч в factions.inc)
