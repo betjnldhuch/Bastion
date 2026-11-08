@@ -3,14 +3,14 @@
 //
 //  ѕешком:
 //    ALT Ч действие р€дом: дверь дома, покупка дома, банкомат, бизнес,
-//          раздевалка фракции, работа, автосалон, шлагбаум.
+//          раздевалка фракции, работа, автосалон, канистра на ј«—, шлагбаум.
 //          ≈сли р€дом ничего нет, но перед тобой игрок Ч меню взаимодействи€.
 //          ≈сли держишь игрока на прицеле (права€ кнопка мыши) Ч меню дл€ него.
 //    Y   Ч прин€ть предложение / ответить на звонок
 //    N   Ч отказатьс€ / сбросить звонок
 //  ¬ машине (за рулЄм):
 //    2   Ч двигатель
-//    H   Ч открыть шлагбаум или ворота своей фракции
+//    H   Ч на ј«— заправка, иначе открыть шлагбаум или ворота своей фракции
 //
 //  —ервер видит только игровые кнопки GTA, поэтому E, L, цифры 1-9 и т.п.
 //  использовать нельз€. ¬се команды (/enter, /bank, ...) тоже работают.
@@ -260,14 +260,17 @@ stock Keys_Interact(playerid)
 		return;
 	}
 
-	// 7. Ўлагбаум пешком
+	// 7. ј«— Ч купить канистру (fuel.inc)
+	if (Fuel_TryCanisterShop(playerid)) return;
+
+	// 8. Ўлагбаум пешком
 	if (Gate_GetNearby(playerid, 4.0) != -1)
 	{
 		Gates_TryOpen(playerid);
 		return;
 	}
 
-	// 8. »грок перед нами
+	// 9. »грок перед нами
 	new target = Keys_GetPlayerInFront(playerid, INTERACT_RANGE);
 	if (target != INVALID_PLAYER_ID) Keys_ShowInteract(playerid, target);
 }
@@ -296,7 +299,7 @@ stock Keys_OnKeyStateChange(playerid, newkeys, oldkeys)
 		}
 		if (KeyPressed(newkeys, oldkeys, _:KEY_CROUCH))     // H в машине (это ещЄ и гудок)
 		{
-			Gates_TryOpen(playerid);
+			if (!Fuel_TryFill(playerid)) Gates_TryOpen(playerid);   // на ј«— Ч заправка, иначе шлагбаум
 			return 1;
 		}
 	}
