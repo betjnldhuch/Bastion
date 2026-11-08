@@ -21,6 +21,9 @@
 // Функции из fuel.inc, которые нужны здесь раньше, чем он подключён
 forward Float:Fuel_Get(vehicleid);
 forward bool:Fuel_IsEmpty(vehicleid);
+// ...и из factions.inc и admin.inc (для fuel.inc, licenses.inc, jobs.inc)
+forward bool:IsPlayerNearPlayer(playerid, target, Float:range);
+forward bool:Admin_Check(playerid, level);
 
 new gVehOwner[MAX_VEHICLES];        // id аккаунта владельца (0 = общая машина)
 new bool:gVehLocked[MAX_VEHICLES];

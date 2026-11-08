@@ -20,10 +20,6 @@
 //  записать свой маршрут экзамена: проедь его и ставь точки по порядку.
 // =====================================================================
 
-// Функции из файлов, подключённых позже (factions.inc, admin.inc)
-forward bool:IsPlayerNearPlayer(playerid, target, Float:range);
-forward bool:Admin_Check(playerid, level);
-
 enum
 {
 	LIC_CAR = 1,
