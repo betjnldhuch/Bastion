@@ -22,6 +22,7 @@
 //    /mo remove [радиус] Ч убрать стандартные здани€ GTA вокруг себ€
 //    /mo unremove      Ч отменить последнее удаление зданий (видно после перезахода)
 //    /mo export        Ч выгрузить карту в scriptfiles/map_export.txt
+//  ѕерекраска объектов (текстуры, цвет, надписи) Ч /mt, см. textures.inc
 //  /mo без параметров Ч справка.
 // =====================================================================
 
@@ -99,6 +100,7 @@ stock Dev_Init()
 		DB_FreeResultSet(r);
 	}
 	printf("[Dev] Map: %d objects, %d removed buildings.", gMapCount, gMapRemovalCount);
+	Tex_Init();           // перекраска объектов (textures.inc)
 	SetTimer("Dev_HudTimer", 500, true);
 }
 
@@ -259,6 +261,42 @@ static Map_SlotByObject(objectid)
 	return -1;
 }
 
+// ƒл€ textures.inc
+stock Map_Count() return gMapCount;
+stock Map_ObjectOf(s) return gMapObj[s];
+stock Map_DbIdOf(s) return gMapDbId[s];
+
+stock Map_ObjectByDbId(dbid)
+{
+	for (new s = 0; s < gMapCount; s++)
+	{
+		if (gMapDbId[s] == dbid) return gMapObj[s];
+	}
+	return INVALID_OBJECT_ID;
+}
+
+// ќбъект, который игрок двигает, или ближайший в 30 м
+stock Map_SelectedSlot(playerid)
+{
+	new pos = 0;
+	return Map_PickSlot(playerid, "", pos);
+}
+
+// ѕересоздать объект на том же месте (перекраску в SA-MP не сн€ть иначе)
+stock Map_Rebuild(s)
+{
+	new Float:x, Float:y, Float:z, Float:rx, Float:ry, Float:rz;
+	new model = GetObjectModel(gMapObj[s]);
+	GetObjectPos(gMapObj[s], x, y, z);
+	GetObjectRot(gMapObj[s], rx, ry, rz);
+	new o = CreateObject(model, x, y, z, rx, ry, rz, MAP_DRAW_DISTANCE);
+	if (o == INVALID_OBJECT_ID) return 0;
+	DestroyObject(gMapObj[s]);
+	gMapObj[s] = o;
+	Tex_ApplyFor(gMapDbId[s], o);
+	return 1;
+}
+
 // Ќомер из параметра (как в /mo near, с 1) или ближайший объект в 30 м
 static Map_PickSlot(playerid, const params[], &pos)
 {
@@ -323,6 +361,7 @@ static Map_Help(playerid)
 	strcat(text, "/mo here Ч к себе под ноги   /mo copy [є] Ч копи€   /mo del [є] Ч удалить   /mo near Ч что р€дом\n\n");
 	strcat(text, "{FFFF00}«дани€ GTA и выгрузка\n{FFFFFF}/mo remove [радиус] Ч убрать здани€ вокруг   /mo unremove Ч вернуть последние\n");
 	strcat(text, "/mo export Ч выгрузить карту в scriptfiles/map_export.txt\n\n");
+	strcat(text, "{FFFF00}ѕерекраска\n{FFFFFF}/mt Ч текстуры, цвет и надписи на объекте (справка: /mt help)\n\n");
 	strcat(text, "{AFAFAF}Ѕез номера команда берЄт объект, который ты сейчас двигаешь, или ближайший.\nћодели объектов: dev.prineside.com/ru/gtasa_samp_model_id/");
 	ShowPlayerDialog(playerid, DIALOG_DEV_HELP, DIALOG_STYLE_MSGBOX, "–азработка в игре", "%s", "«акрыть", "", text);
 }
@@ -461,6 +500,7 @@ stock bool:Cmd_Mo(playerid, const params[])
 		GetObjectRot(gMapObj[s], rx, ry, rz);
 		new c = Map_Create(GetObjectModel(gMapObj[s]), x + 1.0, y, z, rx, ry, rz);
 		if (c == -1) return SendClientMessage(playerid, COLOR_RED, "Ћимит объектов (%d).", MAX_MAP_OBJECTS);
+		Tex_OnMapCopy(gMapDbId[s], gMapDbId[c], gMapObj[c]);
 		Map_StartEdit(playerid, c);
 		return true;
 	}
@@ -468,6 +508,7 @@ stock bool:Cmd_Mo(playerid, const params[])
 	{
 		new model = GetObjectModel(gMapObj[s]);
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM map_objects WHERE id = %d", gMapDbId[s]));
+		Tex_OnMapDelete(gMapDbId[s]);
 		DestroyObject(gMapObj[s]);
 		gMapCount--;
 		// последний объект на место удалЄнного (его номер мен€етс€)
@@ -497,7 +538,7 @@ static Map_Export(playerid)
 		return 0;
 	}
 	new line[160], Float:x, Float:y, Float:z, Float:rx, Float:ry, Float:rz;
-	fwrite(f, "// Bastion map export (/mo export)\r\n// RemoveBuildingForPlayer - in OnPlayerConnect\r\n");
+	fwrite(f, "// Bastion map export (/mo export)\r\n// RemoveBuildingForPlayer - in OnPlayerConnect\r\nnew tmpobjid;\r\n");
 	for (new m = 0; m < gMapRemovalCount; m++)
 	{
 		format(line, sizeof line, "RemoveBuildingForPlayer(playerid, %d, %.4f, %.4f, %.4f, %.2f);\r\n",
@@ -508,8 +549,17 @@ static Map_Export(playerid)
 	{
 		GetObjectPos(gMapObj[s], x, y, z);
 		GetObjectRot(gMapObj[s], rx, ry, rz);
-		format(line, sizeof line, "CreateObject(%d, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f);\r\n", GetObjectModel(gMapObj[s]), x, y, z, rx, ry, rz);
-		fwrite(f, line);
+		if (Tex_Export(f, gMapDbId[s], true) > 0)
+		{
+			format(line, sizeof line, "tmpobjid = CreateObject(%d, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f);\r\n", GetObjectModel(gMapObj[s]), x, y, z, rx, ry, rz);
+			fwrite(f, line);
+			Tex_Export(f, gMapDbId[s]);
+		}
+		else
+		{
+			format(line, sizeof line, "CreateObject(%d, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f);\r\n", GetObjectModel(gMapObj[s]), x, y, z, rx, ry, rz);
+			fwrite(f, line);
+		}
 	}
 	fclose(f);
 	SendClientMessage(playerid, COLOR_GREEN, "¬ыгружено: %d объектов и %d удалений зданий в scriptfiles/%s.", gMapCount, gMapRemovalCount, MAP_EXPORT_FILE);

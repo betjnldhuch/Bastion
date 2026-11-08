@@ -34,6 +34,7 @@
 | `feature/launcher-pc` | ПК-лаунчер (C#) | `launcher/` |
 | `feature/launcher-mobile` | Мобильный лаунчер и клиент: APK, установка из ZIP, патчи SAMP-Mobile | `mobile/` |
 | `feature/forum` | Форум сервера (только читает `scriptfiles/rp.db`) | `forum/` |
+| `feature/textures` | Текстуры: перекраска объектов `/mt`, вывески, картинки лаунчера и загрузки (план в `TEXTURES.md`) | `textures.inc`, `TEXTURES.md` |
 
 Общие файлы (`rp.pwn`, `config.inc`, `base.inc`, `commands.inc`) правятся
 маленькими отдельными PR, чтобы направления не конфликтовали.
