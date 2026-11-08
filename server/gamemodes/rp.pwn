@@ -39,6 +39,7 @@
 #include "bastion/vehicles.inc"
 #include "bastion/fuel.inc"
 #include "bastion/licenses.inc"
+#include "bastion/needs.inc"
 #include "bastion/houses.inc"
 #include "bastion/jobs.inc"
 #include "bastion/chat.inc"
@@ -88,6 +89,7 @@ public OnGameModeInit()
 	Gates_Init();
 	Fps_Init();
 	Licenses_Init();
+	Needs_Init();
 	Fuel_Init();          // после всех машин: им выдаётся бензин
 
 	new hour;
@@ -187,6 +189,7 @@ public OnPlayerSpawn(playerid)
 	if (Player[playerid][pDied])
 	{
 		Player[playerid][pDied] = false;
+		Needs_OnHospital(playerid);         // в больнице покормили (needs.inc)
 		GiveMoney(playerid, -HOSPITAL_FEE);
 		SendClientMessage(playerid, COLOR_WHITE, "Тебя вылечили в больнице. Счёт за лечение: $%d.", HOSPITAL_FEE);
 	}
@@ -235,6 +238,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Fuel_OnDialog(playerid, dialogid, response, inputtext)) return 1;
 	if (Licenses_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Jobs_OnDialog(playerid, dialogid, response)) return 1;
+	if (Needs_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	return 0;
 }
 
@@ -291,6 +295,7 @@ public OnMinuteTimer()
 	new hour, minute;
 	gettime(hour, minute);
 	SetWorldTime(hour);
+	Needs_OnMinute();       // голод
 	Factions_OnMinute();    // тюремные сроки
 
 	if (minute == 0 && hour != gLastPayDayHour)

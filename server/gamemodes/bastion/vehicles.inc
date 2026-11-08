@@ -98,7 +98,8 @@ stock Vehicles_LoadForPlayer(playerid)
 	DB_FreeResultSet(r);
 	Fuel_LoadPlayer(playerid);
 	Licenses_LoadPlayer(playerid);      // лицензии (licenses.inc)
-	Jobs_LoadPlayer(playerid);          // стаж на работе (jobs.inc)          // бензин машины и канистра (fuel.inc)
+	Jobs_LoadPlayer(playerid);          // стаж на работе (jobs.inc)
+	Needs_LoadPlayer(playerid);         // сытость и инвентарь (needs.inc)          // бензин машины и канистра (fuel.inc)
 }
 
 // При выходе игрока машина пропадает (и появится снова при входе)
