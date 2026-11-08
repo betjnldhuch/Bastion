@@ -19,7 +19,7 @@
 //    bastion/gates.inc     Ч шлагбаумы и ворота фракций
 //    bastion/keys.inc      Ч управление кнопками: ALT, Y, N, H, 2
 //    bastion/chat.inc      Ч RP-чат
-//    bastion/admin.inc     Ч админ-команды
+//    bastion/admin.inc     Ч администраци€: наказани€, логи, репорты
 //    bastion/commands.inc  Ч список команд
 //
 //   омпил€ци€: открой этот файл в Qawno и нажми F5.
@@ -69,6 +69,7 @@ public OnGameModeInit()
 {
 	SetGameModeText(MODE_TEXT);
 	DB_Init();
+	Admin_Init();         // таблицы admin_log, reports, сроки банов
 
 	ShowPlayerMarkers(PLAYER_MARKERS_MODE_STREAMED);
 	DisableInteriorEnterExits();        // убираем жЄлтые маркеры входов из одиночной игры
@@ -116,6 +117,7 @@ public OnPlayerConnect(playerid)
 {
 	Fps_Reset(playerid);
 	Platform_OnConnect(playerid);
+	Admin_OnConnect(playerid);
 	if (!Account_OnConnect(playerid))
 	{
 		Player[playerid][pAuthShown] = true;    // игрока кикают Ч окно входа не показываем
@@ -128,6 +130,7 @@ public OnPlayerConnect(playerid)
 public OnPlayerDisconnect(playerid, reason)
 {
 	Platform_OnDisconnect(playerid);
+	Admin_OnDisconnect(playerid);
 	Job_Stop(playerid);
 	Jobs_OnDisconnect(playerid);
 	Licenses_Abort(playerid);
@@ -193,6 +196,7 @@ public OnPlayerSpawn(playerid)
 
 	Account_SetNormalSpawn(playerid);   // следующий спавн Ч снова обычный
 	Factions_OnSpawn(playerid);         // цвет ника, розыск, тюрьма
+	Admin_OnSpawn(playerid);            // деморган, возврат после /spec
 	Turfs_ShowForPlayer(playerid);      // районы банд на радаре
 	return 1;
 }
@@ -216,6 +220,7 @@ public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 public OnPlayerText(playerid, text[])
 {
 	if (!Player[playerid][pLogged]) return 0;
+	if (Admin_IsMuted(playerid)) return 0;
 	Chat_OnText(playerid, text);
 	return 0;   // 0 = не отправл€ть стандартный глобальный чат
 }
@@ -228,6 +233,7 @@ public OnPlayerCommandText(playerid, cmdtext[])
 public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 {
 	if (Account_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Admin_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Vehicles_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Bank_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Business_OnDialog(playerid, dialogid, response, listitem)) return 1;
@@ -292,6 +298,7 @@ public OnMinuteTimer()
 	gettime(hour, minute);
 	SetWorldTime(hour);
 	Factions_OnMinute();    // тюремные сроки
+	Admin_OnMinute();       // деморган и муты
 
 	if (minute == 0 && hour != gLastPayDayHour)
 	{
