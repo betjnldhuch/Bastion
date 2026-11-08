@@ -1,0 +1,52 @@
+name: Server gamemode build
+
+# Компилирует мод server/gamemodes/rp.pwn тем же компилятором, что в Qawno
+# (open.mp pawn compiler 3.10.x) с include-файлами open.mp.
+# Готовый rp.amx можно скачать во вкладке Actions -> артефакт rp-amx.
+
+on:
+  push:
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-build.yml'
+  pull_request:
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-build.yml'
+  workflow_dispatch:
+
+env:
+  PAWNC_VERSION: 3.10.11
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download pawn compiler and open.mp includes
+        run: |
+          set -e
+          curl -sSLf -o pawnc.tar.gz \
+            "https://github.com/openmultiplayer/compiler/releases/download/v${PAWNC_VERSION}/pawnc-${PAWNC_VERSION}-linux.tar.gz"
+          tar xzf pawnc.tar.gz
+          echo "PAWNC_DIR=$PWD/pawnc-${PAWNC_VERSION}-linux" >> "$GITHUB_ENV"
+          git clone --depth 1 https://github.com/openmultiplayer/omp-stdlib.git omp-stdlib
+
+      - name: Compile rp.pwn
+        working-directory: server/gamemodes
+        run: |
+          set -o pipefail
+          LD_LIBRARY_PATH="$PAWNC_DIR/lib" "$PAWNC_DIR/bin/pawncc" rp.pwn \
+            -i"$GITHUB_WORKSPACE/omp-stdlib" -i. -orp.amx -d3 '-;+' '-(+' 2>&1 | tee build.log
+          test -f rp.amx
+          if grep -q ' : warning ' build.log; then
+            echo "::warning::Compiler warnings, see log above"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rp-amx
+          path: |
+            server/gamemodes/rp.amx
+            server/gamemodes/build.log

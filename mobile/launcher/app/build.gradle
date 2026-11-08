@@ -2,6 +2,15 @@ plugins {
     id 'com.android.application'
 }
 
+String envOr(String name, String fallback) {
+    String v = System.getenv(name)
+    return (v == null || v.trim().isEmpty()) ? fallback : v.trim()
+}
+
+String quoted(String v) {
+    return '"' + v.replace('\\', '\\\\').replace('"', '\\"') + '"'
+}
+
 android {
     namespace 'online.bastion.launcher'
     compileSdk 36
@@ -18,6 +27,16 @@ android {
         ndk {
             abiFilters 'arm64-v8a'
         }
+
+        // Архив игры и ключ закрытой раздачи (cloud/download-worker) приходят из
+        // секретов GitHub Actions, в репозитории их нет. Без них — домашний сервер.
+        buildConfigField 'String', 'GAME_ARCHIVE_URL', quoted(envOr('BASTION_GAME_URL', 'http://192.168.31.182:8000/game.zip'))
+        buildConfigField 'String', 'GAME_ARCHIVE_MD5', quoted(envOr('BASTION_GAME_MD5', '57A0F9765B2C229FD814E11D36F5EF00'))
+        buildConfigField 'String', 'DOWNLOAD_KEY', quoted(envOr('BASTION_DOWNLOAD_KEY', ''))
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     signingConfigs {

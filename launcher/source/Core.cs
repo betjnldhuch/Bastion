@@ -1,4 +1,4 @@
-// =====================================================================
+﻿// =====================================================================
 //  Bastion Online Launcher
 //  Лаунчер для SA-MP: ник, выбор сервера, онлайн, новости, запуск игры.
 //  Core.cs — настройки, опрос серверов, реестр SA-MP. Окно — в Ui.cs.
@@ -48,6 +48,20 @@ namespace BastionLauncher
         public bool RequireRpName = true;
         public string Site = "";
         public string NewsUrl = "";
+        public string ServersUrl = "";
+        public string GameUrl = "";
+        public string GameMd5 = "";
+
+        // Архив игры: game_url из launcher.ini, иначе адрес, вшитый при сборке
+        public string EffectiveGameUrl { get { return GameUrl.Length > 0 ? GameUrl : Secrets.GameUrl; } }
+        public string EffectiveGameMd5
+        {
+            get
+            {
+                if (GameMd5.Length > 0) return GameMd5;
+                return EffectiveGameUrl == Secrets.GameUrl ? Secrets.GameMd5 : "";
+            }
+        }
         public List<ServerEntry> Servers = new List<ServerEntry>();
 
         public static string IniPath
@@ -74,6 +88,9 @@ namespace BastionLauncher
                 if (key == "title") c.Title = val;
                 else if (key == "site") c.Site = val;
                 else if (key == "news_url") c.NewsUrl = val;
+                else if (key == "servers_url") c.ServersUrl = val;
+                else if (key == "game_url") c.GameUrl = val;
+                else if (key == "game_md5") c.GameMd5 = val;
                 else if (key == "require_rp_name") c.RequireRpName = (val == "1" || val.ToLowerInvariant() == "true");
                 else if (key == "server")
                 {
@@ -93,7 +110,72 @@ namespace BastionLauncher
                     c.Servers.Add(s);
                 }
             }
+            c.LoadRemoteServers();
             return c;
+        }
+
+        // Разбор строк вида "server = Имя | адрес | порт | описание"
+        static List<ServerEntry> ParseServers(string txt)
+        {
+            List<ServerEntry> list = new List<ServerEntry>();
+            foreach (string raw in txt.Replace("\r", "").Split('\n'))
+            {
+                string line = raw.Trim();
+                if (line.Length == 0 || line.StartsWith(";") || line.StartsWith("#")) continue;
+                int eq = line.IndexOf('=');
+                if (eq <= 0 || line.Substring(0, eq).Trim().ToLowerInvariant() != "server") continue;
+                string[] p = line.Substring(eq + 1).Split('|');
+                if (p.Length < 2 || p[1].Trim().Length == 0) continue;
+                ServerEntry s = new ServerEntry();
+                s.Name = p[0].Trim();
+                s.Host = p[1].Trim();
+                s.Port = 7777;
+                int port;
+                if (p.Length >= 3 && int.TryParse(p[2].Trim(), out port) && port > 0 && port < 65536) s.Port = port;
+                s.Description = p.Length >= 4 ? p[3].Trim() : "";
+                list.Add(s);
+            }
+            return list;
+        }
+
+        static string ServersCachePath
+        {
+            get { return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "servers.cache"); }
+        }
+
+        // Общий список серверов в интернете (servers_url): меняешь адрес хостинга
+        // в одном файле — у всех игроков он обновится без новой версии лаунчера.
+        // Нет сети — берём последний скачанный список (servers.cache),
+        // нет и его — сервера из launcher.ini.
+        void LoadRemoteServers()
+        {
+            if (ServersUrl.Length == 0) return;
+            string txt = null;
+            try
+            {
+                ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; // TLS 1.2
+                HttpWebRequest rq = (HttpWebRequest)WebRequest.Create(ServersUrl);
+                rq.Timeout = 4000;
+                rq.ReadWriteTimeout = 4000;
+                using (WebResponse rs = rq.GetResponse())
+                using (StreamReader sr = new StreamReader(rs.GetResponseStream(), Encoding.UTF8))
+                    txt = sr.ReadToEnd();
+                if (ParseServers(txt).Count > 0)
+                {
+                    try { File.WriteAllText(ServersCachePath, txt, new UTF8Encoding(true)); } catch (Exception) { }
+                }
+                else txt = null;
+            }
+            catch (Exception) { txt = null; }
+
+            if (txt == null)
+            {
+                try { if (File.Exists(ServersCachePath)) txt = File.ReadAllText(ServersCachePath, Encoding.UTF8); }
+                catch (Exception) { txt = null; }
+            }
+            if (txt == null) return;
+            List<ServerEntry> remote = ParseServers(txt);
+            if (remote.Count > 0) Servers = remote;
         }
 
         public const string DefaultIni =
@@ -112,6 +194,16 @@ namespace BastionLauncher
 "\r\n" +
 "; Новости: берутся из news.txt рядом с лаунчером. Можно указать ссылку на txt в интернете.\r\n" +
 "news_url =\r\n" +
+"\r\n" +
+"; Общий список серверов в интернете (тот же формат server = ...). Если задан и доступен,\r\n" +
+"; заменяет строки server ниже. Пусто = только строки ниже. Готовый адрес:\r\n" +
+"; https://raw.githubusercontent.com/the-gta-man/Bastion/main/launcher/remote/servers.ini\r\n" +
+"servers_url =\r\n" +
+"\r\n" +
+"; Архив игры для кнопки УСТАНОВИТЬ (ZIP с gta_sa.exe и samp.exe) и его MD5.\r\n" +
+"; Пусто = архив Bastion, вшитый в лаунчер при сборке.\r\n" +
+"game_url =\r\n" +
+"game_md5 =\r\n" +
 "\r\n" +
 "; Сервера:  server = Название | адрес | порт | описание\r\n" +
 "; Адрес: 127.0.0.1 — свой компьютер; IP из Radmin VPN — для друзей;\r\n" +

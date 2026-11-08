@@ -559,6 +559,8 @@ namespace BastionLauncher
             Controls.Add(play);
 
             BuildSettings();
+            gtaPath.TextChanged += delegate { UpdatePlayLabel(); };
+            UpdatePlayLabel();
 
             int last = 0;
             int.TryParse(Samp.GetValue("BastionLastServer"), out last);
@@ -1112,9 +1114,15 @@ namespace BastionLauncher
                 return;
             }
 
+            if (installing) return;
             string gta = gtaPath.Text.Trim();
             string gtaExe = Path.Combine(gta, "gta_sa.exe");
             string sampExe = Path.Combine(gta, "samp.exe");
+            if ((gta.Length == 0 || !File.Exists(gtaExe)) && cfg.EffectiveGameUrl.Length > 0)
+            {
+                InstallGame();
+                return;
+            }
             if (gta.Length == 0 || !File.Exists(gtaExe))
             {
                 Warn("Не нашёл игру. Открой «Настройки» и выбери папку, где лежит gta_sa.exe.");
@@ -1163,6 +1171,94 @@ namespace BastionLauncher
             {
                 Warn("Не удалось запустить игру: " + ex.Message);
             }
+        }
+
+        // ---------------- установка игры ----------------
+        bool installing;
+
+        bool GameFound()
+        {
+            string gta = gtaPath.Text.Trim();
+            return gta.Length > 0 && File.Exists(Path.Combine(gta, "gta_sa.exe"));
+        }
+
+        // Пока игры нет, а архив известен — вместо ИГРАТЬ кнопка УСТАНОВИТЬ
+        void UpdatePlayLabel()
+        {
+            if (installing) return;
+            string t = !GameFound() && cfg.EffectiveGameUrl.Length > 0 ? "УСТАНОВИТЬ" : "ИГРАТЬ";
+            if (play.Text != t) { play.Text = t; play.Invalidate(); }
+        }
+
+        void InstallGame()
+        {
+            string baseDir;
+            using (FolderBrowserDialog d = new FolderBrowserDialog())
+            {
+                d.Description = "Куда установить игру? Внутри появится папка «Bastion Online». " +
+                                "Не выбирай Program Files — там игре не хватит прав.";
+                d.ShowNewFolderButton = true;
+                string games = Path.Combine(Path.GetPathRoot(Environment.SystemDirectory), "Games");
+                d.SelectedPath = Directory.Exists(games) ? games : Path.GetPathRoot(Environment.SystemDirectory);
+                if (d.ShowDialog(this) != DialogResult.OK) return;
+                baseDir = d.SelectedPath;
+            }
+            string dest = Path.Combine(baseDir, "Bastion Online");
+            if (File.Exists(Path.Combine(baseDir, "gta_sa.exe"))) dest = baseDir; // выбрали уже готовую игру
+            if (File.Exists(Path.Combine(dest, "gta_sa.exe")))
+            {
+                gtaPath.Text = dest;
+                SaveSettings(false);
+                SetStatus("Игра уже есть в этой папке.");
+                return;
+            }
+            string pf = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            string pf86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+            if ((pf.Length > 0 && dest.StartsWith(pf, StringComparison.OrdinalIgnoreCase)) ||
+                (pf86.Length > 0 && dest.StartsWith(pf86, StringComparison.OrdinalIgnoreCase)))
+            {
+                Warn("В Program Files игре не хватит прав на запись. Выбери другую папку, например C:\\Games.");
+                return;
+            }
+
+            string url = cfg.EffectiveGameUrl, md5 = cfg.EffectiveGameMd5;
+            installing = true;
+            play.Text = "УСТАНОВКА…"; play.Enabled = false; play.Invalidate();
+            Thread th = new Thread(delegate ()
+            {
+                string error = null;
+                try
+                {
+                    GameInstaller.Install(url, md5, dest, delegate (string msg)
+                    {
+                        try { BeginInvoke(new MethodInvoker(delegate { SetStatus(msg); })); } catch (Exception) { }
+                    });
+                }
+                catch (Exception ex) { error = ex.Message; }
+                try
+                {
+                    BeginInvoke(new MethodInvoker(delegate
+                    {
+                        installing = false;
+                        play.Enabled = true;
+                        if (error == null)
+                        {
+                            gtaPath.Text = dest;
+                            SaveSettings(false);
+                            SetStatus("Игра установлена: " + dest);
+                        }
+                        else
+                        {
+                            SetStatus("Установка не удалась.");
+                            Warn("Не получилось установить игру: " + error);
+                        }
+                        UpdatePlayLabel();
+                    }));
+                }
+                catch (Exception) { }
+            });
+            th.IsBackground = true;
+            th.Start();
         }
 
         void Warn(string msg)

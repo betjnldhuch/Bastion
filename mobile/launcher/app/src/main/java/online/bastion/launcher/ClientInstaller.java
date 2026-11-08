@@ -117,10 +117,18 @@ public final class ClientInstaller {
     //  Установка игры из ZIP-архива (логика рабочего BastionLauncher3)
     // ------------------------------------------------------------------
 
-    /** Архив игры по умолчанию — тот же, что в рабочем установщике. */
-    public static final String GAME_ARCHIVE_URL = "http://192.168.31.182:8000/game.zip";
+    /**
+     * Архив игры по умолчанию. Задаётся при сборке (секреты GitHub BASTION_GAME_URL,
+     * BASTION_GAME_MD5), без них — домашний сервер 192.168.31.182.
+     */
+    public static final String GAME_ARCHIVE_URL = BuildConfig.GAME_ARCHIVE_URL;
     /** MD5 архива по умолчанию. Для своей ссылки проверка MD5 не выполняется. */
-    public static final String GAME_ARCHIVE_MD5 = "57A0F9765B2C229FD814E11D36F5EF00";
+    public static final String GAME_ARCHIVE_MD5 = BuildConfig.GAME_ARCHIVE_MD5;
+    /**
+     * Ключ закрытой раздачи (cloud/download-worker), секрет BASTION_DOWNLOAD_KEY.
+     * Отправляется только на https-сервер архива по умолчанию, не на чужие ссылки.
+     */
+    private static final String DOWNLOAD_KEY = BuildConfig.DOWNLOAD_KEY;
     /**
      * Папка внутри архива, содержимое которой кладётся в files/game. Если её нет,
      * корень игры ищется автоматически: папка, в которой лежит SAMP/ (так устроен
@@ -465,16 +473,31 @@ public final class ClientInstaller {
         if (target.length() == 0) throw new IllegalStateException("Выбранный файл пустой.");
     }
 
+    /** Ключ уходит только по https и только на хост архива по умолчанию. */
+    private static boolean sendsDownloadKey(String address) {
+        if (DOWNLOAD_KEY.length() == 0) return false;
+        try {
+            URL target = new URL(address), official = new URL(GAME_ARCHIVE_URL);
+            return "https".equals(target.getProtocol()) && "https".equals(official.getProtocol())
+                    && target.getHost().equalsIgnoreCase(official.getHost());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private void downloadArchive(String address, File target, Callback callback) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(address).openConnection();
         connection.setConnectTimeout(CONNECT_TIMEOUT);
         connection.setReadTimeout(READ_TIMEOUT);
         connection.setInstanceFollowRedirects(true);
         connection.setRequestProperty("User-Agent", "Bastion-Launcher/0.4");
+        if (sendsDownloadKey(address)) connection.setRequestProperty("X-Bastion-Key", DOWNLOAD_KEY);
         try {
             int code = connection.getResponseCode();
+            if (code == 404 && sendsDownloadKey(address))
+                throw new IllegalStateException("Сервер не отдал архив (HTTP 404): файла нет в хранилище или ключ лаунчера устарел.");
             if (code < 200 || code >= 300) throw new IllegalStateException("Ошибка загрузки архива: HTTP " + code);
-            long expected = connection.getContentLength();
+            long expected = connection.getContentLengthLong();
             if (expected > MAX_ARCHIVE_SIZE) throw new IllegalStateException("Архив превышает лимит 2 ГБ.");
             InputStream in = new BufferedInputStream(connection.getInputStream());
             FileOutputStream out = new FileOutputStream(target);

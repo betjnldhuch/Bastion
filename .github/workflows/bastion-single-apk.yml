@@ -5,10 +5,12 @@ name: Build single Bastion Android APK
 
 on:
   workflow_dispatch:
+  # main is built by release-main.yml, which calls this workflow
+  workflow_call:
   push:
     branches:
       - "integrate/**"
-      - main
+      - "feature/**"
     paths:
       - ".gitmodules"
       - "mobile/samp-mobile"
@@ -78,6 +80,11 @@ jobs:
 
       - name: Build the one installable Bastion APK
         working-directory: mobile/launcher
+        env:
+          # Закрытая раздача game.zip (cloud/download-worker). Пусто = домашний сервер.
+          BASTION_GAME_URL: ${{ secrets.BASTION_GAME_URL }}
+          BASTION_GAME_MD5: ${{ secrets.BASTION_GAME_MD5 }}
+          BASTION_DOWNLOAD_KEY: ${{ secrets.BASTION_DOWNLOAD_KEY }}
         run: |
           gradle :app:assembleDebug --no-daemon --stacktrace
           APK=app/build/outputs/apk/debug/app-debug.apk
