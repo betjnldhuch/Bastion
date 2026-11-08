@@ -22,6 +22,8 @@
 // =====================================================================
 
 #define ADMIN_MAX_LEVEL         5
+
+forward bool:Admin_IsOnDuty(playerid);   // admin_tools.inc
 #define ADMIN_WARNS_FOR_BAN     3       // столько варнов Ч и автоматический бан...
 #define ADMIN_WARN_BAN_DAYS     3       // ...на столько дней
 #define ADMIN_MAX_MUTE          720     // максимум минут мута
@@ -125,6 +127,7 @@ stock Admin_Init()
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE reports SET status = 2, answer = 'перезапуск сервера' WHERE status = 0"));
 
 	for (new i = 0; i < MAX_REPORTS; i++) gReport[i][rUsed] = false;
+	Teleports_Init();                   // admin_tools.inc
 }
 
 // =====================================================================
@@ -254,6 +257,7 @@ stock Admin_OnConnect(playerid)
 	gSpecTarget[playerid] = INVALID_PLAYER_ID;
 	gSpecRestore[playerid] = false;
 	gAMenuTarget[playerid] = INVALID_PLAYER_ID;
+	AdminTools_OnConnect(playerid);     // admin_tools.inc
 }
 
 // ѕосле входа в аккаунт (accounts.inc, Account_FinishLogin)
@@ -334,6 +338,17 @@ stock Admin_OnSpawn(playerid)
 		SendClientMessage(playerid, COLOR_RED, "“ы в деморгане. ќсталось: %d мин.", gAJail[playerid]);
 	}
 	if (gFrozen[playerid]) TogglePlayerControllable(playerid, false);
+	AdminTools_OnSpawn(playerid);
+}
+
+stock bool:Admin_IsSpectating(playerid)
+{
+	return (gSpecTarget[playerid] != INVALID_PLAYER_ID);
+}
+
+stock bool:Admin_IsInAJail(playerid)
+{
+	return (gAJail[playerid] > 0);
 }
 
 // »з OnPlayerText: true Ч игрок в муте, сообщение не отправл€ть
@@ -821,6 +836,7 @@ stock bool:Cmd_Goto(playerid, const params[])
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "»спользование: /goto [id]");
 
+	Teleport_SaveBack(playerid);        // admin_tools.inc: /back вернЄт назад
 	new Float:x, Float:y, Float:z;
 	GetPlayerPos(target, x, y, z);
 	SetPlayerInterior(playerid, GetPlayerInterior(target));
@@ -871,7 +887,7 @@ stock bool:Cmd_Admins(playerid)
 		if (IsPlayerConnected(i) && Player[i][pAdmin] > 0)
 		{
 			SendClientMessage(playerid, COLOR_WHITE, " %s [%d] Ч %s%s%s", GetRPName(i), i, Admin_LevelName(Player[i][pAdmin]),
-				Admin_PlatformTag(i), (gSpecTarget[i] != INVALID_PLAYER_ID) ? (" (следит)") : (""));
+				Admin_PlatformTag(i), Admin_IsOnDuty(i) ? (" {FF66FF}(на дежурстве){FFFFFF}") : (""));
 			count++;
 		}
 	}
@@ -1141,6 +1157,7 @@ static bool:AMenu_TargetOk(playerid)
 
 stock Admin_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
+	if (AdminTools_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (dialogid < DIALOG_ADMIN_INFO || dialogid > DIALOG_REPORT_NEW) return 0;
 
 	switch (dialogid)
@@ -1297,10 +1314,11 @@ stock bool:Cmd_AHelp(playerid)
 	if (!Admin_Check(playerid, 1)) return true;
 	new text[1800];
 	strcat(text, "{FF66FF}1 Ч ’елпер\n{FFFFFF}/a Ч админ-чат   /amenu Ч панель (удобно с телефона)   /reports /ans Ч репорты\n");
-	strcat(text, "/check /spec /specoff /goto /kick /mute /unmute /admins\n\n");
-	strcat(text, "{FF66FF}2 Ч ћодератор\n{FFFFFF}/warn /ajail /unajail /freeze /unfreeze /slap /gethere /sethp /setskin /jail /unjail\n\n");
-	strcat(text, "{FF66FF}3 Ч јдминистратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /veh /dveh\n/givelic Ч выдать лицензию   /setfuel Ч заправить машину\n\n");
-	strcat(text, "{FF66FF}4 Ч —т. администратор\n{FFFFFF}/unban, бан навсегда (0 дней), фракции, дома, бизнесы, ј«—, банкоматы, районы\n/givefood /giveitem Ч еда и вещи   /addexampoint /clearexam Ч маршрут экзамена\n\n");
+	strcat(text, "/check /spec /specoff /goto /kick /mute /unmute /admins /aduty\n");
+	strcat(text, "“елепорт: метка на карте (выкл. /maptp), /tp Ч список точек, /back Ч назад\n\n");
+	strcat(text, "{FF66FF}2 Ч ћодератор\n{FFFFFF}/warn /ajail /unajail /freeze /unfreeze /slap /gethere /sethp /setskin /jail /unjail\n/sendto /gotocar /fixveh /flip\n\n");
+	strcat(text, "{FF66FF}3 Ч јдминистратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /veh /dveh\n/ao /gotocoord /respawncars /setweather\n/givelic Ч выдать лицензию   /setfuel Ч заправить машину\n\n");
+	strcat(text, "{FF66FF}4 Ч —т. администратор\n{FFFFFF}/unban, бан навсегда (0 дней), /addtp /deltp, фракции, дома, бизнесы, ј«—, банкоматы, районы\n/givefood /giveitem Ч еда и вещи   /addexampoint /clearexam Ч маршрут экзамена\n\n");
 	strcat(text, "{FF66FF}5 Ч √л. администратор\n{FFFFFF}/makeadmin /givemoney\n\n");
 	strcat(text, "{AFAFAF}¬се наказани€ и выдачи пишутс€ в лог (/alog). Ќаказать админа своего уровн€ или выше нельз€.");
 	Admin_ShowInfo(playerid, " оманды администрации", text);
@@ -1442,5 +1460,5 @@ stock Admin_OnCommand(playerid, const cmd[], const params[])
 	if (!strcmp(cmd, "/givemoney", true))   { Cmd_GiveMoney(playerid, params); return 1; }
 	if (!strcmp(cmd, "/sethp", true))       { Cmd_SetHP(playerid, params); return 1; }
 	if (!strcmp(cmd, "/setskin", true))     { Cmd_SetSkin(playerid, params); return 1; }
-	return 0;
+	return AdminTools_OnCommand(playerid, cmd, params);   // телепорты и инструменты
 }
