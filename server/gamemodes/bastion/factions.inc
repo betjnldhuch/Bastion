@@ -667,8 +667,8 @@ stock bool:Cmd_Accept(playerid)
 				return SendClientMessage(playerid, COLOR_GREY, "ћедик ушЄл или закончил смену.");
 			if (GetMoney(playerid) < price) return SendClientMessage(playerid, COLOR_GREY, "Ќе хватает денег. Ќужно $%d.", price);
 
-			GiveMoney(playerid, -price);
-			GiveMoney(from, price);
+			GiveMoney(playerid, -price, "лечение у медика");
+			GiveMoney(from, price, "оплата лечени€");
 			SetPlayerHealth(playerid, 100.0);
 			Account_Save(playerid);
 			Account_Save(from);
@@ -901,7 +901,7 @@ stock bool:Cmd_Arrest(playerid, const params[])
 	Jail_PutInCell(target);
 	Account_Save(target);
 
-	GiveMoney(playerid, stars * ARREST_REWARD);
+	GiveMoney(playerid, stars * ARREST_REWARD, "преми€ за арест");
 	Account_Save(playerid);
 
 	SendClientMessage(target, COLOR_RED, "“еб€ посадили в тюрьму на %d мин.", minutes);
@@ -950,7 +950,8 @@ stock bool:Cmd_FHelp(playerid)
 	strcat(text, "{3A6EFF}ѕолици€ LSPD\n");
 	strcat(text, "{FFFFFF}/su [id] [звЄзды] [причина] Ч розыск   /clear [id] Ч сн€ть розыск   /wanted Ч список\n");
 	strcat(text, "/cuff /uncuff [id] Ч наручники   /putcar [id] Ч посадить в машину\n");
-	strcat(text, "/arrest [id] Ч посадить в тюрьму (у участка)   /m Ч мегафон\n\n");
+	strcat(text, "/arrest [id] Ч посадить в тюрьму (у участка)   /m Ч мегафон\n");
+	strcat(text, "/impound [штраф] Ч эвакуировать личную машину на штрафсто€нку (сто€ р€дом)\n\n");
 	strcat(text, "{FF8080}Ѕольница (EMS)\n");
 	strcat(text, "{FFFFFF}/heal [id] Ч предложить лечение\n\n");
 	strcat(text, "{10A010}Ѕанды\n");

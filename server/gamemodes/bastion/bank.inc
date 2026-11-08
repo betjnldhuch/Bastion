@@ -178,6 +178,7 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			}
 			Player[playerid][pBank] -= amount;
 			Player[target][pBank] += amount;
+			Bank_LogTransfer(playerid, target, amount);
 			Account_Save(playerid);
 			Account_Save(target);
 			SendClientMessage(playerid, COLOR_GREEN, "Ты перевёл $%d игроку %s. На счёте: $%d.", amount, GetRPName(target), Player[playerid][pBank]);
@@ -185,6 +186,15 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		}
 	}
 	return 1;
+}
+
+// Перевод в журнал денег (economy.inc): наличные не меняются, пишем отдельно
+stock Bank_LogTransfer(playerid, target, amount)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO money_log (time, account, amount, cash, reason) VALUES (%d, %d, %d, %d, 'банк: перевод -> %q')",
+		gettime(), Player[playerid][pDbId], -amount, Player[playerid][pMoney], GetRPName(target)));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO money_log (time, account, amount, cash, reason) VALUES (%d, %d, %d, %d, 'банк: перевод <- %q')",
+		gettime(), Player[target][pDbId], amount, Player[target][pMoney], GetRPName(playerid)));
 }
 
 // ---------------------------------------------------------------------

@@ -5,11 +5,12 @@ name: Build single Bastion Android APK
 
 on:
   workflow_dispatch:
+  # main is built by release-main.yml, which calls this workflow
+  workflow_call:
   push:
     branches:
       - "integrate/**"
       - "feature/**"
-      - main
     paths:
       - ".gitmodules"
       - "mobile/samp-mobile"

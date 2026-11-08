@@ -1,60 +1,535 @@
 // =====================================================================
-//  admin.inc — админ-команды.
+//  admin.inc — система администрации.
 //
 //  Как стать первым админом:
 //  1. В config.json задай свой rcon-пароль.
 //  2. В игре введи: /rcon login ТВОЙ_ПАРОЛЬ
 //  3. Введи: /makeadmin [свой id] 5
 //
-//  Уровни: 1 — хелпер, 2 — модератор, 3 — админ, 4 — ст. админ, 5 — владелец
+//  Уровни: 1 — хелпер, 2 — модератор, 3 — администратор,
+//          4 — старший администратор, 5 — главный администратор.
+//  Все команды по уровням: /ahelp
+//
+//  Что здесь есть:
+//  - наказания с причинами и сроками: /kick /ban /offban /mute /warn /ajail
+//    (бан, мут, варны и деморган хранятся в базе и переживают перезаход);
+//  - лог всех действий админов в таблице admin_log, просмотр: /alog;
+//  - репорты игроков: /report, у админов /reports и /ans;
+//  - /a-чат, /admins, /check, /spec, /freeze, /slap;
+//  - /amenu — панель через окна, удобная с телефона (не нужно вводить id).
+//
+//  Таблицы и новые поля создаются сами в Admin_Init (OnGameModeInit).
 // =====================================================================
+
+#define ADMIN_MAX_LEVEL         5
+
+forward bool:Admin_IsOnDuty(playerid);   // admin_tools.inc
+#define ADMIN_WARNS_FOR_BAN     3       // столько варнов — и автоматический бан...
+#define ADMIN_WARN_BAN_DAYS     3       // ...на столько дней
+#define ADMIN_MAX_MUTE          720     // максимум минут мута
+#define ADMIN_MAX_AJAIL         720     // максимум минут деморгана
+#define ADMIN_MAX_BAN_DAYS      3650
+
+// Деморган (админ-тюрьма): та же камера, что и у полиции, но в отдельном мире
+#define AJAIL_INTERIOR          6
+#define AJAIL_WORLD             1001
+#define AJAIL_X                 264.0
+#define AJAIL_Y                 77.5
+#define AJAIL_Z                 1001.04
+
+#define REPORT_COOLDOWN         60      // секунд между репортами одного игрока
+#define MAX_REPORTS             30      // открытых репортов одновременно
+
+enum
+{
+	DIALOG_ADMIN_INFO = 1200,   // просто сообщение (бан, кик, справка)
+	DIALOG_AMENU,               // список игроков
+	DIALOG_AMENU_ACT,           // действия с игроком
+	DIALOG_AMENU_INPUT,         // ввод срока и причины
+	DIALOG_REPORTS,             // список репортов
+	DIALOG_REPORT_ACT,          // действия с репортом
+	DIALOG_REPORT_ANSWER,       // ввод ответа
+	DIALOG_REPORT_NEW           // игрок пишет репорт
+}
+
+// Действия панели /amenu (порядок = порядок строк в окне)
+enum
+{
+	AMENU_GOTO,
+	AMENU_GETHERE,
+	AMENU_SPEC,
+	AMENU_CHECK,
+	AMENU_FREEZE,
+	AMENU_SLAP,
+	AMENU_KICK,
+	AMENU_MUTE,
+	AMENU_WARN,
+	AMENU_AJAIL,
+	AMENU_BAN
+}
+
+static gMuteUntil[MAX_PLAYERS];         // unix-время конца мута (0 = нет)
+static gAJail[MAX_PLAYERS];             // минут деморгана осталось
+static gWarns[MAX_PLAYERS];             // варны
+static bool:gFrozen[MAX_PLAYERS];
+static gReportLast[MAX_PLAYERS];        // когда игрок последний раз писал репорт
+
+// Слежка (/spec): куда вернуть админа
+static gSpecTarget[MAX_PLAYERS] = {INVALID_PLAYER_ID, ...};
+static bool:gSpecRestore[MAX_PLAYERS];
+static Float:gSpecPos[MAX_PLAYERS][3];
+static gSpecInt[MAX_PLAYERS];
+static gSpecWorld[MAX_PLAYERS];
+
+// Панель /amenu
+static gAMenuIds[MAX_PLAYERS][MAX_PLAYERS];   // строка списка -> id игрока
+static gAMenuTarget[MAX_PLAYERS];
+static gAMenuTargetDb[MAX_PLAYERS];
+static gAMenuAction[MAX_PLAYERS];
+
+// Открытые репорты (в памяти; копия с ответами — в таблице reports)
+enum E_REPORT
+{
+	bool:rUsed,
+	rDbId,              // номер репорта (id в таблице reports)
+	rFrom,              // id игрока
+	rFromDb,            // аккаунт игрока (защита от подмены id)
+	rText[100],
+	rTime,
+	rTakenBy            // какой админ взял (INVALID_PLAYER_ID = никто)
+}
+static gReport[MAX_REPORTS][E_REPORT];
+static gReportList[MAX_PLAYERS][MAX_REPORTS]; // строка окна /reports -> слот
+static gReportSel[MAX_PLAYERS];               // выбранный слот репорта
+
+// =====================================================================
+//  Запуск: таблицы и поля в базе
+// =====================================================================
+stock Admin_Init()
+{
+	// Наказания игрока (в таблице accounts)
+	DB_AddColumn("accounts", "mute_until", "INTEGER DEFAULT 0");
+	DB_AddColumn("accounts", "ajail", "INTEGER DEFAULT 0");
+	DB_AddColumn("accounts", "warns", "INTEGER DEFAULT 0");
+
+	// Баны со сроком: until = 0 — навсегда
+	DB_AddColumn("bans", "until", "INTEGER DEFAULT 0");
+	DB_AddColumn("bans", "ip", "TEXT DEFAULT ''");
+
+	// Лог действий админов
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, date INTEGER, admin TEXT, admin_id INTEGER DEFAULT 0, action TEXT, target TEXT DEFAULT '', target_id INTEGER DEFAULT 0, value INTEGER DEFAULT 0, reason TEXT DEFAULT '')"));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE INDEX IF NOT EXISTS admin_log_target ON admin_log (target COLLATE NOCASE, id)"));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE INDEX IF NOT EXISTS admin_log_admin ON admin_log (admin COLLATE NOCASE, id)"));
+
+	// Репорты: status 0 — открыт, 1 — отвечен, 2 — закрыт без ответа
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY AUTOINCREMENT, date INTEGER, author TEXT, author_id INTEGER DEFAULT 0, text TEXT, status INTEGER DEFAULT 0, admin TEXT DEFAULT '', answer TEXT DEFAULT '', answer_date INTEGER DEFAULT 0)"));
+	// Репорты, оставшиеся открытыми после перезапуска, закрываем
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE reports SET status = 2, answer = 'перезапуск сервера' WHERE status = 0"));
+
+	for (new i = 0; i < MAX_REPORTS; i++) gReport[i][rUsed] = false;
+	Teleports_Init();                   // admin_tools.inc
+}
+
+// =====================================================================
+//  Уровни и общие помощники
+// =====================================================================
+stock Admin_LevelName(level)
+{
+	new name[28];
+	switch (level)
+	{
+		case 1: strcat(name, "Хелпер");
+		case 2: strcat(name, "Модератор");
+		case 3: strcat(name, "Администратор");
+		case 4: strcat(name, "Ст. администратор");
+		case 5: strcat(name, "Гл. администратор");
+		default: strcat(name, "Игрок");
+	}
+	return name;
+}
 
 // Проверка уровня. Пример: if (!Admin_Check(playerid, 3)) return true;
 stock bool:Admin_Check(playerid, level)
 {
 	if (Player[playerid][pAdmin] >= level) return true;
-	SendClientMessage(playerid, COLOR_GREY, "Недостаточно прав (нужен уровень админа %d).", level);
+	SendClientMessage(playerid, COLOR_GREY, "Недостаточно прав (нужен уровень админки %d — %s).", level, Admin_LevelName(level));
 	return false;
 }
 
-// ---------------------------------------------------------------------
-//  Баны (по нику). Проверка при входе — из accounts.inc
-// ---------------------------------------------------------------------
+// Можно ли наказать этого игрока (не себя и не админа своего уровня или выше)
+stock bool:Admin_CanPunish(playerid, target)
+{
+	if (target == playerid)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Нельзя применить к себе.");
+		return false;
+	}
+	if (Player[target][pAdmin] >= Player[playerid][pAdmin])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Нельзя наказать админа своего уровня или выше.");
+		return false;
+	}
+	return true;
+}
+
+stock Admin_PlatformTag(playerid)
+{
+	new tag[8];
+	if (IsPlayerMobile[playerid]) strcat(tag, " [моб]");
+	return tag;
+}
+
+// "3 дн. 4 ч." / "25 мин." из числа секунд
+stock Admin_FormatTime(seconds)
+{
+	new text[32];
+	if (seconds < 0) seconds = 0;
+	if (seconds >= 86400) format(text, sizeof text, "%d дн. %d ч.", seconds / 86400, (seconds % 86400) / 3600);
+	else if (seconds >= 3600) format(text, sizeof text, "%d ч. %d мин.", seconds / 3600, (seconds % 3600) / 60);
+	else format(text, sizeof text, "%d мин.", (seconds + 59) / 60);
+	return text;
+}
+
+// Окно-сообщение. На телефоне чат маленький, окно видно всегда.
+stock Admin_ShowInfo(playerid, const title[], const text[])
+{
+	ShowPlayerDialog(playerid, DIALOG_ADMIN_INFO, DIALOG_STYLE_MSGBOX, title, "%s", "Закрыть", "", text);
+}
+
+// Разобрать "[число] остаток": если первое слово — число, оно попадает в value
+static bool:Admin_ParseOptInt(const params[], pos, &value, rest[], size = sizeof (rest))
+{
+	new p = pos, buf[16];
+	if (NextParam(params, p, buf) && IsNumeric(buf))
+	{
+		value = strval(buf);
+		return RestParam(params, p, rest, size);
+	}
+	return RestParam(params, pos, rest, size);
+}
+
+// =====================================================================
+//  Лог действий админов (таблица admin_log)
+// =====================================================================
+stock Admin_Log(adminid, const action[], target, const reason[] = "", value = 0)
+{
+	new admin[MAX_PLAYER_NAME], name[MAX_PLAYER_NAME], adminDb = 0, targetDb = 0;
+	if (adminid != INVALID_PLAYER_ID)
+	{
+		GetPlayerName(adminid, admin, sizeof admin);
+		adminDb = Player[adminid][pDbId];
+	}
+	else strcat(admin, "Сервер");
+	if (target != INVALID_PLAYER_ID)
+	{
+		GetPlayerName(target, name, sizeof name);
+		targetDb = Player[target][pDbId];
+	}
+	Admin_LogName(admin, adminDb, action, name, targetDb, reason, value);
+}
+
+stock Admin_LogName(const admin[], adminDb, const action[], const target[], targetDb, const reason[], value)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB,
+		"INSERT INTO admin_log (date, admin, admin_id, action, target, target_id, value, reason) VALUES (%d, '%q', %d, '%q', '%q', %d, %d, '%q')",
+		gettime(), admin, adminDb, action, target, targetDb, value, reason));
+	printf("[admin] %s: %s %s (%d) %s", admin, action, target, value, reason);
+}
+
+// Сохранить наказания игрока в базу сразу (не ждём Account_Save)
+static Admin_SaveState(playerid)
+{
+	if (Player[playerid][pDbId] == 0) return;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET mute_until = %d, ajail = %d, warns = %d WHERE id = %d",
+		gMuteUntil[playerid], gAJail[playerid], gWarns[playerid], Player[playerid][pDbId]));
+}
+
+// =====================================================================
+//  События игрока (вызываются из rp.pwn и accounts.inc)
+// =====================================================================
+stock Admin_OnConnect(playerid)
+{
+	gMuteUntil[playerid] = 0;
+	gAJail[playerid] = 0;
+	gWarns[playerid] = 0;
+	gFrozen[playerid] = false;
+	gReportLast[playerid] = 0;
+	gSpecTarget[playerid] = INVALID_PLAYER_ID;
+	gSpecRestore[playerid] = false;
+	gAMenuTarget[playerid] = INVALID_PLAYER_ID;
+	AdminTools_OnConnect(playerid);     // admin_tools.inc
+}
+
+// После входа в аккаунт (accounts.inc, Account_FinishLogin)
+stock Admin_OnLogin(playerid)
+{
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT mute_until, ajail, warns FROM accounts WHERE id = %d", Player[playerid][pDbId]);
+	if (r != DBResult:0)
+	{
+		if (DB_GetRowCount(r) > 0)
+		{
+			gMuteUntil[playerid] = DB_GetFieldInt(r, 0);
+			gAJail[playerid] = DB_GetFieldInt(r, 1);
+			gWarns[playerid] = DB_GetFieldInt(r, 2);
+		}
+		DB_FreeResultSet(r);
+	}
+	if (gMuteUntil[playerid] != 0 && gMuteUntil[playerid] <= gettime())
+	{
+		gMuteUntil[playerid] = 0;
+		Admin_SaveState(playerid);
+	}
+	if (gMuteUntil[playerid] > 0)
+		SendClientMessage(playerid, COLOR_RED, "У тебя мут: чат недоступен ещё %s", Admin_FormatTime(gMuteUntil[playerid] - gettime()));
+	if (gWarns[playerid] > 0)
+		SendClientMessage(playerid, COLOR_ORANGE, "Предупреждений: %d из %d.", gWarns[playerid], ADMIN_WARNS_FOR_BAN);
+
+	if (Player[playerid][pAdmin] > 0)
+	{
+		new open = Reports_CountOpen();
+		SendClientMessage(playerid, COLOR_ADMIN, "Ты вошёл как %s (уровень %d). Команды: /ahelp, панель: /amenu.",
+			Admin_LevelName(Player[playerid][pAdmin]), Player[playerid][pAdmin]);
+		if (open > 0) SendClientMessage(playerid, COLOR_ADMIN, "Открытых репортов: %d — /reports", open);
+
+		new msg[144];
+		format(msg, sizeof msg, "[A] %s %s[%d]%s зашёл на сервер.", Admin_LevelName(Player[playerid][pAdmin]),
+			GetRPName(playerid), playerid, Admin_PlatformTag(playerid));
+		SendAdminMessage(COLOR_ADMIN, msg);
+	}
+}
+
+stock Admin_OnDisconnect(playerid)
+{
+	// Кто следил за этим игроком — возвращаем на место
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (gSpecTarget[i] == playerid && IsPlayerConnected(i))
+		{
+			SendClientMessage(i, COLOR_ADMIN, "Игрок вышел, слежка выключена.");
+			Admin_StopSpec(i);
+		}
+		if (gAMenuTarget[i] == playerid) gAMenuTarget[i] = INVALID_PLAYER_ID;
+	}
+	// Его репорты закрываем, а взятые им — освобождаем
+	for (new r = 0; r < MAX_REPORTS; r++)
+	{
+		if (!gReport[r][rUsed]) continue;
+		if (gReport[r][rFrom] == playerid) Reports_Close(r, playerid, 2, "автор вышел");
+		else if (gReport[r][rTakenBy] == playerid) gReport[r][rTakenBy] = INVALID_PLAYER_ID;
+	}
+	gSpecTarget[playerid] = INVALID_PLAYER_ID;
+	gSpecRestore[playerid] = false;
+	gFrozen[playerid] = false;
+}
+
+// Из OnPlayerSpawn — после Factions_OnSpawn
+stock Admin_OnSpawn(playerid)
+{
+	if (gSpecRestore[playerid])
+	{
+		gSpecRestore[playerid] = false;
+		SetPlayerInterior(playerid, gSpecInt[playerid]);
+		SetPlayerVirtualWorld(playerid, gSpecWorld[playerid]);
+		SetPlayerPos(playerid, gSpecPos[playerid][0], gSpecPos[playerid][1], gSpecPos[playerid][2]);
+	}
+	if (gAJail[playerid] > 0)
+	{
+		AJail_PutInCell(playerid);
+		SendClientMessage(playerid, COLOR_RED, "Ты в деморгане. Осталось: %d мин.", gAJail[playerid]);
+	}
+	if (gFrozen[playerid]) TogglePlayerControllable(playerid, false);
+	AdminTools_OnSpawn(playerid);
+}
+
+stock bool:Admin_IsSpectating(playerid)
+{
+	return (gSpecTarget[playerid] != INVALID_PLAYER_ID);
+}
+
+stock bool:Admin_IsInAJail(playerid)
+{
+	return (gAJail[playerid] > 0);
+}
+
+// Из OnPlayerText: true — игрок в муте, сообщение не отправлять
+stock bool:Admin_IsMuted(playerid)
+{
+	if (gMuteUntil[playerid] == 0) return false;
+	new left = gMuteUntil[playerid] - gettime();
+	if (left <= 0)
+	{
+		gMuteUntil[playerid] = 0;
+		Admin_SaveState(playerid);
+		SendClientMessage(playerid, COLOR_GREEN, "Мут закончился, чат снова доступен.");
+		return false;
+	}
+	SendClientMessage(playerid, COLOR_RED, "У тебя мут. Осталось: %s", Admin_FormatTime(left));
+	return true;
+}
+
+// Раз в минуту (OnMinuteTimer)
+stock Admin_OnMinute()
+{
+	new now = gettime();
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (!IsPlayerConnected(i) || !Player[i][pLogged]) continue;
+
+		if (gMuteUntil[i] != 0 && gMuteUntil[i] <= now)
+		{
+			gMuteUntil[i] = 0;
+			Admin_SaveState(i);
+			SendClientMessage(i, COLOR_GREEN, "Мут закончился, чат снова доступен.");
+		}
+
+		if (gAJail[i] > 0)
+		{
+			gAJail[i]--;
+			Admin_SaveState(i);
+			if (gAJail[i] <= 0) AJail_Release(i);
+			else
+			{
+				if (GetPlayerVirtualWorld(i) != AJAIL_WORLD || !IsPlayerInRangeOfPoint(i, 15.0, AJAIL_X, AJAIL_Y, AJAIL_Z))
+					AJail_PutInCell(i);
+				SendClientMessage(i, COLOR_GREY, "До выхода из деморгана: %d мин.", gAJail[i]);
+			}
+		}
+	}
+}
+
+// =====================================================================
+//  Баны (в базе). Проверка при входе — из accounts.inc
+// =====================================================================
 stock Bans_IsBanned(playerid, const name[])
 {
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT reason, admin FROM bans WHERE name = '%q' LIMIT 1", name);
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT reason, admin, until FROM bans WHERE name = '%q' LIMIT 1", name);
 	if (r == DBResult:0) return 0;
 	new banned = 0;
 	if (DB_GetRowCount(r) > 0)
 	{
-		new reason[64], admin[MAX_PLAYER_NAME];
+		new reason[64], admin[MAX_PLAYER_NAME], until = DB_GetFieldInt(r, 2);
 		DB_GetFieldString(r, 0, reason, sizeof reason);
 		DB_GetFieldString(r, 1, admin, sizeof admin);
-		SendClientMessage(playerid, COLOR_RED, "Ты забанен на этом сервере. Причина: %s (админ %s).", reason, admin);
-		KickWithDelay(playerid);
-		banned = 1;
+		if (until > 0 && until <= gettime())
+		{
+			// срок вышел — снимаем бан сам
+			DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM bans WHERE name = '%q'", name));
+			Admin_LogName("Сервер", 0, "unban (срок вышел)", name, 0, reason, 0);
+		}
+		else
+		{
+			new text[256], term[40];
+			if (until > 0) format(term, sizeof term, "ещё %s", Admin_FormatTime(until - gettime()));
+			else strcat(term, "навсегда");
+			format(text, sizeof text, "{FF6347}Аккаунт заблокирован.\n\n{FFFFFF}Причина: %s\nАдминистратор: %s\nСрок: %s\n\nНе согласен — пиши жалобу на форуме.",
+				reason, admin, term);
+			SendClientMessage(playerid, COLOR_RED, "Ты забанен (%s). Причина: %s (админ %s).", term, reason, admin);
+			Admin_ShowInfo(playerid, "Бан", text);
+			KickWithDelay(playerid);
+			banned = 1;
+		}
 	}
 	DB_FreeResultSet(r);
 	return banned;
 }
 
+// Записать бан в базу. days = 0 — навсегда
+static Bans_Add(const name[], const ip[], const reason[], const admin[], days)
+{
+	new until = (days > 0) ? (gettime() + days * 86400) : 0;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO bans (name, reason, admin, date, until, ip) VALUES ('%q', '%q', '%q', %d, %d, '%q')",
+		name, reason, admin, gettime(), until, ip));
+}
+
+static Admin_BanText(days)
+{
+	new text[24];
+	if (days > 0) format(text, sizeof text, "на %d дн.", days);
+	else strcat(text, "навсегда");
+	return text;
+}
+
+// Бан игрока онлайн (используется /ban и автобаном за варны)
+static Admin_BanPlayer(adminid, target, days, const reason[])
+{
+	new name[MAX_PLAYER_NAME], admin[MAX_PLAYER_NAME], ip[16];
+	GetPlayerName(target, name, sizeof name);
+	GetPlayerIp(target, ip, sizeof ip);
+	if (adminid != INVALID_PLAYER_ID) GetPlayerName(adminid, admin, sizeof admin);
+	else strcat(admin, "Сервер");
+
+	Bans_Add(name, ip, reason, admin, days);
+	Admin_Log(adminid, "ban", target, reason, days);
+
+	if (adminid != INVALID_PLAYER_ID)
+		SendClientMessageToAll(COLOR_RED, "Администратор %s забанил %s %s. Причина: %s", GetRPName(adminid), GetRPName(target), Admin_BanText(days), reason);
+	else
+		SendClientMessageToAll(COLOR_RED, "%s забанен %s. Причина: %s", GetRPName(target), Admin_BanText(days), reason);
+
+	new text[200];
+	format(text, sizeof text, "{FF6347}Ты забанен %s.\n\n{FFFFFF}Причина: %s\nАдминистратор: %s\n\nНе согласен — пиши жалобу на форуме.", Admin_BanText(days), reason, admin);
+	Admin_ShowInfo(target, "Бан", text);
+	KickWithDelay(target);
+}
+
 stock bool:Cmd_Ban(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 3)) return true;
-	new pos = 0, reason[64];
+	new pos = 0, days = 0, reason[64];
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID || !RestParam(params, pos, reason))
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /ban [id] [причина]");
-	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Себя банить нельзя.");
-	if (Player[target][pAdmin] >= Player[playerid][pAdmin]) return SendClientMessage(playerid, COLOR_GREY, "Нельзя забанить равного или старшего админа.");
+	if (target == INVALID_PLAYER_ID || !Admin_ParseOptInt(params, pos, days, reason))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /ban [id] [дни, 0 — навсегда] [причина]");
+	if (days < 0 || days > ADMIN_MAX_BAN_DAYS) return SendClientMessage(playerid, COLOR_GREY, "Срок от 0 до %d дней (0 — навсегда).", ADMIN_MAX_BAN_DAYS);
+	if (days == 0 && Player[playerid][pAdmin] < 4) return SendClientMessage(playerid, COLOR_GREY, "Бан навсегда — с 4 уровня. Укажи срок в днях.");
+	if (!Admin_CanPunish(playerid, target)) return true;
+	Admin_BanPlayer(playerid, target, days, reason);
+	return true;
+}
 
-	new name[MAX_PLAYER_NAME], admin[MAX_PLAYER_NAME];
-	GetPlayerName(target, name, sizeof name);
+// Бан по нику, когда игрока нет на сервере
+stock bool:Cmd_OffBan(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 3)) return true;
+	new pos = 0, name[MAX_PLAYER_NAME], days = 0, reason[64];
+	if (!NextParam(params, pos, name) || !Admin_ParseOptInt(params, pos, days, reason))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /offban [ник] [дни, 0 — навсегда] [причина]");
+	if (days < 0 || days > ADMIN_MAX_BAN_DAYS) return SendClientMessage(playerid, COLOR_GREY, "Срок от 0 до %d дней (0 — навсегда).", ADMIN_MAX_BAN_DAYS);
+	if (days == 0 && Player[playerid][pAdmin] < 4) return SendClientMessage(playerid, COLOR_GREY, "Бан навсегда — с 4 уровня. Укажи срок в днях.");
+
+	// Игрок на сервере — обычный бан
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (!IsPlayerConnected(i)) continue;
+		new other[MAX_PLAYER_NAME];
+		GetPlayerName(i, other, sizeof other);
+		if (!strcmp(other, name, true))
+		{
+			if (!Admin_CanPunish(playerid, i)) return true;
+			Admin_BanPlayer(playerid, i, days, reason);
+			return true;
+		}
+	}
+
+	new adminLevel = -1, accId = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, admin, name FROM accounts WHERE name = '%q' LIMIT 1", name);
+	if (r != DBResult:0)
+	{
+		if (DB_GetRowCount(r) > 0)
+		{
+			accId = DB_GetFieldInt(r, 0);
+			adminLevel = DB_GetFieldInt(r, 1);
+			DB_GetFieldString(r, 2, name, sizeof name);   // точное написание ника
+		}
+		DB_FreeResultSet(r);
+	}
+	if (adminLevel < 0) return SendClientMessage(playerid, COLOR_GREY, "Аккаунт %s не найден.", name);
+	if (adminLevel >= Player[playerid][pAdmin]) return SendClientMessage(playerid, COLOR_GREY, "Нельзя наказать админа своего уровня или выше.");
+
+	new admin[MAX_PLAYER_NAME];
 	GetPlayerName(playerid, admin, sizeof admin);
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO bans (name, reason, admin, date) VALUES ('%q', '%q', '%q', %d)",
-		name, reason, admin, gettime()));
-	SendClientMessageToAll(COLOR_RED, "Администратор %s забанил %s. Причина: %s", GetRPName(playerid), GetRPName(target), reason);
-	KickWithDelay(target);
+	Bans_Add(name, "", reason, admin, days);
+	Admin_LogName(admin, Player[playerid][pDbId], "offban", name, accId, reason, days);
+	SendClientMessage(playerid, COLOR_ADMIN, "Аккаунт %s забанен %s. Причина: %s", name, Admin_BanText(days), reason);
 	return true;
 }
 
@@ -62,38 +537,295 @@ stock bool:Cmd_Unban(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, name[MAX_PLAYER_NAME];
-	if (!NextParam(params, pos, name)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /unban [Имя_Фамилия]");
+	if (!NextParam(params, pos, name)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /unban [ник]");
+
+	new found = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT COUNT(*) FROM bans WHERE name = '%q'", name);
+	if (r != DBResult:0)
+	{
+		if (DB_GetRowCount(r) > 0) found = DB_GetFieldInt(r, 0);
+		DB_FreeResultSet(r);
+	}
+	if (found == 0) return SendClientMessage(playerid, COLOR_GREY, "%s не в бане.", name);
+
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM bans WHERE name = '%q'", name));
-	SendClientMessage(playerid, COLOR_ADMIN, "Ник %s разбанен (если был в бане).", name);
+	new admin[MAX_PLAYER_NAME];
+	GetPlayerName(playerid, admin, sizeof admin);
+	Admin_LogName(admin, Player[playerid][pDbId], "unban", name, 0, "", 0);
+	SendClientMessage(playerid, COLOR_ADMIN, "Бан %s снят.", name);
 	return true;
 }
 
-stock bool:Cmd_AdminChat(playerid, const params[])
+// =====================================================================
+//  Кик, мут, варны, деморган
+// =====================================================================
+stock bool:Cmd_Kick(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 1)) return true;
-	new text[110], msg[144];
-	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /a [текст]");
-	format(msg, sizeof msg, "[A%d] %s: %s", Player[playerid][pAdmin], GetRPName(playerid), text);
-	SendAdminMessage(COLOR_ADMIN, msg);
+	new pos = 0, reason[64];
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID || !RestParam(params, pos, reason))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /kick [id] [причина]");
+	if (!Admin_CanPunish(playerid, target)) return true;
+
+	Admin_Log(playerid, "kick", target, reason);
+	SendClientMessageToAll(COLOR_RED, "Администратор %s кикнул %s. Причина: %s", GetRPName(playerid), GetRPName(target), reason);
+	new text[160];
+	format(text, sizeof text, "{FF6347}Тебя кикнули с сервера.\n\n{FFFFFF}Причина: %s\nАдминистратор: %s", reason, GetRPName(playerid));
+	Admin_ShowInfo(target, "Кик", text);
+	KickWithDelay(target);
 	return true;
 }
 
-stock bool:Cmd_MakeAdmin(playerid, const params[])
+stock bool:Cmd_Mute(playerid, const params[])
 {
-	// Можно через RCON-вход или админу 5 уровня
-	if (!IsPlayerAdmin(playerid) && Player[playerid][pAdmin] < 5)
-		return SendClientMessage(playerid, COLOR_GREY, "Нужен RCON-вход (/rcon login) или админка 5 уровня.");
-
-	new pos = 0, level;
+	if (!Admin_Check(playerid, 1)) return true;
+	new pos = 0, minutes, reason[64];
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, level) || level < 0 || level > 5)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /makeadmin [id] [уровень 0-5]");
-	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
+	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, minutes) || !RestParam(params, pos, reason))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /mute [id] [минуты] [причина]");
+	if (minutes < 1 || minutes > ADMIN_MAX_MUTE) return SendClientMessage(playerid, COLOR_GREY, "Срок от 1 до %d минут.", ADMIN_MAX_MUTE);
+	if (!Admin_CanPunish(playerid, target)) return true;
 
-	Player[target][pAdmin] = level;
-	Account_Save(target);
-	SendClientMessage(target, COLOR_ADMIN, "%s выдал тебе админку %d уровня.", GetRPName(playerid), level);
-	SendClientMessage(playerid, COLOR_ADMIN, "Ты выдал %s админку %d уровня.", GetRPName(target), level);
+	gMuteUntil[target] = gettime() + minutes * 60;
+	Admin_SaveState(target);
+	Admin_Log(playerid, "mute", target, reason, minutes);
+	SendClientMessageToAll(COLOR_RED, "Администратор %s выдал мут %s на %d мин. Причина: %s", GetRPName(playerid), GetRPName(target), minutes, reason);
+	return true;
+}
+
+stock bool:Cmd_Unmute(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 1)) return true;
+	new pos = 0;
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /unmute [id]");
+	if (gMuteUntil[target] == 0) return SendClientMessage(playerid, COLOR_GREY, "У игрока нет мута.");
+
+	gMuteUntil[target] = 0;
+	Admin_SaveState(target);
+	Admin_Log(playerid, "unmute", target);
+	SendClientMessage(target, COLOR_GREEN, "%s снял с тебя мут.", GetRPName(playerid));
+	SendClientMessage(playerid, COLOR_ADMIN, "Мут с %s снят.", GetRPName(target));
+	return true;
+}
+
+stock bool:Cmd_Warn(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 2)) return true;
+	new pos = 0, reason[64];
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID || !RestParam(params, pos, reason))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /warn [id] [причина]");
+	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
+	if (!Admin_CanPunish(playerid, target)) return true;
+
+	gWarns[target]++;
+	Admin_Log(playerid, "warn", target, reason, gWarns[target]);
+	SendClientMessageToAll(COLOR_RED, "Администратор %s выдал предупреждение %s (%d/%d). Причина: %s",
+		GetRPName(playerid), GetRPName(target), gWarns[target], ADMIN_WARNS_FOR_BAN, reason);
+
+	if (gWarns[target] >= ADMIN_WARNS_FOR_BAN)
+	{
+		gWarns[target] = 0;
+		Admin_SaveState(target);
+		new why[64];
+		format(why, sizeof why, "%d/%d предупреждений (%s)", ADMIN_WARNS_FOR_BAN, ADMIN_WARNS_FOR_BAN, reason);
+		Admin_BanPlayer(INVALID_PLAYER_ID, target, ADMIN_WARN_BAN_DAYS, why);
+	}
+	else Admin_SaveState(target);
+	return true;
+}
+
+stock bool:Cmd_Unwarn(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 3)) return true;
+	new pos = 0;
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /unwarn [id]");
+	if (gWarns[target] <= 0) return SendClientMessage(playerid, COLOR_GREY, "У игрока нет предупреждений.");
+
+	gWarns[target]--;
+	Admin_SaveState(target);
+	Admin_Log(playerid, "unwarn", target, "", gWarns[target]);
+	SendClientMessage(target, COLOR_GREEN, "%s снял с тебя одно предупреждение (%d/%d).", GetRPName(playerid), gWarns[target], ADMIN_WARNS_FOR_BAN);
+	SendClientMessage(playerid, COLOR_ADMIN, "Предупреждений у %s: %d.", GetRPName(target), gWarns[target]);
+	return true;
+}
+
+stock AJail_PutInCell(playerid)
+{
+	SetPlayerInterior(playerid, AJAIL_INTERIOR);
+	SetPlayerVirtualWorld(playerid, AJAIL_WORLD);
+	SetPlayerPos(playerid, AJAIL_X, AJAIL_Y, AJAIL_Z);
+	ResetPlayerWeapons(playerid);
+	Player[playerid][pHouseInside] = -1;
+}
+
+stock AJail_Release(playerid)
+{
+	gAJail[playerid] = 0;
+	Admin_SaveState(playerid);
+	if (Player[playerid][pJail] > 0)
+	{
+		Jail_PutInCell(playerid);   // ещё сидит в обычной тюрьме (factions.inc)
+	}
+	else
+	{
+		SetPlayerInterior(playerid, 0);
+		SetPlayerVirtualWorld(playerid, 0);
+		SetPlayerPos(playerid, SPAWN_X, SPAWN_Y, SPAWN_Z);
+		SetPlayerFacingAngle(playerid, SPAWN_A);
+	}
+	SendClientMessage(playerid, COLOR_GREEN, "Ты вышел из деморгана. Соблюдай правила сервера.");
+}
+
+stock bool:Cmd_AJail(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 2)) return true;
+	new pos = 0, minutes, reason[64];
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, minutes) || !RestParam(params, pos, reason))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /ajail [id] [минуты] [причина]");
+	if (minutes < 1 || minutes > ADMIN_MAX_AJAIL) return SendClientMessage(playerid, COLOR_GREY, "Срок от 1 до %d минут.", ADMIN_MAX_AJAIL);
+	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
+	if (!Admin_CanPunish(playerid, target)) return true;
+
+	if (IsPlayerInAnyVehicle(target)) RemovePlayerFromVehicle(target);
+	gAJail[target] = minutes;
+	Admin_SaveState(target);
+	AJail_PutInCell(target);
+	Admin_Log(playerid, "ajail", target, reason, minutes);
+	SendClientMessageToAll(COLOR_RED, "Администратор %s посадил %s в деморган на %d мин. Причина: %s", GetRPName(playerid), GetRPName(target), minutes, reason);
+	return true;
+}
+
+stock bool:Cmd_UnAJail(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 2)) return true;
+	new pos = 0;
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /unajail [id]");
+	if (gAJail[target] <= 0) return SendClientMessage(playerid, COLOR_GREY, "Игрок не в деморгане.");
+
+	Admin_Log(playerid, "unajail", target);
+	AJail_Release(target);
+	SendClientMessage(playerid, COLOR_ADMIN, "%s выпущен из деморгана.", GetRPName(target));
+	return true;
+}
+
+// =====================================================================
+//  Наблюдение и помощь: /check /spec /freeze /slap /goto /gethere
+// =====================================================================
+stock bool:Cmd_Check(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 1)) return true;
+	new pos = 0;
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /check [id]");
+
+	new text[700], ip[32], mute[40], platform[16];
+	if (Player[playerid][pAdmin] >= 3) GetPlayerIp(target, ip, sizeof ip);
+	else strcat(ip, "скрыт (с 3 уровня)");
+	if (gMuteUntil[target] > gettime()) format(mute, sizeof mute, "%s", Admin_FormatTime(gMuteUntil[target] - gettime()));
+	else strcat(mute, "нет");
+	switch (GetPlayerPlatform(target))
+	{
+		case PLATFORM_MOBILE: strcat(platform, "телефон");
+		case PLATFORM_PC: strcat(platform, "ПК");
+		default: strcat(platform, "определяется");
+	}
+	format(text, sizeof text,
+		"{FFFFFF}Игрок: {33CCFF}%s [%d]\n{FFFFFF}Аккаунт №%d, уровень %d\nПлатформа: %s   Пинг: %d   FPS: %d\nIP: %s\n\nПредупреждения: %d/%d\nМут: %s\nДеморган: %d мин.   Тюрьма: %d мин.\nЗаморожен: %s\nАдминка: %s\n\nДеньги: $%d (банк $%d)",
+		GetRPName(target), target, Player[target][pDbId], Player[target][pLevel],
+		platform, GetPlayerPing(target), Fps_Get(target), ip,
+		gWarns[target], ADMIN_WARNS_FOR_BAN, mute, gAJail[target], Player[target][pJail],
+		gFrozen[target] ? ("да") : ("нет"), Admin_LevelName(Player[target][pAdmin]),
+		GetMoney(target), Player[target][pBank]);
+	Admin_ShowInfo(playerid, "Проверка игрока", text);
+	return true;
+}
+
+stock Admin_StopSpec(playerid)
+{
+	if (gSpecTarget[playerid] == INVALID_PLAYER_ID) return;
+	gSpecTarget[playerid] = INVALID_PLAYER_ID;
+	gSpecRestore[playerid] = true;      // вернём на место в Admin_OnSpawn
+	TogglePlayerSpectating(playerid, false);
+}
+
+stock bool:Cmd_Spec(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 1)) return true;
+	new pos = 0;
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID)
+	{
+		if (gSpecTarget[playerid] != INVALID_PLAYER_ID) { Admin_StopSpec(playerid); return true; }
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /spec [id]   выключить: /specoff");
+	}
+	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Нельзя следить за собой.");
+	if (gSpecTarget[target] != INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Этот игрок сам сейчас в слежке.");
+
+	if (gSpecTarget[playerid] == INVALID_PLAYER_ID)
+	{
+		// запоминаем, куда вернуть
+		GetPlayerPos(playerid, gSpecPos[playerid][0], gSpecPos[playerid][1], gSpecPos[playerid][2]);
+		gSpecInt[playerid] = GetPlayerInterior(playerid);
+		gSpecWorld[playerid] = GetPlayerVirtualWorld(playerid);
+	}
+	gSpecTarget[playerid] = target;
+	TogglePlayerSpectating(playerid, true);
+	SetPlayerInterior(playerid, GetPlayerInterior(target));
+	SetPlayerVirtualWorld(playerid, GetPlayerVirtualWorld(target));
+	if (IsPlayerInAnyVehicle(target)) PlayerSpectateVehicle(playerid, GetPlayerVehicleID(target));
+	else PlayerSpectatePlayer(playerid, target);
+	Admin_Log(playerid, "spec", target);
+	SendClientMessage(playerid, COLOR_ADMIN, "Слежка за %s%s. Выключить: /specoff. Обновить (если сел в машину): /spec %d",
+		GetRPName(target), Admin_PlatformTag(target), target);
+	return true;
+}
+
+stock bool:Cmd_SpecOff(playerid)
+{
+	if (!Admin_Check(playerid, 1)) return true;
+	if (gSpecTarget[playerid] == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Ты ни за кем не следишь.");
+	Admin_StopSpec(playerid);
+	return true;
+}
+
+stock bool:Cmd_Freeze(playerid, const params[], bool:freeze)
+{
+	if (!Admin_Check(playerid, 2)) return true;
+	new pos = 0;
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID)
+		return SendClientMessage(playerid, COLOR_GREY, freeze ? ("Использование: /freeze [id]") : ("Использование: /unfreeze [id]"));
+	if (freeze && !Admin_CanPunish(playerid, target)) return true;
+
+	gFrozen[target] = freeze;
+	TogglePlayerControllable(target, !freeze);
+	Admin_Log(playerid, freeze ? ("freeze") : ("unfreeze"), target);
+	SendClientMessage(target, COLOR_ADMIN, freeze ? ("Администратор %s заморозил тебя.") : ("Администратор %s разморозил тебя."), GetRPName(playerid));
+	SendClientMessage(playerid, COLOR_ADMIN, freeze ? ("%s заморожен.") : ("%s разморожен."), GetRPName(target));
+	return true;
+}
+
+stock bool:Cmd_Slap(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 2)) return true;
+	new pos = 0;
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /slap [id]");
+
+	new Float:x, Float:y, Float:z, Float:hp;
+	GetPlayerPos(target, x, y, z);
+	SetPlayerPos(target, x, y, z + 5.0);
+	GetPlayerHealth(target, hp);
+	if (hp > 10.0) SetPlayerHealth(target, hp - 5.0);
+	PlayerPlaySound(target, 1130, 0.0, 0.0, 0.0);
+	Admin_Log(playerid, "slap", target);
+	SendClientMessage(playerid, COLOR_ADMIN, "Ты подкинул %s.", GetRPName(target));
 	return true;
 }
 
@@ -104,6 +836,7 @@ stock bool:Cmd_Goto(playerid, const params[])
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /goto [id]");
 
+	Teleport_SaveBack(playerid);        // admin_tools.inc: /back вернёт назад
 	new Float:x, Float:y, Float:z;
 	GetPlayerPos(target, x, y, z);
 	SetPlayerInterior(playerid, GetPlayerInterior(target));
@@ -119,6 +852,7 @@ stock bool:Cmd_GetHere(playerid, const params[])
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /gethere [id]");
+	if (gAJail[target] > 0) return SendClientMessage(playerid, COLOR_GREY, "Игрок в деморгане. Сначала /unajail.");
 
 	new Float:x, Float:y, Float:z;
 	GetPlayerPos(playerid, x, y, z);
@@ -126,23 +860,474 @@ stock bool:Cmd_GetHere(playerid, const params[])
 	SetPlayerVirtualWorld(target, GetPlayerVirtualWorld(playerid));
 	SetPlayerPos(target, x + 1.0, y, z);
 	Player[target][pHouseInside] = Player[playerid][pHouseInside];
+	Admin_Log(playerid, "gethere", target);
 	SendClientMessage(target, COLOR_ADMIN, "Тебя телепортировал администратор %s.", GetRPName(playerid));
 	return true;
 }
 
-stock bool:Cmd_Kick(playerid, const params[])
+// =====================================================================
+//  Админ-чат, список админов, назначение
+// =====================================================================
+stock bool:Cmd_AdminChat(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 1)) return true;
-	new pos = 0, reason[64];
-	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /kick [id] [причина]");
-	if (!RestParam(params, pos, reason)) strcat(reason, "не указана");
-
-	SendClientMessageToAll(COLOR_RED, "Администратор %s кикнул %s. Причина: %s", GetRPName(playerid), GetRPName(target), reason);
-	KickWithDelay(target);
+	new text[100], msg[144];
+	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /a [текст]");
+	format(msg, sizeof msg, "[A] %s %s[%d]%s: %s", Admin_LevelName(Player[playerid][pAdmin]), GetRPName(playerid), playerid, Admin_PlatformTag(playerid), text);
+	SendAdminMessage(COLOR_ADMIN, msg);
 	return true;
 }
 
+stock bool:Cmd_Admins(playerid)
+{
+	SendClientMessage(playerid, COLOR_ADMIN, "Администрация онлайн:");
+	new count = 0;
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && Player[i][pAdmin] > 0)
+		{
+			SendClientMessage(playerid, COLOR_WHITE, " %s [%d] — %s%s%s", GetRPName(i), i, Admin_LevelName(Player[i][pAdmin]),
+				Admin_PlatformTag(i), Admin_IsOnDuty(i) ? (" {FF66FF}(на дежурстве){FFFFFF}") : (""));
+			count++;
+		}
+	}
+	if (count == 0) SendClientMessage(playerid, COLOR_GREY, " Сейчас админов нет. Вопрос можно оставить через /report.");
+	return true;
+}
+
+stock bool:Cmd_MakeAdmin(playerid, const params[])
+{
+	// Нужен вход RCON-ом или уровень 5 админки
+	if (!IsPlayerAdmin(playerid) && Player[playerid][pAdmin] < 5)
+		return SendClientMessage(playerid, COLOR_GREY, "Нужен RCON-вход (/rcon login) или уровень 5 админки.");
+
+	new pos = 0, level;
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, level) || level < 0 || level > ADMIN_MAX_LEVEL)
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /makeadmin [id] [уровень 0-5]");
+	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
+	if (!IsPlayerAdmin(playerid) && target != playerid && Player[target][pAdmin] >= Player[playerid][pAdmin])
+		return SendClientMessage(playerid, COLOR_GREY, "Менять уровень админа своего уровня можно только через RCON.");
+
+	new old = Player[target][pAdmin];
+	Player[target][pAdmin] = level;
+	Account_Save(target);
+	Admin_Log(playerid, "makeadmin", target, "", level);
+
+	if (level > 0)
+	{
+		SendClientMessage(target, COLOR_ADMIN, "%s назначил тебя: %s (уровень %d). Команды: /ahelp", GetRPName(playerid), Admin_LevelName(level), level);
+		new msg[144];
+		format(msg, sizeof msg, "[A] %s назначил %s: %s (было: %s).", GetRPName(playerid), GetRPName(target), Admin_LevelName(level), Admin_LevelName(old));
+		SendAdminMessage(COLOR_ADMIN, msg);
+	}
+	else
+	{
+		SendClientMessage(target, COLOR_ADMIN, "%s снял тебя с администрации.", GetRPName(playerid));
+		SendClientMessage(playerid, COLOR_ADMIN, "%s снят с администрации.", GetRPName(target));
+	}
+	return true;
+}
+
+// =====================================================================
+//  Лог действий: /alog [ник]
+// =====================================================================
+stock bool:Cmd_ALog(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 3)) return true;
+	new pos = 0, name[MAX_PLAYER_NAME];
+	new DBResult:r;
+	if (NextParam(params, pos, name))
+		r = DB_ExecuteQuery(gDB, "SELECT date, admin, action, target, value, reason FROM admin_log WHERE target = '%q' COLLATE NOCASE OR admin = '%q' COLLATE NOCASE ORDER BY id DESC LIMIT 20", name, name);
+	else
+		r = DB_ExecuteQuery(gDB, "SELECT date, admin, action, target, value, reason FROM admin_log ORDER BY id DESC LIMIT 20");
+	if (r == DBResult:0) return SendClientMessage(playerid, COLOR_RED, "Ошибка чтения лога.");
+
+	new text[2600], line[180], admin[MAX_PLAYER_NAME], action[24], target[MAX_PLAYER_NAME], reason[64];
+	new rows = DB_GetRowCount(r), now = gettime();
+	for (new i = 0; i < rows; i++)
+	{
+		DB_GetFieldString(r, 1, admin, sizeof admin);
+		DB_GetFieldString(r, 2, action, sizeof action);
+		DB_GetFieldString(r, 3, target, sizeof target);
+		DB_GetFieldString(r, 5, reason, sizeof reason);
+		format(line, sizeof line, "{AFAFAF}%s назад  {FF66FF}%s {FFFFFF}%s %s", Admin_FormatTime(now - DB_GetFieldInt(r, 0)), admin, action, target);
+		strcat(text, line);
+		new value = DB_GetFieldInt(r, 4);
+		if (value != 0) { format(line, sizeof line, " (%d)", value); strcat(text, line); }
+		if (reason[0] != '\0') { format(line, sizeof line, " {AFAFAF}— %s", reason); strcat(text, line); }
+		strcat(text, "\n");
+		DB_SelectNextRow(r);
+	}
+	DB_FreeResultSet(r);
+	if (rows == 0) strcat(text, "Записей нет.");
+	Admin_ShowInfo(playerid, "Лог администрации", text);
+	return true;
+}
+
+// =====================================================================
+//  Репорты
+// =====================================================================
+stock Reports_CountOpen()
+{
+	new n = 0;
+	for (new r = 0; r < MAX_REPORTS; r++) if (gReport[r][rUsed]) n++;
+	return n;
+}
+
+static Reports_FindByNumber(number)
+{
+	for (new r = 0; r < MAX_REPORTS; r++)
+		if (gReport[r][rUsed] && gReport[r][rDbId] == number) return r;
+	return -1;
+}
+
+// status: 1 — отвечен, 2 — закрыт без ответа
+stock Reports_Close(slot, adminid, status, const answer[])
+{
+	new admin[MAX_PLAYER_NAME];
+	if (adminid != INVALID_PLAYER_ID && adminid != gReport[slot][rFrom]) GetPlayerName(adminid, admin, sizeof admin);
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE reports SET status = %d, admin = '%q', answer = '%q', answer_date = %d WHERE id = %d",
+		status, admin, answer, gettime(), gReport[slot][rDbId]));
+	gReport[slot][rUsed] = false;
+}
+
+static Reports_Create(playerid, const text[])
+{
+	if (gReportLast[playerid] != 0 && gettime() - gReportLast[playerid] < REPORT_COOLDOWN)
+		return SendClientMessage(playerid, COLOR_GREY, "Репорт можно писать раз в %d сек. Подожди немного.", REPORT_COOLDOWN);
+
+	// У игрока уже есть открытый репорт — дописываем новый отдельно, но не больше двух
+	new mine = 0, slot = -1;
+	for (new r = 0; r < MAX_REPORTS; r++)
+	{
+		if (gReport[r][rUsed]) { if (gReport[r][rFrom] == playerid) mine++; }
+		else if (slot == -1) slot = r;
+	}
+	if (mine >= 2) return SendClientMessage(playerid, COLOR_GREY, "У тебя уже 2 открытых репорта. Дождись ответа.");
+	if (slot == -1) return SendClientMessage(playerid, COLOR_GREY, "Очередь репортов переполнена. Попробуй через минуту.");
+
+	new name[MAX_PLAYER_NAME];
+	GetPlayerName(playerid, name, sizeof name);
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO reports (date, author, author_id, text) VALUES (%d, '%q', %d, '%q')",
+		gettime(), name, Player[playerid][pDbId], text));
+
+	gReport[slot][rUsed] = true;
+	gReport[slot][rDbId] = DB_LastInsertId();
+	gReport[slot][rFrom] = playerid;
+	gReport[slot][rFromDb] = Player[playerid][pDbId];
+	gReport[slot][rTime] = gettime();
+	gReport[slot][rTakenBy] = INVALID_PLAYER_ID;
+	gReport[slot][rText][0] = '\0';
+	strcat(gReport[slot][rText], text, 100);
+	gReportLast[playerid] = gettime();
+
+	SendClientMessage(playerid, COLOR_YELLOW, "Репорт №%d отправлен администрации. Ответ придёт сюда в чат.", gReport[slot][rDbId]);
+
+	new msg[144], count = 0;
+	format(msg, sizeof msg, "[Репорт №%d] %s[%d]%s: %s", gReport[slot][rDbId], GetRPName(playerid), playerid, Admin_PlatformTag(playerid), text);
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (!IsPlayerConnected(i) || Player[i][pAdmin] < 1) continue;
+		SendClientMessage(i, COLOR_ORANGE, "%s", msg);
+		SendClientMessage(i, COLOR_GREY, "Ответить: /ans %d [текст]  или  /reports", gReport[slot][rDbId]);
+		PlayerPlaySound(i, 1085, 0.0, 0.0, 0.0);
+		count++;
+	}
+	if (count == 0) SendClientMessage(playerid, COLOR_GREY, "Сейчас админов нет в сети — репорт увидят, когда кто-то зайдёт.");
+	return true;
+}
+
+stock bool:Cmd_Report(playerid, const params[])
+{
+	new text[100];
+	if (!RestParam(params, 0, text))
+	{
+		// Без текста — окно ввода (удобно с телефона)
+		ShowPlayerDialog(playerid, DIALOG_REPORT_NEW, DIALOG_STYLE_INPUT, "Репорт администрации",
+			"{FFFFFF}Опиши проблему или вопрос.\nЕсли жалуешься на игрока — укажи его id.", "Отправить", "Отмена");
+		return true;
+	}
+	Reports_Create(playerid, text);
+	return true;
+}
+
+static Reports_Answer(playerid, slot, const answer[])
+{
+	new author = gReport[slot][rFrom];
+	if (IsPlayerConnected(author) && Player[author][pDbId] == gReport[slot][rFromDb])
+	{
+		SendClientMessage(author, COLOR_YELLOW, "Ответ администратора %s на репорт №%d:", GetRPName(playerid), gReport[slot][rDbId]);
+		SendClientMessage(author, COLOR_WHITE, "%s", answer);
+		if (IsPlayerMobile[author])
+		{
+			new text[300];
+			format(text, sizeof text, "{FFFFFF}Твой вопрос: {AFAFAF}%s\n\n{FFFFFF}Ответ {FF66FF}%s{FFFFFF}:\n%s", gReport[slot][rText], GetRPName(playerid), answer);
+			Admin_ShowInfo(author, "Ответ на репорт", text);
+		}
+	}
+	new msg[144];
+	format(msg, sizeof msg, "[A] %s ответил на репорт №%d: %s", GetRPName(playerid), gReport[slot][rDbId], answer);
+	SendAdminMessage(COLOR_GREY, msg);
+	Admin_Log(playerid, "report", IsPlayerConnected(author) ? author : INVALID_PLAYER_ID, answer, gReport[slot][rDbId]);
+	Reports_Close(slot, playerid, 1, answer);
+}
+
+stock bool:Cmd_Ans(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 1)) return true;
+	new pos = 0, number, answer[100];
+	if (!NextIntParam(params, pos, number) || !RestParam(params, pos, answer))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /ans [номер репорта] [ответ]");
+	new slot = Reports_FindByNumber(number);
+	if (slot == -1) return SendClientMessage(playerid, COLOR_GREY, "Репорт №%d уже закрыт или не существует.", number);
+	Reports_Answer(playerid, slot, answer);
+	return true;
+}
+
+stock bool:Cmd_Reports(playerid)
+{
+	if (!Admin_Check(playerid, 1)) return true;
+	new text[4000], line[160], n = 0, now = gettime();
+	for (new r = 0; r < MAX_REPORTS; r++)
+	{
+		if (!gReport[r][rUsed]) continue;
+		new taken[40], shortText[42];
+		strcat(shortText, gReport[r][rText], sizeof shortText);
+		if (gReport[r][rTakenBy] != INVALID_PLAYER_ID) format(taken, sizeof taken, " {33AA33}[%s]{FFFFFF}", GetRPName(gReport[r][rTakenBy]));
+		format(line, sizeof line, "№%d {AFAFAF}%s назад{FFFFFF}%s %s[%d]: %s\n", gReport[r][rDbId], Admin_FormatTime(now - gReport[r][rTime]),
+			taken, GetRPName(gReport[r][rFrom]), gReport[r][rFrom], shortText);
+		if (strlen(text) + strlen(line) >= sizeof (text) - 1) break;
+		strcat(text, line);
+		gReportList[playerid][n++] = r;
+	}
+	if (n == 0) return SendClientMessage(playerid, COLOR_ADMIN, "Открытых репортов нет.");
+	ShowPlayerDialog(playerid, DIALOG_REPORTS, DIALOG_STYLE_LIST, "Репорты", "%s", "Открыть", "Закрыть", text);
+	return true;
+}
+
+static Reports_ShowActions(playerid, slot)
+{
+	new title[48], text[300];
+	format(title, sizeof title, "Репорт №%d", gReport[slot][rDbId]);
+	format(text, sizeof text, "Ответить\nВзять себе (видно другим админам)\nТелепорт к автору\nСледить за автором\nЗакрыть без ответа\n{AFAFAF}%s", gReport[slot][rText]);
+	ShowPlayerDialog(playerid, DIALOG_REPORT_ACT, DIALOG_STYLE_LIST, title, "%s", "Выбрать", "Назад", text);
+}
+
+// =====================================================================
+//  Панель /amenu — всё через окна, удобно с телефона
+// =====================================================================
+stock bool:Cmd_AMenu(playerid)
+{
+	if (!Admin_Check(playerid, 1)) return true;
+	new text[4000], line[96], n = 0;
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (!IsPlayerConnected(i) || !Player[i][pLogged]) continue;
+		format(line, sizeof line, "[%d] %s  ур.%d%s%s%s\n", i, GetRPName(i), Player[i][pLevel], Admin_PlatformTag(i),
+			(Player[i][pAdmin] > 0) ? (" {FF66FF}[A]{FFFFFF}") : (""), (gMuteUntil[i] > 0 || gAJail[i] > 0) ? (" {FF6347}[наказан]{FFFFFF}") : (""));
+		if (strlen(text) + strlen(line) >= sizeof (text) - 1) break;
+		strcat(text, line);
+		gAMenuIds[playerid][n++] = i;
+	}
+	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "Нет игроков.");
+	ShowPlayerDialog(playerid, DIALOG_AMENU, DIALOG_STYLE_LIST, "Игроки онлайн", "%s", "Выбрать", "Закрыть", text);
+	return true;
+}
+
+static AMenu_ShowActions(playerid)
+{
+	new target = gAMenuTarget[playerid], title[48];
+	format(title, sizeof title, "%s [%d]", GetRPName(target), target);
+	ShowPlayerDialog(playerid, DIALOG_AMENU_ACT, DIALOG_STYLE_LIST, title,
+		"Телепорт к игроку\nТелепорт к себе\nСледить\nПроверить\nЗаморозить / разморозить\nПодкинуть\nКикнуть\nМут\nПредупреждение\nДеморган\nБан",
+		"Выбрать", "Назад");
+}
+
+static bool:AMenu_TargetOk(playerid)
+{
+	new t = gAMenuTarget[playerid];
+	if (t == INVALID_PLAYER_ID || !IsPlayerConnected(t) || Player[t][pDbId] != gAMenuTargetDb[playerid])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Игрок уже вышел.");
+		return false;
+	}
+	return true;
+}
+
+stock Admin_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
+{
+	if (AdminTools_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (dialogid < DIALOG_ADMIN_INFO || dialogid > DIALOG_REPORT_NEW) return 0;
+
+	switch (dialogid)
+	{
+		case DIALOG_ADMIN_INFO: return 1;
+
+		case DIALOG_REPORT_NEW:
+		{
+			if (response && inputtext[0] != '\0')
+			{
+				new text[100];
+				strcat(text, inputtext);
+				Reports_Create(playerid, text);
+			}
+			return 1;
+		}
+
+		case DIALOG_REPORTS:
+		{
+			if (!response || Player[playerid][pAdmin] < 1) return 1;
+			if (listitem < 0 || listitem >= MAX_REPORTS) return 1;
+			new slot = gReportList[playerid][listitem];
+			if (!gReport[slot][rUsed]) { SendClientMessage(playerid, COLOR_GREY, "Этот репорт уже закрыт."); Cmd_Reports(playerid); return 1; }
+			gReportSel[playerid] = slot;
+			Reports_ShowActions(playerid, slot);
+			return 1;
+		}
+
+		case DIALOG_REPORT_ACT:
+		{
+			if (Player[playerid][pAdmin] < 1) return 1;
+			if (!response) { Cmd_Reports(playerid); return 1; }
+			new slot = gReportSel[playerid];
+			if (!gReport[slot][rUsed]) { SendClientMessage(playerid, COLOR_GREY, "Этот репорт уже закрыт."); return 1; }
+			new author = gReport[slot][rFrom], params[8];
+			valstr(params, author);
+			switch (listitem)
+			{
+				case 0:
+				{
+					new text[200];
+					format(text, sizeof text, "{FFFFFF}Репорт от %s:\n{AFAFAF}%s\n\n{FFFFFF}Твой ответ:", GetRPName(author), gReport[slot][rText]);
+					ShowPlayerDialog(playerid, DIALOG_REPORT_ANSWER, DIALOG_STYLE_INPUT, "Ответ на репорт", "%s", "Ответить", "Назад", text);
+				}
+				case 1:
+				{
+					gReport[slot][rTakenBy] = playerid;
+					new msg[144];
+					format(msg, sizeof msg, "[A] %s взял репорт №%d.", GetRPName(playerid), gReport[slot][rDbId]);
+					SendAdminMessage(COLOR_GREY, msg);
+					SendClientMessage(author, COLOR_YELLOW, "Твой репорт №%d взял администратор %s.", gReport[slot][rDbId], GetRPName(playerid));
+					Reports_ShowActions(playerid, slot);
+				}
+				case 2: Cmd_Goto(playerid, params);
+				case 3: Cmd_Spec(playerid, params);
+				case 4:
+				{
+					Reports_Close(slot, playerid, 2, "");
+					SendClientMessage(playerid, COLOR_ADMIN, "Репорт закрыт.");
+					if (IsPlayerConnected(author)) SendClientMessage(author, COLOR_GREY, "Твой репорт закрыт администрацией.");
+				}
+				default: Reports_ShowActions(playerid, slot);
+			}
+			return 1;
+		}
+
+		case DIALOG_REPORT_ANSWER:
+		{
+			if (Player[playerid][pAdmin] < 1) return 1;
+			new slot = gReportSel[playerid];
+			if (!gReport[slot][rUsed]) { SendClientMessage(playerid, COLOR_GREY, "Этот репорт уже закрыт."); return 1; }
+			if (!response) { Reports_ShowActions(playerid, slot); return 1; }
+			if (inputtext[0] == '\0') { Reports_ShowActions(playerid, slot); return 1; }
+			new answer[100];
+			strcat(answer, inputtext);
+			Reports_Answer(playerid, slot, answer);
+			return 1;
+		}
+
+		case DIALOG_AMENU:
+		{
+			if (!response || Player[playerid][pAdmin] < 1) return 1;
+			if (listitem < 0 || listitem >= MAX_PLAYERS) return 1;
+			new t = gAMenuIds[playerid][listitem];
+			if (!IsPlayerConnected(t)) { SendClientMessage(playerid, COLOR_GREY, "Игрок уже вышел."); Cmd_AMenu(playerid); return 1; }
+			gAMenuTarget[playerid] = t;
+			gAMenuTargetDb[playerid] = Player[t][pDbId];
+			AMenu_ShowActions(playerid);
+			return 1;
+		}
+
+		case DIALOG_AMENU_ACT:
+		{
+			if (Player[playerid][pAdmin] < 1) return 1;
+			if (!response) { Cmd_AMenu(playerid); return 1; }
+			if (!AMenu_TargetOk(playerid)) return 1;
+			new t = gAMenuTarget[playerid], params[8];
+			valstr(params, t);
+			gAMenuAction[playerid] = listitem;
+			switch (listitem)
+			{
+				case AMENU_GOTO:    Cmd_Goto(playerid, params);
+				case AMENU_GETHERE: Cmd_GetHere(playerid, params);
+				case AMENU_SPEC:    Cmd_Spec(playerid, params);
+				case AMENU_CHECK:   Cmd_Check(playerid, params);
+				case AMENU_FREEZE:  Cmd_Freeze(playerid, params, !gFrozen[t]);
+				case AMENU_SLAP:    Cmd_Slap(playerid, params);
+				default:
+				{
+					new hint[160];
+					switch (listitem)
+					{
+						case AMENU_KICK:  strcat(hint, "Причина кика:");
+						case AMENU_MUTE:  format(hint, sizeof hint, "Минуты (1-%d) и причина.\nНапример: 30 оскорбления", ADMIN_MAX_MUTE);
+						case AMENU_WARN:  strcat(hint, "Причина предупреждения:");
+						case AMENU_AJAIL: format(hint, sizeof hint, "Минуты (1-%d) и причина.\nНапример: 60 DM", ADMIN_MAX_AJAIL);
+						case AMENU_BAN:   strcat(hint, "Дни (0 — навсегда) и причина.\nНапример: 7 читы");
+						default: return 1;
+					}
+					new body[220];
+					format(body, sizeof body, "{FFFFFF}%s [%d]\n\n%s", GetRPName(t), t, hint);
+					ShowPlayerDialog(playerid, DIALOG_AMENU_INPUT, DIALOG_STYLE_INPUT, "Наказание", "%s", "Готово", "Назад", body);
+				}
+			}
+			return 1;
+		}
+
+		case DIALOG_AMENU_INPUT:
+		{
+			if (Player[playerid][pAdmin] < 1) return 1;
+			if (!AMenu_TargetOk(playerid)) return 1;
+			if (!response || inputtext[0] == '\0') { AMenu_ShowActions(playerid); return 1; }
+			new params[128];
+			format(params, sizeof params, "%d %s", gAMenuTarget[playerid], inputtext);
+			switch (gAMenuAction[playerid])
+			{
+				case AMENU_KICK:  Cmd_Kick(playerid, params);
+				case AMENU_MUTE:  Cmd_Mute(playerid, params);
+				case AMENU_WARN:  Cmd_Warn(playerid, params);
+				case AMENU_AJAIL: Cmd_AJail(playerid, params);
+				case AMENU_BAN:   Cmd_Ban(playerid, params);
+			}
+			return 1;
+		}
+	}
+	return 0;
+}
+
+// =====================================================================
+//  Справка по командам
+// =====================================================================
+stock bool:Cmd_AHelp(playerid)
+{
+	if (!Admin_Check(playerid, 1)) return true;
+	new text[1800];
+	strcat(text, "{FF66FF}1 — Хелпер\n{FFFFFF}/a — админ-чат   /amenu — панель (удобно с телефона)   /reports /ans — репорты\n");
+	strcat(text, "/check /spec /specoff /goto /kick /mute /unmute /admins /aduty\n");
+	strcat(text, "Телепорт: метка на карте (выкл. /maptp), /tp — список точек, /back — назад\n\n");
+	strcat(text, "{FF66FF}2 — Модератор\n{FFFFFF}/warn /ajail /unajail /freeze /unfreeze /slap /gethere /sethp /setskin /jail /unjail\n/sendto /gotocar /fixveh /flip\n\n");
+	strcat(text, "{FF66FF}3 — Администратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /moneylog /veh /dveh\n/ao /gotocoord /respawncars /setweather\n/givelic — выдать лицензию   /setfuel — заправить машину\n\n");
+	strcat(text, "{FF66FF}4 — Ст. администратор\n{FFFFFF}/unban, бан навсегда (0 дней), /addtp /deltp, фракции, дома, бизнесы, АЗС, банкоматы, районы\n/givefood /giveitem — еда и вещи   /addexampoint /clearexam — маршрут экзамена\n/addgarage [1-2] /delgarage — СТО и штрафстоянки\n/pos [название] /points /dev — координаты   /mo — маппинг (объекты, удаление зданий, выгрузка)\n\n");
+	strcat(text, "{FF66FF}5 — Гл. администратор\n{FFFFFF}/makeadmin /givemoney /settax — налоги\n\n");
+	strcat(text, "{AFAFAF}Все наказания и выдачи пишутся в лог (/alog). Наказать админа своего уровня или выше нельзя.");
+	Admin_ShowInfo(playerid, "Команды администрации", text);
+	return true;
+}
+
+// =====================================================================
+//  Прочие команды (транспорт, деньги, здоровье, скин)
+// =====================================================================
 stock bool:Cmd_Veh(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 3)) return true;
@@ -163,6 +1348,7 @@ stock bool:Cmd_Veh(playerid, const params[])
 	LinkVehicleToInterior(v, GetPlayerInterior(playerid));
 	SetVehicleVirtualWorld(v, GetPlayerVirtualWorld(playerid));
 	PutPlayerInVehicle(playerid, v, 0);
+	Admin_Log(playerid, "veh", INVALID_PLAYER_ID, "", model);
 	SendClientMessage(playerid, COLOR_ADMIN, "Машина %d создана (id %d). Удалить: /dveh", model, v);
 	return true;
 }
@@ -187,8 +1373,11 @@ stock bool:Cmd_GiveMoney(playerid, const params[])
 		return SendClientMessage(playerid, COLOR_GREY, "Использование: /givemoney [id] [сумма]");
 	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
 
-	GiveMoney(target, amount);
+	new reason[64];
+	format(reason, sizeof reason, "админ %s (/givemoney)", GetRPName(playerid));
+	GiveMoney(target, amount, reason);
 	Account_Save(target);
+	Admin_Log(playerid, "givemoney", target, "", amount);
 	SendClientMessage(target, COLOR_ADMIN, "Администратор %s выдал тебе $%d.", GetRPName(playerid), amount);
 	SendClientMessage(playerid, COLOR_ADMIN, "Ты выдал %s $%d.", GetRPName(target), amount);
 	return true;
@@ -202,6 +1391,7 @@ stock bool:Cmd_SetHP(playerid, const params[])
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, hp) || hp < 0 || hp > 100)
 		return SendClientMessage(playerid, COLOR_GREY, "Использование: /sethp [id] [0-100]");
 	SetPlayerHealth(target, float(hp));
+	Admin_Log(playerid, "sethp", target, "", hp);
 	SendClientMessage(playerid, COLOR_ADMIN, "Здоровье %s: %d.", GetRPName(target), hp);
 	return true;
 }
@@ -217,22 +1407,60 @@ stock bool:Cmd_SetSkin(playerid, const params[])
 	SetPlayerSkin(target, skin);
 	Account_Save(target);
 	Account_SetNormalSpawn(target);
+	Admin_Log(playerid, "setskin", target, "", skin);
 	SendClientMessage(playerid, COLOR_ADMIN, "Скин %s изменён на %d.", GetRPName(target), skin);
 	return true;
 }
 
-stock bool:Cmd_Admins(playerid)
+// =====================================================================
+//  Разбор команд администрации и мута. Вызывается в начале Commands_Process.
+//  Возвращает 1 — команда обработана здесь.
+// =====================================================================
+stock Admin_OnCommand(playerid, const cmd[], const params[])
 {
-	SendClientMessage(playerid, COLOR_ADMIN, "Администраторы онлайн:");
-	new count = 0;
-	for (new i = 0; i < MAX_PLAYERS; i++)
+	// Мут закрывает все чаты, кроме /report
+	if (!strcmp(cmd, "/me", true) || !strcmp(cmd, "/do", true) || !strcmp(cmd, "/try", true)
+		|| !strcmp(cmd, "/s", true) || !strcmp(cmd, "/b", true) || !strcmp(cmd, "/pm", true)
+		|| !strcmp(cmd, "/f", true) || !strcmp(cmd, "/m", true) || !strcmp(cmd, "/sms", true))
 	{
-		if (IsPlayerConnected(i) && Player[i][pAdmin] > 0)
-		{
-			SendClientMessage(playerid, COLOR_WHITE, " %s [%d] — уровень %d", GetRPName(i), i, Player[i][pAdmin]);
-			count++;
-		}
+		return Admin_IsMuted(playerid) ? 1 : 0;
 	}
-	if (count == 0) SendClientMessage(playerid, COLOR_GREY, " Сейчас никого нет.");
-	return true;
+
+	if (!strcmp(cmd, "/report", true))      { Cmd_Report(playerid, params); return 1; }
+	if (!strcmp(cmd, "/admins", true))      { Cmd_Admins(playerid); return 1; }
+	if (!strcmp(cmd, "/makeadmin", true))   { Cmd_MakeAdmin(playerid, params); return 1; }
+
+	// Остальное — только админам; игроку — "Неизвестная команда"
+	if (Player[playerid][pAdmin] < 1) return 0;
+
+	if (!strcmp(cmd, "/a", true))           { Cmd_AdminChat(playerid, params); return 1; }
+	if (!strcmp(cmd, "/ahelp", true))       { Cmd_AHelp(playerid); return 1; }
+	if (!strcmp(cmd, "/amenu", true))       { Cmd_AMenu(playerid); return 1; }
+	if (!strcmp(cmd, "/reports", true))     { Cmd_Reports(playerid); return 1; }
+	if (!strcmp(cmd, "/ans", true))         { Cmd_Ans(playerid, params); return 1; }
+	if (!strcmp(cmd, "/check", true))       { Cmd_Check(playerid, params); return 1; }
+	if (!strcmp(cmd, "/spec", true))        { Cmd_Spec(playerid, params); return 1; }
+	if (!strcmp(cmd, "/specoff", true))     { Cmd_SpecOff(playerid); return 1; }
+	if (!strcmp(cmd, "/goto", true))        { Cmd_Goto(playerid, params); return 1; }
+	if (!strcmp(cmd, "/gethere", true))     { Cmd_GetHere(playerid, params); return 1; }
+	if (!strcmp(cmd, "/kick", true))        { Cmd_Kick(playerid, params); return 1; }
+	if (!strcmp(cmd, "/mute", true))        { Cmd_Mute(playerid, params); return 1; }
+	if (!strcmp(cmd, "/unmute", true))      { Cmd_Unmute(playerid, params); return 1; }
+	if (!strcmp(cmd, "/warn", true))        { Cmd_Warn(playerid, params); return 1; }
+	if (!strcmp(cmd, "/unwarn", true))      { Cmd_Unwarn(playerid, params); return 1; }
+	if (!strcmp(cmd, "/ajail", true))       { Cmd_AJail(playerid, params); return 1; }
+	if (!strcmp(cmd, "/unajail", true))     { Cmd_UnAJail(playerid, params); return 1; }
+	if (!strcmp(cmd, "/freeze", true))      { Cmd_Freeze(playerid, params, true); return 1; }
+	if (!strcmp(cmd, "/unfreeze", true))    { Cmd_Freeze(playerid, params, false); return 1; }
+	if (!strcmp(cmd, "/slap", true))        { Cmd_Slap(playerid, params); return 1; }
+	if (!strcmp(cmd, "/ban", true))         { Cmd_Ban(playerid, params); return 1; }
+	if (!strcmp(cmd, "/offban", true))      { Cmd_OffBan(playerid, params); return 1; }
+	if (!strcmp(cmd, "/unban", true))       { Cmd_Unban(playerid, params); return 1; }
+	if (!strcmp(cmd, "/alog", true))        { Cmd_ALog(playerid, params); return 1; }
+	if (!strcmp(cmd, "/veh", true))         { Cmd_Veh(playerid, params); return 1; }
+	if (!strcmp(cmd, "/dveh", true))        { Cmd_DVeh(playerid); return 1; }
+	if (!strcmp(cmd, "/givemoney", true))   { Cmd_GiveMoney(playerid, params); return 1; }
+	if (!strcmp(cmd, "/sethp", true))       { Cmd_SetHP(playerid, params); return 1; }
+	if (!strcmp(cmd, "/setskin", true))     { Cmd_SetSkin(playerid, params); return 1; }
+	return AdminTools_OnCommand(playerid, cmd, params);   // телепорты и инструменты
 }

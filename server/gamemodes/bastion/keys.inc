@@ -3,14 +3,14 @@
 //
 //  Пешком:
 //    ALT — действие рядом: дверь дома, покупка дома, банкомат, бизнес,
-//          раздевалка фракции, работа, автосалон, шлагбаум.
+//          раздевалка фракции, работа, автосалон, автошкола, канистра на АЗС, шлагбаум.
 //          Если рядом ничего нет, но перед тобой игрок — меню взаимодействия.
 //          Если держишь игрока на прицеле (правая кнопка мыши) — меню для него.
 //    Y   — принять предложение / ответить на звонок
 //    N   — отказаться / сбросить звонок
 //  В машине (за рулём):
 //    2   — двигатель
-//    H   — открыть шлагбаум или ворота своей фракции
+//    H   — на АЗС заправка, на СТО меню СТО, иначе шлагбаум или ворота своей фракции
 //
 //  Сервер видит только игровые кнопки GTA, поэтому E, L, цифры 1-9 и т.п.
 //  использовать нельзя. Все команды (/enter, /bank, ...) тоже работают.
@@ -210,6 +210,8 @@ stock Keys_Interact(playerid)
 		Cmd_Exit(playerid);
 		return;
 	}
+	// 1а. Внутри своего дома — меню дома (шкаф, сейф, налог, аренда)
+	if (House_TryMenu(playerid)) return;
 
 	// 2. Дверь дома: продаётся — предложить купить, иначе войти
 	h = House_GetNearby(playerid);
@@ -248,8 +250,7 @@ stock Keys_Interact(playerid)
 	}
 
 	// 6. Работа и автосалон
-	if (IsPlayerInRangeOfPoint(playerid, 3.0, LOADER_JOB_X, LOADER_JOB_Y, LOADER_JOB_Z)
-		|| IsPlayerInRangeOfPoint(playerid, 3.0, PIZZA_JOB_X, PIZZA_JOB_Y, PIZZA_JOB_Z))
+	if (Jobs_GetNearbyHQ(playerid) != JOB_NONE)
 	{
 		Cmd_GetJob(playerid);
 		return;
@@ -259,15 +260,29 @@ stock Keys_Interact(playerid)
 		Cmd_BuyCar(playerid);
 		return;
 	}
+	if (Licenses_IsNearSchool(playerid))
+	{
+		Cmd_Exam(playerid);
+		return;
+	}
 
-	// 7. Шлагбаум пешком
+	// 6а. Вещь на земле (needs.inc)
+	if (Inv_TryPickup(playerid)) return;
+
+	// 7. Штрафстоянка (garage.inc)
+	if (Garage_TryImpoundLot(playerid)) return;
+
+	// 7а. АЗС — купить канистру (fuel.inc)
+	if (Fuel_TryCanisterShop(playerid)) return;
+
+	// 8. Шлагбаум пешком
 	if (Gate_GetNearby(playerid, 4.0) != -1)
 	{
 		Gates_TryOpen(playerid);
 		return;
 	}
 
-	// 8. Игрок перед нами
+	// 9. Игрок перед нами
 	new target = Keys_GetPlayerInFront(playerid, INTERACT_RANGE);
 	if (target != INVALID_PLAYER_ID) Keys_ShowInteract(playerid, target);
 }
@@ -296,7 +311,8 @@ stock Keys_OnKeyStateChange(playerid, newkeys, oldkeys)
 		}
 		if (KeyPressed(newkeys, oldkeys, _:KEY_CROUCH))     // H в машине (это ещё и гудок)
 		{
-			Gates_TryOpen(playerid);
+			// на АЗС — заправка, на СТО — меню СТО, иначе шлагбаум
+			if (!Fuel_TryFill(playerid) && !Garage_TryOpen(playerid)) Gates_TryOpen(playerid);
 			return 1;
 		}
 	}

@@ -2,6 +2,8 @@ name: Build Bastion PC launcher
 
 on:
   workflow_dispatch:
+  # main is built by release-main.yml, which calls this workflow
+  workflow_call:
   push:
     paths:
       - "launcher/**"

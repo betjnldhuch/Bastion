@@ -32,7 +32,9 @@ enum
 	ITEM_HEAL,      // +здоровье (value = сколько)
 	ITEM_WEAPON,    // оружие (value = id оружия, value2 = патроны)
 	ITEM_ARMOUR,    // бронежилет
-	ITEM_SKIN       // одежда (value = скин)
+	ITEM_SKIN,      // одежда (value = скин)
+	ITEM_FOOD,      // еда в баре сразу (value = +HP, value2 = +% сытости)
+	ITEM_INV        // вещь в инвентарь (value = INV_* из needs.inc, value2 = штук)
 }
 
 enum E_BIZ_ITEM
@@ -47,12 +49,22 @@ enum E_BIZ_ITEM
 static const gBizItems[][E_BIZ_ITEM] =
 {
 	{ BIZ_SHOP,    "Телефон",           PHONE_PRICE, ITEM_PHONE,  0,  0   },
-	{ BIZ_SHOP,    "Аптечка (+50 HP)",  150,  ITEM_HEAL,   50, 0   },
-	{ BIZ_SHOP,    "Цветы",             50,   ITEM_WEAPON, 14, 1   },
+	{ BIZ_SHOP,    "Аптечка (в сумку)", 150,  ITEM_INV,    INV_MEDKIT, 1 },
+	{ BIZ_SHOP,    "Бургер (в сумку)",  60,   ITEM_INV,    INV_BURGER, 1 },
+	{ BIZ_SHOP,    "Хот-дог (в сумку)", 30,   ITEM_INV,    INV_HOTDOG, 1 },
+	{ BIZ_SHOP,    "Ремкомплект",       400,  ITEM_INV,    INV_REPAIRKIT, 1 },
+	{ BIZ_SHOP,    "Пицца (в сумку)",   90,   ITEM_INV,    INV_PIZZA, 1 },
+	{ BIZ_SHOP,    "Вода (в сумку)",    10,   ITEM_INV,    INV_WATER, 1 },
+	{ BIZ_SHOP,    "Пиво (в сумку)",    25,   ITEM_INV,    INV_BEER, 1 },
+	{ BIZ_SHOP,    "Сигареты (10 шт.)", 40,   ITEM_INV,    INV_CIGARETTES, 10 },
+	{ BIZ_SHOP,    "Бинт",              50,   ITEM_INV,    INV_BANDAGE, 1 },
+	{ BIZ_SHOP,    "Цветы (в сумку)",   50,   ITEM_INV,    INV_FLOWERS, 1 },
+	{ BIZ_SHOP,    "Игральные кости",   30,   ITEM_INV,    INV_DICE, 1 },
+	{ BIZ_SHOP,    "Маска",             500,  ITEM_INV,    INV_MASK, 1 },
 	{ BIZ_SHOP,    "Бита",              200,  ITEM_WEAPON, 5,  1   },
-	{ BIZ_BAR,     "Пиво (+10 HP)",     20,   ITEM_HEAL,   10, 0   },
-	{ BIZ_BAR,     "Виски (+25 HP)",    50,   ITEM_HEAL,   25, 0   },
-	{ BIZ_BAR,     "Обед (+60 HP)",     120,  ITEM_HEAL,   60, 0   },
+	{ BIZ_BAR,     "Пиво (+10 HP)",     20,   ITEM_FOOD,   10, 5   },
+	{ BIZ_BAR,     "Виски (+25 HP)",    50,   ITEM_FOOD,   25, 5   },
+	{ BIZ_BAR,     "Обед (+60 HP, сытость)", 120, ITEM_FOOD, 60, 60 },
 	{ BIZ_CLOTHES, "Скин 7",            300,  ITEM_SKIN,   7,  0   },
 	{ BIZ_CLOTHES, "Скин 23",           300,  ITEM_SKIN,   23, 0   },
 	{ BIZ_CLOTHES, "Скин 29",           300,  ITEM_SKIN,   29, 0   },
@@ -264,8 +276,29 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 				return 1;
 			}
 		}
+		case ITEM_SKIN:
+		{
+			if (Outfit_FreeSlots(playerid) == 0)
+			{
+				SendClientMessage(playerid, COLOR_GREY, "В сумке нет места для одежды. Выброси или передай старую (/inv).");
+				return 1;
+			}
+		}
+		case ITEM_INV:
+		{
+			if (Inv_Count(playerid, gBizItems[item][biValue]) + gBizItems[item][biValue2] > Inv_GetMax(gBizItems[item][biValue]))
+			{
+				SendClientMessage(playerid, COLOR_GREY, "В сумке нет места: больше %d штук не унести (/inv).", Inv_GetMax(gBizItems[item][biValue]));
+				return 1;
+			}
+		}
 		case ITEM_WEAPON, ITEM_ARMOUR:
 		{
+			if (Biz[b][bType] == BIZ_GUNS && gBizItems[item][biKind] == ITEM_WEAPON && !Licenses_Has(playerid, LIC_GUN))
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Оружие продают только с лицензией. Сдать на неё можно в автошколе у мэрии.");
+				return 1;
+			}
 			if (Biz[b][bType] == BIZ_GUNS && Player[playerid][pLevel] < GUNS_MIN_LEVEL)
 			{
 				SendClientMessage(playerid, COLOR_GREY, "Оружие продают с %d уровня.", GUNS_MIN_LEVEL);
@@ -288,11 +321,25 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 		}
 		case ITEM_WEAPON: GivePlayerWeapon(playerid, WEAPON:gBizItems[item][biValue], gBizItems[item][biValue2]);
 		case ITEM_ARMOUR: SetPlayerArmour(playerid, float(gBizItems[item][biValue]));
+		case ITEM_INV:
+		{
+			Inv_Add(playerid, gBizItems[item][biValue], gBizItems[item][biValue2]);
+			SendClientMessage(playerid, COLOR_WHITE, "%s в сумке. Открыть: /inv", Inv_GetName(gBizItems[item][biValue]));
+		}
+		case ITEM_FOOD:
+		{
+			new Float:hp;
+			GetPlayerHealth(playerid, hp);
+			hp += float(gBizItems[item][biValue]);
+			if (hp > 100.0) hp = 100.0;
+			SetPlayerHealth(playerid, hp);
+			Needs_Feed(playerid, gBizItems[item][biValue2]);
+			SendClientMessage(playerid, COLOR_WHITE, "Сытость: %d%%.", Needs_GetHunger(playerid));
+		}
 		case ITEM_SKIN:
 		{
-			Player[playerid][pSkin] = gBizItems[item][biValue];
-			if (!Player[playerid][pDuty]) SetPlayerSkin(playerid, Player[playerid][pSkin]);
-			Account_SetNormalSpawn(playerid);
+			Outfit_Add(playerid, gBizItems[item][biValue]);    // одежда в сумку (needs.inc)
+			SendClientMessage(playerid, COLOR_WHITE, "Одежда (скин %d) в сумке. Надеть: /inv", gBizItems[item][biValue]);
 		}
 	}
 
@@ -336,7 +383,7 @@ stock bool:Cmd_BuyBiz(playerid)
 	if (Biz_GetOwned(playerid) != -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя уже есть бизнес. Продать: /sellbiz");
 	if (GetMoney(playerid) < Biz[b][bPrice]) return SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", Biz[b][bPrice]);
 
-	GiveMoney(playerid, -Biz[b][bPrice]);
+	GiveMoney(playerid, -Biz[b][bPrice], "покупка бизнеса");
 	Biz[b][bOwner] = Player[playerid][pDbId];
 	Biz[b][bTill] = 0;
 	GetPlayerName(playerid, Biz[b][bOwnerName], MAX_PLAYER_NAME);
@@ -354,7 +401,7 @@ stock bool:Cmd_SellBiz(playerid)
 	if (Biz_GetNearby(playerid) != b) return SendClientMessage(playerid, COLOR_GREY, "Подойди к своему бизнесу.");
 
 	new refund = Biz[b][bPrice] / 2 + Biz[b][bTill];
-	GiveMoney(playerid, refund);
+	GiveMoney(playerid, refund, "продажа бизнеса");
 	Biz[b][bOwner] = 0;
 	Biz[b][bOwnerName][0] = '\0';
 	Biz[b][bTill] = 0;
@@ -386,7 +433,7 @@ stock bool:Cmd_BizCash(playerid)
 	if (Biz[b][bTill] <= 0) return SendClientMessage(playerid, COLOR_GREY, "Касса пуста.");
 	new cash = Biz[b][bTill];
 	Biz[b][bTill] = 0;
-	GiveMoney(playerid, cash);
+	GiveMoney(playerid, cash, "касса бизнеса");
 	Biz_Save(b);
 	Account_Save(playerid);
 	SendClientMessage(playerid, COLOR_GREEN, "Ты забрал из кассы $%d.", cash);
