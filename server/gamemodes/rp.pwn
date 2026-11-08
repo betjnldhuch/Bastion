@@ -298,6 +298,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Tex_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Houses_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Garage_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Factions_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	return 0;
 }
 
