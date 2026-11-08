@@ -369,7 +369,7 @@ stock bool:Cmd_BuyBiz(playerid)
 	if (Biz_GetOwned(playerid) != -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя уже есть бизнес. Продать: /sellbiz");
 	if (GetMoney(playerid) < Biz[b][bPrice]) return SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", Biz[b][bPrice]);
 
-	GiveMoney(playerid, -Biz[b][bPrice]);
+	GiveMoney(playerid, -Biz[b][bPrice], "покупка бизнеса");
 	Biz[b][bOwner] = Player[playerid][pDbId];
 	Biz[b][bTill] = 0;
 	GetPlayerName(playerid, Biz[b][bOwnerName], MAX_PLAYER_NAME);
@@ -387,7 +387,7 @@ stock bool:Cmd_SellBiz(playerid)
 	if (Biz_GetNearby(playerid) != b) return SendClientMessage(playerid, COLOR_GREY, "Подойди к своему бизнесу.");
 
 	new refund = Biz[b][bPrice] / 2 + Biz[b][bTill];
-	GiveMoney(playerid, refund);
+	GiveMoney(playerid, refund, "продажа бизнеса");
 	Biz[b][bOwner] = 0;
 	Biz[b][bOwnerName][0] = '\0';
 	Biz[b][bTill] = 0;
@@ -419,7 +419,7 @@ stock bool:Cmd_BizCash(playerid)
 	if (Biz[b][bTill] <= 0) return SendClientMessage(playerid, COLOR_GREY, "Касса пуста.");
 	new cash = Biz[b][bTill];
 	Biz[b][bTill] = 0;
-	GiveMoney(playerid, cash);
+	GiveMoney(playerid, cash, "касса бизнеса");
 	Biz_Save(b);
 	Account_Save(playerid);
 	SendClientMessage(playerid, COLOR_GREEN, "Ты забрал из кассы $%d.", cash);
