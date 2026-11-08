@@ -20,6 +20,7 @@
 //    bastion/keys.inc      Ч управление кнопками: ALT, Y, N, H, 2
 //    bastion/chat.inc      Ч RP-чат
 //    bastion/admin.inc     Ч администраци€: наказани€, логи, репорты
+//    bastion/admin_tools.inc Ч телепорты (метка на карте, /tp) и инструменты админов
 //    bastion/commands.inc  Ч список команд
 //
 //   омпил€ци€: открой этот файл в Qawno и нажми F5.
@@ -43,6 +44,7 @@
 #include "bastion/jobs.inc"
 #include "bastion/chat.inc"
 #include "bastion/admin.inc"
+#include "bastion/admin_tools.inc"
 #include "bastion/factions.inc"   // после admin.inc: использует Admin_Check
 #include "bastion/turfs.inc"
 #include "bastion/bank.inc"
@@ -146,6 +148,14 @@ public OnPlayerDisconnect(playerid, reason)
 public OnPlayerUpdate(playerid)
 {
 	Fps_OnUpdate(playerid);
+	AdminTools_OnUpdate(playerid);      // античит: джетпак
+	return 1;
+}
+
+// ћетка на карте: админа телепортирует туда (admin_tools.inc)
+public OnPlayerClickMap(playerid, Float:fX, Float:fY, Float:fZ)
+{
+	AdminTools_OnClickMap(playerid, fX, fY, fZ);
 	return 1;
 }
 
