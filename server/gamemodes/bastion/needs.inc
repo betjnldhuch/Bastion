@@ -831,7 +831,7 @@ static PlayerText:gInvUiCount[MAX_PLAYERS][INV_UI_CELLS];
 static gInvUiItem[MAX_PLAYERS][INV_UI_CELLS];
 static gInvUiCells[MAX_PLAYERS];
 
-// ќткрыть окно. 0 Ч сумка пуста (окно не открыто)
+// ќткрыть окно (пуста€ сумка Ч окно с надписью Bag is empty)
 stock Inv_ShowUI(playerid)
 {
 	Inv_CloseUI(playerid);
@@ -861,9 +861,7 @@ stock Inv_ShowUI(playerid)
 		counts[n] = 0;
 		n++;
 	}
-	if (n == 0) return 0;
-
-	new PlayerText:td, buf[32];
+	new PlayerText:td, buf[48];
 
 	// ‘он
 	td = CreatePlayerTextDraw(playerid, 165.0, 118.0, "_");
@@ -906,9 +904,18 @@ stock Inv_ShowUI(playerid)
 	gInvUiTD[playerid][3] = td;
 
 	// ѕодсказка
-	td = CreatePlayerTextDraw(playerid, 320.0, 306.0, "Click an item: use, give or drop. ESC - close");
-	PlayerTextDrawFont(playerid, td, TEXT_DRAW_FONT_1);
-	PlayerTextDrawLetterSize(playerid, td, 0.18, 0.85);
+	if (n == 0)
+	{
+		td = CreatePlayerTextDraw(playerid, 320.0, 205.0, "Bag is empty~n~~n~~w~Buy food and items in 24/7 shops~n~ESC - close");
+		PlayerTextDrawFont(playerid, td, TEXT_DRAW_FONT_1);
+		PlayerTextDrawLetterSize(playerid, td, 0.28, 1.2);
+	}
+	else
+	{
+		td = CreatePlayerTextDraw(playerid, 320.0, 306.0, "Click an item: use, give or drop. ESC - close");
+		PlayerTextDrawFont(playerid, td, TEXT_DRAW_FONT_1);
+		PlayerTextDrawLetterSize(playerid, td, 0.18, 0.85);
+	}
 	PlayerTextDrawAlignment(playerid, td, TEXT_DRAW_ALIGN_CENTER);
 	PlayerTextDrawColour(playerid, td, 0xAAAAAAFF);
 	PlayerTextDrawSetOutline(playerid, td, 1);
