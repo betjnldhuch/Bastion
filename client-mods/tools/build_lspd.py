@@ -3,7 +3,7 @@
 #   python build_lspd.py <папка с оригинальными txd> <папка для результата>
 # Оригинальные файлы GTA в репозиторий не кладём.
 import os, sys
-from PIL import Image
+from PIL import Image, ImageFilter
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 import txdpatch
 S = os.path.join(HERE, '..', 'lspd', 'src')
@@ -24,10 +24,22 @@ def poster(n, crop=None):
     # плакат 1:2 по центру четверти доски, по бокам пробковый фон
     im = L(n).convert('RGB')
     if crop: im = im.crop(crop)
-    q = Image.new('RGB', (512, 512), (120, 90, 60))
-    im = im.resize((256, 512), Image.LANCZOS)
-    q.paste(im, (128, 0))
+    q = cork()
+    im = im.resize((256, 492), Image.LANCZOS)
+    sh = Image.new('RGB', (256, 492), (25, 18, 12))          # тень под плакатом
+    q.paste(sh, (134, 16)); q.paste(im, (128, 10))
     return q
+def cork():
+    # тёмная пробка с рамкой: в игре свет её высветляет, светлая выглядела оранжевой
+    import random
+    random.seed(7)
+    q = Image.new('RGB', (512, 512), (62, 45, 30)); px = q.load()
+    for _ in range(9000):
+        x, y = random.randrange(512), random.randrange(512); d = random.randint(-14, 14)
+        px[x, y] = (62 + d, 45 + d, 30 + d)
+    q = q.filter(ImageFilter.GaussianBlur(0.8))
+    fr = Image.new('RGB', (512, 512), (28, 34, 52)); fr.paste(q.crop((6, 6, 506, 506)), (6, 6))
+    return fr
 bg = bg.resize((512, 512), Image.LANCZOS)
 board = Image.new('RGB', (1024, 1024), (120, 90, 60))
 board.paste(mirror(bg), (0, 0))                                      # не используется моделью
