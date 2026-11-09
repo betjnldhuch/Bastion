@@ -14,18 +14,27 @@ sheet = L('_sheet_chatgpt.png').convert('RGB')
 wall = L('bpd_wall.png').resize((256, 256), Image.LANCZOS)
 wains = sheet.crop((6, 524, 370, 702)).resize((256, 256), Image.LANCZOS)
 floor = L('bpd_floor.png').resize((256, 256), Image.LANCZOS)
-bars = L('bpd_bars.png').resize((256, 256), Image.LANCZOS)
+bars = L('bpd2_bars.png').resize((256, 256), Image.LANCZOS)
 # Доска объявлений: модель int_policea02 берёт из cop_notice только две четверти
 # (правая верхняя и левая нижняя) и натягивает их зеркально, поэтому каждую
 # картинку отражаем по горизонтали.
 mirror = lambda im: im.transpose(Image.FLIP_LEFT_RIGHT)
 logo = L('bpd_logo.png'); bg = Image.new('RGB', (256, 256), (30, 45, 90)); bg.paste(logo, (0, 0), logo)
-board = Image.new('RGB', (512, 512), (120, 90, 60))
-board.paste(mirror(bg), (0, 0))                          # не используется моделью
-board.paste(mirror(L('bpd_rules.png')), (256, 0))        # правила
-board.paste(mirror(L('bpd_wanted.png')), (0, 256))       # «Разыскивается»
-board.paste(mirror(bg), (256, 256))                      # не используется моделью
-desk = L('bpd_desk.png').crop((200, 60, 330, 190)).resize((128, 128), Image.LANCZOS)
+def poster(n, crop=None):
+    # плакат 1:2 по центру четверти доски, по бокам пробковый фон
+    im = L(n).convert('RGB')
+    if crop: im = im.crop(crop)
+    q = Image.new('RGB', (512, 512), (120, 90, 60))
+    im = im.resize((256, 512), Image.LANCZOS)
+    q.paste(im, (128, 0))
+    return q
+bg = bg.resize((512, 512), Image.LANCZOS)
+board = Image.new('RGB', (1024, 1024), (120, 90, 60))
+board.paste(mirror(bg), (0, 0))                                      # не используется моделью
+board.paste(mirror(poster('bpd2_rules.png')), (512, 0))              # правила
+board.paste(mirror(poster('bpd2_wanted.png', (0, 0, 512, 992))), (0, 512))   # «Разыскивается»
+board.paste(mirror(bg), (512, 512))                                  # не используется моделью
+desk = L('bpd2_reception_wood.png').convert('RGB').crop((160, 330, 860, 1000)).resize((128, 128), Image.LANCZOS)
 # Второй пак (отдельные картинки из ChatGPT)
 sq = lambda n, size=256: L(n).convert('RGB').resize((size, size), Image.LANCZOS)
 combo = L('bpd_wall_combo.png').convert('RGB')
@@ -43,4 +52,9 @@ txdpatch.patch(os.path.join(src_dir, 'genintintpoliceb.txd'), os.path.join(out_d
                 'p_door1': sq('bpd_door.png'), 'lockers': sq('bpd_lockers.png'), 'cop_bench': bench})
 txdpatch.patch(os.path.join(src_dir, 'genintintpolicea.txd'), os.path.join(out_dir, 'genintintpolicea.txd'),
                {'copcell_bars': bars, 'cop_notice': board})
+
+# Лампы на потолке (int_policea03a.txd, текстура striplight1)
+lamp = L('bpd2_ceiling.png').convert('RGB').crop((295, 280, 765, 605)).resize((128, 128), Image.LANCZOS)
+txdpatch.patch(os.path.join(src_dir, 'int_policea03a.txd'), os.path.join(out_dir, 'int_policea03a.txd'),
+               {'striplight1': lamp})
 print('ok')
