@@ -132,7 +132,12 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/getjob", true))      { Cmd_GetJob(playerid); return 1; }
 	if (!strcmp(cmd, "/quitjob", true))     { Cmd_QuitJob(playerid); return 1; }
 	if (!strcmp(cmd, "/taxi", true))        { Cmd_Taxi(playerid); return 1; }
-	if (!strcmp(cmd, "/inv", true) || !strcmp(cmd, "/i", true)) { Cmd_Inv(playerid); return 1; }
+	if (!strcmp(cmd, "/inv", true) || !strcmp(cmd, "/i", true))
+	{
+		if (Wound_IsWounded(playerid)) SendClientMessage(playerid, COLOR_GREY, "“ы ранен и не можешь достать вещи.");
+		else Cmd_Inv(playerid);
+		return 1;
+	}
 	if (!strcmp(cmd, "/invlist", true))     { Inv_ShowList(playerid); return 1; }
 	if (!strcmp(cmd, "/hunger", true))      { Cmd_Hunger(playerid); return 1; }
 	if (!strcmp(cmd, "/pickup", true))      { Cmd_Pickup(playerid); return 1; }
@@ -199,6 +204,10 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/putcar", true))      { Cmd_PutCar(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/arrest", true))      { Cmd_Arrest(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/heal", true))        { Cmd_Heal(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/revive", true))      { Cmd_Revive(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/wounds", true))      { Cmd_Wounds(playerid); return 1; }
+	if (!strcmp(cmd, "/aid", true))         { Cmd_Aid(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/dead", true))        { Cmd_Dead(playerid); return 1; }
 	if (!strcmp(cmd, "/setfaction", true))  { Cmd_SetFaction(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/makeleader", true))  { Cmd_MakeLeader(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/setfspawn", true))   { Cmd_SetFSpawn(playerid, cmdtext[pos]); return 1; }
@@ -238,6 +247,7 @@ stock Commands_Process(playerid, const cmdtext[])
 
 	// --- бизнесы (business.inc) ---
 	if (!strcmp(cmd, "/buy", true))         { Cmd_Buy(playerid); return 1; }
+	if (!strcmp(cmd, "/rob", true))         { Cmd_Rob(playerid); return 1; }
 	if (!strcmp(cmd, "/buybiz", true))      { Cmd_BuyBiz(playerid); return 1; }
 	if (!strcmp(cmd, "/sellbiz", true))     { Cmd_SellBiz(playerid); return 1; }
 	if (!strcmp(cmd, "/bizinfo", true))     { Cmd_BizInfo(playerid); return 1; }
