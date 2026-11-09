@@ -8,6 +8,9 @@
 
 #define DIALOG_HELP_TOPICS  1230
 #define DIALOG_HELP_TOPIC   1231
+#define HELP_PAGE_LINES     10
+
+static gHelpTopic[MAX_PLAYERS], gHelpPage[MAX_PLAYERS], gHelpPages[MAX_PLAYERS];
 
 enum
 {
@@ -89,6 +92,7 @@ static const gHelp[][E_HELP] =
 	{ HT_GENERAL, "/time", "время на сервере" },
 	{ HT_GENERAL, "/aid [id]", "поднять раненого аптечкой из сумки" },
 	{ HT_GENERAL, "/dead", "раненым: сдаться и уехать в больницу" },
+	{ HT_GENERAL, "/drag [id]", "вести раненого за собой (/drag — отпустить)" },
 	{ HT_GENERAL, "/fps", "твой FPS" },
 	{ HT_GENERAL, "/hud", "спрятать / показать панель статуса на экране" },
 	{ HT_GENERAL, "/report [текст]", "вопрос или жалоба администрации" },
@@ -200,6 +204,7 @@ static const gHelp[][E_HELP] =
 	{ HT_POLICE, "/frisk [id]", "обыскать" },
 	{ HT_POLICE, "/putcar [id]", "посадить в машину (сидя за рулём)" },
 	{ HT_POLICE, "/arrest [id]", "посадить в тюрьму (у участка)" },
+	{ HT_POLICE, "/drag [id]", "вести задержанного в наручниках" },
 	{ HT_POLICE, "/m [текст]", "мегафон" },
 	{ HT_POLICE, "/impound [штраф]", "эвакуировать личную машину на штрафстоянку" },
 	{ HT_POLICE, "/checklic [id]", "проверить лицензии" },
@@ -327,17 +332,38 @@ stock bool:Help_Show(playerid)
 	return true;
 }
 
-static Help_ShowTopic(playerid, t)
+// Раздел по страницам: длинные окна старый клиент иногда не показывает
+static Help_ShowTopic(playerid, t, page = 0)
 {
-	new text[3800], line[160], title[64];
+	new total = 0;
+	for (new i = 0; i < sizeof gHelp; i++)
+	{
+		if (gHelp[i][hpTopic] == t) total++;
+	}
+	new pages = (total + HELP_PAGE_LINES - 1) / HELP_PAGE_LINES;
+	if (pages < 1) pages = 1;
+	if (page >= pages) page = pages - 1;
+	if (page < 0) page = 0;
+
+	new text[1800], line[160], title[80], n = 0;
 	for (new i = 0; i < sizeof gHelp; i++)
 	{
 		if (gHelp[i][hpTopic] != t) continue;
-		format(line, sizeof line, "{FFFF00}%s{FFFFFF} — %s\n", gHelp[i][hpCmd], gHelp[i][hpDesc]);
-		strcat(text, line);
+		if (n >= page * HELP_PAGE_LINES && n < (page + 1) * HELP_PAGE_LINES)
+		{
+			format(line, sizeof line, "{FFFF00}%s{FFFFFF} - %s\n", gHelp[i][hpCmd], gHelp[i][hpDesc]);
+			strcat(text, line);
+		}
+		n++;
 	}
-	format(title, sizeof title, "Помощь: %s", gHelpTopics[t]);
-	ShowPlayerDialog(playerid, DIALOG_HELP_TOPIC, DIALOG_STYLE_MSGBOX, title, "%s", "Назад", "Закрыть", text);
+	if (pages > 1) format(title, sizeof title, "%s (%d/%d)", gHelpTopics[t], page + 1, pages);
+	else format(title, sizeof title, "%s", gHelpTopics[t]);
+
+	gHelpTopic[playerid] = t;
+	gHelpPage[playerid] = page;
+	gHelpPages[playerid] = pages;
+	if (page + 1 < pages) ShowPlayerDialog(playerid, DIALOG_HELP_TOPIC, DIALOG_STYLE_MSGBOX, title, "%s", "Дальше", "К списку", text);
+	else ShowPlayerDialog(playerid, DIALOG_HELP_TOPIC, DIALOG_STYLE_MSGBOX, title, "%s", "К списку", "Закрыть", text);
 }
 
 stock Help_OnDialog(playerid, dialogid, response, listitem)
@@ -349,7 +375,13 @@ stock Help_OnDialog(playerid, dialogid, response, listitem)
 	}
 	if (dialogid == DIALOG_HELP_TOPIC)
 	{
-		if (response) Help_Show(playerid);
+		if (gHelpPage[playerid] + 1 < gHelpPages[playerid])
+		{
+			// «Дальше» / «К списку»
+			if (response) Help_ShowTopic(playerid, gHelpTopic[playerid], gHelpPage[playerid] + 1);
+			else Help_Show(playerid);
+		}
+		else if (response) Help_Show(playerid);
 		return 1;
 	}
 	return 0;
