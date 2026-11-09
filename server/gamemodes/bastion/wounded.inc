@@ -8,11 +8,19 @@
 //  Медикам на смене приходит вызов, /wounds — список раненых с GPS.
 //  Сдаться и уехать в больницу: /dead (через WOUND_GIVEUP секунд).
 //  Если раненого добили или время вышло — больница, как раньше.
+//
+//  Обычно игрок падает раненым ещё до смерти: когда здоровье опускается
+//  ниже WOUND_DOWN_HP. Если его всё же убили одним выстрелом — он
+//  появляется раненым на том же месте.
+//
+//  /drag [id] — вести за собой раненого (может любой) или задержанного
+//  в наручниках (полиция на смене). /drag без id — отпустить.
 // =====================================================================
 
 #define WOUND_TIME          180     // сколько секунд лежать раненым
 #define WOUND_GIVEUP        30      // через сколько секунд можно /dead
-#define WOUND_HEALTH        15.0    // здоровье раненого (можно добить)
+#define WOUND_HEALTH        50.0    // здоровье раненого (пули его почти не берут)
+#define WOUND_DOWN_HP       20.0    // ниже этого здоровья игрок падает раненым, а не умирает
 #define WOUND_REVIVE_HP     40.0    // здоровье после /revive
 #define WOUND_AID_HP        25.0    // здоровье после /aid
 #define WOUND_REWARD        250     // медику за /revive
@@ -20,6 +28,9 @@
 
 forward Wound_OnSecond();
 forward Wound_ApplyAnim(playerid);
+forward Drag_Tick();
+
+static gDragBy[MAX_PLAYERS] = { INVALID_PLAYER_ID, ... };   // кто ведёт этого игрока
 
 static bool:gWoundPending[MAX_PLAYERS];     // умер, следующий спавн — на месте раненым
 static bool:gWounded[MAX_PLAYERS];          // лежит раненым
@@ -34,12 +45,14 @@ static gWoundList[MAX_PLAYERS][MAX_PLAYERS]; // строка окна /wounds -> id
 stock Wound_Init()
 {
 	SetTimer("Wound_OnSecond", 1000, true);
+	SetTimer("Drag_Tick", 300, true);
 }
 
 stock bool:Wound_IsWounded(playerid) { return gWounded[playerid]; }
 
 stock Wound_Reset(playerid)
 {
+	Drag_StopAll(playerid);
 	gWoundPending[playerid] = false;
 	gWounded[playerid] = false;
 	gWoundLeft[playerid] = 0;
@@ -75,6 +88,12 @@ stock Wound_OnSpawn(playerid)
 	SetPlayerInterior(playerid, gWoundInt[playerid]);
 	SetPlayerVirtualWorld(playerid, gWoundWorld[playerid]);
 	SetPlayerPos(playerid, gWoundPos[playerid][0], gWoundPos[playerid][1], gWoundPos[playerid][2]);
+	Wound_Start(playerid);
+}
+
+// Уложить раненым прямо сейчас (без смерти)
+static Wound_Start(playerid)
+{
 	SetPlayerHealth(playerid, WOUND_HEALTH);
 	gWounded[playerid] = true;
 	gWoundLeft[playerid] = WOUND_TIME;
@@ -91,6 +110,27 @@ stock Wound_OnSpawn(playerid)
 	Faction_Message(FACTION_EMS, Faction_GetColor(FACTION_EMS), msg);
 }
 
+// Из OnPlayerTakeDamage: при малом здоровье — упасть раненым, а не умереть
+stock Wound_OnDamage(playerid, Float:amount)
+{
+	if (!Player[playerid][pLogged]) return;
+	if (gWounded[playerid])
+	{
+		SetPlayerHealth(playerid, WOUND_HEALTH);    // лежачего не добивают обычным уроном
+		return;
+	}
+	if (Player[playerid][pJail] > 0 || Admin_IsInAJail(playerid)) return;
+	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return;  // в машине — как раньше
+	new Float:hp;
+	GetPlayerHealth(playerid, hp);
+	if (hp <= 0.0 || hp - amount > WOUND_DOWN_HP) return;
+
+	Job_Stop(playerid);
+	Licenses_Abort(playerid);
+	Phone_HangUp(playerid);
+	Wound_Start(playerid);
+}
+
 public Wound_ApplyAnim(playerid)
 {
 	if (!IsPlayerConnected(playerid) || !gWounded[playerid]) return 1;
@@ -101,6 +141,7 @@ public Wound_ApplyAnim(playerid)
 // Поставить на ноги
 static Wound_StandUp(playerid, Float:hp)
 {
+	Drag_Stop(playerid);
 	gWounded[playerid] = false;
 	gWoundLeft[playerid] = 0;
 	TogglePlayerControllable(playerid, true);
@@ -112,6 +153,7 @@ static Wound_StandUp(playerid, Float:hp)
 // В больницу (время вышло или /dead) — как обычная смерть
 static Wound_ToHospital(playerid)
 {
+	Drag_Stop(playerid);
 	gWounded[playerid] = false;
 	gWoundLeft[playerid] = 0;
 	TogglePlayerControllable(playerid, true);
@@ -234,5 +276,97 @@ stock Wound_OnDialog(playerid, dialogid, response, listitem)
 	GetPlayerPos(target, x, y, z);
 	format(name, sizeof name, "раненый %s", GetRPName(target));
 	Gps_SetPoint(playerid, x, y, z, name);
+	return 1;
+}
+
+// ---------------------------------------------------------------------
+//  /drag — вести за собой
+// ---------------------------------------------------------------------
+static Drag_Stop(target)
+{
+	new by = gDragBy[target];
+	if (by == INVALID_PLAYER_ID) return;
+	gDragBy[target] = INVALID_PLAYER_ID;
+	if (IsPlayerConnected(by)) SendClientMessage(by, COLOR_GREY, "Ты отпустил %s.", GetRPName(target));
+}
+
+// Игрок вышел: отпустить того, кого он вёл, и освободиться самому
+static Drag_StopAll(playerid)
+{
+	gDragBy[playerid] = INVALID_PLAYER_ID;
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (gDragBy[i] == playerid) gDragBy[i] = INVALID_PLAYER_ID;
+	}
+}
+
+static Drag_Find(playerid)
+{
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (gDragBy[i] == playerid) return i;
+	}
+	return INVALID_PLAYER_ID;
+}
+
+stock bool:Cmd_Drag(playerid, const params[])
+{
+	new pos = 0;
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID)
+	{
+		new cur = Drag_Find(playerid);
+		if (cur != INVALID_PLAYER_ID) { Drag_Stop(cur); return true; }
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /drag [id] — вести раненого или задержанного, /drag — отпустить");
+	}
+	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Себя вести нельзя.");
+	if (gWounded[playerid] || Player[playerid][pCuffed]) return SendClientMessage(playerid, COLOR_GREY, "Сейчас ты не можешь никого вести.");
+	if (gDragBy[target] == playerid) { Drag_Stop(target); return true; }
+	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return SendClientMessage(playerid, COLOR_GREY, "Выйди из машины.");
+	if (!IsPlayerNearPlayer(playerid, target, WOUND_RANGE)) return SendClientMessage(playerid, COLOR_GREY, "Подойди ближе.");
+	if (!gWounded[target])
+	{
+		if (!Player[target][pCuffed]) return SendClientMessage(playerid, COLOR_GREY, "Вести можно только раненого или задержанного в наручниках.");
+		if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	}
+	if (gDragBy[target] != INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Его уже ведёт кто-то другой.");
+	new cur = Drag_Find(playerid);
+	if (cur != INVALID_PLAYER_ID) Drag_Stop(cur);
+
+	gDragBy[target] = playerid;
+	SendClientMessage(playerid, COLOR_WHITE, "Ты ведёшь %s. Отпустить: /drag", GetRPName(target));
+	SendClientMessage(target, COLOR_WHITE, "%s ведёт тебя за собой.", GetRPName(playerid));
+	return true;
+}
+
+public Drag_Tick()
+{
+	new Float:x, Float:y, Float:z, Float:a;
+	for (new t = 0; t < MAX_PLAYERS; t++)
+	{
+		new by = gDragBy[t];
+		if (by == INVALID_PLAYER_ID) continue;
+		if (!IsPlayerConnected(t) || !IsPlayerConnected(by) || (!gWounded[t] && !Player[t][pCuffed]))
+		{
+			Drag_Stop(t);
+			continue;
+		}
+		if (GetPlayerState(by) != PLAYER_STATE_ONFOOT || GetPlayerState(t) != PLAYER_STATE_ONFOOT)
+		{
+			Drag_Stop(t);
+			continue;
+		}
+		GetPlayerPos(by, x, y, z);
+		GetPlayerFacingAngle(by, a);
+		x -= 1.0 * floatsin(-a, degrees);
+		y -= 1.0 * floatcos(-a, degrees);
+		if (GetPlayerInterior(t) != GetPlayerInterior(by)) SetPlayerInterior(t, GetPlayerInterior(by));
+		if (GetPlayerVirtualWorld(t) != GetPlayerVirtualWorld(by)) SetPlayerVirtualWorld(t, GetPlayerVirtualWorld(by));
+		if (!IsPlayerInRangeOfPoint(t, 0.6, x, y, z))
+		{
+			SetPlayerPos(t, x, y, z);
+			SetPlayerFacingAngle(t, a);
+		}
+	}
 	return 1;
 }

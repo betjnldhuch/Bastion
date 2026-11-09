@@ -271,6 +271,13 @@ public OnPlayerSpawn(playerid)
 	return 1;
 }
 
+// Урон: при малом здоровье игрок падает раненым (wounded.inc)
+public OnPlayerTakeDamage(playerid, issuerid, Float:amount, WEAPON:weaponid, bodypart)
+{
+	Wound_OnDamage(playerid, amount);
+	return 1;
+}
+
 public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 {
 	Job_Stop(playerid);
