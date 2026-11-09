@@ -13,8 +13,10 @@
 //  ниже WOUND_DOWN_HP. Если его всё же убили одним выстрелом — он
 //  появляется раненым на том же месте.
 //
-//  /drag [id] — вести за собой раненого (может любой) или задержанного
-//  в наручниках (полиция на смене). /drag без id — отпустить.
+//  /drag [id] — полиция на смене ведёт за собой задержанного в наручниках
+//  или раненого. /drag без id — отпустить.
+//  /carry [id] — понести раненого на руках (может любой, но раненый должен
+//  согласиться: Y). /carry без id — положить.
 // =====================================================================
 
 #define WOUND_TIME          180     // сколько секунд лежать раненым
@@ -30,7 +32,9 @@ forward Wound_OnSecond();
 forward Wound_ApplyAnim(playerid);
 forward Drag_Tick();
 
-static gDragBy[MAX_PLAYERS] = { INVALID_PLAYER_ID, ... };   // кто ведёт этого игрока
+static gDragBy[MAX_PLAYERS] = { INVALID_PLAYER_ID, ... };   // кто ведёт / несёт этого игрока
+static bool:gCarried[MAX_PLAYERS];                          // несут на руках (а не ведут)
+static gCarryAnimTick[MAX_PLAYERS];
 
 static bool:gWoundPending[MAX_PLAYERS];     // умер, следующий спавн — на месте раненым
 static bool:gWounded[MAX_PLAYERS];          // лежит раненым
@@ -280,23 +284,36 @@ stock Wound_OnDialog(playerid, dialogid, response, listitem)
 }
 
 // ---------------------------------------------------------------------
-//  /drag — вести за собой
+//  /drag — полиция ведёт задержанного, /carry — нести раненого на руках
 // ---------------------------------------------------------------------
 static Drag_Stop(target)
 {
 	new by = gDragBy[target];
 	if (by == INVALID_PLAYER_ID) return;
+	new bool:carried = gCarried[target];
 	gDragBy[target] = INVALID_PLAYER_ID;
-	if (IsPlayerConnected(by)) SendClientMessage(by, COLOR_GREY, "Ты отпустил %s.", GetRPName(target));
+	gCarried[target] = false;
+	if (!IsPlayerConnected(by)) return;
+	if (carried)
+	{
+		ClearAnimations(by, SYNC_ALL);
+		SendClientMessage(by, COLOR_GREY, "Ты положил %s.", GetRPName(target));
+	}
+	else SendClientMessage(by, COLOR_GREY, "Ты отпустил %s.", GetRPName(target));
 }
 
 // Игрок вышел: отпустить того, кого он вёл, и освободиться самому
 static Drag_StopAll(playerid)
 {
 	gDragBy[playerid] = INVALID_PLAYER_ID;
+	gCarried[playerid] = false;
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
-		if (gDragBy[i] == playerid) gDragBy[i] = INVALID_PLAYER_ID;
+		if (gDragBy[i] == playerid)
+		{
+			gDragBy[i] = INVALID_PLAYER_ID;
+			gCarried[i] = false;
+		}
 	}
 }
 
@@ -309,6 +326,32 @@ static Drag_Find(playerid)
 	return INVALID_PLAYER_ID;
 }
 
+static bool:Drag_CanLead(playerid)
+{
+	if (gWounded[playerid] || Player[playerid][pCuffed])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Сейчас ты не можешь никого вести.");
+		return false;
+	}
+	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Выйди из машины.");
+		return false;
+	}
+	return true;
+}
+
+static Drag_Begin(target, by, bool:carry)
+{
+	new cur = Drag_Find(by);
+	if (cur != INVALID_PLAYER_ID) Drag_Stop(cur);
+	gDragBy[target] = by;
+	gCarried[target] = carry;
+	gCarryAnimTick[target] = 0;
+	if (carry) ApplyAnimation(by, "CARRY", "crry_prtial", 4.1, true, false, false, true, 1, SYNC_ALL);
+}
+
+// /drag [id] — только полиция на смене
 stock bool:Cmd_Drag(playerid, const params[])
 {
 	new pos = 0;
@@ -316,27 +359,74 @@ stock bool:Cmd_Drag(playerid, const params[])
 	if (target == INVALID_PLAYER_ID)
 	{
 		new cur = Drag_Find(playerid);
-		if (cur != INVALID_PLAYER_ID) { Drag_Stop(cur); return true; }
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /drag [id] — вести раненого или задержанного, /drag — отпустить");
+		if (cur != INVALID_PLAYER_ID && !gCarried[cur]) { Drag_Stop(cur); return true; }
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /drag [id] — вести задержанного, /drag — отпустить");
 	}
+	if (gDragBy[target] == playerid && !gCarried[target]) { Drag_Stop(target); return true; }
+	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
 	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Себя вести нельзя.");
-	if (gWounded[playerid] || Player[playerid][pCuffed]) return SendClientMessage(playerid, COLOR_GREY, "Сейчас ты не можешь никого вести.");
-	if (gDragBy[target] == playerid) { Drag_Stop(target); return true; }
-	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return SendClientMessage(playerid, COLOR_GREY, "Выйди из машины.");
+	if (!Drag_CanLead(playerid)) return true;
 	if (!IsPlayerNearPlayer(playerid, target, WOUND_RANGE)) return SendClientMessage(playerid, COLOR_GREY, "Подойди ближе.");
-	if (!gWounded[target])
-	{
-		if (!Player[target][pCuffed]) return SendClientMessage(playerid, COLOR_GREY, "Вести можно только раненого или задержанного в наручниках.");
-		if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
-	}
-	if (gDragBy[target] != INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Его уже ведёт кто-то другой.");
-	new cur = Drag_Find(playerid);
-	if (cur != INVALID_PLAYER_ID) Drag_Stop(cur);
+	if (!gWounded[target] && !Player[target][pCuffed]) return SendClientMessage(playerid, COLOR_GREY, "Сначала надень наручники (/cuff).");
+	if (gDragBy[target] != INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Его уже ведут.");
 
-	gDragBy[target] = playerid;
+	Drag_Begin(target, playerid, false);
 	SendClientMessage(playerid, COLOR_WHITE, "Ты ведёшь %s. Отпустить: /drag", GetRPName(target));
-	SendClientMessage(target, COLOR_WHITE, "%s ведёт тебя за собой.", GetRPName(playerid));
+	SendClientMessage(target, COLOR_WHITE, "Офицер %s ведёт тебя за собой.", GetRPName(playerid));
 	return true;
+}
+
+// /carry [id] — предложить раненому понести его
+stock bool:Cmd_Carry(playerid, const params[])
+{
+	new pos = 0;
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID)
+	{
+		new cur = Drag_Find(playerid);
+		if (cur != INVALID_PLAYER_ID && gCarried[cur]) { Drag_Stop(cur); return true; }
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /carry [id] — понести раненого, /carry — положить");
+	}
+	if (gDragBy[target] == playerid && gCarried[target]) { Drag_Stop(target); return true; }
+	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Себя нести нельзя.");
+	if (!Drag_CanLead(playerid)) return true;
+	if (!gWounded[target]) return SendClientMessage(playerid, COLOR_GREY, "Нести можно только раненого.");
+	if (!IsPlayerNearPlayer(playerid, target, WOUND_RANGE)) return SendClientMessage(playerid, COLOR_GREY, "Подойди ближе.");
+	if (gDragBy[target] != INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Его уже несут.");
+
+	Player[target][pOfferType] = OFFER_CARRY;
+	Player[target][pOfferFrom] = playerid;
+	Player[target][pOfferFromDb] = Player[playerid][pDbId];
+	Player[target][pOfferValue] = 0;
+	SendClientMessage(target, COLOR_BLUE, "%s хочет понести тебя на руках. Согласиться: Y (или /accept), отказаться: N", GetRPName(playerid));
+	SendClientMessage(playerid, COLOR_WHITE, "Ты предложил %s понести его. Ждём согласия.", GetRPName(target));
+	return true;
+}
+
+// Из Cmd_Accept (factions.inc): раненый согласился
+stock Wound_AcceptCarry(playerid, from)
+{
+	if (!gWounded[playerid])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Ты уже не ранен.");
+		return;
+	}
+	if (gDragBy[playerid] != INVALID_PLAYER_ID)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Тебя уже несут.");
+		return;
+	}
+	if (gWounded[from] || Player[from][pCuffed] || GetPlayerState(from) != PLAYER_STATE_ONFOOT || !IsPlayerNearPlayer(playerid, from, WOUND_RANGE + 2.0))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Человек отошёл.");
+		return;
+	}
+	Drag_Begin(playerid, from, true);
+	SendClientMessage(from, COLOR_WHITE, "Ты несёшь %s. Положить: /carry", GetRPName(playerid));
+	SendClientMessage(playerid, COLOR_WHITE, "%s несёт тебя на руках.", GetRPName(from));
+	new msg[144];
+	format(msg, sizeof msg, "%s поднимает %s на руки.", GetRPName(from), GetRPName(playerid));
+	SendNearbyMessage(from, CHAT_RADIUS, COLOR_PURPLE, msg);
 }
 
 public Drag_Tick()
@@ -346,26 +436,36 @@ public Drag_Tick()
 	{
 		new by = gDragBy[t];
 		if (by == INVALID_PLAYER_ID) continue;
-		if (!IsPlayerConnected(t) || !IsPlayerConnected(by) || (!gWounded[t] && !Player[t][pCuffed]))
+		new bool:ok = IsPlayerConnected(t) && IsPlayerConnected(by)
+			&& GetPlayerState(by) == PLAYER_STATE_ONFOOT && GetPlayerState(t) == PLAYER_STATE_ONFOOT;
+		if (ok)
 		{
-			Drag_Stop(t);
-			continue;
+			if (gCarried[t]) ok = gWounded[t] && !gWounded[by];
+			else ok = (gWounded[t] || Player[t][pCuffed]) && Player[by][pFaction] == FACTION_POLICE && Player[by][pDuty];
 		}
-		if (GetPlayerState(by) != PLAYER_STATE_ONFOOT || GetPlayerState(t) != PLAYER_STATE_ONFOOT)
+		if (!ok)
 		{
 			Drag_Stop(t);
 			continue;
 		}
 		GetPlayerPos(by, x, y, z);
 		GetPlayerFacingAngle(by, a);
-		x -= 1.0 * floatsin(-a, degrees);
-		y -= 1.0 * floatcos(-a, degrees);
+		// ведут — идёт сзади, несут — перед грудью
+		new Float:d = gCarried[t] ? 0.55 : -1.0;
+		x += d * floatsin(-a, degrees);
+		y += d * floatcos(-a, degrees);
 		if (GetPlayerInterior(t) != GetPlayerInterior(by)) SetPlayerInterior(t, GetPlayerInterior(by));
 		if (GetPlayerVirtualWorld(t) != GetPlayerVirtualWorld(by)) SetPlayerVirtualWorld(t, GetPlayerVirtualWorld(by));
-		if (!IsPlayerInRangeOfPoint(t, 0.6, x, y, z))
+		if (!IsPlayerInRangeOfPoint(t, 0.4, x, y, z))
 		{
 			SetPlayerPos(t, x, y, z);
-			SetPlayerFacingAngle(t, a);
+			SetPlayerFacingAngle(t, a + 90.0);
+		}
+		// руки «с ношей» сбиваются от бега — обновляем раз в ~3 сек.
+		if (gCarried[t] && ++gCarryAnimTick[t] >= 10)
+		{
+			gCarryAnimTick[t] = 0;
+			ApplyAnimation(by, "CARRY", "crry_prtial", 4.1, true, false, false, true, 1, SYNC_ALL);
 		}
 	}
 	return 1;

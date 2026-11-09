@@ -298,8 +298,8 @@ stock Keys_OnKeyStateChange(playerid, newkeys, oldkeys)
 
 	if (st == PLAYER_STATE_ONFOOT)
 	{
-		if (Player[playerid][pCuffed] || Wound_IsWounded(playerid)) return 0;
-		if (KeyPressed(newkeys, oldkeys, _:KEY_WALK))
+		if (Player[playerid][pCuffed]) return 0;
+		if (!Wound_IsWounded(playerid) && KeyPressed(newkeys, oldkeys, _:KEY_WALK))
 		{
 			Keys_Interact(playerid);
 			return 1;
@@ -325,7 +325,7 @@ stock Keys_OnKeyStateChange(playerid, newkeys, oldkeys)
 	{
 		if (Player[playerid][pCallState] == CALL_INCOMING) Cmd_PickUp(playerid);
 		else if (Player[playerid][pOfferType] != OFFER_NONE) Cmd_Accept(playerid);
-		else if (st == PLAYER_STATE_ONFOOT) Cmd_Inv(playerid);      // Y пешком Ч сумка
+		else if (st == PLAYER_STATE_ONFOOT && !Wound_IsWounded(playerid)) Cmd_Inv(playerid);      // Y пешком Ч сумка
 		return 1;
 	}
 	if (KeyPressed(newkeys, oldkeys, _:KEY_NO))

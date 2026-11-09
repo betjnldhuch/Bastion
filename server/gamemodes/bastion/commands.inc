@@ -209,6 +209,7 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/aid", true))         { Cmd_Aid(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/dead", true))        { Cmd_Dead(playerid); return 1; }
 	if (!strcmp(cmd, "/drag", true))        { Cmd_Drag(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/carry", true))       { Cmd_Carry(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/setfaction", true))  { Cmd_SetFaction(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/makeleader", true))  { Cmd_MakeLeader(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/setfspawn", true))   { Cmd_SetFSpawn(playerid, cmdtext[pos]); return 1; }

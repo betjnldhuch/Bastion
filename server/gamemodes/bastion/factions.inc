@@ -117,6 +117,7 @@ enum
 	OFFER_NONE,
 	OFFER_INVITE,       // приглашение во фракцию
 	OFFER_HEAL,         // медик предлагает лечение
+	OFFER_CARRY,        // понести раненого (wounded.inc)
 	OFFER_HANDSHAKE     // пожать руку
 }
 
@@ -1045,6 +1046,7 @@ stock bool:Cmd_Accept(playerid)
 			SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 			SendClientMessage(from, COLOR_GREEN, "Ты вылечил пациента. +$%d.", price);
 		}
+		case OFFER_CARRY: Wound_AcceptCarry(playerid, from);
 		case OFFER_HANDSHAKE:
 		{
 			if (!IsPlayerNearPlayer(playerid, from, 2.5)) return SendClientMessage(playerid, COLOR_GREY, "Человек отошёл.");
