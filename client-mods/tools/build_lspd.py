@@ -41,9 +41,24 @@ def cork():
     fr = Image.new('RGB', (512, 512), (28, 34, 52)); fr.paste(q.crop((6, 6, 506, 506)), (6, 6))
     return fr
 bg = bg.resize((512, 512), Image.LANCZOS)
+def notes():
+    # пробка с разными листками и кнопками, без читаемого текста
+    from PIL import ImageDraw
+    import random
+    random.seed(3); q = cork(); d = ImageDraw.Draw(q)
+    for x, y, w, h, c in [(40, 40, 180, 230, (235, 232, 220)), (260, 30, 200, 150, (240, 236, 200)),
+                          (250, 210, 220, 260, (230, 230, 230)), (50, 300, 170, 170, (215, 228, 240))]:
+        d.rectangle((x + 5, y + 6, x + w + 5, y + h + 6), fill=(25, 18, 12))
+        d.rectangle((x, y, x + w, y + h), fill=c)
+        d.rectangle((x + 12, y + 14, x + w - 12, y + 30), fill=(40, 60, 110))
+        yy = y + 46
+        while yy < y + h - 14:
+            d.rectangle((x + 12, yy, x + 12 + random.randint(w // 3, w - 24), yy + 5), fill=(90, 90, 95)); yy += 16
+        d.ellipse((x + w // 2 - 7, y + 2, x + w // 2 + 7, y + 16), fill=(180, 30, 30))
+    return q
 board = Image.new('RGB', (1024, 1024), (120, 90, 60))
 board.paste(mirror(bg), (0, 0))                                      # не используется моделью
-board.paste(mirror(poster('bpd2_rules.png')), (512, 0))              # правила
+board.paste(mirror(notes()), (512, 0))                              # объявления (правила висели на каждой доске)
 board.paste(mirror(poster('bpd2_wanted.png', (0, 0, 512, 992))), (0, 512))   # «Разыскивается»
 board.paste(mirror(bg), (512, 512))                                  # не используется моделью
 desk = L('bpd2_reception_wood.png').convert('RGB').crop((160, 330, 860, 1000)).resize((128, 128), Image.LANCZOS)
@@ -52,9 +67,10 @@ sq = lambda n, size=256: L(n).convert('RGB').resize((size, size), Image.LANCZOS)
 combo = L('bpd_wall_combo.png').convert('RGB')
 base = combo.crop((0, 810, 888, 1254)).resize((128, 64), Image.LANCZOS)       # синяя панель низа
 bench = L('bpd_bench.png').convert('RGB')
-bench = bench.crop((667, 0, 1334, 667)).resize((128, 128), Image.LANCZOS)
+bench = bench.crop((667, 0, 1334, 667)).resize((128, 128), Image.LANCZOS).rotate(90)  # в модели доски идут поперёк — поворачиваем
+surr = L('bpd3_door.png').convert('RGB').crop((80, 28, 540, 60)).resize((128, 32), Image.LANCZOS)  # синяя рамка двери вместо оранжевой
 # пак 3: дверь без куска стены слева/сверху
-door = L('bpd3_door.png').convert('RGB').crop((18, 25, 586, 1024)).resize((256, 256), Image.LANCZOS)
+door = L('bpd3_door.png').convert('RGB').crop((66, 66, 572, 1024)).resize((256, 256), Image.LANCZOS)
 txdpatch.patch(os.path.join(src_dir, 'genintintpoliceb.txd'), os.path.join(out_dir, 'genintintpoliceb.txd'),
                {'coptop_blue': wall, 'copbtm_green': wains, 'p_floor4': floor, 'p_countr': desk,
                 'breezewall': sq('bpd_corridor_wall.png'), 'breezewall2': sq('bpd_corridor_wall.png'),
@@ -63,7 +79,7 @@ txdpatch.patch(os.path.join(src_dir, 'genintintpoliceb.txd'), os.path.join(out_d
                 'pol_flr3': sq('bpd3_floor_checker.png'), 'p_floor2': sq('bpd_floor_lino.png'),
                 'cop_cellwall': sq('bpd3_cell_tiles.png'), 'cop_cellwall_btm': sq('bpd_cell_wall_btm.png'),
                 'cop_cellfloor': sq('bpd3_cell_floor.png'),
-                'p_door1': door, 'lockers': sq('bpd3_lockers.png'), 'cop_bench': bench})
+                'p_door1': door, 'lockers': sq('bpd3_lockers.png'), 'cop_bench': bench, 'pol_dor_surr2': surr})
 txdpatch.patch(os.path.join(src_dir, 'genintintpolicea.txd'), os.path.join(out_dir, 'genintintpolicea.txd'),
                {'copcell_bars': bars, 'cop_notice': board})
 
