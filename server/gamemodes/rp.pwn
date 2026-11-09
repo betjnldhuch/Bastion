@@ -68,6 +68,7 @@
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
 #include "bastion/fps.inc"
+#include "bastion/hud.inc"        // свой HUD: панель статуса и спидометр
 #include "bastion/help.inc"       // /help: разделы со всеми командами
 #include "bastion/commands.inc"
 
@@ -114,6 +115,7 @@ public OnGameModeInit()
 	Econ_Init();          // казна, налоги, журнал денег
 	Garage_Init();        // СТО, штрафстоянка, поля тюнинга в vehicles
 	Gps_Init();
+	Hud_Init();           // панель статуса и спидометр (hud.inc)
 	Fuel_Init();          // после всех машин: им выдаётся бензин
 	Wound_Init();
 	Robbery_Init();
@@ -170,6 +172,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Fuel_OnDisconnect(playerid);
 	Inv_ResetMask(playerid);
 	Inv_UiReset(playerid);
+	Hud_OnDisconnect(playerid);
 	Gps_OnDisconnect(playerid);
 	Wound_Reset(playerid);
 	Rob_OnDisconnect(playerid);
@@ -264,6 +267,7 @@ public OnPlayerSpawn(playerid)
 	Admin_OnSpawn(playerid);            // деморган, возврат после /spec
 	Turfs_ShowForPlayer(playerid);      // районы банд на радаре
 	Wound_OnSpawn(playerid);            // после смерти — лежит раненым на месте
+	Hud_OnSpawn(playerid);              // панель статуса (hud.inc)
 	return 1;
 }
 

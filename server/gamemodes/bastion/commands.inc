@@ -155,6 +155,7 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/fuel", true))        { Cmd_Fuel(playerid); return 1; }
 	if (!strcmp(cmd, "/canister", true))    { Cmd_Canister(playerid); return 1; }
 	if (!strcmp(cmd, "/speedo", true))      { Cmd_Speedo(playerid); return 1; }
+	if (!strcmp(cmd, "/hud", true))         { Cmd_Hud(playerid); return 1; }
 	if (!strcmp(cmd, "/exam", true))        { Cmd_Exam(playerid); return 1; }
 	if (!strcmp(cmd, "/licenses", true))    { Cmd_Licenses(playerid); return 1; }
 	if (!strcmp(cmd, "/showlic", true))     { Cmd_ShowLic(playerid, cmdtext[pos]); return 1; }
