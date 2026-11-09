@@ -373,6 +373,7 @@ public OnPlayerStateChange(playerid, PLAYER_STATE:newstate, PLAYER_STATE:oldstat
 // Нажатия кнопок: ALT, Y, N, H, 2 (keys.inc)
 public OnPlayerKeyStateChange(playerid, KEY:newkeys, KEY:oldkeys)
 {
+	if (Admin_OnKey(playerid, _:newkeys, _:oldkeys)) return 1;   // слежка: ЛКМ/ПКМ — следующий/предыдущий (admin.inc)
 	Keys_OnKeyStateChange(playerid, _:newkeys, _:oldkeys);
 	return 1;
 }

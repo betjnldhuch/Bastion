@@ -80,6 +80,11 @@ static bool:gSpecRestore[MAX_PLAYERS];
 static Float:gSpecPos[MAX_PLAYERS][3];
 static gSpecInt[MAX_PLAYERS];
 static gSpecWorld[MAX_PLAYERS];
+static gSpecVeh[MAX_PLAYERS];
+static gSpecTInt[MAX_PLAYERS];
+static gSpecTWorld[MAX_PLAYERS];
+static PLAYER_STATE:gSpecTState[MAX_PLAYERS];
+static PlayerText:gSpecTd[MAX_PLAYERS] = {INVALID_PLAYER_TEXT_DRAW, ...};
 
 // Панель /amenu
 static gAMenuIds[MAX_PLAYERS][MAX_PLAYERS];   // строка списка -> id игрока
@@ -128,6 +133,7 @@ stock Admin_Init()
 
 	for (new i = 0; i < MAX_REPORTS; i++) gReport[i][rUsed] = false;
 	Teleports_Init();                   // admin_tools.inc
+	SetTimer("Admin_SpecTick", 1000, true);
 }
 
 // =====================================================================
@@ -320,6 +326,7 @@ stock Admin_OnDisconnect(playerid)
 	gSpecTarget[playerid] = INVALID_PLAYER_ID;
 	gSpecRestore[playerid] = false;
 	gFrozen[playerid] = false;
+	gSpecTd[playerid] = INVALID_PLAYER_TEXT_DRAW;     // текстдравы игрока удаляются сами при выходе
 }
 
 // Из OnPlayerSpawn — после Factions_OnSpawn
@@ -746,12 +753,110 @@ stock bool:Cmd_Check(playerid, const params[])
 	return true;
 }
 
+// ---------------------------------------------------------------------
+//  Слежка (/spec). Раз в секунду (Admin_SpecTick) камера сама
+//  переключается, если игрок сел в машину, вышел, сменил интерьер или
+//  умер, а внизу экрана — HP, броня, скорость, пинг цели.
+//  Листать игроков: /specnext /specprev или ЛКМ / ПКМ в слежке.
+// ---------------------------------------------------------------------
+
+static Admin_SpecApply(playerid)
+{
+	new target = gSpecTarget[playerid];
+	gSpecTInt[playerid] = GetPlayerInterior(target);
+	gSpecTWorld[playerid] = GetPlayerVirtualWorld(target);
+	gSpecTState[playerid] = GetPlayerState(target);
+	SetPlayerInterior(playerid, gSpecTInt[playerid]);
+	SetPlayerVirtualWorld(playerid, gSpecTWorld[playerid]);
+	gSpecVeh[playerid] = GetPlayerVehicleID(target);
+	if (gSpecVeh[playerid] != 0) PlayerSpectateVehicle(playerid, gSpecVeh[playerid]);
+	else PlayerSpectatePlayer(playerid, target);
+}
+
+static Admin_SpecHud(playerid)
+{
+	new target = gSpecTarget[playerid];
+	if (gSpecTd[playerid] == INVALID_PLAYER_TEXT_DRAW)
+	{
+		gSpecTd[playerid] = CreatePlayerTextDraw(playerid, 320.0, 360.0, "_");
+		PlayerTextDrawAlignment(playerid, gSpecTd[playerid], TEXT_DRAW_ALIGN_CENTER);
+		PlayerTextDrawFont(playerid, gSpecTd[playerid], TEXT_DRAW_FONT_1);
+		PlayerTextDrawLetterSize(playerid, gSpecTd[playerid], 0.26, 1.1);
+		PlayerTextDrawColour(playerid, gSpecTd[playerid], 0xFFFFFFFF);
+		PlayerTextDrawSetOutline(playerid, gSpecTd[playerid], 1);
+		PlayerTextDrawSetProportional(playerid, gSpecTd[playerid], true);
+	}
+	new name[MAX_PLAYER_NAME], Float:hp, Float:armour, Float:vx, Float:vy, Float:vz, speed;
+	GetPlayerName(target, name, sizeof name);
+	GetPlayerHealth(target, hp);
+	GetPlayerArmour(target, armour);
+	if (gSpecVeh[playerid] != 0) GetVehicleVelocity(gSpecVeh[playerid], vx, vy, vz);
+	else GetPlayerVelocity(target, vx, vy, vz);
+	speed = floatround(floatsqroot(vx * vx + vy * vy + vz * vz) * 180.0);
+	new text[200];
+	format(text, sizeof text, "~p~%s [%d]%s~n~~w~HP %d  Armour %d  %d km/h  Ping %d  Int %d  VW %d~n~~g~/specnext  /specprev  /specoff",
+		name, target, IsPlayerMobile[target] ? (" ~y~(mobile)") : (""), floatround(hp), floatround(armour), speed,
+		GetPlayerPing(target), gSpecTInt[playerid], gSpecTWorld[playerid]);
+	PlayerTextDrawSetString(playerid, gSpecTd[playerid], "%s", text);
+	PlayerTextDrawShow(playerid, gSpecTd[playerid]);
+}
+
+static Admin_SpecHudHide(playerid)
+{
+	if (gSpecTd[playerid] == INVALID_PLAYER_TEXT_DRAW) return;
+	PlayerTextDrawDestroy(playerid, gSpecTd[playerid]);
+	gSpecTd[playerid] = INVALID_PLAYER_TEXT_DRAW;
+}
+
+forward Admin_SpecTick();
+public Admin_SpecTick()
+{
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		new target = gSpecTarget[i];
+		if (target == INVALID_PLAYER_ID || !IsPlayerConnected(i)) continue;
+		if (!IsPlayerConnected(target)) { Admin_StopSpec(i); continue; }
+		if (GetPlayerVehicleID(target) != gSpecVeh[i] || GetPlayerInterior(target) != gSpecTInt[i]
+			|| GetPlayerVirtualWorld(target) != gSpecTWorld[i] || GetPlayerState(target) != gSpecTState[i])
+		{
+			Admin_SpecApply(i);
+		}
+		Admin_SpecHud(i);
+	}
+	return 1;
+}
+
 stock Admin_StopSpec(playerid)
 {
+	Admin_SpecHudHide(playerid);
 	if (gSpecTarget[playerid] == INVALID_PLAYER_ID) return;
 	gSpecTarget[playerid] = INVALID_PLAYER_ID;
 	gSpecRestore[playerid] = true;      // вернём на место в Admin_OnSpawn
 	TogglePlayerSpectating(playerid, false);
+}
+
+static bool:Admin_CanSpecTarget(playerid, target)
+{
+	return (target != playerid && IsPlayerConnected(target) && Player[target][pLogged] && gSpecTarget[target] == INVALID_PLAYER_ID);
+}
+
+stock bool:Admin_StartSpec(playerid, target)
+{
+	if (gSpecTarget[playerid] == INVALID_PLAYER_ID)
+	{
+		// запоминаем, куда вернуть
+		GetPlayerPos(playerid, gSpecPos[playerid][0], gSpecPos[playerid][1], gSpecPos[playerid][2]);
+		gSpecInt[playerid] = GetPlayerInterior(playerid);
+		gSpecWorld[playerid] = GetPlayerVirtualWorld(playerid);
+		TogglePlayerSpectating(playerid, true);
+	}
+	gSpecTarget[playerid] = target;
+	Admin_SpecApply(playerid);
+	Admin_SpecHud(playerid);
+	Admin_Log(playerid, "spec", target);
+	SendClientMessage(playerid, COLOR_ADMIN, "Слежка за %s%s. Листать: /specnext /specprev (или ЛКМ / ПКМ). Выключить: /specoff",
+		GetRPName(target), Admin_PlatformTag(target));
+	return true;
 }
 
 stock bool:Cmd_Spec(playerid, const params[])
@@ -762,28 +867,37 @@ stock bool:Cmd_Spec(playerid, const params[])
 	if (target == INVALID_PLAYER_ID)
 	{
 		if (gSpecTarget[playerid] != INVALID_PLAYER_ID) { Admin_StopSpec(playerid); return true; }
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /spec [id]   выключить: /specoff");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /spec [id]   выключить: /specoff   (или /amenu > игрок > Следить)");
 	}
 	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Нельзя следить за собой.");
 	if (gSpecTarget[target] != INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Этот игрок сам сейчас в слежке.");
+	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
+	return Admin_StartSpec(playerid, target);
+}
 
-	if (gSpecTarget[playerid] == INVALID_PLAYER_ID)
+// Следующий (dir = 1) или предыдущий (dir = -1) игрок
+stock bool:Admin_SpecCycle(playerid, dir)
+{
+	if (gSpecTarget[playerid] == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Сначала начни слежку: /spec [id]");
+	new id = gSpecTarget[playerid];
+	for (new n = 0; n < MAX_PLAYERS; n++)
 	{
-		// запоминаем, куда вернуть
-		GetPlayerPos(playerid, gSpecPos[playerid][0], gSpecPos[playerid][1], gSpecPos[playerid][2]);
-		gSpecInt[playerid] = GetPlayerInterior(playerid);
-		gSpecWorld[playerid] = GetPlayerVirtualWorld(playerid);
+		id += dir;
+		if (id >= MAX_PLAYERS) id = 0;
+		else if (id < 0) id = MAX_PLAYERS - 1;
+		if (id == gSpecTarget[playerid]) break;
+		if (Admin_CanSpecTarget(playerid, id)) return Admin_StartSpec(playerid, id);
 	}
-	gSpecTarget[playerid] = target;
-	TogglePlayerSpectating(playerid, true);
-	SetPlayerInterior(playerid, GetPlayerInterior(target));
-	SetPlayerVirtualWorld(playerid, GetPlayerVirtualWorld(target));
-	if (IsPlayerInAnyVehicle(target)) PlayerSpectateVehicle(playerid, GetPlayerVehicleID(target));
-	else PlayerSpectatePlayer(playerid, target);
-	Admin_Log(playerid, "spec", target);
-	SendClientMessage(playerid, COLOR_ADMIN, "Слежка за %s%s. Выключить: /specoff. Обновить (если сел в машину): /spec %d",
-		GetRPName(target), Admin_PlatformTag(target), target);
-	return true;
+	return SendClientMessage(playerid, COLOR_GREY, "Других игроков для слежки нет.");
+}
+
+// Из OnPlayerKeyStateChange: в слежке ЛКМ — следующий, ПКМ — предыдущий
+stock Admin_OnKey(playerid, newkeys, oldkeys)
+{
+	if (gSpecTarget[playerid] == INVALID_PLAYER_ID) return 0;
+	if ((newkeys & _:KEY_FIRE) && !(oldkeys & _:KEY_FIRE)) { Admin_SpecCycle(playerid, 1); return 1; }
+	if ((newkeys & _:KEY_HANDBRAKE) && !(oldkeys & _:KEY_HANDBRAKE)) { Admin_SpecCycle(playerid, -1); return 1; }
+	return 0;
 }
 
 stock bool:Cmd_SpecOff(playerid)
@@ -1158,6 +1272,7 @@ static bool:AMenu_TargetOk(playerid)
 stock Admin_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
 	if (AdminTools_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Admin_VehDialog(playerid, dialogid, response, listitem)) return 1;
 	if (dialogid < DIALOG_ADMIN_INFO || dialogid > DIALOG_REPORT_NEW) return 0;
 
 	switch (dialogid)
@@ -1314,10 +1429,10 @@ stock bool:Cmd_AHelp(playerid)
 	if (!Admin_Check(playerid, 1)) return true;
 	new text[1800];
 	strcat(text, "{FF66FF}1 — Хелпер\n{FFFFFF}/a — админ-чат   /amenu — панель (удобно с телефона)   /reports /ans — репорты\n");
-	strcat(text, "/check /spec /specoff /goto /kick /mute /unmute /admins /aduty\n");
+	strcat(text, "/check /spec /specoff /specnext /specprev /goto /kick /mute /unmute /admins /aduty\n");
 	strcat(text, "Телепорт: метка на карте (выкл. /maptp), /tp — список точек, /back — назад\n\n");
 	strcat(text, "{FF66FF}2 — Модератор\n{FFFFFF}/warn /ajail /unajail /freeze /unfreeze /slap /gethere /sethp /setskin /jail /unjail\n/sendto /gotocar /fixveh /flip\n\n");
-	strcat(text, "{FF66FF}3 — Администратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /moneylog /veh /dveh\n/ao /gotocoord /respawncars /setweather\n/givelic — выдать лицензию   /setfuel — заправить машину\n\n");
+	strcat(text, "{FF66FF}3 — Администратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /moneylog /dveh\n/veh — меню машин, /veh infernus — по названию, /veh 411 — по номеру\n/ao /gotocoord /respawncars /setweather\n/givelic — выдать лицензию   /setfuel — заправить машину\n\n");
 	strcat(text, "{FF66FF}4 — Ст. администратор\n{FFFFFF}/unban, бан навсегда (0 дней), /addtp /deltp, фракции, дома, бизнесы, АЗС, банкоматы, районы\n/givefood /giveitem — еда и вещи   /addexampoint /clearexam — маршрут экзамена\n/addgarage [1-2] /delgarage — СТО и штрафстоянки\n/pos [название] /points /dev — координаты   /mo — маппинг (объекты, удаление зданий, выгрузка)\n\n");
 	strcat(text, "{FF66FF}5 — Гл. администратор\n{FFFFFF}/makeadmin /givemoney /settax — налоги\n\n");
 	strcat(text, "{AFAFAF}Все наказания и выдачи пишутся в лог (/alog). Наказать админа своего уровня или выше нельзя.");
@@ -1328,20 +1443,36 @@ stock bool:Cmd_AHelp(playerid)
 // =====================================================================
 //  Прочие команды (транспорт, деньги, здоровье, скин)
 // =====================================================================
-stock bool:Cmd_Veh(playerid, const params[])
-{
-	if (!Admin_Check(playerid, 3)) return true;
-	new pos = 0, model, c1 = -1, c2 = -1;
-	if (!NextIntParam(params, pos, model) || model < 400 || model > 611)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /veh [модель 400-611] [цвет1] [цвет2]");
-	NextIntParam(params, pos, c1);
-	NextIntParam(params, pos, c2);
+// ---------------------------------------------------------------------
+//  /veh — машина по номеру модели, по названию или из меню
+//  /veh 411   /veh infernus   /veh (без параметров) — меню по категориям
+// ---------------------------------------------------------------------
+#define DIALOG_VEH_CAT      1230
+#define DIALOG_VEH_LIST     1231
+#define VEH_CHOICES         24
 
+static const gVehCatNames[] = "Спорт\nСеданы\nВнедорожники и пикапы\nМаслкары и лоурайдеры\nМото и велосипеды\nГрузовые, фургоны, автобусы\nСлужебные (полиция, скорая, армия)\nВертолёты и самолёты\nЛодки";
+static const gVehCat[][VEH_CHOICES] =
+{
+	{ 411, 541, 451, 429, 415, 506, 494, 502, 503, 477, 480, 402, 603, 562, 559, 560, 565, 558, 587, 589 },
+	{ 405, 410, 421, 426, 445, 492, 507, 516, 529, 540, 546, 547, 550, 551, 580, 585, 409, 466, 467, 549 },
+	{ 400, 489, 495, 500, 505, 554, 579, 422, 478, 543, 600, 444, 556, 557, 418, 483 },
+	{ 412, 534, 535, 536, 566, 567, 575, 576, 474, 475, 542, 491, 517, 518, 526, 527 },
+	{ 522, 521, 461, 463, 468, 471, 581, 586, 462, 448, 509, 481, 510 },
+	{ 403, 514, 515, 455, 456, 499, 414, 413, 482, 440, 459, 498, 578, 443, 431, 437, 420, 438, 524, 573 },
+	{ 596, 597, 598, 599, 523, 427, 490, 528, 601, 416, 407, 544, 525, 552, 574, 408, 432, 470, 433 },
+	{ 487, 497, 469, 447, 563, 425, 548, 417, 488, 519, 593, 513, 511, 553, 577, 592, 520, 476, 512 },
+	{ 446, 452, 493, 454, 484, 453, 473, 595, 430, 472, 539 }
+};
+static gVehChoice[MAX_PLAYERS][VEH_CHOICES];
+
+static Admin_SpawnVeh(playerid, model, c1, c2)
+{
 	new Float:x, Float:y, Float:z, Float:a;
 	GetPlayerPos(playerid, x, y, z);
 	GetPlayerFacingAngle(playerid, a);
 	new v = CreateVehicle(model, x, y, z + 0.5, a, c1, c2, -1);
-	if (v == INVALID_VEHICLE_ID) return SendClientMessage(playerid, COLOR_RED, "Не удалось создать машину.");
+	if (v == INVALID_VEHICLE_ID) return SendClientMessage(playerid, COLOR_RED, "Не удалось создать машину (лимит машин на сервере?).");
 
 	Vehicle_Clear(v);
 	gVehAdmin[v] = true;
@@ -1349,8 +1480,84 @@ stock bool:Cmd_Veh(playerid, const params[])
 	SetVehicleVirtualWorld(v, GetPlayerVirtualWorld(playerid));
 	PutPlayerInVehicle(playerid, v, 0);
 	Admin_Log(playerid, "veh", INVALID_PLAYER_ID, "", model);
-	SendClientMessage(playerid, COLOR_ADMIN, "Машина %d создана (id %d). Удалить: /dveh", model, v);
+
+	new name[32];
+	Hud_GetVehicleName(model, name);
+	SendClientMessage(playerid, COLOR_ADMIN, "%s (модель %d) создана, id %d. Удалить: /dveh   убрать все пустые: /respawncars", name, model, v);
+	return 1;
+}
+
+// Окно со списком моделей из gVehChoice[playerid]
+static Admin_ShowVehList(playerid, const title[], count)
+{
+	new text[VEH_CHOICES * 32], line[40], name[32];
+	for (new i = 0; i < count; i++)
+	{
+		name[0] = '\0';
+		Hud_GetVehicleName(gVehChoice[playerid][i], name);
+		format(line, sizeof line, "%s {AFAFAF}(%d)\n", name, gVehChoice[playerid][i]);
+		strcat(text, line);
+	}
+	ShowPlayerDialog(playerid, DIALOG_VEH_LIST, DIALOG_STYLE_LIST, title, "%s", "Создать", "Назад", text);
+}
+
+stock bool:Cmd_Veh(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 3)) return true;
+	new pos = 0, what[32], c1 = -1, c2 = -1;
+	if (!NextParam(params, pos, what))
+	{
+		ShowPlayerDialog(playerid, DIALOG_VEH_CAT, DIALOG_STYLE_LIST, "Создать машину", "%s", "Дальше", "Закрыть", gVehCatNames);
+		return true;
+	}
+	NextIntParam(params, pos, c1);
+	NextIntParam(params, pos, c2);
+
+	if (IsNumeric(what))
+	{
+		new model = strval(what);
+		if (model < 400 || model > 611) return SendClientMessage(playerid, COLOR_GREY, "Модель от 400 до 611. Или название: /veh infernus. Или меню: /veh");
+		Admin_SpawnVeh(playerid, model, c1, c2);
+		return true;
+	}
+
+	// Поиск по названию: точное совпадение сразу, иначе — все, где есть эти буквы
+	new name[32], count = 0;
+	for (new model = 400; model <= 611; model++)
+	{
+		name[0] = '\0';
+		Hud_GetVehicleName(model, name);
+		if (name[0] == '\0') continue;
+		if (!strcmp(name, what, true)) { Admin_SpawnVeh(playerid, model, c1, c2); return true; }
+		if (strfind(name, what, true) != -1 && count < VEH_CHOICES) gVehChoice[playerid][count++] = model;
+	}
+	if (count == 0) return SendClientMessage(playerid, COLOR_GREY, "Машина \"%s\" не найдена. Открой меню: /veh", what);
+	if (count == 1) { Admin_SpawnVeh(playerid, gVehChoice[playerid][0], c1, c2); return true; }
+	Admin_ShowVehList(playerid, "Найдено несколько", count);
 	return true;
+}
+
+stock Admin_VehDialog(playerid, dialogid, response, listitem)
+{
+	if (dialogid != DIALOG_VEH_CAT && dialogid != DIALOG_VEH_LIST) return 0;
+	if (Player[playerid][pAdmin] < 3) return 1;
+	if (dialogid == DIALOG_VEH_CAT)
+	{
+		if (!response || listitem < 0 || listitem >= sizeof (gVehCat)) return 1;
+		new count = 0;
+		for (new i = 0; i < VEH_CHOICES && gVehCat[listitem][i] != 0; i++) gVehChoice[playerid][count++] = gVehCat[listitem][i];
+		Admin_ShowVehList(playerid, "Выбери машину", count);
+		return 1;
+	}
+	if (!response)
+	{
+		ShowPlayerDialog(playerid, DIALOG_VEH_CAT, DIALOG_STYLE_LIST, "Создать машину", "%s", "Дальше", "Закрыть", gVehCatNames);
+		return 1;
+	}
+	if (listitem < 0 || listitem >= VEH_CHOICES) return 1;
+	new model = gVehChoice[playerid][listitem];
+	if (model >= 400 && model <= 611) Admin_SpawnVeh(playerid, model, -1, -1);
+	return 1;
 }
 
 stock bool:Cmd_DVeh(playerid)
@@ -1441,6 +1648,8 @@ stock Admin_OnCommand(playerid, const cmd[], const params[])
 	if (!strcmp(cmd, "/check", true))       { Cmd_Check(playerid, params); return 1; }
 	if (!strcmp(cmd, "/spec", true))        { Cmd_Spec(playerid, params); return 1; }
 	if (!strcmp(cmd, "/specoff", true))     { Cmd_SpecOff(playerid); return 1; }
+	if (!strcmp(cmd, "/specnext", true))    { Admin_SpecCycle(playerid, 1); return 1; }
+	if (!strcmp(cmd, "/specprev", true))    { Admin_SpecCycle(playerid, -1); return 1; }
 	if (!strcmp(cmd, "/goto", true))        { Cmd_Goto(playerid, params); return 1; }
 	if (!strcmp(cmd, "/gethere", true))     { Cmd_GetHere(playerid, params); return 1; }
 	if (!strcmp(cmd, "/kick", true))        { Cmd_Kick(playerid, params); return 1; }
