@@ -470,7 +470,7 @@ static Drag_Walk(t, by)
 		ClearAnimations(t, SYNC_ALL);
 		return;
 	}
-	new Float:ang = atan2(by_ - ty, bx - tx, degrees) - 90.0;
+	new Float:ang = atan2(by_ - ty, bx - tx) - 90.0;    // atan2 в SA-MP/open.mp Ч в градусах
 	SetPlayerFacingAngle(t, ang);
 	new mode = 0;                       // 0 стоит, 1 идЄт, 2 бежит
 	if (dist > 4.0) mode = 2;
