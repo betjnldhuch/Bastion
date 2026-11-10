@@ -570,7 +570,7 @@ namespace BastionLauncher
             refresh.Interval = 10000;
             refresh.Tick += delegate { RefreshAll(); };
             refresh.Start();
-            Shown += delegate { RefreshAll(); ActiveControl = play; };
+            Shown += delegate { RefreshAll(); ActiveControl = play; CheckUpdate(); };
             if (Environment.GetCommandLineArgs().Length > 1 && Environment.GetCommandLineArgs()[1] == "--settings") ToggleSettings();
         }
 
@@ -793,28 +793,99 @@ namespace BastionLauncher
         // ---------------- новости ----------------
         void LoadNews()
         {
+            // Сразу показываем то, что есть на диске: последние скачанные новости, иначе news.txt
             string p = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "news.txt");
+            string cache = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "news.cache");
             try { if (File.Exists(p)) ParseNews(File.ReadAllText(p, Encoding.UTF8)); } catch (Exception) { }
-
-            if (cfg.NewsUrl.Length > 0)
+            string newsUrl = cfg.EffectiveNewsUrl;
+            if (newsUrl.Length > 0)
             {
+                try { if (File.Exists(cache)) ParseNews(File.ReadAllText(cache, Encoding.UTF8)); } catch (Exception) { }
                 Thread th = new Thread(delegate ()
                 {
                     try
                     {
-                        ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; // TLS 1.2
-                        using (WebClient wc = new WebClient())
-                        {
-                            wc.Encoding = Encoding.UTF8;
-                            string txt = wc.DownloadString(cfg.NewsUrl);
-                            BeginInvoke(new MethodInvoker(delegate { ParseNews(txt); Invalidate(); }));
-                        }
+                        string txt = Remote.FetchText(newsUrl, 6000);
+                        if (!HasNews(txt)) return;
+                        try { File.WriteAllText(cache, txt, new UTF8Encoding(true)); } catch (Exception) { }
+                        BeginInvoke(new MethodInvoker(delegate { ParseNews(txt); Invalidate(); }));
                     }
                     catch (Exception) { }
                 });
                 th.IsBackground = true;
                 th.Start();
             }
+        }
+
+        // Похоже ли это на файл новостей (а не на страницу ошибки)
+        static bool HasNews(string txt)
+        {
+            foreach (string raw in txt.Replace("\r", "").Split('\n'))
+            {
+                string line = raw.Trim().TrimStart('\uFEFF');
+                if (line.Length == 0 || line.StartsWith(";") || line.StartsWith("#")) continue;
+                if (line.StartsWith("<") || line.Split('|').Length < 2) return false;
+                return true;
+            }
+            return false;
+        }
+
+        // ---------------- обновление лаунчера ----------------
+        void CheckUpdate()
+        {
+            string url = cfg.EffectiveUpdateUrl;
+            if (url.Length == 0) return;
+            Thread th = new Thread(delegate ()
+            {
+                UpdateInfo info = Updater.Check(url);
+                if (info == null) return;
+                try { BeginInvoke(new MethodInvoker(delegate { OfferUpdate(info); })); } catch (Exception) { }
+            });
+            th.IsBackground = true;
+            th.Start();
+        }
+
+        void OfferUpdate(UpdateInfo info)
+        {
+            if (installing) return;
+            string text = "Вышла новая версия лаунчера: " + info.Version + " (у тебя " + Updater.Current + ").";
+            if (info.Notes.Length > 0) text += "\r\n\r\n" + info.Notes;
+            text += "\r\n\r\nОбновить сейчас? Лаунчер перезапустится сам.";
+            if (MessageBox.Show(this, text, cfg.Title, MessageBoxButtons.YesNo, MessageBoxIcon.Information) != DialogResult.Yes) return;
+
+            installing = true;
+            play.Enabled = false;
+            Thread th = new Thread(delegate ()
+            {
+                string error = null, exe = null;
+                try
+                {
+                    exe = Updater.Apply(info, delegate (string msg)
+                    {
+                        try { BeginInvoke(new MethodInvoker(delegate { SetStatus(msg); })); } catch (Exception) { }
+                    });
+                }
+                catch (Exception ex) { error = ex.Message; }
+                try
+                {
+                    BeginInvoke(new MethodInvoker(delegate
+                    {
+                        if (error == null)
+                        {
+                            try { Process.Start(exe); } catch (Exception) { }
+                            Application.Exit();
+                            return;
+                        }
+                        installing = false;
+                        play.Enabled = true;
+                        SetStatus("Обновление не удалось.");
+                        Warn("Не получилось обновить лаунчер: " + error + "\r\nМожно играть на этой версии или скачать новую вручную.");
+                    }));
+                }
+                catch (Exception) { }
+            });
+            th.IsBackground = true;
+            th.Start();
         }
 
         void ParseNews(string txt)
@@ -1274,6 +1345,7 @@ namespace BastionLauncher
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            Updater.CleanOld();     // следы прошлого обновления
             try
             {
                 Application.Run(new MainForm());
