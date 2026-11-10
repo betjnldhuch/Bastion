@@ -29,13 +29,6 @@
 #define HOUSE_WEAPON_SLOTS  5       // мест в шкафу
 #define HOUSE_SAFE_MAX      500000  // максимум денег в сейфе
 
-#define DIALOG_HOUSE_MENU       1140
-#define DIALOG_HOUSE_TAKEGUN    1141
-#define DIALOG_HOUSE_SAFE_IN    1142
-#define DIALOG_HOUSE_SAFE_OUT   1143
-#define DIALOG_HOUSE_PAY        1144
-#define DIALOG_HOUSE_WITHDRAW   1145
-#define DIALOG_HOUSE_RENT       1146
 
 enum E_HOUSE
 {

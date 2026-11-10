@@ -27,6 +27,15 @@ stock Account_OnConnect(playerid)
 #endif
 
 	if (Bans_IsBanned(playerid, name)) return 0;   // admin.inc
+	if (Bans_IsIpBanned(playerid)) return 0;        // бан по IP (/banip)
+
+	new lock = Login_LockLeft(playerid);            // пауза после неверных паролей (admin.inc)
+	if (lock > 0)
+	{
+		SendClientMessage(playerid, COLOR_RED, "С твоего адреса слишком много раз ввели неверный пароль. Вход откроется через %d мин.", (lock + 59) / 60);
+		KickWithDelay(playerid);
+		return 0;
+	}
 
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, password, salt FROM accounts WHERE name = '%q' LIMIT 1", name);
 	if (r != DBResult:0)
@@ -134,7 +143,8 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 				Player[playerid][pLoginTries]++;
 				if (Player[playerid][pLoginTries] >= MAX_LOGIN_TRIES)
 				{
-					SendClientMessage(playerid, COLOR_RED, "Слишком много неверных попыток.");
+					SendClientMessage(playerid, COLOR_RED, "Слишком много неверных попыток. Вход с твоего адреса закрыт на %d мин.", LOGIN_LOCK_SECONDS / 60);
+					Login_Lock(playerid);
 					KickWithDelay(playerid);
 					return 1;
 				}

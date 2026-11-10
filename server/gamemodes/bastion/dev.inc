@@ -33,8 +33,6 @@
 #define DEV_POINTS_FILE     "bastion_points.txt"
 #define MAP_EXPORT_FILE     "map_export.txt"
 
-#define DIALOG_DEV_POINTS   1160
-#define DIALOG_DEV_HELP     1161
 
 static gMapDbId[MAX_MAP_OBJECTS];
 static gMapObj[MAX_MAP_OBJECTS] = { INVALID_OBJECT_ID, ... };

@@ -26,8 +26,6 @@
 #define FUEL_SPEED_FACTOR   0.0004  // + литров в секунду за каждый км/ч
 #define FUEL_LOW_WARNING    8.0     // предупреждение «бензин заканчивается»
 
-#define DIALOG_FUEL_FILL    1100
-#define DIALOG_FUEL_CAN     1101
 
 enum E_FUEL_STATION
 {

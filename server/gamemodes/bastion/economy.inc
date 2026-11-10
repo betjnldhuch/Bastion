@@ -163,7 +163,7 @@ stock bool:Cmd_Taxes(playerid)
 
 stock bool:Cmd_SetTax(playerid, const params[])
 {
-	if (!Admin_Check(playerid, 5)) return true;
+	if (!Admin_Check(playerid, ADMIN_MAX_LEVEL)) return true;
 	new pos = 0, kind[16], value;
 	if (!NextParam(params, pos, kind) || !NextIntParam(params, pos, value))
 		return SendClientMessage(playerid, COLOR_GREY, "»спользование: /settax income [0-%d %%] или /settax car [0-%d Й]", TAX_INCOME_MAX, TAX_CAR_MAX);

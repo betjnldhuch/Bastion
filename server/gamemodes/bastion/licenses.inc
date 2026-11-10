@@ -35,8 +35,6 @@ enum
 #define LIC_EXAM_MIN_HP      700.0
 #define LIC_MAX_ROUTE        30
 
-#define DIALOG_LIC_MENU     1110
-#define DIALOG_LIC_THEORY   1111
 
 static const gLicNames[LIC_COUNT][] = { "", "Авто", "Мото", "Лодки", "Оружие" };
 static const gLicColumns[LIC_COUNT][] = { "", "lic_car", "lic_moto", "lic_boat", "lic_gun" };

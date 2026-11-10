@@ -30,6 +30,8 @@
 #define MIN_PASSWORD_LEN    6
 #define MAX_PASSWORD_LEN    32
 #define MAX_LOGIN_TRIES     3
+#define LOGIN_LOCK_SECONDS  300             // пауза на вход с IP после стольких неверных паролей, секунд
+#define LOGIN_LOCK_SLOTS    64              // сколько IP на паузе помнить одновременно
 
 // –адиусы чата
 #define CHAT_RADIUS         20.0
@@ -121,26 +123,4 @@
 #define SKIN_MALE           60
 #define SKIN_FEMALE         56
 
-// ---------------------------------------------------------------------
-//  ID диалогов.  аждое окно должно иметь свой номер.
-// ---------------------------------------------------------------------
-enum
-{
-	DIALOG_NONE,
-	DIALOG_REGISTER,
-	DIALOG_LOGIN,
-	DIALOG_GENDER,
-	DIALOG_BUYCAR,
-	DIALOG_HELP,
-	DIALOG_BANK,
-	DIALOG_BANK_DEPOSIT,
-	DIALOG_BANK_WITHDRAW,
-	DIALOG_BANK_TRANSFER,
-	DIALOG_BANK_TRANSFER_ACC,
-	DIALOG_BANK_HISTORY,
-	DIALOG_BIZ_BUY,
-	DIALOG_BIZ_MENU,
-	DIALOG_CONFIRM_HOUSE,
-	DIALOG_INTERACT,
-	DIALOG_INTERACT_PAY
-}
+// Ќомера окон (диалогов) Ч в dialogs.inc

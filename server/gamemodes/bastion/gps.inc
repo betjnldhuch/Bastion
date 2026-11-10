@@ -23,18 +23,6 @@
 #define MK_LIST_PAGE        40
 #define MK_MENU_MAX         12
 
-#define DIALOG_MK_MENU      1180
-#define DIALOG_MK_STYLE     1181
-#define DIALOG_MK_ICON      1182
-#define DIALOG_MK_GPS       1183
-#define DIALOG_MK_NAME      1184
-#define DIALOG_MK_LABEL     1185
-#define DIALOG_MK_NEW       1186
-#define DIALOG_MK_LIST      1187
-#define DIALOG_MK_PLACE     1188
-#define DIALOG_MK_DELETE    1189
-#define DIALOG_GPS_MAIN     1190
-#define DIALOG_GPS_LIST     1191
 
 static const gMkTypeNames[MK_TYPES][] =
 {

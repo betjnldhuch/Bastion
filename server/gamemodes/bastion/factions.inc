@@ -51,29 +51,7 @@
 #define FACTION_LOG_SHOW        25      // сколько последних записей журнала показывать
 #define FACTION_LIST_MAX        40      // сколько членов фракции показывать в /lmenu
 
-// Окна (диалоги) фракций. Номера с 700, чтобы не пересекаться с config.inc.
-enum
-{
-	DIALOG_LMENU = 700,
-	DIALOG_FBANK,
-	DIALOG_FBANK_DEPOSIT,
-	DIALOG_FBANK_WITHDRAW,
-	DIALOG_FSTORE,
-	DIALOG_FSTORE_BUY,
-	DIALOG_FSTORE_BUY_QTY,
-	DIALOG_FSTORE_RANK,
-	DIALOG_LMEMBERS,
-	DIALOG_LMEMBER_ACT,
-	DIALOG_LMEMBER_RANK,
-	DIALOG_LMEMBER_WARN,
-	DIALOG_LRANKS,
-	DIALOG_LRANK_ACT,
-	DIALOG_LRANK_NAME,
-	DIALOG_LRANK_SALARY,
-	DIALOG_LRANK_SKIN,
-	DIALOG_LLOGS,
-	DIALOG_FACTION_LAST
-}
+// Окна (диалоги) фракций — в dialogs.inc
 
 // Снаряжение на складе фракции
 enum

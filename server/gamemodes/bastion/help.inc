@@ -6,8 +6,6 @@
 //  Ќова€ команда Ч строчка в gHelp ниже: { раздел, "команда", "что делает" }.
 // =====================================================================
 
-#define DIALOG_HELP_TOPICS  1250    // 1230-1231 зан€ты меню /veh (admin.inc)
-#define DIALOG_HELP_TOPIC   1251
 #define HELP_PAGE_LINES     10
 
 static gHelpTopic[MAX_PLAYERS], gHelpPage[MAX_PLAYERS], gHelpPages[MAX_PLAYERS];
@@ -37,6 +35,8 @@ enum
 	HT_ADMIN3,
 	HT_ADMIN4,
 	HT_ADMIN5,
+	HT_ADMIN6,
+	HT_ADMIN7,
 	HT_DEV,
 	HT_COUNT
 }
@@ -65,7 +65,9 @@ static const gHelpTopics[HT_COUNT][] =
 	"јдмин 2 Ч модератор",
 	"јдмин 3 Ч администратор",
 	"јдмин 4 Ч ст. администратор",
-	"јдмин 5 Ч гл. администратор",
+	"јдмин 5 Ч куратор",
+	"јдмин 6 Ч зам. гл. администратора",
+	"јдмин 7 Ч гл. администратор",
 	"–азработка: точки, маппинг, маркеры"
 };
 
@@ -292,9 +294,17 @@ static const gHelp[][E_HELP] =
 	{ HT_ADMIN4, "/fpslist", "FPS всех игроков" },
 
 	// --- јдмин 5
-	{ HT_ADMIN5, "/makeadmin [id] [0-5]", "выдать админку" },
-	{ HT_ADMIN5, "/givemoney [id] [сумма]", "выдать деньги" },
-	{ HT_ADMIN5, "/settax income|car [знач.]", "налог с зарплаты (%) или на машину (Й)" },
+	{ HT_ADMIN5, "все команды 4 уровн€", "куратор Ч старший над администраторами" },
+
+	// --- јдмин 6
+	{ HT_ADMIN6, "/banip [id или IP] [дни] [причина]", "бан по IP (0 дней Ч навсегда)" },
+	{ HT_ADMIN6, "/unbanip [IP]", "сн€ть бан с IP" },
+
+	// --- јдмин 7
+	{ HT_ADMIN7, "/makeadmin [id] [0-7]", "выдать админку" },
+	{ HT_ADMIN7, "/givemoney [id] [сумма]", "выдать деньги" },
+	{ HT_ADMIN7, "/settax income|car [знач.]", "налог с зарплаты (%) или на машину (Й)" },
+	{ HT_ADMIN7, "/backup", "сохранить копию базы пр€мо сейчас" },
 
 	// --- –азработка
 	{ HT_DEV, "/pos [название]", "координаты; с названием Ч сохранить точку (scriptfiles/bastion_points.txt)" },
@@ -315,7 +325,7 @@ static const gHelp[][E_HELP] =
 
 stock bool:Help_Show(playerid)
 {
-	new text[1400], line[80];
+	new text[1800], line[96];
 	for (new t = 0; t < HT_COUNT; t++)
 	{
 		new count = 0;

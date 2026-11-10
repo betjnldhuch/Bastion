@@ -28,11 +28,6 @@
 #define ADMIN_DUTY_COLOR        0xFF66FFFF
 #define ADMIN_DUTY_HEALTH       100000.0
 
-enum
-{
-	DIALOG_TPLIST = 1220
-}
-
 enum E_TELEPORT
 {
 	bool:tpUsed,

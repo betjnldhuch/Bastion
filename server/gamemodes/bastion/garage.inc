@@ -29,10 +29,6 @@
 #define IMPOUND_FINE_MAX    5000
 #define IMPOUND_REWARD      100     // премия полицейскому за эвакуацию
 
-#define DIALOG_TUNE         1150
-#define DIALOG_TUNE_PAINT   1151
-#define DIALOG_TUNE_WHEELS  1152
-#define DIALOG_UNIMPOUND    1153
 
 enum E_GARAGE
 {

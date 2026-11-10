@@ -45,7 +45,6 @@ static gWoundInt[MAX_PLAYERS];
 static gWoundWorld[MAX_PLAYERS];
 static gWoundList[MAX_PLAYERS][MAX_PLAYERS]; // строка окна /wounds -> id
 
-#define DIALOG_WOUNDS       1240
 
 stock Wound_Init()
 {
