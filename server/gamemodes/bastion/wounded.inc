@@ -35,6 +35,7 @@ forward Drag_Tick();
 static gDragBy[MAX_PLAYERS] = { INVALID_PLAYER_ID, ... };   // кто ведЄт / несЄт этого игрока
 static bool:gCarried[MAX_PLAYERS];                          // несут на руках (а не ведут)
 static gCarryAnimTick[MAX_PLAYERS];
+static gDragWalk[MAX_PLAYERS];                              // 0 стоит, 1 идЄт, 2 бежит
 
 static bool:gWoundPending[MAX_PLAYERS];     // умер, следующий спавн Ч на месте раненым
 static bool:gWounded[MAX_PLAYERS];          // лежит раненым
@@ -150,7 +151,9 @@ static Wound_StandUp(playerid, Float:hp)
 	gWoundLeft[playerid] = 0;
 	TogglePlayerControllable(playerid, true);
 	ClearAnimations(playerid, SYNC_ALL);
-	SetPlayerHealth(playerid, hp);
+	ApplyAnimation(playerid, "PED", "getup_front", 4.1, false, false, false, false, 0, SYNC_ALL);
+	SetCameraBehindPlayer(playerid);
+	if (hp > 0.0) SetPlayerHealth(playerid, hp);
 	GameTextForPlayer(playerid, "~g~Revived", 2000, 4);
 }
 
@@ -179,6 +182,15 @@ public Wound_OnSecond()
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!gWounded[i] || !IsPlayerConnected(i)) continue;
+		// вылечили другим способом (/heal медика, админ) Ч встаЄт сам
+		new Float:hp;
+		GetPlayerHealth(i, hp);
+		if (hp > WOUND_HEALTH + 5.0)
+		{
+			Wound_StandUp(i, 0.0);
+			SendClientMessage(i, COLOR_GREEN, "“еб€ вылечили, ты снова на ногах.");
+			continue;
+		}
 		gWoundLeft[i]--;
 		if (gWoundLeft[i] <= 0)
 		{
@@ -293,6 +305,7 @@ static Drag_Stop(target)
 	new bool:carried = gCarried[target];
 	gDragBy[target] = INVALID_PLAYER_ID;
 	gCarried[target] = false;
+	Drag_StopWalk(target);
 	if (!IsPlayerConnected(by)) return;
 	if (carried)
 	{
@@ -303,6 +316,14 @@ static Drag_Stop(target)
 }
 
 // »грок вышел: отпустить того, кого он вЄл, и освободитьс€ самому
+// ќстановить шаг задержанного, которого вели
+static Drag_StopWalk(target)
+{
+	if (gDragWalk[target] == 0) return;
+	gDragWalk[target] = 0;
+	if (IsPlayerConnected(target)) ClearAnimations(target, SYNC_ALL);
+}
+
 static Drag_StopAll(playerid)
 {
 	gDragBy[playerid] = INVALID_PLAYER_ID;
@@ -313,6 +334,7 @@ static Drag_StopAll(playerid)
 		{
 			gDragBy[i] = INVALID_PLAYER_ID;
 			gCarried[i] = false;
+			Drag_StopWalk(i);
 		}
 	}
 }
@@ -348,6 +370,7 @@ static Drag_Begin(target, by, bool:carry)
 	gDragBy[target] = by;
 	gCarried[target] = carry;
 	gCarryAnimTick[target] = 0;
+	gDragWalk[target] = 0;
 	if (carry) ApplyAnimation(by, "CARRY", "crry_prtial", 4.1, true, false, false, true, 1, SYNC_ALL);
 }
 
@@ -429,6 +452,36 @@ stock Wound_AcceptCarry(playerid, from)
 	SendNearbyMessage(from, CHAT_RADIUS, COLOR_PURPLE, msg);
 }
 
+// «адержанный идЄт за офицером своими ногами (анимаци€ шага двигает его сама)
+static Drag_Walk(t, by)
+{
+	new Float:tx, Float:ty, Float:tz, Float:bx, Float:by_, Float:bz;
+	GetPlayerPos(t, tx, ty, tz);
+	GetPlayerPos(by, bx, by_, bz);
+	new Float:dist = VectorSize(bx - tx, by_ - ty, 0.0);
+	if (dist > 10.0 || floatabs(bz - tz) > 3.0)
+	{
+		// отстал (дверь, лестница, телепорт) Ч ставим р€дом
+		new Float:a;
+		GetPlayerFacingAngle(by, a);
+		SetPlayerPos(t, bx - 1.2 * floatsin(-a, degrees), by_ - 1.2 * floatcos(-a, degrees), bz);
+		SetPlayerFacingAngle(t, a);
+		gDragWalk[t] = 0;
+		ClearAnimations(t, SYNC_ALL);
+		return;
+	}
+	new Float:ang = atan2(by_ - ty, bx - tx, degrees) - 90.0;
+	SetPlayerFacingAngle(t, ang);
+	new mode = 0;                       // 0 стоит, 1 идЄт, 2 бежит
+	if (dist > 4.0) mode = 2;
+	else if (dist > 1.6) mode = 1;
+	if (mode == gDragWalk[t]) return;
+	gDragWalk[t] = mode;
+	if (mode == 2) ApplyAnimation(t, "PED", "run_civi", 4.1, true, true, true, false, 0, SYNC_ALL);
+	else if (mode == 1) ApplyAnimation(t, "PED", "WALK_civi", 4.1, true, true, true, false, 0, SYNC_ALL);
+	else ClearAnimations(t, SYNC_ALL);
+}
+
 public Drag_Tick()
 {
 	new Float:x, Float:y, Float:z, Float:a;
@@ -448,14 +501,22 @@ public Drag_Tick()
 			Drag_Stop(t);
 			continue;
 		}
+		if (GetPlayerInterior(t) != GetPlayerInterior(by)) SetPlayerInterior(t, GetPlayerInterior(by));
+		if (GetPlayerVirtualWorld(t) != GetPlayerVirtualWorld(by)) SetPlayerVirtualWorld(t, GetPlayerVirtualWorld(by));
+
+		// задержанный на ногах идЄт сам: поворачиваем к офицеру и включаем шаг
+		if (!gCarried[t] && !gWounded[t])
+		{
+			Drag_Walk(t, by);
+			continue;
+		}
+
 		GetPlayerPos(by, x, y, z);
 		GetPlayerFacingAngle(by, a);
-		// ведут Ч идЄт сзади, несут Ч перед грудью
+		// раненого тащат сзади, на руках Ч перед грудью
 		new Float:d = gCarried[t] ? 0.55 : -1.0;
 		x += d * floatsin(-a, degrees);
 		y += d * floatcos(-a, degrees);
-		if (GetPlayerInterior(t) != GetPlayerInterior(by)) SetPlayerInterior(t, GetPlayerInterior(by));
-		if (GetPlayerVirtualWorld(t) != GetPlayerVirtualWorld(by)) SetPlayerVirtualWorld(t, GetPlayerVirtualWorld(by));
 		if (!IsPlayerInRangeOfPoint(t, 0.4, x, y, z))
 		{
 			SetPlayerPos(t, x, y, z);
