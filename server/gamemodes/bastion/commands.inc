@@ -80,11 +80,31 @@ stock Commands_Pay(playerid, const params[])
 	Cmd_Pay(playerid, params);
 }
 
+// Команды-действия: раненый и задержанный в наручниках выполнить их не могут
+// (иначе из-под ареста уходят через /enter у своего дома, а лёжа торгуют и работают)
+static bool:Commands_IsAction(const cmd[])
+{
+	static const list[][12] =
+	{
+		"/enter", "/exit", "/lock", "/house", "/buyhouse", "/sellhouse", "/rent",
+		"/work", "/getjob", "/taxi", "/exam", "/duty", "/capture", "/rob",
+		"/buy", "/buycar", "/sellcar", "/park", "/engine", "/fill", "/canister",
+		"/tune", "/unimpound", "/bank", "/atm", "/pay", "/fbank", "/fstorage",
+		"/buybiz", "/sellbiz", "/bizcash", "/inv", "/i", "/invlist", "/pickup",
+		"/aid", "/carry"
+	};
+	for (new i = 0; i < sizeof (list); i++)
+	{
+		if (!strcmp(cmd, list[i], true)) return true;
+	}
+	return false;
+}
+
 // ---------------------------------------------------------------------
 //  Главный разбор команд. Вызывается из OnPlayerCommandText.
 //  Возвращает 1 — команда найдена, 0 — неизвестная команда.
 // ---------------------------------------------------------------------
-stock Commands_Process(playerid, const cmdtext[])
+stock Commands_Process(playerid, const input[])
 {
 	if (!Player[playerid][pLogged])
 	{
@@ -92,12 +112,25 @@ stock Commands_Process(playerid, const cmdtext[])
 		return 1;
 	}
 
+	// Копия строки: у игроков вырезаем цветовые коды {RRGGBB}, чтобы в /me, /do и т.п.
+	// нельзя было подделать сообщение сервера или админа
+	new cmdtext[145];
+	strcat(cmdtext, input);
+	if (Player[playerid][pAdmin] < 1) StripColorCodes(cmdtext);
+
 	new cmd[32], pos = 0;
 	NextParam(cmdtext, pos, cmd);
 	// cmd = "/команда", а cmdtext[pos] — всё, что после неё (параметры)
 
 	// --- администрация (admin.inc): мут, /report, все админ-команды ---
 	if (Admin_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
+
+	if ((Player[playerid][pCuffed] || Wound_IsWounded(playerid)) && Commands_IsAction(cmd))
+	{
+		if (Player[playerid][pCuffed]) SendClientMessage(playerid, COLOR_GREY, "Ты в наручниках и не можешь этого сделать.");
+		else SendClientMessage(playerid, COLOR_GREY, "Ты ранен и не можешь этого сделать.");
+		return 1;
+	}
 
 	// --- общее ---
 	if (!strcmp(cmd, "/help", true))        { Cmd_Help(playerid); return 1; }
@@ -132,12 +165,7 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/getjob", true))      { Cmd_GetJob(playerid); return 1; }
 	if (!strcmp(cmd, "/quitjob", true))     { Cmd_QuitJob(playerid); return 1; }
 	if (!strcmp(cmd, "/taxi", true))        { Cmd_Taxi(playerid); return 1; }
-	if (!strcmp(cmd, "/inv", true) || !strcmp(cmd, "/i", true))
-	{
-		if (Wound_IsWounded(playerid)) SendClientMessage(playerid, COLOR_GREY, "Ты ранен и не можешь достать вещи.");
-		else Cmd_Inv(playerid);
-		return 1;
-	}
+	if (!strcmp(cmd, "/inv", true) || !strcmp(cmd, "/i", true)) { Cmd_Inv(playerid); return 1; }
 	if (!strcmp(cmd, "/invlist", true))     { Inv_ShowList(playerid); return 1; }
 	if (!strcmp(cmd, "/hunger", true))      { Cmd_Hunger(playerid); return 1; }
 	if (!strcmp(cmd, "/pickup", true))      { Cmd_Pickup(playerid); return 1; }

@@ -292,7 +292,7 @@ stock Bank_ShowHistory(playerid)
 		DB_FreeResultSet(r);
 	}
 	if (rows == 0) strcat(body, "Операций пока не было.");
-	ShowPlayerDialog(playerid, DIALOG_BANK_HISTORY, DIALOG_STYLE_MSGBOX, "История операций", body, "Назад", "");
+	ShowPlayerDialog(playerid, DIALOG_BANK_HISTORY, DIALOG_STYLE_MSGBOX, "История операций", "%s", "Назад", "", body);
 }
 
 // Перевод со счёта игрока на счёт с номером dbid. Сам проверяет всё.

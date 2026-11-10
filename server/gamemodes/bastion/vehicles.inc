@@ -63,8 +63,7 @@ stock Vehicles_Init()
 	// јвтосалон
 	new Float:dx = DEALER_X, Float:dy = DEALER_Y, Float:dz = DEALER_Z;
 	gDealerMk = Marker_Create(MK_DEALER, 0, "јвтосалон", 1274, dx, dy, dz, 0, 0, GPS_TRANSPORT);
-	Marker_SetLabel(gDealerMk, "{FFFF00}јвтосалон
-{FFFFFF}ALT Ч купить машину");
+	Marker_SetLabel(gDealerMk, "{FFFF00}јвтосалон\n{FFFFFF}ALT Ч купить машину");
 }
 
 // »грок у автосалона

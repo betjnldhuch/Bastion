@@ -202,6 +202,11 @@ stock bool:Cmd_Dead(playerid)
 	return true;
 }
 
+// За одного и того же раненого премию платят не чаще раза в WOUND_REWARD_COOLDOWN секунд:
+// иначе медик с приятелем «роняют и поднимают» друг друга и печатают деньги
+#define WOUND_REWARD_COOLDOWN   600
+static gReviveRewardAt[MAX_PLAYERS];
+
 // /revive [id] — медик EMS на смене (или админ 2+ где угодно)
 stock bool:Cmd_Revive(playerid, const params[])
 {
@@ -219,8 +224,13 @@ stock bool:Cmd_Revive(playerid, const params[])
 	SendClientMessage(target, COLOR_GREEN, "%s поставил тебя на ноги. Долечиться: медик (/heal) или аптечка.", GetRPName(playerid));
 	if (Player[playerid][pFaction] == FACTION_EMS && near)
 	{
-		GiveMoney(playerid, WOUND_REWARD, "реанимация");
-		SendClientMessage(playerid, COLOR_GREEN, "Ты поднял %s. Премия: $%d.", GetRPName(target), WOUND_REWARD);
+		if (gettime() - gReviveRewardAt[target] >= WOUND_REWARD_COOLDOWN)
+		{
+			gReviveRewardAt[target] = gettime();
+			GiveMoney(playerid, WOUND_REWARD, "реанимация");
+			SendClientMessage(playerid, COLOR_GREEN, "Ты поднял %s. Премия: $%d.", GetRPName(target), WOUND_REWARD);
+		}
+		else SendClientMessage(playerid, COLOR_GREEN, "Ты поднял %s. Премию за этого пациента недавно уже платили.", GetRPName(target));
 	}
 	else SendClientMessage(playerid, COLOR_ADMIN, "%s поднят.", GetRPName(target));
 	return true;

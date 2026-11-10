@@ -68,6 +68,7 @@ static Door_InnerMarker(d, &Float:x, &Float:y)
 stock bool:Doors_Try(playerid)
 {
 	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return false;
+	if (Player[playerid][pJail] > 0) return false;      // камера в том же здании: заключённый через дверь не выходит
 	for (new d = 0; d < sizeof gDoors; d++)
 	{
 		if (Marker_InRange(playerid, gDoorMk[d][0], DOOR_RANGE))
