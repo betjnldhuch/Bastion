@@ -20,6 +20,9 @@ stock DB_Init()
 		return 0;
 	}
 
+	// Базу читает ещё и форум. Если она на мгновение занята — ждём до 3 секунд, а не теряем запись
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "PRAGMA busy_timeout = 3000"));
+
 	// Аккаунты игроков
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, password TEXT NOT NULL, salt TEXT NOT NULL, money INTEGER DEFAULT 0, level INTEGER DEFAULT 1, exp INTEGER DEFAULT 0, skin INTEGER DEFAULT 60, admin INTEGER DEFAULT 0, job INTEGER DEFAULT 0, reg_date INTEGER DEFAULT 0)"));
 

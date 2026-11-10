@@ -45,6 +45,9 @@
 #define FACTION_BANK_MAX        100000000
 #define FACTION_MAX_WARNS       3       // столько выговоров — и игрок уволен
 #define FACTION_MAX_SALARY      20000   // максимальная зарплата ранга, которую может поставить лидер
+// Общак полиции и больницы пополняет штат (FACTION_STATE_BUDGET), это не личные деньги лидера:
+#define FACTION_STATE_MAX_SALARY 3000   // потолок зарплаты ранга в госструктуре
+#define FACTION_STATE_WITHDRAW  0       // может ли лидер госструктуры снимать общак наличными
 #define FACTION_LOG_SHOW        25      // сколько последних записей журнала показывать
 #define FACTION_LIST_MAX        40      // сколько членов фракции показывать в /lmenu
 
@@ -276,6 +279,13 @@ stock Faction_GetRankName(f, rank)
 stock bool:Faction_IsState(f)
 {
 	return (f == FACTION_POLICE || f == FACTION_EMS);
+}
+
+// Потолок зарплаты ранга (у госструктур ниже: их общак — бюджет штата)
+stock Faction_MaxSalary(f)
+{
+	if (Faction_IsState(f)) return FACTION_STATE_MAX_SALARY;
+	return FACTION_MAX_SALARY;
 }
 
 // Найти игрока онлайн по номеру аккаунта. INVALID_PLAYER_ID — не в сети.
@@ -835,6 +845,7 @@ stock Factions_GetSalary(playerid)
 	new rank = Player[playerid][pRank];
 	if (!Faction_IsValid(f) || rank < 1 || rank > MAX_RANK) return 0;
 	new salary = gRankSalary[f][rank - 1];
+	if (salary > Faction_MaxSalary(f)) salary = Faction_MaxSalary(f);   // ставка, сохранённая до появления потолка
 	if (salary <= 0) return 0;
 	if (!Faction_AddBank(f, -salary))
 	{
@@ -1619,6 +1630,9 @@ stock Factions_OnDialog(playerid, dialogid, response, listitem, const inputtext[
 			else
 			{
 				if (!Faction_IsLeader(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Снимать деньги из общака может только лидер."); return 1; }
+#if !FACTION_STATE_WITHDRAW
+				if (Faction_IsState(f)) { SendClientMessage(playerid, COLOR_GREY, "Бюджет госструктуры наличными не выдают: он идёт на зарплаты и снаряжение."); return 1; }
+#endif
 				ShowPlayerDialog(playerid, DIALOG_FBANK_WITHDRAW, DIALOG_STYLE_INPUT, "Снять из общака",
 					"Сколько снять из общака?\nВ общаке: $%d", "Снять", "Назад", Faction[f][fBank]);
 			}
@@ -1644,6 +1658,9 @@ stock Factions_OnDialog(playerid, dialogid, response, listitem, const inputtext[
 		{
 			if (!response) { Cmd_FBank(playerid); return 1; }
 			if (!Faction_IsLeader(playerid)) return 1;
+#if !FACTION_STATE_WITHDRAW
+			if (Faction_IsState(f)) return 1;
+#endif
 			if (!Faction_AtBase(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от базы."); return 1; }
 			if (!IsNumeric(inputtext) || (amount = strval(inputtext)) < 1 || amount > 1000000)
 			{
@@ -1850,7 +1867,7 @@ stock Factions_OnDialog(playerid, dialogid, response, listitem, const inputtext[
 				case 0: ShowPlayerDialog(playerid, DIALOG_LRANK_NAME, DIALOG_STYLE_INPUT, "Название ранга",
 					"Новое название ранга %d (2-23 символа)\nСейчас: %s", "Сохранить", "Назад", rk, gRankName[f][rk - 1]);
 				case 1: ShowPlayerDialog(playerid, DIALOG_LRANK_SALARY, DIALOG_STYLE_INPUT, "Зарплата ранга",
-					"Зарплата ранга %d на PayDay (0-%d). Платится из общака.\nСейчас: $%d", "Сохранить", "Назад", rk, FACTION_MAX_SALARY, gRankSalary[f][rk - 1]);
+					"Зарплата ранга %d на PayDay (0-%d). Платится из общака.\nСейчас: $%d", "Сохранить", "Назад", rk, Faction_MaxSalary(f), gRankSalary[f][rk - 1]);
 				case 2: ShowPlayerDialog(playerid, DIALOG_LRANK_SKIN, DIALOG_STYLE_INPUT, "Скин ранга",
 					"Скин формы для ранга %d (0-311)\nСейчас: %d", "Сохранить", "Назад", rk, gRankSkin[f][rk - 1]);
 			}
@@ -1875,9 +1892,9 @@ stock Factions_OnDialog(playerid, dialogid, response, listitem, const inputtext[
 			}
 			else if (dialogid == DIALOG_LRANK_SALARY)
 			{
-				if (!IsNumeric(inputtext) || (amount = strval(inputtext)) < 0 || amount > FACTION_MAX_SALARY)
+				if (!IsNumeric(inputtext) || (amount = strval(inputtext)) < 0 || amount > Faction_MaxSalary(f))
 				{
-					SendClientMessage(playerid, COLOR_GREY, "Зарплата от $0 до $%d.", FACTION_MAX_SALARY);
+					SendClientMessage(playerid, COLOR_GREY, "Зарплата от $0 до $%d.", Faction_MaxSalary(f));
 					return 1;
 				}
 				gRankSalary[f][rk - 1] = amount;

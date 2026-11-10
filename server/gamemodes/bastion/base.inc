@@ -178,6 +178,35 @@ stock RandomString(dest[], length, size = sizeof (dest))
 	dest[length] = '\0';
 }
 
+// Вырезать из текста цветовые коды вида {RRGGBB}
+stock StripColorCodes(text[])
+{
+	new len = strlen(text), i = 0;
+	while (i + 7 < len)
+	{
+		if (text[i] == '{' && text[i + 7] == '}')
+		{
+			new bool:hex = true;
+			for (new j = i + 1; j < i + 7; j++)
+			{
+				new c = text[j];
+				if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+				{
+					hex = false;
+					break;
+				}
+			}
+			if (hex)
+			{
+				strdel(text, i, i + 8);
+				len -= 8;
+				continue;
+			}
+		}
+		i++;
+	}
+}
+
 // Есть ли в нике "_" (Имя_Фамилия)
 stock bool:IsRPName(const name[])
 {

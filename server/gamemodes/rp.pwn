@@ -35,6 +35,11 @@
 
 #define MAX_PLAYERS 100          // слотов на сервере (должно совпадать с max_players в config.json или быть больше)
 
+// Память под локальные переменные (в ячейках по 4 байта). Стандартных 16 КБ мало: окна
+// /amenu, /reports, /moneylog и списки фракций собирают текст по 3-4 тысячи символов
+// и без этой строки обрываются с ошибкой "stack/heap collision".
+#pragma dynamic 65536
+
 #include <open.mp>
 
 #include "bastion/config.inc"
@@ -274,7 +279,10 @@ public OnPlayerSpawn(playerid)
 // Урон: при малом здоровье игрок падает раненым (wounded.inc)
 public OnPlayerTakeDamage(playerid, issuerid, Float:amount, WEAPON:weaponid, bodypart)
 {
+	new bool:was = Wound_IsWounded(playerid);
 	Wound_OnDamage(playerid, amount);
+	// Упал раненым от чужой пули — в войне за район это считается убийством (turfs.inc)
+	if (!was && Wound_IsWounded(playerid)) Turfs_OnDeath(playerid, issuerid);
 	return 1;
 }
 
@@ -285,7 +293,7 @@ public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 	Factions_OnDeath(playerid);
 	Phone_HangUp(playerid);
 	Inv_ResetMask(playerid);            // маска слетает (needs.inc)
-	Turfs_OnDeath(playerid, killerid);
+	if (!Wound_IsWounded(playerid)) Turfs_OnDeath(playerid, killerid);   // раненого засчитали, когда он упал
 
 	if (Wound_OnDeath(playerid)) return 1;  // появится раненым на месте (wounded.inc)
 
@@ -301,6 +309,9 @@ public OnPlayerText(playerid, text[])
 {
 	if (!Player[playerid][pLogged]) return 0;
 	if (Admin_IsMuted(playerid)) return 0;
+	// Игроки не могут красить текст кодами {RRGGBB}: так подделывают системные сообщения
+	if (Player[playerid][pAdmin] < 1) StripColorCodes(text);
+	if (text[0] == '\0') return 0;
 	Chat_OnText(playerid, text);
 	return 0;   // 0 = не отправлять стандартный глобальный чат
 }
@@ -401,6 +412,9 @@ public OnMinuteTimer()
 	new hour, minute;
 	gettime(hour, minute);
 	SetWorldTime(hour);
+	// Все записи этой минуты (автосохранение, PayDay, журналы) идут в базу одной пачкой:
+	// диск трогаем один раз, и сервер не подвисает, когда игроков много
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "BEGIN"));
 	Needs_OnMinute();       // голод
 	Factions_OnMinute();    // тюремные сроки
 	Admin_OnMinute();       // деморган и муты
@@ -418,6 +432,7 @@ public OnMinuteTimer()
 			if (IsPlayerConnected(i)) Account_Save(i);
 		}
 	}
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "COMMIT"));
 	return 1;
 }
 

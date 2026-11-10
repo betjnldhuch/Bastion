@@ -96,6 +96,7 @@
 
 // Стаж
 #define JOB_SKILL_STEP      20          // каждые 20 заданий...
+#define JOB_MAX_SPEED       70.0        // м/с по прямой до точки задания; быстрее не доехать — значит телепорт
 #define JOB_SKILL_MAX_BONUS 50          // ...+5% к оплате, максимум +50%
 
 #define JOB_OBJECT_SLOT     9           // слот прикреплённого объекта (ящик)
@@ -159,6 +160,8 @@ static gJobTarget[MAX_PLAYERS];                 // номер точки задания
 static Float:gJobFromX[MAX_PLAYERS];            // откуда начался рейс (для оплаты по расстоянию)
 static Float:gJobFromY[MAX_PLAYERS];
 static gJobExp[MAX_PLAYERS];                    // стаж (accounts.job_exp)
+static gJobCpTick[MAX_PLAYERS];                 // когда поставлена текущая точка задания (GetTickCount)
+static Float:gJobCpDist[MAX_PLAYERS];           // сколько метров до неё было в тот момент
 static gVehJob[MAX_VEHICLES];                   // рабочая машина какой профессии (JOB_*)
 static gTaxiPaidBy[MAX_PLAYERS] = { INVALID_PLAYER_ID, ... };   // пассажир уже заплатил этому таксисту
 static gTaxiCaller[MAX_PLAYERS] = { INVALID_PLAYER_ID, ... };   // к кому едет таксист
@@ -182,9 +185,7 @@ static gJobMk[JOB_MECHANIC + 1] = { -1, ... };     // маркеры работ (двигаются в
 static Jobs_AddHQ(job, Float:x, Float:y, Float:z, const title[], const hint[])
 {
 	new text[MK_TEXT_LEN], name[32];
-	format(text, sizeof text, "{FF9900}Работа: %s
-{FFFFFF}ALT — устроиться
-%s", title, hint);
+	format(text, sizeof text, "{FF9900}Работа: %s\n{FFFFFF}ALT — устроиться\n%s", title, hint);
 	format(name, sizeof name, "Работа: %s", title);
 	gJobMk[job] = Marker_Create(MK_JOB, job, name, 1275, x, y, z, 0, 0, GPS_JOBS);
 	Marker_SetLabel(gJobMk[job], text);
@@ -292,6 +293,15 @@ static Float:Jobs_Distance(Float:x1, Float:y1, Float:x2, Float:y2)
 // ---------------------------------------------------------------------
 //  Начало и конец смены
 // ---------------------------------------------------------------------
+// Поставить точку задания и запомнить, когда и как далеко она была (проверка на телепорт)
+static Jobs_Checkpoint(playerid, Float:x, Float:y, Float:z, Float:size)
+{
+	gJobCpTick[playerid] = GetTickCount();
+	gJobCpDist[playerid] = GetPlayerDistanceFromPoint(playerid, x, y, z);
+	if (GetPlayerInterior(playerid) != 0) gJobCpDist[playerid] = 0.0;    // из интерьера расстояние до улицы ненастоящее — не проверяем
+	SetPlayerCheckpoint(playerid, x, y, z, size);
+}
+
 // Закончить смену (по команде, при смерти, при выходе)
 stock Job_Stop(playerid)
 {
@@ -313,7 +323,7 @@ stock Job_NextPizzaPoint(playerid)
 	new p;
 	do { p = random(sizeof (gPizzaPoints)); } while (p == gPizzaTarget[playerid]);
 	gPizzaTarget[playerid] = p;
-	SetPlayerCheckpoint(playerid, gPizzaPoints[p][0], gPizzaPoints[p][1], gPizzaPoints[p][2], 4.0);
+	Jobs_Checkpoint(playerid, gPizzaPoints[p][0], gPizzaPoints[p][1], gPizzaPoints[p][2], 4.0);
 }
 
 // Случайная точка города, не ближе 300 м к игроку
@@ -332,7 +342,7 @@ static Jobs_RandomCityPoint(playerid)
 static Jobs_SetTarget(playerid, Float:x, Float:y, Float:z, Float:size)
 {
 	DisablePlayerCheckpoint(playerid);
-	SetPlayerCheckpoint(playerid, x, y, z, size);
+	Jobs_Checkpoint(playerid, x, y, z, size);
 }
 
 static Job_TaxiNextCall(playerid)
@@ -438,7 +448,7 @@ stock bool:Cmd_Work(playerid)
 
 			Player[playerid][pWorking] = 1;
 			Player[playerid][pWorkStep] = 1;
-			SetPlayerCheckpoint(playerid, LOADER_TAKE_X, LOADER_TAKE_Y, LOADER_TAKE_Z, 1.5);
+			Jobs_Checkpoint(playerid, LOADER_TAKE_X, LOADER_TAKE_Y, LOADER_TAKE_Z, 1.5);
 			SendClientMessage(playerid, COLOR_GREEN, "Смена началась. Иди к красному маркеру и возьми ящик. Закончить: /work");
 			return true;
 		}
@@ -677,6 +687,20 @@ stock Jobs_OnEnterCheckpoint(playerid)
 {
 	if (!Player[playerid][pWorking]) return 0;
 
+	// Античит: до точки нельзя добраться быстрее JOB_MAX_SPEED по прямой. Админов не проверяем — они телепортируются.
+	new elapsed = GetTickCount() - gJobCpTick[playerid];
+	if (Player[playerid][pAdmin] < 1 && gJobCpDist[playerid] > 50.0 && float(elapsed) * JOB_MAX_SPEED / 1000.0 < gJobCpDist[playerid])
+	{
+		new warn[144];
+		format(warn, sizeof warn, "[Античит] %s [%d] оказался на точке работы слишком быстро: %d м за %d сек. Смена остановлена.",
+			GetRPName(playerid), playerid, floatround(gJobCpDist[playerid]), elapsed / 1000);
+		SendAdminMessage(COLOR_RED, warn);
+		printf("%s", warn);
+		Job_Stop(playerid);
+		SendClientMessage(playerid, COLOR_RED, "Смена остановлена: ты оказался на точке слишком быстро.");
+		return 1;
+	}
+
 	switch (Player[playerid][pJob])
 	{
 		case JOB_LOADER:
@@ -688,7 +712,7 @@ stock Jobs_OnEnterCheckpoint(playerid)
 				SetPlayerSpecialAction(playerid, SPECIAL_ACTION_CARRY);
 				SetPlayerAttachedObject(playerid, JOB_OBJECT_SLOT, 1220, 1, 0.11, 0.36, 0.0, 0.0, 90.0, 0.0, 0.6, 0.6, 0.6);
 				Player[playerid][pWorkStep] = 2;
-				SetPlayerCheckpoint(playerid, LOADER_DROP_X, LOADER_DROP_Y, LOADER_DROP_Z, 1.5);
+				Jobs_Checkpoint(playerid, LOADER_DROP_X, LOADER_DROP_Y, LOADER_DROP_Z, 1.5);
 				SendClientMessage(playerid, COLOR_WHITE, "Отнеси ящик на склад (красный маркер).");
 			}
 			else
@@ -698,7 +722,7 @@ stock Jobs_OnEnterCheckpoint(playerid)
 				RemovePlayerAttachedObject(playerid, JOB_OBJECT_SLOT);
 				new pay = Job_Pay(playerid, LOADER_PAY);
 				Player[playerid][pWorkStep] = 1;
-				SetPlayerCheckpoint(playerid, LOADER_TAKE_X, LOADER_TAKE_Y, LOADER_TAKE_Z, 1.5);
+				Jobs_Checkpoint(playerid, LOADER_TAKE_X, LOADER_TAKE_Y, LOADER_TAKE_Z, 1.5);
 				SendClientMessage(playerid, COLOR_GREEN, "+$%d. Иди за следующим ящиком.", pay);
 			}
 		}
