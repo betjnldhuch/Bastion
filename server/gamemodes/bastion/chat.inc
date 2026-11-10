@@ -5,11 +5,20 @@
 //  /s Ч крик, /b Ч OOC (нероле) р€дом, /pm Ч личное сообщение.
 // =====================================================================
 
+// »м€ дл€ чата р€дом: человека в маске не узнать
+stock Chat_Name(playerid)
+{
+	new name[MAX_PLAYER_NAME];
+	if (Inv_IsMasked(playerid)) strcat(name, "Ќеизвестный");
+	else strcat(name, GetRPName(playerid));
+	return name;
+}
+
 // »з OnPlayerText
 stock Chat_OnText(playerid, const text[])
 {
 	new msg[144];
-	format(msg, sizeof msg, "%s говорит: %s", GetRPName(playerid), text);
+	format(msg, sizeof msg, "%s говорит: %s", Chat_Name(playerid), text);
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_WHITE, msg);
 	SetPlayerChatBubble(playerid, "%s", COLOR_WHITE, CHAT_RADIUS, 5000, text);
 	Phone_OnText(playerid, text);   // если говорит по телефону Ч слышит и собеседник (phone.inc)
@@ -19,7 +28,7 @@ stock bool:Cmd_Me(playerid, const params[])
 {
 	new text[128], msg[144];
 	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "»спользование: /me [действие]");
-	format(msg, sizeof msg, "%s %s", GetRPName(playerid), text);
+	format(msg, sizeof msg, "%s %s", Chat_Name(playerid), text);
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	return true;
 }
@@ -28,7 +37,7 @@ stock bool:Cmd_Do(playerid, const params[])
 {
 	new text[128], msg[144];
 	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "»спользование: /do [описание]");
-	format(msg, sizeof msg, "%s (%s)", text, GetRPName(playerid));
+	format(msg, sizeof msg, "%s (%s)", text, Chat_Name(playerid));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	return true;
 }
@@ -37,8 +46,8 @@ stock bool:Cmd_Try(playerid, const params[])
 {
 	new text[110], msg[144];
 	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "»спользование: /try [действие]");
-	if (random(2) == 0) format(msg, sizeof msg, "%s %s {33AA33}(удачно)", GetRPName(playerid), text);
-	else format(msg, sizeof msg, "%s %s {FF6347}(неудачно)", GetRPName(playerid), text);
+	if (random(2) == 0) format(msg, sizeof msg, "%s %s {33AA33}(удачно)", Chat_Name(playerid), text);
+	else format(msg, sizeof msg, "%s %s {FF6347}(неудачно)", Chat_Name(playerid), text);
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	return true;
 }
@@ -47,7 +56,7 @@ stock bool:Cmd_Shout(playerid, const params[])
 {
 	new text[128], msg[144];
 	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "»спользование: /s [текст]");
-	format(msg, sizeof msg, "%s кричит: %s!", GetRPName(playerid), text);
+	format(msg, sizeof msg, "%s кричит: %s!", Chat_Name(playerid), text);
 	SendNearbyMessage(playerid, SHOUT_RADIUS, COLOR_WHITE, msg);
 	return true;
 }

@@ -27,12 +27,12 @@ stock bool:Cmd_Stats(playerid)
 	else format(car, sizeof car, "модель %d", GetVehicleModel(gPlayerVeh[playerid]));
 
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Статистика",
-		"{FFFFFF}Имя: {33CCFF}%s\n{FFFFFF}Уровень: %d (опыт %d/%d)\nДеньги: $%d (в банке $%d)\nТелефон: %s\nРабота: %s\nФракция: %s (%s)\nРозыск: %d зв.\nСытость: %d%%\nДом: %s\nМашина: %s\nАдминка: %d",
+		"{FFFFFF}Имя: {33CCFF}%s\n{FFFFFF}Уровень: %d (опыт %d/%d)\nДеньги: $%d (в банке $%d)\nТелефон: %s\nРабота: %s\nФракция: %s (%s)\nСемья: %s\nРозыск: %d зв.\nДолг штату: $%d\nСытость: %d%%\nДом: %s\nМашина: %s\nАдминка: %d",
 		"Закрыть", "",
 		GetRPName(playerid), Player[playerid][pLevel], Player[playerid][pExp], Player[playerid][pLevel] * EXP_PER_LEVEL,
 		GetMoney(playerid), Player[playerid][pBank], phone, Job_GetName(Player[playerid][pJob]),
 		Faction_GetName(Player[playerid][pFaction]), Faction_GetRankName(Player[playerid][pFaction], Player[playerid][pRank]),
-		Player[playerid][pWanted], Needs_GetHunger(playerid), house, car, Player[playerid][pAdmin]);
+		Family_GetPlayerText(playerid), Player[playerid][pWanted], Debts_Total(playerid), Needs_GetHunger(playerid), house, car, Player[playerid][pAdmin]);
 	return true;
 }
 
@@ -137,6 +137,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/stats", true))       { Cmd_Stats(playerid); return 1; }
 	if (!strcmp(cmd, "/time", true))        { Cmd_Time(playerid); return 1; }
 	if (!strcmp(cmd, "/taxes", true))       { Cmd_Taxes(playerid); return 1; }
+	if (!strcmp(cmd, "/debts", true))       { Cmd_Debts(playerid); return 1; }
 	if (!strcmp(cmd, "/settax", true))      { Cmd_SetTax(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/moneylog", true))    { Cmd_MoneyLog(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/pay", true))         { Cmd_Pay(playerid, cmdtext[pos]); return 1; }
@@ -214,6 +215,11 @@ stock Commands_Process(playerid, const input[])
 
 	// --- фракции (factions.inc) ---
 	if (Factions_OnCommand(playerid, cmd, cmdtext[pos])) return 1;   // /lmenu /fbank /fstorage /fedit
+	if (Families_OnCommand(playerid, cmd, cmdtext[pos])) return 1;   // /fam... /fc (families.inc)
+	if (!strcmp(cmd, "/mark", true))        { Cmd_Mark(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/celldoor", true))    { Cmd_CellDoor(playerid); return 1; }
+	if (!strcmp(cmd, "/bribe", true))       { Cmd_Bribe(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/fine", true))        { Cmd_Fine(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fhelp", true))       { Cmd_FHelp(playerid); return 1; }
 	if (!strcmp(cmd, "/f", true))           { Cmd_FactionChat(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/members", true))     { Cmd_Members(playerid); return 1; }

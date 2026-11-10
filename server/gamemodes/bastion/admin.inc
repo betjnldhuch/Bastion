@@ -26,6 +26,7 @@
 #define ADMIN_IPBAN_LEVEL       6       // с какого уровн€ /banip и /unbanip
 
 forward bool:Admin_IsOnDuty(playerid);   // admin_tools.inc
+forward bool:Cmd_Backup(playerid);       // backup.inc
 #define ADMIN_WARNS_FOR_BAN     3       // столько варнов Ч и автоматический бан...
 #define ADMIN_WARN_BAN_DAYS     3       // ...на столько дней
 #define ADMIN_MAX_MUTE          720     // максимум минут мута
@@ -819,6 +820,16 @@ stock bool:Cmd_Unwarn(playerid, const params[])
 	SendClientMessage(target, COLOR_GREEN, "%s сн€л с теб€ одно предупреждение (%d/%d).", GetRPName(playerid), gWarns[target], ADMIN_WARNS_FOR_BAN);
 	SendClientMessage(playerid, COLOR_ADMIN, "ѕредупреждений у %s: %d.", GetRPName(target), gWarns[target]);
 	return true;
+}
+
+// ƒобавить минут деморгана без участи€ админа (метка задержани€, law.inc).
+// »грок попадЄт в камеру при следующем по€влении.
+stock Admin_AddAJail(playerid, minutes)
+{
+	if (minutes <= 0 || Player[playerid][pDbId] == 0) return;
+	gAJail[playerid] += minutes;
+	if (gAJail[playerid] > ADMIN_MAX_AJAIL) gAJail[playerid] = ADMIN_MAX_AJAIL;
+	Admin_SaveState(playerid);
 }
 
 stock AJail_PutInCell(playerid)

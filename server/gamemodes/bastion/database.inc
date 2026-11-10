@@ -84,6 +84,20 @@ stock DB_Shutdown()
 	}
 }
 
+// ¬ерси€ базы (PRAGMA user_version): по ней разовые переделки данных выполн€ютс€ один раз.
+// 1 Ч админка 7 уровней (admin.inc), 2 Ч 10 рангов во фракци€х (factions.inc)
+stock DB_GetVersion()
+{
+	new version = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "PRAGMA user_version");
+	if (r != DBResult:0)
+	{
+		if (DB_GetRowCount(r) > 0) version = DB_GetFieldInt(r, 0);
+		DB_FreeResultSet(r);
+	}
+	return version;
+}
+
 // Ќомер последней вставленной строки (после INSERT)
 stock DB_LastInsertId()
 {

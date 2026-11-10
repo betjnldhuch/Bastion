@@ -132,12 +132,9 @@ stock Econ_PayDay(playerid, salary)
 	new ctax = Econ_GetCarTax(playerid);
 	if (ctax > 0)
 	{
-		if (Econ_Charge(playerid, ctax, "налог на машину"))
-		{
-			Econ_ToTreasury(ctax);
-			SendClientMessage(playerid, COLOR_WHITE, "Налог на машину: -$%d.", ctax);
-		}
-		else SendClientMessage(playerid, COLOR_ORANGE, "Нечем заплатить налог на машину ($%d). Не забудь пополнить счёт.", ctax);
+		// не списывается сам: копится на налоговом счёте, игрок платит в банкомате (debts.inc)
+		Debts_Add(playerid, DEBT_TAX, ctax);
+		SendClientMessage(playerid, COLOR_WHITE, "Налог на машину: $%d начислен на налоговый счёт.", ctax);
 	}
 }
 
@@ -146,9 +143,9 @@ stock Econ_PayDay(playerid, salary)
 // ---------------------------------------------------------------------
 stock bool:Cmd_Taxes(playerid)
 {
-	new text[600];
+	new text[700];
 	format(text, sizeof text,
-		"{FFFFFF}Казна штата: {33AA33}$%d\n\n{FFFF00}Налоги\n{FFFFFF}С зарплаты: %d%%\nНа машину: %d‰ от цены в час (не меньше $%d)\nНа дом: 0.1%% цены в час (не меньше $%d), со счёта дома\n\nТвой налог на машину: $%d в час",
+		"{FFFFFF}Казна штата: {33AA33}$%d\n\n{FFFF00}Налоги\n{FFFFFF}С зарплаты: %d%%\nНа машину: %d‰ от цены в час (не меньше $%d)\nНа дом: 0.1%% цены в час (не меньше $%d), со счёта дома\nНалог на машину копится на налоговом счёте: /debts\n\nТвой налог на машину: $%d в час",
 		gTreasury, gTaxIncome, gTaxCar, TAX_CAR_MIN_SUM, HOUSE_TAX_MIN, Econ_GetCarTax(playerid));
 	new h = House_GetOwned(playerid);
 	if (h != -1)

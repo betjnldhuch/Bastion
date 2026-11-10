@@ -68,17 +68,18 @@ static Door_InnerMarker(d, &Float:x, &Float:y)
 stock bool:Doors_Try(playerid)
 {
 	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return false;
-	if (Player[playerid][pJail] > 0) return false;      // камера в том же здании: заключЄнный через дверь не выходит
 	for (new d = 0; d < sizeof gDoors; d++)
 	{
 		if (Marker_InRange(playerid, gDoorMk[d][0], DOOR_RANGE))
 		{
-			Door_SpawnAt(playerid, gDoorMk[d][1]);
+			if (Law_TryLeave(playerid)) Door_SpawnAt(playerid, gDoorMk[d][1]);
 			return true;
 		}
 		if (Marker_InRange(playerid, gDoorMk[d][1], DOOR_RANGE))
 		{
-			Door_SpawnAt(playerid, gDoorMk[d][0]);
+			// камера в том же здании: заключЄнного дверь выпускает, только если еЄ открыл
+			// полицейский (/celldoor) или он договорилс€ (/bribe) Ч law.inc
+			if (Law_TryLeave(playerid)) Door_SpawnAt(playerid, gDoorMk[d][0]);
 			return true;
 		}
 	}

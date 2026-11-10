@@ -353,6 +353,7 @@ static Inv_SetMask(playerid, bool:on)
 	{
 		if (i != playerid && IsPlayerConnected(i)) ShowPlayerNameTagForPlayer(i, playerid, !on);
 	}
+	Faction_UpdateColor(playerid);      // точка на карте пропадает и возвращаетс€ вместе с ником (factions.inc)
 }
 
 // »з OnPlayerStreamIn: новый игрок р€дом не должен видеть ник в маске

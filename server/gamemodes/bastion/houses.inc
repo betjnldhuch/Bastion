@@ -399,6 +399,7 @@ stock Houses_PayDay()
 // ---------------------------------------------------------------------
 stock bool:Cmd_BuyHouse(playerid)
 {
+	if (Debts_BlockBuy(playerid)) return true;      // большой долг штату (debts.inc)
 	new h = House_GetNearby(playerid);
 	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет дома. Подойди к зелёному домику.");
 	if (House[h][hOwner] != 0) return SendClientMessage(playerid, COLOR_GREY, "Этот дом уже куплен.");

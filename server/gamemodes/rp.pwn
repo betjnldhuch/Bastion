@@ -67,13 +67,16 @@
 #include "bastion/textures.inc"    // перекраска объектов маппинга: /mt
 #include "bastion/doors.inc"       // входы в здани€: LSPD
 #include "bastion/factions.inc"   // после admin.inc: использует Admin_Check
+#include "bastion/law.inc"        // метка задержани€, дверь участка, вз€тка
 #include "bastion/turfs.inc"
 #include "bastion/bank.inc"
 #include "bastion/phone.inc"
 #include "bastion/business.inc"
 #include "bastion/garage.inc"
 #include "bastion/gps.inc"        // /markers Ч правка маркеров в игре, /gps
+#include "bastion/debts.inc"      // долги штату: налоги и штрафы отдельными счетами
 #include "bastion/economy.inc"
+#include "bastion/families.inc"   // семьи: организации игроков
 #include "bastion/wounded.inc"    // ранение вместо смерти, /revive, /aid
 #include "bastion/robbery.inc"    // /rob Ч ограбление магазинов
 #include "bastion/gates.inc"
@@ -124,6 +127,8 @@ public OnGameModeInit()
 	Dev_Init();           // свои объекты карты, убранные здани€
 	Doors_Init();         // входы в здани€ (маркеры LSPD)
 	Econ_Init();          // казна, налоги, журнал денег
+	Debts_Init();         // счета долгов в accounts
+	Families_Init();      // семьи игроков
 	Garage_Init();        // —“ќ, штрафсто€нка, пол€ тюнинга в vehicles
 	Gps_Init();
 	Hud_Init();           // панель статуса и спидометр (hud.inc)
@@ -161,6 +166,9 @@ public OnPlayerConnect(playerid)
 	Platform_OnConnect(playerid);
 	AC_OnConnect(playerid);
 	Admin_OnConnect(playerid);
+	Law_OnConnect(playerid);
+	Debts_OnConnect(playerid);
+	Families_OnConnect(playerid);
 	Dev_OnConnect(playerid);            // убранные здани€ GTA (dev.inc)
 	Tex_OnConnect(playerid);
 	Gps_OnConnect(playerid);            // значки на карте, сброс GPS
@@ -175,6 +183,7 @@ public OnPlayerConnect(playerid)
 
 public OnPlayerDisconnect(playerid, reason)
 {
+	Law_OnDisconnect(playerid, reason); // метка задержани€: вышел из игры Ч деморган (law.inc)
 	Platform_OnDisconnect(playerid);
 	Admin_OnDisconnect(playerid);
 	Job_Stop(playerid);
@@ -478,6 +487,7 @@ stock PayDay()
 		}
 
 		Econ_PayDay(i, PAYDAY_SALARY + fpay);   // налоги (economy.inc)
+		Debts_PayDay(i);                        // напоминание о долгах, розыск должников (debts.inc)
 		Bank_PayDay(i);         // проценты по счЄту и баланс (bank.inc)
 
 		if (Player[i][pExp] >= Player[i][pLevel] * EXP_PER_LEVEL)

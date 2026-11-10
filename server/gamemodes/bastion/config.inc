@@ -63,6 +63,8 @@
 #define FACTION_SALARY_BASE 300              // зарплата полиции и медиков на PayDay...
 #define FACTION_SALARY_RANK 100              // ...плюс столько за каждый ранг
 #define HEAL_PRICE          200              // цена лечения у медика (/heal)
+#define DEBT_TAX            0                // счёт долга: налоги (debts.inc)
+#define DEBT_FINE           1                // счёт долга: штрафы
 #define JAIL_MIN_PER_STAR   5                // минут тюрьмы за одну звезду розыска
 #define ARREST_REWARD       150              // премия полицейскому за одну звезду при аресте
 
