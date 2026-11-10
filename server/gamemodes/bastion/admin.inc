@@ -4,10 +4,11 @@
 //  Как стать первым админом:
 //  1. В config.json задай свой rcon-пароль.
 //  2. В игре введи: /rcon login ТВОЙ_ПАРОЛЬ
-//  3. Введи: /makeadmin [свой id] 5
+//  3. Введи: /makeadmin [свой id] 7
 //
 //  Уровни: 1 — хелпер, 2 — модератор, 3 — администратор,
-//          4 — старший администратор, 5 — главный администратор.
+//          4 — старший администратор, 5 — куратор,
+//          6 — заместитель главного, 7 — главный администратор.
 //  Все команды по уровням: /ahelp
 //
 //  Что здесь есть:
@@ -21,9 +22,11 @@
 //  Таблицы и новые поля создаются сами в Admin_Init (OnGameModeInit).
 // =====================================================================
 
-#define ADMIN_MAX_LEVEL         5
+#define ADMIN_MAX_LEVEL         7       // главный администратор
+#define ADMIN_IPBAN_LEVEL       6       // с какого уровня /banip и /unbanip
 
 forward bool:Admin_IsOnDuty(playerid);   // admin_tools.inc
+forward bool:Cmd_Backup(playerid);       // backup.inc
 #define ADMIN_WARNS_FOR_BAN     3       // столько варнов — и автоматический бан...
 #define ADMIN_WARN_BAN_DAYS     3       // ...на столько дней
 #define ADMIN_MAX_MUTE          720     // максимум минут мута
@@ -39,18 +42,6 @@ forward bool:Admin_IsOnDuty(playerid);   // admin_tools.inc
 
 #define REPORT_COOLDOWN         60      // секунд между репортами одного игрока
 #define MAX_REPORTS             30      // открытых репортов одновременно
-
-enum
-{
-	DIALOG_ADMIN_INFO = 1200,   // просто сообщение (бан, кик, справка)
-	DIALOG_AMENU,               // список игроков
-	DIALOG_AMENU_ACT,           // действия с игроком
-	DIALOG_AMENU_INPUT,         // ввод срока и причины
-	DIALOG_REPORTS,             // список репортов
-	DIALOG_REPORT_ACT,          // действия с репортом
-	DIALOG_REPORT_ANSWER,       // ввод ответа
-	DIALOG_REPORT_NEW           // игрок пишет репорт
-}
 
 // Действия панели /amenu (порядок = порядок строк в окне)
 enum
@@ -121,6 +112,25 @@ stock Admin_Init()
 	DB_AddColumn("bans", "until", "INTEGER DEFAULT 0");
 	DB_AddColumn("bans", "ip", "TEXT DEFAULT ''");
 
+	// Баны по IP (/banip): until = 0 — навсегда
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS ip_bans (ip TEXT PRIMARY KEY, reason TEXT, admin TEXT, date INTEGER DEFAULT 0, until INTEGER DEFAULT 0)"));
+
+	// Переход с 5 уровней админки на 7: прежний главный (5) становится главным (7).
+	// Делается один раз — номер версии базы хранится в самой базе (PRAGMA user_version).
+	new version = 0;
+	new DBResult:vr = DB_ExecuteQuery(gDB, "PRAGMA user_version");
+	if (vr != DBResult:0)
+	{
+		if (DB_GetRowCount(vr) > 0) version = DB_GetFieldInt(vr, 0);
+		DB_FreeResultSet(vr);
+	}
+	if (version < 1)
+	{
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET admin = 7 WHERE admin = 5"));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "PRAGMA user_version = 1"));
+		print("[admin] Admin levels migrated: 5 -> 7");
+	}
+
 	// Лог действий админов
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, date INTEGER, admin TEXT, admin_id INTEGER DEFAULT 0, action TEXT, target TEXT DEFAULT '', target_id INTEGER DEFAULT 0, value INTEGER DEFAULT 0, reason TEXT DEFAULT '')"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE INDEX IF NOT EXISTS admin_log_target ON admin_log (target COLLATE NOCASE, id)"));
@@ -148,7 +158,9 @@ stock Admin_LevelName(level)
 		case 2: strcat(name, "Модератор");
 		case 3: strcat(name, "Администратор");
 		case 4: strcat(name, "Ст. администратор");
-		case 5: strcat(name, "Гл. администратор");
+		case 5: strcat(name, "Куратор");
+		case 6: strcat(name, "Зам. гл. администратора");
+		case 7: strcat(name, "Гл. администратор");
 		default: strcat(name, "Игрок");
 	}
 	return name;
@@ -440,6 +452,156 @@ stock Bans_IsBanned(playerid, const name[])
 	return banned;
 }
 
+// Бан по IP. Проверка при входе — из accounts.inc
+stock Bans_IsIpBanned(playerid)
+{
+	new ip[16];
+	GetPlayerIp(playerid, ip, sizeof ip);
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT reason, admin, until FROM ip_bans WHERE ip = '%q' LIMIT 1", ip);
+	if (r == DBResult:0) return 0;
+	new banned = 0;
+	if (DB_GetRowCount(r) > 0)
+	{
+		new reason[64], admin[MAX_PLAYER_NAME], until = DB_GetFieldInt(r, 2);
+		DB_GetFieldString(r, 0, reason, sizeof reason);
+		DB_GetFieldString(r, 1, admin, sizeof admin);
+		if (until > 0 && until <= gettime())
+		{
+			DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM ip_bans WHERE ip = '%q'", ip));
+			Admin_LogName("Сервер", 0, "unbanip (срок вышел)", ip, 0, reason, 0);
+		}
+		else
+		{
+			new text[256], term[40];
+			if (until > 0) format(term, sizeof term, "ещё %s", Admin_FormatTime(until - gettime()));
+			else strcat(term, "навсегда");
+			format(text, sizeof text, "{FF6347}Вход с твоего адреса заблокирован.\n\n{FFFFFF}Причина: %s\nАдминистратор: %s\nСрок: %s\n\nНе согласен — пиши жалобу на форуме.",
+				reason, admin, term);
+			SendClientMessage(playerid, COLOR_RED, "Твой IP забанен (%s). Причина: %s (админ %s).", term, reason, admin);
+			Admin_ShowInfo(playerid, "Бан по IP", text);
+			KickWithDelay(playerid);
+			banned = 1;
+		}
+	}
+	DB_FreeResultSet(r);
+	return banned;
+}
+
+// ---------------------------------------------------------------------
+//  Пауза на вход: после MAX_LOGIN_TRIES неверных паролей с этого IP
+//  LOGIN_LOCK_SECONDS секунд не пускаем. Так пароль нельзя перебирать,
+//  просто заходя снова. Хранится в памяти, перезапуск сервера её сбрасывает.
+// ---------------------------------------------------------------------
+static gLockIp[LOGIN_LOCK_SLOTS][16];
+static gLockUntil[LOGIN_LOCK_SLOTS];
+
+stock Login_Lock(playerid)
+{
+	new ip[16], slot = 0, now = gettime();
+	GetPlayerIp(playerid, ip, sizeof ip);
+	for (new i = 0; i < LOGIN_LOCK_SLOTS; i++)
+	{
+		if (gLockUntil[i] > now && !strcmp(gLockIp[i], ip) && ip[0] != '\0') { slot = i; break; }
+		if (gLockUntil[i] < gLockUntil[slot]) slot = i;     // иначе занимаем самую старую запись
+	}
+	gLockIp[slot][0] = '\0';
+	strcat(gLockIp[slot], ip, 16);
+	gLockUntil[slot] = now + LOGIN_LOCK_SECONDS;
+	printf("[login] ip %s locked for %d s: too many wrong passwords", ip, LOGIN_LOCK_SECONDS);
+}
+
+// Сколько секунд этому игроку ещё нельзя входить (0 — можно)
+stock Login_LockLeft(playerid)
+{
+	new ip[16], now = gettime();
+	GetPlayerIp(playerid, ip, sizeof ip);
+	if (ip[0] == '\0') return 0;
+	for (new i = 0; i < LOGIN_LOCK_SLOTS; i++)
+	{
+		if (gLockUntil[i] > now && !strcmp(gLockIp[i], ip)) return gLockUntil[i] - now;
+	}
+	return 0;
+}
+
+// Похоже ли на IPv4-адрес: только цифры и три точки
+static bool:Admin_IsIp(const text[])
+{
+	new dots = 0, len = strlen(text);
+	if (len < 7 || len > 15) return false;
+	for (new i = 0; i < len; i++)
+	{
+		if (text[i] == '.') dots++;
+		else if (text[i] < '0' || text[i] > '9') return false;
+	}
+	return (dots == 3);
+}
+
+// /banip [id или IP] [дни, 0 — навсегда] [причина]
+stock bool:Cmd_BanIp(playerid, const params[])
+{
+	if (!Admin_Check(playerid, ADMIN_IPBAN_LEVEL)) return true;
+	new pos = 0, first[24], ip[16], days = 0, reason[64];
+	if (!NextParam(params, pos, first) || !Admin_ParseOptInt(params, pos, days, reason))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /banip [id игрока или IP] [дни, 0 — навсегда] [причина]");
+	if (days < 0 || days > ADMIN_MAX_BAN_DAYS) return SendClientMessage(playerid, COLOR_GREY, "Срок от 0 до %d дней (0 — навсегда).", ADMIN_MAX_BAN_DAYS);
+
+	if (IsNumeric(first))
+	{
+		new target = strval(first);
+		if (target < 0 || target >= MAX_PLAYERS || !IsPlayerConnected(target)) return SendClientMessage(playerid, COLOR_GREY, "Игрока с таким id нет на сервере.");
+		if (!Admin_CanPunish(playerid, target)) return true;
+		GetPlayerIp(target, ip, sizeof ip);
+	}
+	else if (Admin_IsIp(first)) strcat(ip, first, sizeof ip);
+	else return SendClientMessage(playerid, COLOR_GREY, "Укажи id игрока на сервере или IP вида 12.34.56.78.");
+
+	new admin[MAX_PLAYER_NAME], until = (days > 0) ? (gettime() + days * 86400) : 0;
+	GetPlayerName(playerid, admin, sizeof admin);
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO ip_bans (ip, reason, admin, date, until) VALUES ('%q', '%q', '%q', %d, %d)",
+		ip, reason, admin, gettime(), until));
+	Admin_LogName(admin, Player[playerid][pDbId], "banip", ip, 0, reason, days);
+
+	new msg[144], kicked = 0, other[16], text[200];
+	format(text, sizeof text, "{FF6347}Вход с твоего адреса заблокирован %s.\n\n{FFFFFF}Причина: %s\nАдминистратор: %s\n\nНе согласен — пиши жалобу на форуме.", Admin_BanText(days), reason, admin);
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (!IsPlayerConnected(i) || i == playerid) continue;
+		GetPlayerIp(i, other, sizeof other);
+		if (strcmp(other, ip) != 0 || other[0] == '\0') continue;
+		if (Player[i][pAdmin] >= Player[playerid][pAdmin]) continue;    // админа своего уровня и выше не трогаем
+		Admin_ShowInfo(i, "Бан по IP", text);
+		KickWithDelay(i);
+		kicked++;
+	}
+	format(msg, sizeof msg, "[A] %s забанил IP %s %s (кикнуто игроков: %d). Причина: %s", GetRPName(playerid), ip, Admin_BanText(days), kicked, reason);
+	SendAdminMessage(COLOR_ADMIN, msg);
+	return true;
+}
+
+stock bool:Cmd_UnbanIp(playerid, const params[])
+{
+	if (!Admin_Check(playerid, ADMIN_IPBAN_LEVEL)) return true;
+	new pos = 0, ip[24];
+	if (!NextParam(params, pos, ip) || !Admin_IsIp(ip)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /unbanip [IP]");
+
+	new found = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT COUNT(*) FROM ip_bans WHERE ip = '%q'", ip);
+	if (r != DBResult:0)
+	{
+		if (DB_GetRowCount(r) > 0) found = DB_GetFieldInt(r, 0);
+		DB_FreeResultSet(r);
+	}
+	if (found == 0) return SendClientMessage(playerid, COLOR_GREY, "IP %s не в бане.", ip);
+
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM ip_bans WHERE ip = '%q'", ip));
+	new admin[MAX_PLAYER_NAME], msg[144];
+	GetPlayerName(playerid, admin, sizeof admin);
+	Admin_LogName(admin, Player[playerid][pDbId], "unbanip", ip, 0, "", 0);
+	format(msg, sizeof msg, "[A] %s снял бан с IP %s.", GetRPName(playerid), ip);
+	SendAdminMessage(COLOR_ADMIN, msg);
+	return true;
+}
+
 // Записать бан в базу. days = 0 — навсегда
 static Bans_Add(const name[], const ip[], const reason[], const admin[], days)
 {
@@ -658,6 +820,16 @@ stock bool:Cmd_Unwarn(playerid, const params[])
 	SendClientMessage(target, COLOR_GREEN, "%s снял с тебя одно предупреждение (%d/%d).", GetRPName(playerid), gWarns[target], ADMIN_WARNS_FOR_BAN);
 	SendClientMessage(playerid, COLOR_ADMIN, "Предупреждений у %s: %d.", GetRPName(target), gWarns[target]);
 	return true;
+}
+
+// Добавить минут деморгана без участия админа (метка задержания, law.inc).
+// Игрок попадёт в камеру при следующем появлении.
+stock Admin_AddAJail(playerid, minutes)
+{
+	if (minutes <= 0 || Player[playerid][pDbId] == 0) return;
+	gAJail[playerid] += minutes;
+	if (gAJail[playerid] > ADMIN_MAX_AJAIL) gAJail[playerid] = ADMIN_MAX_AJAIL;
+	Admin_SaveState(playerid);
 }
 
 stock AJail_PutInCell(playerid)
@@ -1011,14 +1183,14 @@ stock bool:Cmd_Admins(playerid)
 
 stock bool:Cmd_MakeAdmin(playerid, const params[])
 {
-	// Нужен вход RCON-ом или уровень 5 админки
-	if (!IsPlayerAdmin(playerid) && Player[playerid][pAdmin] < 5)
-		return SendClientMessage(playerid, COLOR_GREY, "Нужен RCON-вход (/rcon login) или уровень 5 админки.");
+	// Нужен вход RCON-ом или высший уровень админки
+	if (!IsPlayerAdmin(playerid) && Player[playerid][pAdmin] < ADMIN_MAX_LEVEL)
+		return SendClientMessage(playerid, COLOR_GREY, "Нужен RCON-вход (/rcon login) или уровень %d админки.", ADMIN_MAX_LEVEL);
 
 	new pos = 0, level;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, level) || level < 0 || level > ADMIN_MAX_LEVEL)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /makeadmin [id] [уровень 0-5]");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /makeadmin [id] [уровень 0-%d]", ADMIN_MAX_LEVEL);
 	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
 	if (!IsPlayerAdmin(playerid) && target != playerid && Player[target][pAdmin] >= Player[playerid][pAdmin])
 		return SendClientMessage(playerid, COLOR_GREY, "Менять уровень админа своего уровня можно только через RCON.");
@@ -1427,14 +1599,16 @@ stock Admin_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 stock bool:Cmd_AHelp(playerid)
 {
 	if (!Admin_Check(playerid, 1)) return true;
-	new text[1800];
+	new text[2200];
 	strcat(text, "{FF66FF}1 — Хелпер\n{FFFFFF}/a — админ-чат   /amenu — панель (удобно с телефона)   /reports /ans — репорты\n");
 	strcat(text, "/check /spec /specoff /specnext /specprev /goto /kick /mute /unmute /admins /aduty\n");
 	strcat(text, "Телепорт: метка на карте (выкл. /maptp), /tp — список точек, /back — назад\n\n");
 	strcat(text, "{FF66FF}2 — Модератор\n{FFFFFF}/warn /ajail /unajail /freeze /unfreeze /slap /gethere /sethp /setskin /jail /unjail\n/sendto /gotocar /fixveh /flip\n\n");
 	strcat(text, "{FF66FF}3 — Администратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /moneylog /dveh\n/veh — меню машин, /veh infernus — по названию, /veh 411 — по номеру\n/ao /gotocoord /respawncars /setweather\n/givelic — выдать лицензию   /setfuel — заправить машину\n\n");
 	strcat(text, "{FF66FF}4 — Ст. администратор\n{FFFFFF}/unban, бан навсегда (0 дней), /addtp /deltp, фракции, дома, бизнесы, АЗС, банкоматы, районы\n/givefood /giveitem — еда и вещи   /addexampoint /clearexam — маршрут экзамена\n/addgarage [1-2] /delgarage — СТО и штрафстоянки\n/pos [название] /points /dev — координаты   /mo — маппинг (объекты, удаление зданий, выгрузка)\n\n");
-	strcat(text, "{FF66FF}5 — Гл. администратор\n{FFFFFF}/makeadmin /givemoney /settax — налоги\n\n");
+	strcat(text, "{FF66FF}5 — Куратор\n{FFFFFF}всё, что у 4 уровня; старший над администраторами\n\n");
+	strcat(text, "{FF66FF}6 — Зам. гл. администратора\n{FFFFFF}/banip [id или IP] [дни] [причина]   /unbanip [IP]\n\n");
+	strcat(text, "{FF66FF}7 — Гл. администратор\n{FFFFFF}/makeadmin /givemoney /settax — налоги   /backup — копия базы\n\n");
 	strcat(text, "{AFAFAF}Все наказания и выдачи пишутся в лог (/alog). Наказать админа своего уровня или выше нельзя.");
 	Admin_ShowInfo(playerid, "Команды администрации", text);
 	return true;
@@ -1447,8 +1621,6 @@ stock bool:Cmd_AHelp(playerid)
 //  /veh — машина по номеру модели, по названию или из меню
 //  /veh 411   /veh infernus   /veh (без параметров) — меню по категориям
 // ---------------------------------------------------------------------
-#define DIALOG_VEH_CAT      1230
-#define DIALOG_VEH_LIST     1231
 #define VEH_CHOICES         24
 
 static const gVehCatNames[] = "Спорт\nСеданы\nВнедорожники и пикапы\nМаслкары и лоурайдеры\nМото и велосипеды\nГрузовые, фургоны, автобусы\nСлужебные (полиция, скорая, армия)\nВертолёты и самолёты\nЛодки";
@@ -1573,7 +1745,7 @@ stock bool:Cmd_DVeh(playerid)
 
 stock bool:Cmd_GiveMoney(playerid, const params[])
 {
-	if (!Admin_Check(playerid, 5)) return true;
+	if (!Admin_Check(playerid, ADMIN_MAX_LEVEL)) return true;
 	new pos = 0, amount;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, amount))
@@ -1665,6 +1837,9 @@ stock Admin_OnCommand(playerid, const cmd[], const params[])
 	if (!strcmp(cmd, "/ban", true))         { Cmd_Ban(playerid, params); return 1; }
 	if (!strcmp(cmd, "/offban", true))      { Cmd_OffBan(playerid, params); return 1; }
 	if (!strcmp(cmd, "/unban", true))       { Cmd_Unban(playerid, params); return 1; }
+	if (!strcmp(cmd, "/banip", true))       { Cmd_BanIp(playerid, params); return 1; }
+	if (!strcmp(cmd, "/unbanip", true))     { Cmd_UnbanIp(playerid, params); return 1; }
+	if (!strcmp(cmd, "/backup", true))      { Cmd_Backup(playerid); return 1; }
 	if (!strcmp(cmd, "/alog", true))        { Cmd_ALog(playerid, params); return 1; }
 	if (!strcmp(cmd, "/veh", true))         { Cmd_Veh(playerid, params); return 1; }
 	if (!strcmp(cmd, "/dveh", true))        { Cmd_DVeh(playerid); return 1; }

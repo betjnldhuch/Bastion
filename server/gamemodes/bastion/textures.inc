@@ -25,11 +25,6 @@
 
 #define TEX_SLOTS               16
 #define TEX_LIST_MAX            40
-#define DIALOG_TEX_SLOTS        1170
-#define DIALOG_TEX_PICK         1171
-#define DIALOG_TEX_COLOR        1172
-#define DIALOG_TEX_TEXT         1173
-#define DIALOG_TEX_HELP         1174
 
 #define TEX_KIND_TEXTURE        (0)
 #define TEX_KIND_TEXT           (1)

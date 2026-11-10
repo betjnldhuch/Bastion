@@ -51,29 +51,7 @@
 #define FACTION_LOG_SHOW        25      // сколько последних записей журнала показывать
 #define FACTION_LIST_MAX        40      // сколько членов фракции показывать в /lmenu
 
-// Окна (диалоги) фракций. Номера с 700, чтобы не пересекаться с config.inc.
-enum
-{
-	DIALOG_LMENU = 700,
-	DIALOG_FBANK,
-	DIALOG_FBANK_DEPOSIT,
-	DIALOG_FBANK_WITHDRAW,
-	DIALOG_FSTORE,
-	DIALOG_FSTORE_BUY,
-	DIALOG_FSTORE_BUY_QTY,
-	DIALOG_FSTORE_RANK,
-	DIALOG_LMEMBERS,
-	DIALOG_LMEMBER_ACT,
-	DIALOG_LMEMBER_RANK,
-	DIALOG_LMEMBER_WARN,
-	DIALOG_LRANKS,
-	DIALOG_LRANK_ACT,
-	DIALOG_LRANK_NAME,
-	DIALOG_LRANK_SALARY,
-	DIALOG_LRANK_SKIN,
-	DIALOG_LLOGS,
-	DIALOG_FACTION_LAST
-}
+// Окна (диалоги) фракций — в dialogs.inc
 
 // Снаряжение на складе фракции
 enum
@@ -121,7 +99,8 @@ enum
 	OFFER_INVITE,       // приглашение во фракцию
 	OFFER_HEAL,         // медик предлагает лечение
 	OFFER_CARRY,        // понести раненого (wounded.inc)
-	OFFER_HANDSHAKE     // пожать руку
+	OFFER_HANDSHAKE,    // пожать руку
+	OFFER_BRIBE         // взятка полицейскому от заключённого (law.inc)
 }
 
 // Значения по умолчанию. Потом их меняют лидер (/lmenu) и админ (/fedit) — они хранятся в базе.
@@ -145,23 +124,23 @@ static const gFactionDefColor[MAX_FACTIONS] =
 	0x00C8F0FF      // Aztecas — голубой
 };
 
-// Скин для каждого ранга (1..6)
+// Скин для каждого ранга (1..10)
 static const gFactionDefSkin[MAX_FACTIONS][MAX_RANK] =
 {
-	{ 0,   0,   0,   0,   0,   0   },
-	{ 280, 280, 281, 282, 288, 265 },   // полиция
-	{ 274, 274, 275, 275, 276, 70  },   // медики
-	{ 105, 106, 105, 106, 107, 270 },   // Grove
-	{ 102, 103, 102, 104, 103, 104 },   // Ballas
-	{ 114, 115, 114, 116, 115, 116 }    // Aztecas
+	{ 0,   0,   0,   0,   0,   0,   0,   0,   0,   0   },
+	{ 280, 280, 281, 282, 282, 283, 283, 288, 288, 265 },   // полиция
+	{ 274, 274, 275, 275, 275, 276, 276, 276, 276, 70  },   // медики
+	{ 105, 106, 105, 106, 105, 106, 107, 107, 107, 270 },   // Grove
+	{ 102, 103, 102, 104, 102, 103, 104, 103, 103, 104 },   // Ballas
+	{ 114, 115, 114, 116, 114, 115, 116, 115, 115, 116 }    // Aztecas
 };
 
 // Названия рангов: 0 — полиция, 1 — медики, 2 — банды
 static const gDefRankNames[3][MAX_RANK][24] =
 {
-	{ "Кадет", "Офицер", "Сержант", "Лейтенант", "Капитан", "Шеф полиции" },
-	{ "Интерн", "Фельдшер", "Врач", "Хирург", "Зам. главврача", "Главврач" },
-	{ "Новичок", "Боец", "Бывалый", "Старший", "Правая рука", "Лидер" }
+	{ "Кадет", "Офицер", "Сержант", "Лейтенант", "Ст. лейтенант", "Капитан", "Майор", "Подполковник", "Зам. шефа", "Шеф полиции" },
+	{ "Интерн", "Фельдшер", "Врач", "Хирург", "Ст. хирург", "Зав. отделением", "Нач. смены", "Консультант", "Зам. главврача", "Главврач" },
+	{ "Новичок", "Боец", "Бывалый", "Старший", "Смотрящий", "Авторитет", "Советник", "Капитан", "Правая рука", "Лидер" }
 };
 
 // Базы по умолчанию: спавн (x, y, z, угол) и раздевалка /duty (x, y, z).
@@ -424,14 +403,14 @@ stock Faction_Message(f, colour, const message[])
 	}
 }
 
-// Цвет ника: полиция и медики — только на смене, банды — всегда
+// Цвет ника и точки на карте: полиция и медики — только на смене, банды — всегда
 stock Faction_UpdateColor(playerid)
 {
 	new f = Player[playerid][pFaction];
-	if (Faction_IsGang(f) || (Faction_IsValid(f) && Player[playerid][pDuty]))
-		SetPlayerColor(playerid, Faction_GetColor(f));
-	else
-		SetPlayerColor(playerid, COLOR_CIVIL);
+	new color = COLOR_CIVIL;
+	if (Faction_IsGang(f) || (Faction_IsValid(f) && Player[playerid][pDuty])) color = Faction_GetColor(f);
+	if (Inv_IsMasked(playerid)) color &= 0xFFFFFF00;    // в маске: точки на карте нет ни у кого (needs.inc)
+	SetPlayerColor(playerid, color);
 }
 
 // Снять форму и оружие
@@ -604,6 +583,22 @@ stock Factions_CreateTables()
 	DB_AddColumn("factions", "store_rank", "INTEGER DEFAULT 2");
 	DB_AddColumn("accounts", "fwarns", "INTEGER DEFAULT 0");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_ranks (faction INTEGER NOT NULL, rank INTEGER NOT NULL, name TEXT, skin INTEGER DEFAULT 0, salary INTEGER DEFAULT 0, PRIMARY KEY (faction, rank))"));
+
+	// Переход с 6 рангов на 10 (один раз, версия базы 2): лидер 6 -> 10, заместитель 5 -> 9.
+	// Названия, скины и зарплаты этих рангов переезжают вместе с ними, ранги 5-8 создаются новые.
+	if (DB_GetVersion() < 2)
+	{
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET frank = 10 WHERE frank = 6"));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET frank = 9 WHERE frank = 5"));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE faction_ranks SET rank = 10 WHERE rank = 6"));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE faction_ranks SET rank = 9 WHERE rank = 5"));
+		// чтобы новые ранги 5-8 не получали больше старших
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE faction_ranks SET salary = salary + %d WHERE rank >= 9 AND salary > 0", 4 * FACTION_SALARY_RANK));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE faction_ranks SET name = 'Зам. шефа' WHERE faction = %d AND rank = 9 AND name = 'Капитан'", FACTION_POLICE));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE factions SET store_rank = store_rank + 4 WHERE store_rank >= 5"));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "PRAGMA user_version = 2"));
+		print("[Factions] Ranks migrated: 6 -> 10");
+	}
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_storage (faction INTEGER NOT NULL, item INTEGER NOT NULL, amount INTEGER DEFAULT 0, PRIMARY KEY (faction, item))"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, faction INTEGER NOT NULL, date INTEGER DEFAULT 0, text TEXT)"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE INDEX IF NOT EXISTS faction_logs_f ON faction_logs (faction, id)"));
@@ -827,8 +822,8 @@ stock Factions_OnMinute()
 			Jail_Release(i);
 			continue;
 		}
-		// Сбежал из камеры — возвращаем
-		if (GetPlayerInterior(i) != JAIL_INTERIOR || !IsPlayerInRangeOfPoint(i, 15.0, JAIL_X, JAIL_Y, JAIL_Z))
+		// Ушёл от камеры — возвращаем (кроме случая, когда дверь открыл полицейский или взята взятка, law.inc)
+		if (!Law_MayLeaveCell(i) && (GetPlayerInterior(i) != JAIL_INTERIOR || !IsPlayerInRangeOfPoint(i, 15.0, JAIL_X, JAIL_Y, JAIL_Z)))
 		{
 			Jail_PutInCell(i);
 		}
@@ -1058,6 +1053,7 @@ stock bool:Cmd_Accept(playerid)
 			SendClientMessage(from, COLOR_GREEN, "Ты вылечил пациента. +$%d.", price);
 		}
 		case OFFER_CARRY: Wound_AcceptCarry(playerid, from);
+		case OFFER_BRIBE: Law_AcceptBribe(playerid, from, Player[playerid][pOfferValue]);
 		case OFFER_HANDSHAKE:
 		{
 			if (!IsPlayerNearPlayer(playerid, from, 2.5)) return SendClientMessage(playerid, COLOR_GREY, "Человек отошёл.");
@@ -1276,6 +1272,7 @@ stock bool:Cmd_Arrest(playerid, const params[])
 	new minutes = stars * JAIL_MIN_PER_STAR;
 	if (IsPlayerInAnyVehicle(target)) RemovePlayerFromVehicle(target, true);
 	Faction_Uncuff(target);
+	Law_ClearMark(target);
 	Player[target][pWanted] = 0;
 	SetPlayerWantedLevel(target, 0);
 	Player[target][pJail] = minutes;
@@ -1996,19 +1993,21 @@ stock Factions_OnCommand(playerid, const cmd[], const params[])
 // =====================================================================
 stock bool:Cmd_FHelp(playerid)
 {
-	new text[2000];
+	new text[2400];
 	strcat(text, "{FFFF00}Все фракции\n");
 	strcat(text, "{FFFFFF}/f — рация   /members — кто онлайн   /duty — смена (в раздевалке)   /fleave — уйти\n");
 	strcat(text, "/accept — принять приглашение или лечение\n");
 	strcat(text, "/fbank — общак (на базе)   /fstorage — склад: оружие, бронежилет, аптечка (на базе)\n\n");
-	strcat(text, "{FFFF00}Лидер и заместитель (ранг 5-6)\n");
+	strcat(text, "{FFFF00}Лидер и заместитель (ранг 9-10)\n");
 	strcat(text, "{FFFFFF}/lmenu — панель лидера: состав (и оффлайн), выговоры, ранги, зарплаты, склад, журнал\n");
 	strcat(text, "/invite [id]   /uninvite [id]   /giverank [id] [ранг]\n\n");
 	strcat(text, "{3A6EFF}Полиция LSPD\n");
 	strcat(text, "{FFFFFF}/su [id] [звёзды] [причина] — розыск   /clear [id] — снять розыск   /wanted — список\n");
 	strcat(text, "/cuff /uncuff [id] — наручники   /putcar [id] — посадить в машину\n");
 	strcat(text, "/arrest [id] — посадить в тюрьму (у участка)   /m — мегафон\n");
-	strcat(text, "/impound [штраф] — эвакуировать личную машину на штрафстоянку (стоя рядом)\n\n");
+	strcat(text, "/mark [id] — метка задержания: выйдет из игры — попадёт в деморган\n");
+	strcat(text, "/fine [id] [сумма] [причина] — штраф   /celldoor — открыть дверь участка заключённым\n");
+	strcat(text, "/impound [штраф] [причина] — эвакуировать личную машину на штрафстоянку (стоя рядом)\n\n");
 	strcat(text, "{FF8080}Больница (EMS)\n");
 	strcat(text, "{FFFFFF}/heal [id] — предложить лечение\n\n");
 	strcat(text, "{10A010}Банды\n");

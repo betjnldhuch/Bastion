@@ -253,8 +253,8 @@ stock Bank_PayDay(playerid)
 stock Bank_ShowMenu(playerid)
 {
 	ShowPlayerDialog(playerid, DIALOG_BANK, DIALOG_STYLE_LIST, "Bastion Bank",
-		"Баланс и номер счёта\nПоложить деньги\nСнять деньги\nПеревести игроку (по id)\nПеревести по номеру счёта\nИстория операций",
-		"Выбрать", "Закрыть");
+		"Баланс и номер счёта\nПоложить деньги\nСнять деньги\nПеревести игроку (по id)\nПеревести по номеру счёта\nИстория операций\nОплатить налоги ($%d)\nОплатить штрафы ($%d)",
+		"Выбрать", "Закрыть", Debts_Get(playerid, DEBT_TAX), Debts_Get(playerid, DEBT_FINE));
 }
 
 stock Bank_ShowHistory(playerid)
@@ -401,6 +401,8 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 				case 4: ShowPlayerDialog(playerid, DIALOG_BANK_TRANSFER_ACC, DIALOG_STYLE_INPUT, "Перевод по номеру счёта",
 					"{FFFFFF}На счёте: $%d\nВведи номер счёта и сумму через пробел, например: 12 1000\nПолучатель может быть не в игре.", "Перевести", "Назад", Player[playerid][pBank]);
 				case 5: Bank_ShowHistory(playerid);
+				case 6: { Debts_Pay(playerid, DEBT_TAX); Bank_ShowMenu(playerid); }     // debts.inc
+				case 7: { Debts_Pay(playerid, DEBT_FINE); Bank_ShowMenu(playerid); }
 			}
 		}
 		case DIALOG_BANK_DEPOSIT:

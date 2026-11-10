@@ -101,7 +101,6 @@
 
 #define JOB_OBJECT_SLOT     9           // слот прикреплённого объекта (ящик)
 
-#define DIALOG_JOB_OFFER    1120        // предложение механика игроку
 
 // Шаги смены у новых работ (pWorkStep)
 enum

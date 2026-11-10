@@ -191,6 +191,7 @@ stock bool:Cmd_Engine(playerid)
 
 stock bool:Cmd_BuyCar(playerid)
 {
+	if (Debts_BlockBuy(playerid)) return true;      // большой долг штату (debts.inc)
 	if (!Vehicles_IsNearDealer(playerid))
 		return SendClientMessage(playerid, COLOR_GREY, "Ты должен быть в автосалоне (значок доллара).");
 	if (gPlayerVeh[playerid] != INVALID_VEHICLE_ID)

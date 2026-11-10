@@ -28,10 +28,6 @@
 #define DROP_MINUTES        10
 #define DROP_MODEL          1575    // маленький свёрток
 
-#define DIALOG_INVENTORY    1130
-#define DIALOG_INV_ACTION   1131
-#define DIALOG_INV_GIVE     1132
-#define DIALOG_INV_DROP     1133
 
 enum
 {
@@ -357,6 +353,7 @@ static Inv_SetMask(playerid, bool:on)
 	{
 		if (i != playerid && IsPlayerConnected(i)) ShowPlayerNameTagForPlayer(i, playerid, !on);
 	}
+	Faction_UpdateColor(playerid);      // точка на карте пропадает и возвращается вместе с ником (factions.inc)
 }
 
 // Из OnPlayerStreamIn: новый игрок рядом не должен видеть ник в маске

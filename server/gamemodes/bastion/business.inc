@@ -390,6 +390,7 @@ stock bool:Cmd_Buy(playerid)
 
 stock bool:Cmd_BuyBiz(playerid)
 {
+	if (Debts_BlockBuy(playerid)) return true;      // большой долг штату (debts.inc)
 	new b = Biz_GetNearby(playerid);
 	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "Подойди к значку бизнеса.");
 	if (Biz[b][bOwner] != 0) return SendClientMessage(playerid, COLOR_GREY, "У этого бизнеса уже есть владелец.");
