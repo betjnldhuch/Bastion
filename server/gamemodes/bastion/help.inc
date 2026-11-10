@@ -6,8 +6,8 @@
 //  Новая команда — строчка в gHelp ниже: { раздел, "команда", "что делает" }.
 // =====================================================================
 
-#define DIALOG_HELP_TOPICS  1230
-#define DIALOG_HELP_TOPIC   1231
+#define DIALOG_HELP_TOPICS  1250    // 1230-1231 заняты меню /veh (admin.inc)
+#define DIALOG_HELP_TOPIC   1251
 #define HELP_PAGE_LINES     10
 
 static gHelpTopic[MAX_PLAYERS], gHelpPage[MAX_PLAYERS], gHelpPages[MAX_PLAYERS];
