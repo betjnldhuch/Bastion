@@ -129,6 +129,10 @@ stock Wound_OnDamage(playerid, Float:amount)
 	new Float:hp;
 	GetPlayerHealth(playerid, hp);
 	if (hp <= 0.0 || hp - amount > WOUND_DOWN_HP) return;
+	// смертельный выстрел: клиент всЄ равно умрЄт Ч пусть сработает OnPlayerDeath,
+	// он поставит раненым на том же месте (иначе смерть Ђраненогої = больница
+	// и двойное убийство в войне за район)
+	if (hp - amount <= 0.0) return;
 
 	Job_Stop(playerid);
 	Licenses_Abort(playerid);
