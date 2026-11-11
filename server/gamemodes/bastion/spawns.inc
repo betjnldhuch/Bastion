@@ -2,7 +2,8 @@
 //  spawns.inc — точки появления обычных игроков (вокзалы и т.п.).
 //
 //  Игрок сам выбирает, где появляться: /setspawn (вокзал, дом или база фракции).
-//  Пока не выбрал — как раньше: у дома, иначе на базе фракции, иначе на случайном вокзале.
+//  Пока не выбрал — у дома, иначе на базе фракции, иначе на самом свободном вокзале
+//  (где сейчас меньше всего игроков рядом).
 //  Пока точек нет — на стандартном спавне из config.inc.
 //  Админ (4+), стоя на улице:
 //    /addspawn [название] — точка там, где стоишь (взгляд запоминается)
@@ -11,6 +12,7 @@
 // =====================================================================
 
 #define MAX_SPAWNS          20
+#define SPAWN_LOAD_RANGE    80.0    // игроки в этом радиусе считаются «на вокзале»
 
 enum E_SPAWN
 {
@@ -58,11 +60,28 @@ stock Spawns_Init()
 	printf("[Spawns] Loaded %d spawn points.", gSpawnCount);
 }
 
-// Случайная точка спавна. 0 — точек нет, координаты не тронуты.
+// Самый свободный вокзал: где рядом меньше всего игроков (при равенстве — случайный из них).
+// 0 — точек нет, координаты не тронуты.
 stock Spawns_Get(&Float:x, &Float:y, &Float:z, &Float:a)
 {
 	if (gSpawnCount == 0) return 0;
-	new s = random(gSpawnCount);
+	new load[MAX_SPAWNS], best = 0x7FFFFFFF, ties = 0;
+	for (new s = 0; s < gSpawnCount; s++)
+	{
+		for (new i = 0; i < MAX_PLAYERS; i++)
+		{
+			if (!IsPlayerConnected(i) || GetPlayerInterior(i) != 0 || GetPlayerVirtualWorld(i) != 0) continue;
+			if (IsPlayerInRangeOfPoint(i, SPAWN_LOAD_RANGE, gSpawn[s][spX], gSpawn[s][spY], gSpawn[s][spZ])) load[s]++;
+		}
+		if (load[s] < best) { best = load[s]; ties = 1; }
+		else if (load[s] == best) ties++;
+	}
+	new pick = random(ties), s = 0;
+	for (new k = 0; k < gSpawnCount; k++)
+	{
+		if (load[k] != best) continue;
+		if (pick-- == 0) { s = k; break; }
+	}
 	x = gSpawn[s][spX];
 	y = gSpawn[s][spY];
 	z = gSpawn[s][spZ];
@@ -118,7 +137,7 @@ stock Cmd_DelSpawn(playerid, const params[])
 stock Cmd_Spawns(playerid)
 {
 	if (gSpawnCount == 0) return SendClientMessage(playerid, COLOR_GREY, "Точек спавна нет: игроки появляются на стандартном месте. Добавить: /addspawn [название]");
-	SendClientMessage(playerid, COLOR_YELLOW, "Точки спавна (игрок без дома и фракции появляется в случайной):");
+	SendClientMessage(playerid, COLOR_YELLOW, "Точки спавна (игрок без дома и фракции появляется на самой свободной):");
 	for (new s = 0; s < gSpawnCount; s++)
 	{
 		SendClientMessage(playerid, COLOR_WHITE, " №%d — %s (%.0f, %.0f)", gSpawn[s][spDbId], gSpawn[s][spName], gSpawn[s][spX], gSpawn[s][spY]);
@@ -183,7 +202,7 @@ stock Cmd_SetSpawn(playerid)
 {
 	new list[1024], line[64], n = 0;
 	gSpawnPick[playerid][n][0] = SPAWN_AUTO; gSpawnPick[playerid][n][1] = 0; n++;
-	strcat(list, "Как обычно: дом, иначе фракция, иначе вокзал\n");
+	strcat(list, "Как обычно: дом, иначе фракция, иначе свободный вокзал\n");
 	if (House_GetOwned(playerid) != -1 || House_GetRented(playerid) != -1)
 	{
 		gSpawnPick[playerid][n][0] = SPAWN_HOUSE; gSpawnPick[playerid][n][1] = 0; n++;
