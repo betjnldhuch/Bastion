@@ -355,6 +355,64 @@ stock bool:Cmd_GotoCoord(playerid, const params[])
 	return true;
 }
 
+// Стандартные интерьеры GTA: /gotoint [номер] [мир]
+enum E_GTA_INT
+{
+	giName[32],
+	giInt,
+	Float:giX, Float:giY, Float:giZ
+}
+static const gGtaInts[][E_GTA_INT] =
+{
+	{ "Полиция LS",              6,  246.78,   63.90, 1003.64 },
+	{ "Полиция SF",              10, 246.40,  110.84, 1003.22 },
+	{ "Полиция LV",              3,  288.47,  170.06, 1007.17 },
+	{ "Мэрия (Planning Dept.)",  3,  386.52,  173.64, 1008.38 },
+	{ "Дом CJ",                  3,  2496.05, -1695.17, 1014.74 },
+	{ "Дом Райдера",             2,  2447.87, -1704.45, 1013.50 },
+	{ "Дом Свита",               1,  2527.02, -1679.21, 1015.50 },
+	{ "Наркопритон Биг Смоука",  2,  2536.53, -1294.84, 1044.12 },
+	{ "Мотель Джефферсон",       15, 2220.26, -1148.01, 1025.80 },
+	{ "Особняк Мэдд Догга",      5,  1267.84, -776.96, 1091.91 },
+	{ "Притон",                  5,  318.56,  1118.21, 1083.88 },
+	{ "Склад",                   18, 1290.41,    1.95, 1001.02 },
+	{ "Атриум",                  18, 1726.19, -1641.00,   20.23 },
+	{ "Магазин 24/7",            17, -25.88,  -185.87, 1003.55 },
+	{ "Бар Ten Green Bottles",   11, 501.98,   -69.15,  998.76 },
+	{ "Binco",                   15, 207.74,  -109.02, 1005.13 },
+	{ "Ammu-Nation",             1,  286.15,   -40.64, 1001.52 }
+};
+
+stock bool:Cmd_GotoInt(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 3)) return true;
+	new pos = 0, n, world = 0;
+	if (!NextIntParam(params, pos, n) || n < 1 || n > sizeof (gGtaInts))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Использование: /gotoint [номер] [мир — необязательно]. Интерьеры:");
+		new line[144], part[48];
+		for (new i = 0; i < sizeof (gGtaInts); i++)
+		{
+			format(part, sizeof part, "%d %s   ", i + 1, gGtaInts[i][giName]);
+			if (strlen(line) + strlen(part) >= sizeof (line) - 1)
+			{
+				SendClientMessage(playerid, COLOR_WHITE, line);
+				line[0] = '\0';
+			}
+			strcat(line, part);
+		}
+		if (line[0] != '\0') SendClientMessage(playerid, COLOR_WHITE, line);
+		return true;
+	}
+	NextIntParam(params, pos, world);
+	if (world < 0) world = 0;
+	n--;
+	Teleport_SaveBack(playerid);
+	Teleport_Player(playerid, gGtaInts[n][giX], gGtaInts[n][giY], gGtaInts[n][giZ], -1.0, gGtaInts[n][giInt], world);
+	SendClientMessage(playerid, COLOR_ADMIN, "%s: интерьер %d, мир %d. Вернуться: /back", gGtaInts[n][giName], gGtaInts[n][giInt], world);
+	return true;
+}
+
 stock bool:Cmd_GotoCar(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 2)) return true;
@@ -563,6 +621,7 @@ stock AdminTools_OnCommand(playerid, const cmd[], const params[])
 	if (!strcmp(cmd, "/deltp", true))       { Cmd_DelTp(playerid, params); return 1; }
 	if (!strcmp(cmd, "/back", true))        { Cmd_Back(playerid); return 1; }
 	if (!strcmp(cmd, "/gotocoord", true))   { Cmd_GotoCoord(playerid, params); return 1; }
+	if (!strcmp(cmd, "/gotoint", true))     { Cmd_GotoInt(playerid, params); return 1; }
 	if (!strcmp(cmd, "/gotocar", true))     { Cmd_GotoCar(playerid, params); return 1; }
 	if (!strcmp(cmd, "/sendto", true))      { Cmd_SendTo(playerid, params); return 1; }
 	if (!strcmp(cmd, "/maptp", true))       { Cmd_MapTp(playerid); return 1; }

@@ -248,6 +248,9 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/makeleader", true))  { Cmd_MakeLeader(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/setfspawn", true))   { Cmd_SetFSpawn(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/setfduty", true))    { Cmd_SetFDuty(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/setfint", true))     { Cmd_SetFInt(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/delfint", true))     { Cmd_DelFInt(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/fintlock", true))    { Cmd_FIntLock(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/addfcar", true))     { Cmd_AddFCar(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delfcar", true))     { Cmd_DelFCar(playerid); return 1; }
 	if (!strcmp(cmd, "/jail", true))        { Cmd_Jail(playerid, cmdtext[pos]); return 1; }
@@ -290,6 +293,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/bizcash", true))     { Cmd_BizCash(playerid); return 1; }
 	if (!strcmp(cmd, "/createbiz", true))   { Cmd_CreateBiz(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delbiz", true))      { Cmd_DelBiz(playerid); return 1; }
+	if (!strcmp(cmd, "/setbizint", true))   { Cmd_SetBizInt(playerid, cmdtext[pos]); return 1; }
 
 	// --- кнопки и шлагбаумы (keys.inc, gates.inc) ---
 	if (!strcmp(cmd, "/deny", true))        { Cmd_Deny(playerid); return 1; }

@@ -17,6 +17,7 @@
 //
 //  Ѕазы и машины фракций хран€тс€ в базе данных. ≈сли точка стоит
 //  криво Ч встань в нужное место и введи /setfspawn или /setfduty.
+//  ¬ход в здание фракции: /setfint на улице у двери и ещЄ раз внутри (раздел в конце файла).
 //  ћашину фракции можно добавить так: /veh 596, сесть в неЄ и /addfcar 1
 //
 //  ќснова фракций (всЄ хранитс€ в базе rp.db):
@@ -186,6 +187,8 @@ enum E_FACTION
 	Float:fSpawnY,
 	Float:fSpawnZ,
 	Float:fSpawnA,
+	fSpawnInt,          // интерьер спавна (0 Ч улица)
+	fSpawnWorld,        // мир спавна
 	Float:fDutyX,
 	Float:fDutyY,
 	Float:fDutyZ,
@@ -285,7 +288,7 @@ stock bool:Faction_AtBase(playerid)
 {
 	new f = Player[playerid][pFaction];
 	if (!Faction_IsValid(f)) return false;
-	if (GetPlayerVirtualWorld(playerid) != 0 || GetPlayerInterior(playerid) != 0) return false;
+	if (GetPlayerVirtualWorld(playerid) != Faction[f][fDutyWorld] || GetPlayerInterior(playerid) != Faction[f][fDutyInt]) return false;
 	return IsPlayerInRangeOfPoint(playerid, FACTION_BASE_RANGE, Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ]);
 }
 
@@ -530,7 +533,7 @@ stock Factions_Init()
 		Faction[f][fDutyY]  = gFactionDefBase[f][5];
 		Faction[f][fDutyZ]  = gFactionDefBase[f][6];
 	}
-	r = DB_ExecuteQuery(gDB, "SELECT id, sx, sy, sz, sa, dx, dy, dz, dint, dworld FROM factions");
+	r = DB_ExecuteQuery(gDB, "SELECT id, sx, sy, sz, sa, dx, dy, dz, dint, dworld, sint, sworld FROM factions");
 	if (r != DBResult:0)
 	{
 		new rows = DB_GetRowCount(r);
@@ -548,6 +551,8 @@ stock Factions_Init()
 				Faction[f][fDutyZ]  = DB_GetFieldFloat(r, 7);
 				Faction[f][fDutyInt]   = DB_GetFieldInt(r, 8);
 				Faction[f][fDutyWorld] = DB_GetFieldInt(r, 9);
+				Faction[f][fSpawnInt]   = DB_GetFieldInt(r, 10);
+				Faction[f][fSpawnWorld] = DB_GetFieldInt(r, 11);
 			}
 			DB_SelectNextRow(r);
 		}
@@ -589,6 +594,9 @@ stock Factions_CreateTables()
 	DB_AddColumn("factions", "store_rank", "INTEGER DEFAULT 2");
 	DB_AddColumn("factions", "dint", "INTEGER DEFAULT 0");
 	DB_AddColumn("factions", "dworld", "INTEGER DEFAULT 0");
+	DB_AddColumn("factions", "sint", "INTEGER DEFAULT 0");
+	DB_AddColumn("factions", "sworld", "INTEGER DEFAULT 0");
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_doors (faction INTEGER PRIMARY KEY, has_out INTEGER DEFAULT 0, ox REAL DEFAULT 0, oy REAL DEFAULT 0, oz REAL DEFAULT 0, oa REAL DEFAULT 0, oint INTEGER DEFAULT 0, oworld INTEGER DEFAULT 0, has_in INTEGER DEFAULT 0, ix REAL DEFAULT 0, iy REAL DEFAULT 0, iz REAL DEFAULT 0, ia REAL DEFAULT 0, iint INTEGER DEFAULT 0, iworld INTEGER DEFAULT 0, closed INTEGER DEFAULT 0)"));
 	DB_AddColumn("accounts", "fwarns", "INTEGER DEFAULT 0");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_ranks (faction INTEGER NOT NULL, rank INTEGER NOT NULL, name TEXT, skin INTEGER DEFAULT 0, salary INTEGER DEFAULT 0, PRIMARY KEY (faction, rank))"));
 
@@ -715,6 +723,7 @@ stock Factions_LoadData()
 
 	// «начки раздевалок создавались до загрузки названий Ч пересоздаЄм с новыми
 	for (new f = 1; f < MAX_FACTIONS; f++) Faction_CreateMarker(f);
+	FDoors_Load();      // входы в здани€ фракций (/setfint)
 	print("[Factions] Loaded names, ranks, banks and storage.");
 }
 
@@ -777,6 +786,15 @@ stock Factions_OnSpawn(playerid)
 	Faction_Uncuff(playerid);
 	Faction_UpdateColor(playerid);
 	SetPlayerWantedLevel(playerid, Player[playerid][pWanted]);
+
+	// —павн фракции может сто€ть внутри здани€ (/setfspawn): OnPlayerSpawn уже вернул игрока на улицу
+	new f = Player[playerid][pFaction];
+	if (Faction_IsValid(f) && (Faction[f][fSpawnInt] != 0 || Faction[f][fSpawnWorld] != 0)
+		&& IsPlayerInRangeOfPoint(playerid, 3.0, Faction[f][fSpawnX], Faction[f][fSpawnY], Faction[f][fSpawnZ]))
+	{
+		SetPlayerInterior(playerid, Faction[f][fSpawnInt]);
+		SetPlayerVirtualWorld(playerid, Faction[f][fSpawnWorld]);
+	}
 
 	if (Player[playerid][pJail] > 0)
 	{
@@ -2021,7 +2039,7 @@ stock bool:Cmd_FHelp(playerid)
 	strcat(text, "{10A010}Ѕанды\n");
 	strcat(text, "{FFFFFF}/duty на базе Ч форма банды и оружие. /turfs /capture Ч войны за районы, районы пополн€ют общак.\n\n");
 	strcat(text, "{FF66FF}јдминам (4+)\n");
-	strcat(text, "{FFFFFF}/makeleader /setfaction /setfspawn /setfduty /addfcar /delfcar /fedit   (2+) /jail /unjail");
+	strcat(text, "{FFFFFF}/makeleader /setfaction /setfspawn /setfduty /setfint /delfint /fintlock /addfcar /delfcar /fedit   (2+) /jail /unjail");
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "‘ракции", "%s", "«акрыть", "", text);
 	return true;
 }
@@ -2075,9 +2093,10 @@ stock bool:Cmd_MakeLeader(playerid, const params[])
 stock Faction_SaveBase(f)
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB,
-		"UPDATE factions SET sx = %f, sy = %f, sz = %f, sa = %f, dx = %f, dy = %f, dz = %f, dint = %d, dworld = %d WHERE id = %d",
+		"UPDATE factions SET sx = %f, sy = %f, sz = %f, sa = %f, dx = %f, dy = %f, dz = %f, dint = %d, dworld = %d, sint = %d, sworld = %d WHERE id = %d",
 		Faction[f][fSpawnX], Faction[f][fSpawnY], Faction[f][fSpawnZ], Faction[f][fSpawnA],
-		Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ], Faction[f][fDutyInt], Faction[f][fDutyWorld], f));
+		Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ], Faction[f][fDutyInt], Faction[f][fDutyWorld],
+		Faction[f][fSpawnInt], Faction[f][fSpawnWorld], f));
 }
 
 stock bool:Cmd_SetFSpawn(playerid, const params[])
@@ -2086,9 +2105,11 @@ stock bool:Cmd_SetFSpawn(playerid, const params[])
 	new pos = 0, f;
 	if (!NextIntParam(params, pos, f) || !Faction_IsValid(f))
 		return SendClientMessage(playerid, COLOR_GREY, "»спользование: /setfspawn [фракци€ 1-%d] Ч спавн фракции там, где ты стоишь", MAX_FACTIONS - 1);
-	if (GetPlayerInterior(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "—павн можно ставить только на улице.");
+	// спавн может быть внутри здани€: запоминаем интерьер и мир
 	GetPlayerPos(playerid, Faction[f][fSpawnX], Faction[f][fSpawnY], Faction[f][fSpawnZ]);
 	GetPlayerFacingAngle(playerid, Faction[f][fSpawnA]);
+	Faction[f][fSpawnInt] = GetPlayerInterior(playerid);
+	Faction[f][fSpawnWorld] = GetPlayerVirtualWorld(playerid);
 	Faction_SaveBase(f);
 	SendClientMessage(playerid, COLOR_ADMIN, "—павн фракции Ђ%sї перенесЄн сюда.", Faction_GetName(f));
 	return true;
@@ -2181,5 +2202,215 @@ stock bool:Cmd_Unjail(playerid, const params[])
 	if (Player[target][pJail] <= 0) return SendClientMessage(playerid, COLOR_GREY, "»грок не в тюрьме.");
 	Jail_Release(target);
 	SendClientMessage(playerid, COLOR_ADMIN, "%s выпущен из тюрьмы.", GetRPName(target));
+	return true;
+}
+
+// =====================================================================
+//  ¬ход в здание фракции (админ 4+)
+//
+//  /setfint [фракци€]  Ч на улице у двери: точка входа; внутри интерьера: точка выхода.
+//                        ¬ставать у самой двери спиной к ней: игрок по€витс€ на шаг впереди.
+//                        ¬торым словом можно указать сторону сам: out (снаружи) или in (внутри).
+//  /delfint [фракци€]  Ч убрать вход.
+//  /fintlock [фракци€] Ч пускать только своих (переключатель).
+//  ѕопасть в интерьер: /gotoint (список стандартных интерьеров GTA).
+//  ћаркеры входа видны в /markers, там их можно подвинуть.
+// =====================================================================
+#define FDOOR_REF           1000    // ref маркеров MK_DOOR: 1000 + фракци€ * 2 (внутри: + 1)
+
+enum E_FDOOR
+{
+	bool:feOut,                 // точка снаружи задана
+	Float:feOX, Float:feOY, Float:feOZ, Float:feOA, feOInt, feOWorld,
+	bool:feIn,                  // точка внутри задана
+	Float:feIX, Float:feIY, Float:feIZ, Float:feIA, feIInt, feIWorld,
+	bool:feClosed,              // только дл€ своих
+	feMkOut, feMkIn
+}
+static gFDoor[MAX_FACTIONS][E_FDOOR];
+
+static FDoor_Build(f)
+{
+	if (gFDoor[f][feMkOut] != -1) { Marker_Destroy(gFDoor[f][feMkOut]); gFDoor[f][feMkOut] = -1; }
+	if (gFDoor[f][feMkIn] != -1)  { Marker_Destroy(gFDoor[f][feMkIn]);  gFDoor[f][feMkIn] = -1; }
+	if (!gFDoor[f][feOut] || !gFDoor[f][feIn]) return;
+
+	new label[96], name[32];
+	new Float:x = gFDoor[f][feOX], Float:y = gFDoor[f][feOY], Float:z = gFDoor[f][feOZ];
+	gFDoor[f][feMkOut] = Marker_Create(MK_DOOR, FDOOR_REF + f * 2, Faction_GetName(f), DOOR_PICKUP_MODEL, x, y, z,
+		gFDoor[f][feOWorld], gFDoor[f][feOInt], GPS_NONE, gFDoor[f][feOA]);
+	format(label, sizeof label, "{FFFF66}%s\n{FFFFFF}ALT Ч войти", Faction_GetName(f));
+	if (gFDoor[f][feClosed]) strcat(label, " (только свои)");
+	Marker_SetLabel(gFDoor[f][feMkOut], label);
+
+	x = gFDoor[f][feIX]; y = gFDoor[f][feIY]; z = gFDoor[f][feIZ];
+	strcat(name, Faction_GetName(f), 22);
+	strcat(name, ", выход");
+	gFDoor[f][feMkIn] = Marker_Create(MK_DOOR, FDOOR_REF + f * 2 + 1, name, DOOR_PICKUP_MODEL, x, y, z,
+		gFDoor[f][feIWorld], gFDoor[f][feIInt], GPS_NONE, gFDoor[f][feIA]);
+	Marker_SetLabel(gFDoor[f][feMkIn], "{FFFFFF}ALT Ч выйти", COLOR_WHITE, 10.0);
+}
+
+static FDoor_Save(f)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB,
+		"INSERT OR REPLACE INTO faction_doors (faction, has_out, ox, oy, oz, oa, oint, oworld, has_in, ix, iy, iz, ia, iint, iworld, closed) VALUES (%d, %d, %f, %f, %f, %f, %d, %d, %d, %f, %f, %f, %f, %d, %d, %d)",
+		f, gFDoor[f][feOut] ? 1 : 0, gFDoor[f][feOX], gFDoor[f][feOY], gFDoor[f][feOZ], gFDoor[f][feOA], gFDoor[f][feOInt], gFDoor[f][feOWorld],
+		gFDoor[f][feIn] ? 1 : 0, gFDoor[f][feIX], gFDoor[f][feIY], gFDoor[f][feIZ], gFDoor[f][feIA], gFDoor[f][feIInt], gFDoor[f][feIWorld],
+		gFDoor[f][feClosed] ? 1 : 0));
+}
+
+// «абыть правки маркеров входа из /markers: точку только что поставили заново
+static FDoor_ForgetMarkers(f)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM markers WHERE type = %d AND ref IN (%d, %d)",
+		MK_DOOR, FDOOR_REF + f * 2, FDOOR_REF + f * 2 + 1));
+}
+
+stock FDoors_Load()
+{
+	for (new f = 0; f < MAX_FACTIONS; f++)
+	{
+		gFDoor[f][feOut] = false;
+		gFDoor[f][feIn] = false;
+		gFDoor[f][feClosed] = false;
+		gFDoor[f][feMkOut] = -1;
+		gFDoor[f][feMkIn] = -1;
+	}
+	new n = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT faction, has_out, ox, oy, oz, oa, oint, oworld, has_in, ix, iy, iz, ia, iint, iworld, closed FROM faction_doors");
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new i = 0; i < rows; i++)
+		{
+			new f = DB_GetFieldInt(r, 0);
+			if (Faction_IsValid(f))
+			{
+				gFDoor[f][feOut]    = DB_GetFieldInt(r, 1) != 0;
+				gFDoor[f][feOX]     = DB_GetFieldFloat(r, 2);
+				gFDoor[f][feOY]     = DB_GetFieldFloat(r, 3);
+				gFDoor[f][feOZ]     = DB_GetFieldFloat(r, 4);
+				gFDoor[f][feOA]     = DB_GetFieldFloat(r, 5);
+				gFDoor[f][feOInt]   = DB_GetFieldInt(r, 6);
+				gFDoor[f][feOWorld] = DB_GetFieldInt(r, 7);
+				gFDoor[f][feIn]     = DB_GetFieldInt(r, 8) != 0;
+				gFDoor[f][feIX]     = DB_GetFieldFloat(r, 9);
+				gFDoor[f][feIY]     = DB_GetFieldFloat(r, 10);
+				gFDoor[f][feIZ]     = DB_GetFieldFloat(r, 11);
+				gFDoor[f][feIA]     = DB_GetFieldFloat(r, 12);
+				gFDoor[f][feIInt]   = DB_GetFieldInt(r, 13);
+				gFDoor[f][feIWorld] = DB_GetFieldInt(r, 14);
+				gFDoor[f][feClosed] = DB_GetFieldInt(r, 15) != 0;
+				if (gFDoor[f][feOut] && gFDoor[f][feIn]) n++;
+			}
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	for (new f = 1; f < MAX_FACTIONS; f++) FDoor_Build(f);
+	printf("[Factions] %d faction entrances.", n);
+}
+
+// ALT, /enter, /exit у входа фракции (из Doors_Try). true Ч сработало.
+stock bool:FDoor_Try(playerid)
+{
+	for (new f = 1; f < MAX_FACTIONS; f++)
+	{
+		if (gFDoor[f][feMkOut] == -1 || gFDoor[f][feMkIn] == -1) continue;
+		if (Marker_InRange(playerid, gFDoor[f][feMkOut], DOOR_RANGE))
+		{
+			if (gFDoor[f][feClosed] && Player[playerid][pFaction] != f && Player[playerid][pAdmin] < 1)
+			{
+				SendClientMessage(playerid, COLOR_GREY, "—юда пускают только своих: %s.", Faction_GetName(f));
+				return true;
+			}
+			if (Law_TryLeave(playerid)) Door_SpawnAt(playerid, gFDoor[f][feMkIn]);
+			return true;
+		}
+		if (Marker_InRange(playerid, gFDoor[f][feMkIn], DOOR_RANGE))
+		{
+			if (Law_TryLeave(playerid)) Door_SpawnAt(playerid, gFDoor[f][feMkOut]);
+			return true;
+		}
+	}
+	return false;
+}
+
+stock bool:Cmd_SetFInt(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, f, side[8];
+	if (!NextIntParam(params, pos, f) || !Faction_IsValid(f))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "»спользование: /setfint [фракци€ 1-%d] [out/in Ч необ€зательно]", MAX_FACTIONS - 1);
+		SendClientMessage(playerid, COLOR_GREY, "Ќа улице у двери Ч вход, внутри интерьера Ч выход. ¬ставай спиной к двери. ¬ интерьер: /gotoint");
+		return true;
+	}
+	new bool:inside = GetPlayerInterior(playerid) != 0;
+	if (NextParam(params, pos, side))
+	{
+		if (!strcmp(side, "in", true)) inside = true;
+		else if (!strcmp(side, "out", true)) inside = false;
+		else return SendClientMessage(playerid, COLOR_GREY, "—торона: out (снаружи) или in (внутри).");
+	}
+	new Float:x, Float:y, Float:z, Float:a;
+	GetPlayerPos(playerid, x, y, z);
+	GetPlayerFacingAngle(playerid, a);
+	if (inside)
+	{
+		gFDoor[f][feIn] = true;
+		gFDoor[f][feIX] = x; gFDoor[f][feIY] = y; gFDoor[f][feIZ] = z; gFDoor[f][feIA] = a;
+		gFDoor[f][feIInt] = GetPlayerInterior(playerid);
+		gFDoor[f][feIWorld] = GetPlayerVirtualWorld(playerid);
+	}
+	else
+	{
+		gFDoor[f][feOut] = true;
+		gFDoor[f][feOX] = x; gFDoor[f][feOY] = y; gFDoor[f][feOZ] = z; gFDoor[f][feOA] = a;
+		gFDoor[f][feOInt] = GetPlayerInterior(playerid);
+		gFDoor[f][feOWorld] = GetPlayerVirtualWorld(playerid);
+	}
+	FDoor_Save(f);
+	FDoor_ForgetMarkers(f);
+	FDoor_Build(f);
+	if (inside) SendClientMessage(playerid, COLOR_ADMIN, "Ђ%sї: точка внутри (выход) сохранена.", Faction_GetName(f));
+	else SendClientMessage(playerid, COLOR_ADMIN, "Ђ%sї: точка снаружи (вход) сохранена.", Faction_GetName(f));
+	if (!gFDoor[f][feIn]) SendClientMessage(playerid, COLOR_GREY, "ќсталась точка внутри: зайди в интерьер (/gotoint) и введи /setfint %d ещЄ раз.", f);
+	else if (!gFDoor[f][feOut]) SendClientMessage(playerid, COLOR_GREY, "ќсталась точка снаружи: встань у двери на улице и введи /setfint %d ещЄ раз.", f);
+	else SendClientMessage(playerid, COLOR_ADMIN, "¬ход работает: ALT у стрелки. –аздевалку и спавн можно поставить внутри: /setfduty %d, /setfspawn %d", f, f);
+	return true;
+}
+
+stock bool:Cmd_DelFInt(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, f;
+	if (!NextIntParam(params, pos, f) || !Faction_IsValid(f))
+		return SendClientMessage(playerid, COLOR_GREY, "»спользование: /delfint [фракци€ 1-%d] Ч убрать вход в здание фракции", MAX_FACTIONS - 1);
+	gFDoor[f][feOut] = false;
+	gFDoor[f][feIn] = false;
+	gFDoor[f][feClosed] = false;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM faction_doors WHERE faction = %d", f));
+	FDoor_ForgetMarkers(f);
+	FDoor_Build(f);
+	SendClientMessage(playerid, COLOR_ADMIN, "¬ход в здание фракции Ђ%sї убран.", Faction_GetName(f));
+	if (Faction[f][fSpawnInt] != 0 || Faction[f][fDutyInt] != 0)
+		SendClientMessage(playerid, COLOR_GREY, "—павн или раздевалка этой фракции сто€т внутри здани€: перенеси их (/setfspawn, /setfduty).");
+	return true;
+}
+
+stock bool:Cmd_FIntLock(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, f;
+	if (!NextIntParam(params, pos, f) || !Faction_IsValid(f))
+		return SendClientMessage(playerid, COLOR_GREY, "»спользование: /fintlock [фракци€ 1-%d] Ч пускать в здание только своих (переключатель)", MAX_FACTIONS - 1);
+	if (!gFDoor[f][feOut] || !gFDoor[f][feIn]) return SendClientMessage(playerid, COLOR_GREY, "” этой фракции нет входа. ѕоставить: /setfint");
+	gFDoor[f][feClosed] = !gFDoor[f][feClosed];
+	FDoor_Save(f);
+	FDoor_Build(f);
+	if (gFDoor[f][feClosed]) SendClientMessage(playerid, COLOR_ADMIN, "Ђ%sї: вход теперь только дл€ своих.", Faction_GetName(f));
+	else SendClientMessage(playerid, COLOR_ADMIN, "Ђ%sї: вход теперь открыт дл€ всех.", Faction_GetName(f));
 	return true;
 }

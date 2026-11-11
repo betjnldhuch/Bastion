@@ -48,6 +48,7 @@ enum E_HOUSE
 new House[MAX_HOUSES][E_HOUSE];
 
 forward bool:Doors_Try(playerid);     // doors.inc подключён позже
+forward bool:Biz_TryDoor(playerid);   // business.inc: вход и выход из интерьера бизнеса
 new gHouseCount = 0;
 
 static gRentHouse[MAX_PLAYERS] = { -1, ... };          // какой дом снимает игрок (-1 = нет)
@@ -446,6 +447,7 @@ stock bool:Cmd_SellHouse(playerid)
 stock bool:Cmd_Enter(playerid)
 {
 	if (Doors_Try(playerid)) return true;     // здания с интерьером (doors.inc)
+	if (Biz_TryDoor(playerid)) return true;   // интерьер бизнеса
 	new h = House_GetNearby(playerid);
 	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет входа.");
 	if (House[h][hOwner] == 0) return SendClientMessage(playerid, COLOR_GREY, "Дом продаётся и закрыт. Купить: /buyhouse");
@@ -471,6 +473,7 @@ stock bool:Cmd_Enter(playerid)
 stock bool:Cmd_Exit(playerid)
 {
 	if (Doors_Try(playerid)) return true;     // здания с интерьером (doors.inc)
+	if (Biz_TryDoor(playerid)) return true;   // интерьер бизнеса
 	new h = Player[playerid][pHouseInside];
 	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Ты не в доме.");
 	if (!House_IsInside(playerid, h))
