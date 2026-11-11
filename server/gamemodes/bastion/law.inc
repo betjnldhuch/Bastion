@@ -94,27 +94,32 @@ stock bool:Cmd_Mark(playerid, const params[])
 	return true;
 }
 
-// “ри решЄтки камеры: кажда€ отъезжает в своЄ открытое место и возвращаетс€.
-//  оординаты Ч из игры (/pos): закрытое и открытое положение, угол Ч у закрытого.
+// “ри двери камер: кажда€ отъезжает вбок вдоль решЄтки и возвращаетс€.
+// ћеста Ч из игры (/pos): где стоит закрыта€ дверь и куда она уезжает.
+// ћодель 19302 Ч решЄтчата€ дверь камеры (не ворота!). ƒверь стоит вдоль оси Y.
 #define CELL_BARS           3
-#define CELL_SPEED          2.0     // скорость движени€ решЄтки
-#define CELL_CENTER_X       266.4   // центр камеры: отсюда провер€етс€, стоит ли полицейский у решЄток
+#define CELL_SPEED          1.2     // скорость движени€ двери
+#define CELL_CENTER_X       266.4   // середина р€да камер: отсюда провер€етс€, стоит ли полицейский р€дом
 #define CELL_CENTER_Y       82.6
 #define CELL_CENTER_Z       1001.03
-#define CELL_USE_RANGE      6.0     // ALT у решЄтки
-#define CELL_GATE_MODEL     980
+#define CELL_USE_RANGE      6.0     // ALT у дверей
+#define CELL_GATE_MODEL     19302
+#define CELL_GATE_X         266.30  // лини€ решЄток
+#define CELL_GATE_Z         1001.28 // середина двери по высоте (игрок стоит на 1001.03)
+#define CELL_GATE_ROT       90.0
 
+// y закрытой и открытой двери; x и z у всех одни (с /pos сн€т игрок, а не объект)
 static const Float:gCellClosed[CELL_BARS][4] =
 {
-	{ 266.33, 87.89, 1001.03, 120.7 },   // у входа
-	{ 266.22, 83.20, 1001.03, 132.7 },   // в центре
-	{ 266.74, 76.82, 1001.03, 118.0 }    // у стены
+	{ CELL_GATE_X, 87.89, CELL_GATE_Z, CELL_GATE_ROT },   // у входа
+	{ CELL_GATE_X, 83.20, CELL_GATE_Z, CELL_GATE_ROT },   // в центре
+	{ CELL_GATE_X, 76.82, CELL_GATE_Z, CELL_GATE_ROT }    // у стены
 };
 static const Float:gCellOpen[CELL_BARS][3] =
 {
-	{ 265.90, 86.44, 1001.03 },          // у входа (в открытом виде z записано 331.2, прин€то 1001.03)
-	{ 265.89, 81.55, 1001.03 },          // в центре
-	{ 266.74, 78.65, 1001.03 }           // у стены
+	{ CELL_GATE_X, 86.44, CELL_GATE_Z },
+	{ CELL_GATE_X, 81.55, CELL_GATE_Z },
+	{ CELL_GATE_X, 78.65, CELL_GATE_Z }
 };
 
 static gCellObj[CELL_BARS] = { -1, -1, -1 };
