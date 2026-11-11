@@ -97,10 +97,11 @@ stock bool:Cmd_Mark(playerid, const params[])
 // “ри двери камер: кажда€ отъезжает вбок вдоль решЄтки и возвращаетс€.
 // ћеста Ч из игры (/pos): где стоит закрыта€ дверь и куда она уезжает.
 // ћодель 19302 Ч решЄтчата€ дверь камеры (не ворота!). ƒверь стоит вдоль оси Y.
-#define CELL_BARS           3
+// ƒальн€€ камера (у стены) не используетс€: в ней стоит штатна€ решЄтка интерьера.
+#define CELL_BARS           2
 #define CELL_SPEED          1.2     // скорость движени€ двери
 #define CELL_CENTER_X       266.4   // середина р€да камер: отсюда провер€етс€, стоит ли полицейский р€дом
-#define CELL_CENTER_Y       82.6
+#define CELL_CENTER_Y       85.5
 #define CELL_CENTER_Z       1001.03
 #define CELL_USE_RANGE      6.0     // ALT у дверей
 #define CELL_GATE_MODEL     19302
@@ -112,17 +113,15 @@ stock bool:Cmd_Mark(playerid, const params[])
 static const Float:gCellClosed[CELL_BARS][4] =
 {
 	{ CELL_GATE_X, 87.89, CELL_GATE_Z, CELL_GATE_ROT },   // у входа
-	{ CELL_GATE_X, 83.20, CELL_GATE_Z, CELL_GATE_ROT },   // в центре
-	{ CELL_GATE_X, 76.82, CELL_GATE_Z, CELL_GATE_ROT }    // у стены
+	{ CELL_GATE_X, 83.20, CELL_GATE_Z, CELL_GATE_ROT }    // в центре
 };
 static const Float:gCellOpen[CELL_BARS][3] =
 {
 	{ CELL_GATE_X, 86.44, CELL_GATE_Z },
-	{ CELL_GATE_X, 81.55, CELL_GATE_Z },
-	{ CELL_GATE_X, 78.65, CELL_GATE_Z }
+	{ CELL_GATE_X, 81.55, CELL_GATE_Z }
 };
 
-static gCellObj[CELL_BARS] = { -1, -1, -1 };
+static gCellObj[CELL_BARS] = { -1, ... };
 static gCellUntil[CELL_BARS];            // до какого времени открыта кажда€ решЄтка (0 Ч закрыта)
 static gCellSerial[CELL_BARS];           // номер открыти€: старый таймер не закроет новое
 

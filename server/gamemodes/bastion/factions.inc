@@ -84,7 +84,9 @@ static const gFItemPrice[MAX_FITEMS] = { 500, 300, 600, 800, 1200, 2000, 2500 };
 
 // Тюремная камера (в здании LSPD, интерьер 6)
 #define JAIL_X                  264.0
-#define JAIL_Y                  77.5
+#define JAIL_Y                  84.3    // середина между двумя камерами: от неё проверяется, на месте ли заключённый
+#define JAIL_CELL1_Y            86.6    // камера у входа
+#define JAIL_CELL2_Y            82.0    // камера в центре
 #define JAIL_Z                  1001.04
 #define JAIL_INTERIOR           6
 // Где выпускают из тюрьмы (у входа в LSPD)
@@ -755,7 +757,9 @@ stock Jail_PutInCell(playerid)
 {
 	SetPlayerInterior(playerid, JAIL_INTERIOR);
 	SetPlayerVirtualWorld(playerid, 0);
-	SetPlayerPos(playerid, JAIL_X, JAIL_Y, JAIL_Z);
+	// две камеры с решётками (law.inc): заключённых делим между ними
+	if (playerid % 2 == 0) SetPlayerPos(playerid, JAIL_X, JAIL_CELL1_Y, JAIL_Z);
+	else SetPlayerPos(playerid, JAIL_X, JAIL_CELL2_Y, JAIL_Z);
 	ResetPlayerWeapons(playerid);
 	Player[playerid][pHouseInside] = -1;
 }
