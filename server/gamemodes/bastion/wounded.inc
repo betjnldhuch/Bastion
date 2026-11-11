@@ -49,7 +49,7 @@ static gWoundList[MAX_PLAYERS][MAX_PLAYERS]; // строка окна /wounds -> id
 stock Wound_Init()
 {
 	SetTimer("Wound_OnSecond", 1000, true);
-	SetTimer("Drag_Tick", 300, true);
+	SetTimer("Drag_Tick", 100, true);
 }
 
 stock bool:Wound_IsWounded(playerid) { return gWounded[playerid]; }
@@ -468,31 +468,49 @@ stock Wound_AcceptCarry(playerid, from)
 // «адержанный идЄт за офицером своими ногами (анимаци€ шага двигает его сама)
 static Drag_Walk(t, by)
 {
-	new Float:tx, Float:ty, Float:tz, Float:bx, Float:by_, Float:bz;
-	GetPlayerPos(t, tx, ty, tz);
-	GetPlayerPos(by, bx, by_, bz);
-	new Float:dist = VectorSize(bx - tx, by_ - ty, 0.0);
-	if (dist > 10.0 || floatabs(bz - tz) > 3.0)
+	// задержанный идЄт сам: держитс€ на шаг за спиной офицера и идЄт к нему маленькими шагами,
+	// с анимацией ходьбы (или бега, если отстал). “ик Ч 100 мс, поэтому не Ђтелепортируетс€ї.
+	new Float:bx, Float:byy, Float:bz, Float:a;
+	GetPlayerPos(by, bx, byy, bz);
+	GetPlayerFacingAngle(by, a);
+	new Float:tx = bx - 1.2 * floatsin(-a, degrees);
+	new Float:ty = byy - 1.2 * floatcos(-a, degrees);
+	new Float:cx, Float:cy, Float:cz;
+	GetPlayerPos(t, cx, cy, cz);
+	new Float:dist = VectorSize(tx - cx, ty - cy, 0.0);
+
+	if (dist > 10.0 || floatabs(bz - cz) > 3.0)
 	{
-		// отстал (дверь, лестница, телепорт) Ч ставим р€дом
-		new Float:a;
-		GetPlayerFacingAngle(by, a);
-		SetPlayerPos(t, bx - 1.2 * floatsin(-a, degrees), by_ - 1.2 * floatcos(-a, degrees), bz);
+		// совсем отстал (дверь, лестница, телепорт) Ч ставим за спиной сразу
+		SetPlayerPos(t, tx, ty, bz);
 		SetPlayerFacingAngle(t, a);
+		if (gDragWalk[t] != 0) ClearAnimations(t, SYNC_ALL);
 		gDragWalk[t] = 0;
-		ClearAnimations(t, SYNC_ALL);
 		return;
 	}
-	new Float:ang = atan2(by_ - ty, bx - tx) - 90.0;    // atan2 в SA-MP/open.mp Ч в градусах
-	SetPlayerFacingAngle(t, ang);
-	new mode = 0;                       // 0 стоит, 1 идЄт, 2 бежит
-	if (dist > 4.0) mode = 2;
-	else if (dist > 1.6) mode = 1;
-	if (mode == gDragWalk[t]) return;
-	gDragWalk[t] = mode;
-	if (mode == 2) ApplyAnimation(t, "PED", "run_civi", 4.1, true, true, true, false, 0, SYNC_ALL);
-	else if (mode == 1) ApplyAnimation(t, "PED", "WALK_civi", 4.1, true, true, true, false, 0, SYNC_ALL);
-	else ClearAnimations(t, SYNC_ALL);
+	if (dist <= 0.25)
+	{
+		// на месте: стоим, смотрим туда же, куда офицер
+		SetPlayerFacingAngle(t, a);
+		if (gDragWalk[t] != 0)
+		{
+			ClearAnimations(t, SYNC_ALL);
+			gDragWalk[t] = 0;
+		}
+		return;
+	}
+	new mode = (dist > 2.5) ? 2 : 1;          // 1 Ч идЄт, 2 Ч бежит
+	new Float:step = (mode == 2) ? 0.40 : 0.14;   // метров за тик: ~4 и ~1.4 м/с
+	if (step > dist) step = dist;
+	new Float:f = step / dist;
+	SetPlayerPos(t, cx + (tx - cx) * f, cy + (ty - cy) * f, cz);
+	SetPlayerFacingAngle(t, a);
+	if (mode != gDragWalk[t])
+	{
+		gDragWalk[t] = mode;
+		if (mode == 2) ApplyAnimation(t, "PED", "run_civi", 4.1, true, true, true, false, 0, SYNC_ALL);
+		else ApplyAnimation(t, "PED", "WALK_civi", 4.1, true, true, true, false, 0, SYNC_ALL);
+	}
 }
 
 public Drag_Tick()
@@ -536,7 +554,7 @@ public Drag_Tick()
 			SetPlayerFacingAngle(t, a + 90.0);
 		}
 		// руки Ђс ношейї сбиваютс€ от бега Ч обновл€ем раз в ~3 сек.
-		if (gCarried[t] && ++gCarryAnimTick[t] >= 10)
+		if (gCarried[t] && ++gCarryAnimTick[t] >= 30)
 		{
 			gCarryAnimTick[t] = 0;
 			ApplyAnimation(by, "CARRY", "crry_prtial", 4.1, true, false, false, true, 1, SYNC_ALL);
