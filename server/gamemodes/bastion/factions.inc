@@ -189,6 +189,8 @@ enum E_FACTION
 	Float:fDutyX,
 	Float:fDutyY,
 	Float:fDutyZ,
+	fDutyInt,           // интерьер раздевалки (0 Ч улица)
+	fDutyWorld,         // мир раздевалки
 	fMk,                // маркер раздевалки (markers.inc)
 	bool:fMarker,       // значок раздевалки уже создан
 	fName[32],          // название (из базы)
@@ -453,12 +455,14 @@ stock Faction_CreateMarker(f)
 	format(text, sizeof text, "%s\n{FFFFFF}ALT Ч переодетьс€ и вз€ть снар€жение", Faction_GetName(f));
 	if (Faction[f][fMarker])
 	{
-		Marker_SetPos(Faction[f][fMk], Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ]);
+		// переехала в другое место или здание: значок пересоздаЄм, старый забываем
+		Marker_Destroy(Faction[f][fMk], true);
+		Faction[f][fMarker] = false;
 	}
-	else
+	if (!Faction[f][fMarker])
 	{
 		Faction[f][fMk] = Marker_Create(MK_FACTION, f, Faction_GetName(f), 1275,
-			Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ], 0, 0, GPS_FACTIONS);
+			Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ], Faction[f][fDutyWorld], Faction[f][fDutyInt], GPS_FACTIONS);
 		Faction[f][fMarker] = true;
 	}
 	Marker_SetLabel(Faction[f][fMk], text, Faction_GetColor(f));
@@ -526,7 +530,7 @@ stock Factions_Init()
 		Faction[f][fDutyY]  = gFactionDefBase[f][5];
 		Faction[f][fDutyZ]  = gFactionDefBase[f][6];
 	}
-	r = DB_ExecuteQuery(gDB, "SELECT id, sx, sy, sz, sa, dx, dy, dz FROM factions");
+	r = DB_ExecuteQuery(gDB, "SELECT id, sx, sy, sz, sa, dx, dy, dz, dint, dworld FROM factions");
 	if (r != DBResult:0)
 	{
 		new rows = DB_GetRowCount(r);
@@ -542,6 +546,8 @@ stock Factions_Init()
 				Faction[f][fDutyX]  = DB_GetFieldFloat(r, 5);
 				Faction[f][fDutyY]  = DB_GetFieldFloat(r, 6);
 				Faction[f][fDutyZ]  = DB_GetFieldFloat(r, 7);
+				Faction[f][fDutyInt]   = DB_GetFieldInt(r, 8);
+				Faction[f][fDutyWorld] = DB_GetFieldInt(r, 9);
 			}
 			DB_SelectNextRow(r);
 		}
@@ -581,6 +587,8 @@ stock Factions_CreateTables()
 	DB_AddColumn("factions", "color", "INTEGER DEFAULT 0");
 	DB_AddColumn("factions", "bank", "INTEGER DEFAULT 0");
 	DB_AddColumn("factions", "store_rank", "INTEGER DEFAULT 2");
+	DB_AddColumn("factions", "dint", "INTEGER DEFAULT 0");
+	DB_AddColumn("factions", "dworld", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "fwarns", "INTEGER DEFAULT 0");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_ranks (faction INTEGER NOT NULL, rank INTEGER NOT NULL, name TEXT, skin INTEGER DEFAULT 0, salary INTEGER DEFAULT 0, PRIMARY KEY (faction, rank))"));
 
@@ -2067,9 +2075,9 @@ stock bool:Cmd_MakeLeader(playerid, const params[])
 stock Faction_SaveBase(f)
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB,
-		"UPDATE factions SET sx = %f, sy = %f, sz = %f, sa = %f, dx = %f, dy = %f, dz = %f WHERE id = %d",
+		"UPDATE factions SET sx = %f, sy = %f, sz = %f, sa = %f, dx = %f, dy = %f, dz = %f, dint = %d, dworld = %d WHERE id = %d",
 		Faction[f][fSpawnX], Faction[f][fSpawnY], Faction[f][fSpawnZ], Faction[f][fSpawnA],
-		Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ], f));
+		Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ], Faction[f][fDutyInt], Faction[f][fDutyWorld], f));
 }
 
 stock bool:Cmd_SetFSpawn(playerid, const params[])
@@ -2092,8 +2100,10 @@ stock bool:Cmd_SetFDuty(playerid, const params[])
 	new pos = 0, f;
 	if (!NextIntParam(params, pos, f) || !Faction_IsValid(f))
 		return SendClientMessage(playerid, COLOR_GREY, "»спользование: /setfduty [фракци€ 1-%d] Ч раздевалка там, где ты стоишь", MAX_FACTIONS - 1);
-	if (GetPlayerInterior(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "–аздевалку можно ставить только на улице.");
+	// раздевалка может быть внутри здани€ (например, в участке LSPD): запоминаем интерьер и мир
 	GetPlayerPos(playerid, Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ]);
+	Faction[f][fDutyInt] = GetPlayerInterior(playerid);
+	Faction[f][fDutyWorld] = GetPlayerVirtualWorld(playerid);
 	Faction_SaveBase(f);
 	Faction_CreateMarker(f);
 	SendClientMessage(playerid, COLOR_ADMIN, "–аздевалка фракции Ђ%sї перенесена сюда.", Faction_GetName(f));

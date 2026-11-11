@@ -62,6 +62,46 @@ public class MainActivity extends Activity {
         root.addView(content, new FrameLayout.LayoutParams(MATCH, MATCH));
         setContentView(root);
         showMain();
+        loadRemote();
+    }
+
+    /** Новости, список серверов и проверка версии из сети (Remote). Раз за запуск. */
+    private void loadRemote() {
+        new Thread(new Runnable() {
+            @Override public void run() {
+                final boolean changed = Remote.refresh(getApplicationContext());
+                final Remote.Update update = Remote.checkUpdate();
+                ui.post(new Runnable() {
+                    @Override public void run() {
+                        if (isFinishing()) return;
+                        // перерисовываем только спокойный главный экран: без окон поверх и не в настройках
+                        if (changed && "main".equals(content.getTag()) && root.getChildCount() <= 2) {
+                            saveNick();
+                            cfg.reload(MainActivity.this);
+                            showMain();
+                            updatePlayButton();
+                            refreshServers();
+                        }
+                        if (update != null) offerUpdate(update);
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void offerUpdate(final Remote.Update update) {
+        String text = "Вышла новая версия лаунчера (сборка " + update.versionCode + ", у тебя " + BuildConfig.VERSION_CODE + ").";
+        if (update.notes.length() > 0) text += "\n\n" + update.notes;
+        text += "\n\nСкачай APK и установи поверх: игра и настройки останутся.";
+        notice("Обновление", text, "Скачать", new Runnable() {
+            @Override public void run() {
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(update.url)));
+                } catch (Exception e) {
+                    notice("Обновление", "Не получилось открыть ссылку:\n" + update.url, null, null);
+                }
+            }
+        });
     }
 
     @Override protected void onResume() {

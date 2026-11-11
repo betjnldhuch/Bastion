@@ -13,8 +13,14 @@
 // хранится BACKUP_KEEP последних. Скачать копию через Worker НЕЛЬЗЯ ни с каким
 // ключом (в базе хеши паролей игроков): её забирают в панели Cloudflare.
 // BACKUP_KEY не вшивается в лаунчеры, он есть только на ПК с сервером.
+//
+// Папка launcher/ бакета открыта всем, без ключа: из неё лаунчеры берут новости
+// (news.txt), список серверов (servers.ini), номер свежей версии (version.ini)
+// и сами обновления (ZIP лаунчера, APK). Ничего секретного туда не клади.
 
 const ALLOWED = /^[A-Za-z0-9._-]+\.zip$/;
+const PUBLIC = /^launcher\/[A-Za-z0-9._-]+\.(txt|ini|zip|apk)$/;
+const PUBLIC_TYPES = { txt: "text/plain; charset=utf-8", ini: "text/plain; charset=utf-8", zip: "application/zip", apk: "application/vnd.android.package-archive" };
 const BACKUP_NAME = /^backups\/rp_backup_\d{4}-\d{2}-\d{2}\.db$/;
 const BACKUP_KEEP = 30;
 const BACKUP_MAX_BYTES = 95 * 1024 * 1024;
@@ -53,7 +59,8 @@ export default {
       return new Response("Method not allowed", { status: 405, headers: { Allow: "GET, HEAD, PUT" } });
     }
     const name = decodeURIComponent(new URL(request.url).pathname.slice(1));
-    if (!ALLOWED.test(name) || !env.DOWNLOAD_KEY || !sameKey(request.headers.get("X-Bastion-Key"), env.DOWNLOAD_KEY)) {
+    const open = PUBLIC.test(name);
+    if (!open && (!ALLOWED.test(name) || !env.DOWNLOAD_KEY || !sameKey(request.headers.get("X-Bastion-Key"), env.DOWNLOAD_KEY))) {
       return new Response("Not found", { status: 404 });
     }
 
@@ -66,8 +73,15 @@ export default {
     object.writeHttpMetadata(headers);
     headers.set("ETag", object.httpEtag);
     headers.set("Accept-Ranges", "bytes");
-    headers.set("Cache-Control", "private, no-store");
-    headers.set("Content-Disposition", `attachment; filename="${name}"`);
+    if (open) {
+      // новости и список серверов меняются редко, минуты кэша хватает
+      headers.set("Content-Type", PUBLIC_TYPES[name.split(".").pop()]);
+      headers.set("Cache-Control", "public, max-age=60");
+      headers.set("X-Content-Type-Options", "nosniff");
+    } else {
+      headers.set("Cache-Control", "private, no-store");
+      headers.set("Content-Disposition", `attachment; filename="${name}"`);
+    }
 
     if (request.method === "HEAD") {
       headers.set("Content-Length", String(object.size));

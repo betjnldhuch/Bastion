@@ -128,6 +128,7 @@ public OnGameModeInit()
 	Doors_Init();         // входы в здания (маркеры LSPD)
 	Econ_Init();          // казна, налоги, журнал денег
 	Debts_Init();         // счета долгов в accounts
+	Law_Init();           // решётка камеры LSPD (law.inc)
 	Families_Init();      // семьи игроков
 	Garage_Init();        // СТО, штрафстоянка, поля тюнинга в vehicles
 	Gps_Init();

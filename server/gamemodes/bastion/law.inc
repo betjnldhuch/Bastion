@@ -94,27 +94,94 @@ stock bool:Cmd_Mark(playerid, const params[])
 	return true;
 }
 
-// /celldoor — полицейский открывает (или закрывает) дверь участка для заключённых
+// Решётка камеры: объект, который отъезжает в сторону вдоль стены. Координаты — примерные, проверь в игре.
+#define CELL_GATE_X         (JAIL_X + 2.0)
+#define CELL_GATE_Y         (JAIL_Y)
+#define CELL_GATE_Z         (JAIL_Z)
+#define CELL_GATE_A         90.0
+#define CELL_GATE_MODEL     980
+#define CELL_GATE_SPEED     2.0
+#define CELL_SLIDE          3.0     // на сколько метров решётка отъезжает в сторону
+#define CELL_USE_RANGE      4.0     // полицейский у решётки ALT-ом или /celldoor
+
+static gCellObj = -1;               // объект решётки
+static gCellSerial = 0;             // номер открытия: старый таймер не закроет новое
+
+stock Law_Init()
+{
+	gCellObj = CreateObject(CELL_GATE_MODEL, CELL_GATE_X, CELL_GATE_Y, CELL_GATE_Z, 0.0, 0.0, CELL_GATE_A, 150.0);
+}
+
+stock bool:Law_NearCellGate(playerid, Float:range)
+{
+	return (GetPlayerInterior(playerid) == JAIL_INTERIOR)
+		&& IsPlayerInRangeOfPoint(playerid, range, CELL_GATE_X, CELL_GATE_Y, CELL_GATE_Z);
+}
+
+// Открыть или закрыть решётку (анимация движения самого объекта)
+static Law_SetCellGate(bool:open)
+{
+	if (gCellObj == -1) return;
+	if (open)
+	{
+		gCellSerial++;
+		gCellOpenUntil = gettime() + CELLDOOR_SECONDS;
+		MoveObject(gCellObj, CELL_GATE_X + CELL_SLIDE * floatcos(CELL_GATE_A, degrees), CELL_GATE_Y + CELL_SLIDE * floatsin(CELL_GATE_A, degrees), CELL_GATE_Z, CELL_GATE_SPEED);
+		SetTimerEx("OnCellGateClose", CELLDOOR_SECONDS * 1000, false, "i", gCellSerial);
+	}
+	else
+	{
+		gCellOpenUntil = 0;
+		MoveObject(gCellObj, CELL_GATE_X, CELL_GATE_Y, CELL_GATE_Z, CELL_GATE_SPEED);
+	}
+}
+
+forward OnCellGateClose(serial);
+public OnCellGateClose(serial)
+{
+	if (serial == gCellSerial && gCellOpenUntil > 0) Law_SetCellGate(false);
+	return 1;
+}
+
+// Полицейский на смене у решётки: жмёт ALT или вводит /celldoor — решётка открывается или закрывается
+static Law_ToggleCellGate(playerid)
+{
+	new msg[144];
+	new bool:opening = (gCellOpenUntil <= gettime());
+	Law_SetCellGate(opening);
+	ApplyAnimation(playerid, "BOMBER", "BOM_Plant_In", 4.1, false, false, false, false, 0, SYNC_ALL);
+	if (opening)
+	{
+		format(msg, sizeof msg, "%s поворачивает ключ и открывает решётку камеры.", GetRPName(playerid));
+		SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
+		format(msg, sizeof msg, "%s открыл решётку камеры для заключённых на %d сек.", GetRPName(playerid), CELLDOOR_SECONDS);
+		Faction_Log(FACTION_POLICE, msg);
+	}
+	else
+	{
+		format(msg, sizeof msg, "%s закрывает решётку камеры.", GetRPName(playerid));
+		SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
+	}
+	return opening;
+}
+
+// Из Doors_Try (doors.inc): ALT у двери участка рядом с решёткой. true — обработано.
+stock bool:Law_CellGateUse(playerid)
+{
+	if (Player[playerid][pFaction] != FACTION_POLICE || !Player[playerid][pDuty]) return false;
+	if (!Law_NearCellGate(playerid, CELL_USE_RANGE)) return false;
+	Law_ToggleCellGate(playerid);
+	return true;
+}
+
+// /celldoor — полицейский на смене открывает или закрывает решётку камеры
 stock bool:Cmd_CellDoor(playerid)
 {
 	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
-	if (GetPlayerInterior(playerid) != JAIL_INTERIOR || !IsPlayerInRangeOfPoint(playerid, 60.0, JAIL_X, JAIL_Y, JAIL_Z))
-		return SendClientMessage(playerid, COLOR_GREY, "Дверь открывается изнутри участка LSPD.");
-
-	new msg[144];
-	if (gCellOpenUntil > gettime())
-	{
-		gCellOpenUntil = 0;
-		format(msg, sizeof msg, "%s запирает дверь участка.", GetRPName(playerid));
-		SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
-		return true;
-	}
-	gCellOpenUntil = gettime() + CELLDOOR_SECONDS;
-	format(msg, sizeof msg, "%s отпирает дверь участка.", GetRPName(playerid));
-	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
-	SendClientMessage(playerid, COLOR_ORANGE, "Дверь открыта для заключённых на %d сек. Закрыть раньше: /celldoor. Запись ушла в журнал фракции.", CELLDOOR_SECONDS);
-	format(msg, sizeof msg, "%s открыл дверь участка для заключённых.", GetRPName(playerid));
-	Faction_Log(FACTION_POLICE, msg);
+	if (!Law_NearCellGate(playerid, 12.0))
+		return SendClientMessage(playerid, COLOR_GREY, "Подойди к решётке камеры в участке LSPD.");
+	Law_ToggleCellGate(playerid);
+	SendClientMessage(playerid, COLOR_ORANGE, "Решётка открыта на %d сек. Закрыть раньше: /celldoor или ALT у неё.", CELLDOOR_SECONDS);
 	return true;
 }
 
