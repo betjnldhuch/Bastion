@@ -11,12 +11,18 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Настройки лаунчера: сервера из assets/servers.ini + то, что игрок поменял сам. */
+/**
+ * Настройки лаунчера: сервера и новости (из сети, см. Remote; без сети — из assets)
+ * + то, что игрок поменял сам.
+ */
 public final class Config {
 
     public static final class Server {
         public String name, host, description;
         public int port;
+        // адрес из общего списка, до правок игрока в Настройках
+        public String defHost;
+        public int defPort;
         // результат опроса
         public volatile boolean online;
         public volatile boolean queried;
@@ -47,10 +53,38 @@ public final class Config {
         quality = prefs.getInt("quality", 1);
         chatLines = prefs.getInt("chatLines", 10);
         buttonSize = prefs.getInt("buttonSize", 1);
+        applyOverrides();
+    }
+
+    /** Общий список пришёл из сети заново: перечитать сервера и новости. */
+    public void reload(Context ctx) {
+        servers.clear();
+        news.clear();
+        loadServers(ctx);
+        loadNews(ctx);
+        applyOverrides();
+    }
+
+    /** Подпись общего списка: по ней видно, что адреса в нём поменялись. */
+    private String serversSignature() {
+        StringBuilder sb = new StringBuilder();
+        for (Server s : servers) sb.append(s.defHost).append(':').append(s.defPort).append('|');
+        return sb.toString();
+    }
+
+    /**
+     * Адреса, которые игрок вписал сам в Настройках. Они действуют, пока общий
+     * список тот же; если в нём поменяли адреса (переезд на хостинг) — правки
+     * игрока сбрасываются, иначе он остался бы на старом адресе.
+     */
+    private void applyOverrides() {
+        boolean same = serversSignature().equals(prefs.getString("serversSig", ""));
         for (int i = 0; i < servers.size(); i++) {
             Server s = servers.get(i);
-            s.host = prefs.getString("host" + i, s.host);
-            s.port = prefs.getInt("port" + i, s.port);
+            if (same) {
+                s.host = prefs.getString("host" + i, s.host);
+                s.port = prefs.getInt("port" + i, s.port);
+            }
         }
         if (selected < 0 || selected >= servers.size()) selected = 0;
     }
@@ -63,6 +97,7 @@ public final class Config {
         e.putInt("quality", quality);
         e.putInt("chatLines", chatLines);
         e.putInt("buttonSize", buttonSize);
+        e.putString("serversSig", serversSignature());
         for (int i = 0; i < servers.size(); i++) {
             e.putString("host" + i, servers.get(i).host);
             e.putInt("port" + i, servers.get(i).port);
@@ -74,6 +109,7 @@ public final class Config {
     public void resetServers(Context ctx) {
         SharedPreferences.Editor e = prefs.edit();
         for (int i = 0; i < servers.size(); i++) { e.remove("host" + i); e.remove("port" + i); }
+        e.remove("serversSig");
         e.apply();
         servers.clear();
         loadServers(ctx);
@@ -108,7 +144,25 @@ public final class Config {
     }
 
     private void loadServers(Context ctx) {
-        for (String line : readAsset(ctx, "servers.ini")) {
+        parseServers(readAsset(ctx, "servers.ini"));
+        // список из сети (последний скачанный) заменяет вшитый
+        List<String> remote = Remote.cached(ctx, "servers.ini");
+        if (remote != null) {
+            List<Server> local = new ArrayList<Server>(servers);
+            servers.clear();
+            parseServers(remote);
+            if (servers.isEmpty()) servers.addAll(local);
+        }
+        if (servers.isEmpty()) {
+            Server s = new Server();
+            s.name = "Bastion Peace"; s.host = "127.0.0.1"; s.port = 7777; s.description = "";
+            s.defHost = s.host; s.defPort = s.port;
+            servers.add(s);
+        }
+    }
+
+    private void parseServers(List<String> lines) {
+        for (String line : lines) {
             line = line.trim();
             if (line.length() == 0 || line.startsWith(";")) continue;
             int eq = line.indexOf('=');
@@ -125,18 +179,17 @@ public final class Config {
                 s.host = p[1].trim();
                 try { s.port = Integer.parseInt(p[2].trim()); } catch (NumberFormatException ex) { s.port = 7777; }
                 s.description = p.length > 3 ? p[3].trim() : "";
+                s.defHost = s.host;
+                s.defPort = s.port;
                 servers.add(s);
             }
-        }
-        if (servers.isEmpty()) {
-            Server s = new Server();
-            s.name = "Bastion Peace"; s.host = "127.0.0.1"; s.port = 7777; s.description = "";
-            servers.add(s);
         }
     }
 
     private void loadNews(Context ctx) {
-        for (String line : readAsset(ctx, "news.txt")) {
+        List<String> lines = Remote.cached(ctx, "news.txt");
+        if (lines == null) lines = readAsset(ctx, "news.txt");
+        for (String line : lines) {
             line = line.trim();
             if (line.length() == 0 || line.startsWith(";")) continue;
             String[] p = line.split("\\|", 3);

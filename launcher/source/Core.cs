@@ -21,7 +21,7 @@ using Microsoft.Win32;
 
 [assembly: System.Reflection.AssemblyTitle("Bastion Online Launcher")]
 [assembly: System.Reflection.AssemblyProduct("Bastion Online")]
-[assembly: System.Reflection.AssemblyVersion("2.0.0.0")]
+[assembly: System.Reflection.AssemblyVersion("2.1.0.0")]
 
 namespace BastionLauncher
 {
@@ -49,7 +49,14 @@ namespace BastionLauncher
         public string Site = "";
         public string NewsUrl = "";
         public string ServersUrl = "";
+        public string UpdateUrl = "";
         public string GameUrl = "";
+
+        // Новости, список серверов и версия: адрес из launcher.ini, иначе папка launcher/
+        // на сервере раздачи (Updater.cs). «-» в launcher.ini выключает.
+        public string EffectiveNewsUrl { get { return Remote.Pick(NewsUrl, "news.txt"); } }
+        public string EffectiveServersUrl { get { return Remote.Pick(ServersUrl, "servers.ini"); } }
+        public string EffectiveUpdateUrl { get { return Remote.Pick(UpdateUrl, "version.ini"); } }
         public string GameMd5 = "";
 
         // Архив игры: game_url из launcher.ini, иначе адрес, вшитый при сборке
@@ -89,6 +96,7 @@ namespace BastionLauncher
                 else if (key == "site") c.Site = val;
                 else if (key == "news_url") c.NewsUrl = val;
                 else if (key == "servers_url") c.ServersUrl = val;
+                else if (key == "update_url") c.UpdateUrl = val;
                 else if (key == "game_url") c.GameUrl = val;
                 else if (key == "game_md5") c.GameMd5 = val;
                 else if (key == "require_rp_name") c.RequireRpName = (val == "1" || val.ToLowerInvariant() == "true");
@@ -149,17 +157,12 @@ namespace BastionLauncher
         // нет и его — сервера из launcher.ini.
         void LoadRemoteServers()
         {
-            if (ServersUrl.Length == 0) return;
+            string url = EffectiveServersUrl;
+            if (url.Length == 0) return;
             string txt = null;
             try
             {
-                ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; // TLS 1.2
-                HttpWebRequest rq = (HttpWebRequest)WebRequest.Create(ServersUrl);
-                rq.Timeout = 4000;
-                rq.ReadWriteTimeout = 4000;
-                using (WebResponse rs = rq.GetResponse())
-                using (StreamReader sr = new StreamReader(rs.GetResponseStream(), Encoding.UTF8))
-                    txt = sr.ReadToEnd();
+                txt = Remote.FetchText(url, 4000);
                 if (ParseServers(txt).Count > 0)
                 {
                     try { File.WriteAllText(ServersCachePath, txt, new UTF8Encoding(true)); } catch (Exception) { }
@@ -192,13 +195,12 @@ namespace BastionLauncher
 "; Сайт или Discord (кнопка в лаунчере). Пусто = кнопки нет.\r\n" +
 "site =\r\n" +
 "\r\n" +
-"; Новости: берутся из news.txt рядом с лаунчером. Можно указать ссылку на txt в интернете.\r\n" +
+"; Новости, список серверов и обновления лаунчер берёт из сети сам (папка launcher/ на\r\n" +
+"; сервере раздачи игры). Если сети нет — из news.txt и строк server ниже.\r\n" +
+"; Сюда можно вписать свою ссылку, а знак - (минус) выключает загрузку из сети.\r\n" +
 "news_url =\r\n" +
-"\r\n" +
-"; Общий список серверов в интернете (тот же формат server = ...). Если задан и доступен,\r\n" +
-"; заменяет строки server ниже. Пусто = только строки ниже. Готовый адрес:\r\n" +
-"; https://raw.githubusercontent.com/the-gta-man/Bastion/main/launcher/remote/servers.ini\r\n" +
 "servers_url =\r\n" +
+"update_url =\r\n" +
 "\r\n" +
 "; Архив игры для кнопки УСТАНОВИТЬ (ZIP с gta_sa.exe и samp.exe) и его MD5.\r\n" +
 "; Пусто = архив Bastion, вшитый в лаунчер при сборке.\r\n" +

@@ -28,10 +28,6 @@
 #define DROP_MINUTES        10
 #define DROP_MODEL          1575    // маленький свёрток
 
-#define DIALOG_INVENTORY    1130
-#define DIALOG_INV_ACTION   1131
-#define DIALOG_INV_GIVE     1132
-#define DIALOG_INV_DROP     1133
 
 enum
 {
@@ -244,6 +240,14 @@ static Inv_Take(playerid, item, amount)
 	Inv_Save(playerid, item);
 }
 
+// Забрать одну вещь из сумки. false — такой вещи нет
+stock bool:Inv_TakeOne(playerid, item)
+{
+	if (item <= INV_NONE || item >= INV_TYPES || gInv[playerid][item] <= 0) return false;
+	Inv_Take(playerid, item, 1);
+	return true;
+}
+
 // ---------------------------------------------------------------------
 //  Одежда в сумке
 // ---------------------------------------------------------------------
@@ -332,10 +336,10 @@ stock bool:Inv_ShowList(playerid)
 	return true;
 }
 
-// Сумка: на ПК — окно с моделями вещей, на телефоне — список
+// Сумка: окно с моделями вещей (списком — /invlist)
 stock bool:Cmd_Inv(playerid)
 {
-	if (!IsPlayerMobile[playerid] && Inv_ShowUI(playerid)) return true;
+	if (Inv_ShowUI(playerid)) return true;
 	return Inv_ShowList(playerid);
 }
 
@@ -349,6 +353,7 @@ static Inv_SetMask(playerid, bool:on)
 	{
 		if (i != playerid && IsPlayerConnected(i)) ShowPlayerNameTagForPlayer(i, playerid, !on);
 	}
+	Faction_UpdateColor(playerid);      // точка на карте пропадает и возвращается вместе с ником (factions.inc)
 }
 
 // Из OnPlayerStreamIn: новый игрок рядом не должен видеть ник в маске
@@ -814,142 +819,334 @@ stock bool:Cmd_GiveItem(playerid, const params[])
 
 
 // ---------------------------------------------------------------------
-//  Сумка на экране (ПК): сетка с 3D-моделями вещей. Клик по вещи — меню
-//  «использовать / передать / выбросить», крестик или ESC — закрыть.
-//  Надписи на экране латиницей: стандартный шрифт GTA не знает кириллицу.
+//  Сумка на экране: сетка 6x3 с 3D-моделями вещей и пустыми ячейками,
+//  справа карточка выбранной вещи и кнопки USE / GIVE / DROP.
+//  Клик по ячейке — выбрать, кнопка — действие, крестик или ESC — закрыть.
+//  Надписи латиницей: стандартный шрифт текстдравов не знает кириллицу.
 // ---------------------------------------------------------------------
 #define INV_UI_CELLS        18
 #define INV_UI_COLS         6
 
+// Окно
+#define INV_UI_X            120.0
+#define INV_UI_Y            112.0
+#define INV_UI_R            520.0
+#define INV_UI_CELL         44.0
+#define INV_UI_STEP         47.0
+#define INV_UI_GRID_X       127.0
+#define INV_UI_GRID_Y       138.0
+#define INV_UI_INFO_X       414.0       // карточка вещи справа
+#define INV_UI_INFO_R       514.0
+
+#define INV_UI_COL_BG       0x0E1218E6
+#define INV_UI_COL_HEAD     0x1A212BFF
+#define INV_UI_COL_ACCENT   0xFFCC66FF
+#define INV_UI_COL_CELL     0x222A35FF
+#define INV_UI_COL_CELL_SEL 0x5A4A22FF
+#define INV_UI_COL_EMPTY    0x161C24FF
+#define INV_UI_COL_BTN      0x2E3846FF
+#define INV_UI_COL_BTN_OFF  0x1C222BFF
+#define INV_UI_COL_LABEL    0x9AA4B2FF
+
 // Модели вещей для окна (по INV_*)
 static const gInvModels[INV_TYPES] = { 0, 2703, 19346, 11738, 19921, 2702, 19570, 1544, 19896, 11747, 325, 1851, 19801 };
+static const gInvNamesEn[INV_TYPES][] = { "", "Burger", "Hot dog", "Medkit", "Repair kit", "Pizza", "Water", "Beer", "Cigarettes", "Bandage", "Flowers", "Dice", "Mask" };
+static const gInvHintsEn[INV_TYPES][] = { "", "+40% food", "+25% food", "+50 HP", "Repairs a car nearby", "+60% food", "+10% food, +5 HP", "+5 HP, makes you drunk", "Have a smoke", "+20 HP", "Bouquet in your hands", "Roll the dice (RP)", "Hides your nickname" };
+
+// Постоянные текстдравы окна
+enum
+{
+	IUI_BG,
+	IUI_HEAD,
+	IUI_ACCENT,
+	IUI_TITLE,
+	IUI_SLOTS,
+	IUI_FOOD,
+	IUI_CLOSE,
+	IUI_FOOTER,
+	IUI_INFO_BG,
+	IUI_PREVIEW,
+	IUI_NAME,
+	IUI_COUNT,
+	IUI_HINT,
+	IUI_BTN_USE,
+	IUI_BTN_GIVE,
+	IUI_BTN_DROP,
+	IUI_TD_COUNT
+}
 
 static bool:gInvUiOpen[MAX_PLAYERS];
-static PlayerText:gInvUiTD[MAX_PLAYERS][5];             // фон, заголовок, сытость, крестик, подсказка
-static PlayerText:gInvUiCell[MAX_PLAYERS][INV_UI_CELLS];
+static PlayerText:gInvUiTD[MAX_PLAYERS][IUI_TD_COUNT];
+static PlayerText:gInvUiCell[MAX_PLAYERS][INV_UI_CELLS];     // все 18 ячеек (пустые тоже)
 static PlayerText:gInvUiCount[MAX_PLAYERS][INV_UI_CELLS];
-static gInvUiItem[MAX_PLAYERS][INV_UI_CELLS];
-static gInvUiCells[MAX_PLAYERS];
+static gInvUiItem[MAX_PLAYERS][INV_UI_CELLS];                // INV_*, INV_NONE = канистра, INV_OUTFIT + слот
+static gInvUiModel[MAX_PLAYERS][INV_UI_CELLS];
+static gInvUiAmount[MAX_PLAYERS][INV_UI_CELLS];
+static gInvUiCells[MAX_PLAYERS];                             // сколько ячеек заняты
+static gInvUiSel[MAX_PLAYERS] = { -1, ... };
 
-// Открыть окно. 0 — сумка пуста (окно не открыто)
-stock Inv_ShowUI(playerid)
+static PlayerText:InvUi_Box(playerid, Float:x, Float:y, Float:x2, Float:lines, colour)
 {
-	Inv_CloseUI(playerid);
+	new PlayerText:td = CreatePlayerTextDraw(playerid, x, y, "_");
+	PlayerTextDrawLetterSize(playerid, td, 0.0, lines);
+	PlayerTextDrawTextSize(playerid, td, x2, 0.0);
+	PlayerTextDrawUseBox(playerid, td, true);
+	PlayerTextDrawBoxColour(playerid, td, colour);
+	PlayerTextDrawShow(playerid, td);
+	return td;
+}
 
-	new n = 0, models[INV_UI_CELLS], counts[INV_UI_CELLS];
+static PlayerText:InvUi_Text(playerid, Float:x, Float:y, const text[], TEXT_DRAW_FONT:font, Float:sx, Float:sy, colour, TEXT_DRAW_ALIGN:align = TEXT_DRAW_ALIGN_LEFT)
+{
+	new PlayerText:td = CreatePlayerTextDraw(playerid, x, y, text);
+	PlayerTextDrawFont(playerid, td, font);
+	PlayerTextDrawLetterSize(playerid, td, sx, sy);
+	PlayerTextDrawColour(playerid, td, colour);
+	PlayerTextDrawAlignment(playerid, td, align);
+	PlayerTextDrawSetOutline(playerid, td, 1);
+	PlayerTextDrawSetShadow(playerid, td, 0);
+	PlayerTextDrawBackgroundColour(playerid, td, 0x000000AA);
+	PlayerTextDrawSetProportional(playerid, td, true);
+	PlayerTextDrawShow(playerid, td);
+	return td;
+}
+
+// Кнопка: текст по центру на плашке, кликабельная
+static PlayerText:InvUi_Button(playerid, Float:cx, Float:y, const text[])
+{
+	new PlayerText:td = CreatePlayerTextDraw(playerid, cx, y, text);
+	PlayerTextDrawFont(playerid, td, TEXT_DRAW_FONT_2);
+	PlayerTextDrawLetterSize(playerid, td, 0.19, 0.95);
+	PlayerTextDrawAlignment(playerid, td, TEXT_DRAW_ALIGN_CENTER);
+	PlayerTextDrawColour(playerid, td, 0xFFFFFFFF);
+	PlayerTextDrawSetOutline(playerid, td, 0);
+	PlayerTextDrawSetShadow(playerid, td, 0);
+	PlayerTextDrawSetProportional(playerid, td, true);
+	PlayerTextDrawUseBox(playerid, td, true);
+	PlayerTextDrawBoxColour(playerid, td, INV_UI_COL_BTN);
+	PlayerTextDrawTextSize(playerid, td, 10.0, INV_UI_INFO_R - INV_UI_INFO_X - 12.0);   // по центру: высота, ширина
+	PlayerTextDrawSetSelectable(playerid, td, true);
+	PlayerTextDrawShow(playerid, td);
+	return td;
+}
+
+static InvUi_SetButton(playerid, idx, const text[], bool:enabled)
+{
+	new PlayerText:td = gInvUiTD[playerid][idx];
+	PlayerTextDrawSetString(playerid, td, text);
+	PlayerTextDrawBoxColour(playerid, td, enabled ? INV_UI_COL_BTN : INV_UI_COL_BTN_OFF);
+	PlayerTextDrawColour(playerid, td, enabled ? 0xFFFFFFFF : 0x5C6672FF);
+	PlayerTextDrawShow(playerid, td);
+}
+
+// Карточка справа: выбранная вещь или подсказка «выбери вещь»
+static InvUi_ShowInfo(playerid)
+{
+	new sel = gInvUiSel[playerid];
+	new buf[64];
+	if (sel < 0 || sel >= gInvUiCells[playerid])
+	{
+		PlayerTextDrawHide(playerid, gInvUiTD[playerid][IUI_PREVIEW]);
+		if (gInvUiCells[playerid] > 0)
+		{
+			PlayerTextDrawSetString(playerid, gInvUiTD[playerid][IUI_NAME], "Select an item");
+			PlayerTextDrawSetString(playerid, gInvUiTD[playerid][IUI_HINT], "Click a cell on the left");
+		}
+		else
+		{
+			PlayerTextDrawSetString(playerid, gInvUiTD[playerid][IUI_NAME], "Bag is empty");
+			PlayerTextDrawSetString(playerid, gInvUiTD[playerid][IUI_HINT], "Food and items: 24/7 shops");
+		}
+		PlayerTextDrawSetString(playerid, gInvUiTD[playerid][IUI_COUNT], "_");
+		InvUi_SetButton(playerid, IUI_BTN_USE, "USE", false);
+		InvUi_SetButton(playerid, IUI_BTN_GIVE, "GIVE", false);
+		InvUi_SetButton(playerid, IUI_BTN_DROP, "DROP", false);
+		return;
+	}
+
+	new item = gInvUiItem[playerid][sel];
+	PlayerTextDrawSetPreviewModel(playerid, gInvUiTD[playerid][IUI_PREVIEW], gInvUiModel[playerid][sel]);
+	if (item >= INV_OUTFIT) PlayerTextDrawSetPreviewRot(playerid, gInvUiTD[playerid][IUI_PREVIEW], 0.0, 0.0, 0.0, 1.0);
+	else PlayerTextDrawSetPreviewRot(playerid, gInvUiTD[playerid][IUI_PREVIEW], -15.0, 0.0, -30.0, 1.0);
+	PlayerTextDrawShow(playerid, gInvUiTD[playerid][IUI_PREVIEW]);
+
+	if (item >= INV_OUTFIT)
+	{
+		format(buf, sizeof buf, "Outfit #%d", gInvUiModel[playerid][sel]);
+		PlayerTextDrawSetString(playerid, gInvUiTD[playerid][IUI_NAME], buf);
+		PlayerTextDrawSetString(playerid, gInvUiTD[playerid][IUI_COUNT], "Clothes");
+		PlayerTextDrawSetString(playerid, gInvUiTD[playerid][IUI_HINT], "Change your skin");
+		InvUi_SetButton(playerid, IUI_BTN_USE, "WEAR", true);
+		InvUi_SetButton(playerid, IUI_BTN_GIVE, "GIVE", true);
+		InvUi_SetButton(playerid, IUI_BTN_DROP, "DROP", true);
+	}
+	else if (item == INV_NONE)
+	{
+		PlayerTextDrawSetString(playerid, gInvUiTD[playerid][IUI_NAME], "Fuel can");
+		format(buf, sizeof buf, "%d L", gInvUiAmount[playerid][sel]);
+		PlayerTextDrawSetString(playerid, gInvUiTD[playerid][IUI_COUNT], buf);
+		PlayerTextDrawSetString(playerid, gInvUiTD[playerid][IUI_HINT], "/canister near a car");
+		InvUi_SetButton(playerid, IUI_BTN_USE, "USE", false);
+		InvUi_SetButton(playerid, IUI_BTN_GIVE, "GIVE", false);
+		InvUi_SetButton(playerid, IUI_BTN_DROP, "DROP", false);
+	}
+	else
+	{
+		PlayerTextDrawSetString(playerid, gInvUiTD[playerid][IUI_NAME], gInvNamesEn[item]);
+		format(buf, sizeof buf, "%d / %d", gInv[playerid][item], gInvMax[item]);
+		PlayerTextDrawSetString(playerid, gInvUiTD[playerid][IUI_COUNT], buf);
+		PlayerTextDrawSetString(playerid, gInvUiTD[playerid][IUI_HINT], gInvHintsEn[item]);
+		if (item == INV_MASK && gMasked[playerid]) InvUi_SetButton(playerid, IUI_BTN_USE, "TAKE OFF", true);
+		else if (item == INV_MASK) InvUi_SetButton(playerid, IUI_BTN_USE, "PUT ON", true);
+		else if (item == INV_DICE) InvUi_SetButton(playerid, IUI_BTN_USE, "ROLL", true);
+		else InvUi_SetButton(playerid, IUI_BTN_USE, "USE", true);
+		InvUi_SetButton(playerid, IUI_BTN_GIVE, "GIVE", true);
+		InvUi_SetButton(playerid, IUI_BTN_DROP, "DROP", true);
+	}
+}
+
+static InvUi_HighlightCell(playerid, cell, bool:on)
+{
+	if (cell < 0 || cell >= gInvUiCells[playerid]) return;
+	PlayerTextDrawBackgroundColour(playerid, gInvUiCell[playerid][cell], on ? INV_UI_COL_CELL_SEL : INV_UI_COL_CELL);
+	PlayerTextDrawShow(playerid, gInvUiCell[playerid][cell]);
+	if (gInvUiCount[playerid][cell] != INVALID_PLAYER_TEXT_DRAW) PlayerTextDrawShow(playerid, gInvUiCount[playerid][cell]);
+}
+
+// Удалить текстдравы окна, не снимая курсор (для перерисовки)
+static InvUi_Destroy(playerid)
+{
+	for (new i = 0; i < IUI_TD_COUNT; i++) PlayerTextDrawDestroy(playerid, gInvUiTD[playerid][i]);
+	for (new i = 0; i < INV_UI_CELLS; i++)
+	{
+		PlayerTextDrawDestroy(playerid, gInvUiCell[playerid][i]);
+		if (gInvUiCount[playerid][i] != INVALID_PLAYER_TEXT_DRAW) PlayerTextDrawDestroy(playerid, gInvUiCount[playerid][i]);
+		gInvUiCount[playerid][i] = INVALID_PLAYER_TEXT_DRAW;
+	}
+	gInvUiCells[playerid] = 0;
+}
+
+// Открыть окно. keepItem — после действия оставить выбранной ту же вещь
+stock Inv_ShowUI(playerid, keepItem = -1)
+{
+	if (gInvUiOpen[playerid]) InvUi_Destroy(playerid);
+
+	new n = 0;
 	for (new item = 1; item < INV_TYPES && n < INV_UI_CELLS; item++)
 	{
 		if (gInv[playerid][item] <= 0) continue;
 		gInvUiItem[playerid][n] = item;
-		models[n] = gInvModels[item];
-		counts[n] = gInv[playerid][item];
+		gInvUiModel[playerid][n] = gInvModels[item];
+		gInvUiAmount[playerid][n] = gInv[playerid][item];
 		n++;
 	}
 	new canister = Fuel_GetCanister(playerid);
 	if (canister > 0 && n < INV_UI_CELLS)
 	{
 		gInvUiItem[playerid][n] = INV_NONE;
-		models[n] = 1650;
-		counts[n] = canister;
+		gInvUiModel[playerid][n] = 1650;
+		gInvUiAmount[playerid][n] = canister;
 		n++;
 	}
 	for (new i = 0; i < MAX_OUTFITS && n < INV_UI_CELLS; i++)
 	{
 		if (gOutfit[playerid][i] == -1) continue;
 		gInvUiItem[playerid][n] = INV_OUTFIT + i;
-		models[n] = gOutfit[playerid][i];
-		counts[n] = 0;
+		gInvUiModel[playerid][n] = gOutfit[playerid][i];
+		gInvUiAmount[playerid][n] = 0;
 		n++;
 	}
-	if (n == 0) return 0;
+	gInvUiCells[playerid] = n;
 
-	new PlayerText:td, buf[32];
+	gInvUiSel[playerid] = -1;
+	if (keepItem != -1)
+	{
+		for (new i = 0; i < n; i++) if (gInvUiItem[playerid][i] == keepItem) { gInvUiSel[playerid] = i; break; }
+	}
 
-	// Фон
-	td = CreatePlayerTextDraw(playerid, 165.0, 118.0, "_");
-	PlayerTextDrawLetterSize(playerid, td, 0.0, 22.6);
-	PlayerTextDrawTextSize(playerid, td, 475.0, 0.0);
-	PlayerTextDrawUseBox(playerid, td, true);
-	PlayerTextDrawBoxColour(playerid, td, 0x10141AE6);
-	PlayerTextDrawShow(playerid, td);
-	gInvUiTD[playerid][0] = td;
-
-	// Заголовок
-	td = CreatePlayerTextDraw(playerid, 172.0, 122.0, "INVENTORY");
-	PlayerTextDrawFont(playerid, td, TEXT_DRAW_FONT_2);
-	PlayerTextDrawLetterSize(playerid, td, 0.30, 1.3);
-	PlayerTextDrawColour(playerid, td, 0xFFCC66FF);
-	PlayerTextDrawSetShadow(playerid, td, 1);
-	PlayerTextDrawShow(playerid, td);
-	gInvUiTD[playerid][1] = td;
-
-	// Сытость
-	format(buf, sizeof buf, "FOOD ~y~%d/100", gHunger[playerid]);
-	td = CreatePlayerTextDraw(playerid, 448.0, 124.0, buf);
-	PlayerTextDrawFont(playerid, td, TEXT_DRAW_FONT_1);
-	PlayerTextDrawLetterSize(playerid, td, 0.22, 1.0);
-	PlayerTextDrawAlignment(playerid, td, TEXT_DRAW_ALIGN_RIGHT);
-	PlayerTextDrawColour(playerid, td, 0xFFFFFFFF);
-	PlayerTextDrawSetOutline(playerid, td, 1);
-	PlayerTextDrawShow(playerid, td);
-	gInvUiTD[playerid][2] = td;
+	new buf[48];
+	// Фон, шапка, полоска-акцент
+	gInvUiTD[playerid][IUI_BG]     = InvUi_Box(playerid, INV_UI_X, INV_UI_Y, INV_UI_R, 23.6, INV_UI_COL_BG);
+	gInvUiTD[playerid][IUI_HEAD]   = InvUi_Box(playerid, INV_UI_X, INV_UI_Y, INV_UI_R, 1.9, INV_UI_COL_HEAD);
+	gInvUiTD[playerid][IUI_ACCENT] = InvUi_Box(playerid, INV_UI_X, INV_UI_Y + 20.0, INV_UI_R, -0.3, INV_UI_COL_ACCENT);
+	gInvUiTD[playerid][IUI_TITLE]  = InvUi_Text(playerid, INV_UI_X + 7.0, INV_UI_Y + 3.0, "BAG", TEXT_DRAW_FONT_2, 0.30, 1.3, INV_UI_COL_ACCENT);
+	format(buf, sizeof buf, "%d / %d", n, INV_UI_CELLS);
+	gInvUiTD[playerid][IUI_SLOTS]  = InvUi_Text(playerid, INV_UI_X + 40.0, INV_UI_Y + 6.0, buf, TEXT_DRAW_FONT_1, 0.20, 0.9, INV_UI_COL_LABEL);
+	format(buf, sizeof buf, "FOOD ~%c~%d%%", gHunger[playerid] <= 20 ? 'r' : (gHunger[playerid] <= 50 ? 'y' : 'g'), gHunger[playerid]);
+	gInvUiTD[playerid][IUI_FOOD]   = InvUi_Text(playerid, INV_UI_R - 22.0, INV_UI_Y + 6.0, buf, TEXT_DRAW_FONT_2, 0.18, 0.85, 0xFFFFFFFF, TEXT_DRAW_ALIGN_RIGHT);
 
 	// Крестик
-	td = CreatePlayerTextDraw(playerid, 459.0, 121.0, "X");
-	PlayerTextDrawFont(playerid, td, TEXT_DRAW_FONT_1);
-	PlayerTextDrawLetterSize(playerid, td, 0.35, 1.3);
-	PlayerTextDrawTextSize(playerid, td, 471.0, 12.0);
-	PlayerTextDrawColour(playerid, td, 0xFF6347FF);
-	PlayerTextDrawSetOutline(playerid, td, 1);
+	new PlayerText:td = InvUi_Text(playerid, INV_UI_R - 13.0, INV_UI_Y + 3.0, "X", TEXT_DRAW_FONT_1, 0.35, 1.3, 0xFF6347FF);
+	PlayerTextDrawTextSize(playerid, td, INV_UI_R - 2.0, 14.0);
 	PlayerTextDrawSetSelectable(playerid, td, true);
 	PlayerTextDrawShow(playerid, td);
-	gInvUiTD[playerid][3] = td;
+	gInvUiTD[playerid][IUI_CLOSE] = td;
 
-	// Подсказка
-	td = CreatePlayerTextDraw(playerid, 320.0, 306.0, "Click an item: use, give or drop. ESC - close");
-	PlayerTextDrawFont(playerid, td, TEXT_DRAW_FONT_1);
-	PlayerTextDrawLetterSize(playerid, td, 0.18, 0.85);
-	PlayerTextDrawAlignment(playerid, td, TEXT_DRAW_ALIGN_CENTER);
-	PlayerTextDrawColour(playerid, td, 0xAAAAAAFF);
-	PlayerTextDrawSetOutline(playerid, td, 1);
-	PlayerTextDrawShow(playerid, td);
-	gInvUiTD[playerid][4] = td;
+	gInvUiTD[playerid][IUI_FOOTER] = InvUi_Text(playerid, (INV_UI_X + INV_UI_R) / 2.0, INV_UI_Y + 196.0,
+		"Click an item, then an action. ESC - close. List: /invlist", TEXT_DRAW_FONT_1, 0.17, 0.8, INV_UI_COL_LABEL, TEXT_DRAW_ALIGN_CENTER);
 
-	// Ячейки
-	for (new i = 0; i < n; i++)
+	// Ячейки: занятые — 3D-модель, пустые — тёмная плашка
+	for (new i = 0; i < INV_UI_CELLS; i++)
 	{
-		new Float:x = 172.0 + float(i % INV_UI_COLS) * 50.0;
-		new Float:y = 145.0 + float(i / INV_UI_COLS) * 53.0;
+		new Float:x = INV_UI_GRID_X + float(i % INV_UI_COLS) * INV_UI_STEP;
+		new Float:y = INV_UI_GRID_Y + float(i / INV_UI_COLS) * INV_UI_STEP;
+		gInvUiCount[playerid][i] = INVALID_PLAYER_TEXT_DRAW;
 		td = CreatePlayerTextDraw(playerid, x, y, "_");
 		PlayerTextDrawFont(playerid, td, TEXT_DRAW_FONT_MODEL_PREVIEW);
 		PlayerTextDrawUseBox(playerid, td, true);
 		PlayerTextDrawBoxColour(playerid, td, 0x00000000);
-		PlayerTextDrawBackgroundColour(playerid, td, 0x2A3340FF);
-		PlayerTextDrawTextSize(playerid, td, 45.0, 45.0);
-		PlayerTextDrawSetPreviewModel(playerid, td, models[i]);
-		if (gInvUiItem[playerid][i] >= INV_OUTFIT) PlayerTextDrawSetPreviewRot(playerid, td, 0.0, 0.0, 0.0, 1.0);
-		else PlayerTextDrawSetPreviewRot(playerid, td, -15.0, 0.0, -30.0, 1.0);
-		PlayerTextDrawSetSelectable(playerid, td, true);
+		PlayerTextDrawTextSize(playerid, td, INV_UI_CELL, INV_UI_CELL);
+		if (i < n)
+		{
+			PlayerTextDrawBackgroundColour(playerid, td, i == gInvUiSel[playerid] ? INV_UI_COL_CELL_SEL : INV_UI_COL_CELL);
+			PlayerTextDrawSetPreviewModel(playerid, td, gInvUiModel[playerid][i]);
+			if (gInvUiItem[playerid][i] >= INV_OUTFIT) PlayerTextDrawSetPreviewRot(playerid, td, 0.0, 0.0, 0.0, 1.0);
+			else PlayerTextDrawSetPreviewRot(playerid, td, -15.0, 0.0, -30.0, 1.0);
+			PlayerTextDrawSetSelectable(playerid, td, true);
+		}
+		else
+		{
+			// пустая ячейка: модель-пустышка на тёмном фоне
+			PlayerTextDrawBackgroundColour(playerid, td, INV_UI_COL_EMPTY);
+			PlayerTextDrawSetPreviewModel(playerid, td, 19300);
+		}
 		PlayerTextDrawShow(playerid, td);
 		gInvUiCell[playerid][i] = td;
 
-		gInvUiCount[playerid][i] = INVALID_PLAYER_TEXT_DRAW;
-		if (counts[i] > 0)
+		if (i < n && gInvUiAmount[playerid][i] > 0)
 		{
-			format(buf, sizeof buf, "x%d", counts[i]);
-			td = CreatePlayerTextDraw(playerid, x + 43.0, y + 33.0, buf);
-			PlayerTextDrawFont(playerid, td, TEXT_DRAW_FONT_1);
-			PlayerTextDrawLetterSize(playerid, td, 0.22, 0.95);
-			PlayerTextDrawAlignment(playerid, td, TEXT_DRAW_ALIGN_RIGHT);
-			PlayerTextDrawColour(playerid, td, 0xFFFFFFFF);
-			PlayerTextDrawSetOutline(playerid, td, 1);
-			PlayerTextDrawShow(playerid, td);
-			gInvUiCount[playerid][i] = td;
+			if (gInvUiItem[playerid][i] == INV_NONE) format(buf, sizeof buf, "%dL", gInvUiAmount[playerid][i]);
+			else format(buf, sizeof buf, "x%d", gInvUiAmount[playerid][i]);
+			gInvUiCount[playerid][i] = InvUi_Text(playerid, x + INV_UI_CELL - 2.0, y + INV_UI_CELL - 11.0, buf, TEXT_DRAW_FONT_1, 0.20, 0.9, 0xFFFFFFFF, TEXT_DRAW_ALIGN_RIGHT);
 		}
 	}
-	gInvUiCells[playerid] = n;
-	gInvUiOpen[playerid] = true;
-	SelectTextDraw(playerid, 0xFFCC66FF);
+
+	// Карточка вещи справа
+	new Float:cx = (INV_UI_INFO_X + INV_UI_INFO_R) / 2.0;
+	gInvUiTD[playerid][IUI_INFO_BG] = InvUi_Box(playerid, INV_UI_INFO_X, INV_UI_GRID_Y, INV_UI_INFO_R, 20.1, INV_UI_COL_HEAD);
+	td = CreatePlayerTextDraw(playerid, INV_UI_INFO_X + 15.0, INV_UI_GRID_Y + 2.0, "_");
+	PlayerTextDrawFont(playerid, td, TEXT_DRAW_FONT_MODEL_PREVIEW);
+	PlayerTextDrawUseBox(playerid, td, true);
+	PlayerTextDrawBoxColour(playerid, td, 0x00000000);
+	PlayerTextDrawBackgroundColour(playerid, td, 0x00000000);
+	PlayerTextDrawTextSize(playerid, td, 70.0, 64.0);
+	PlayerTextDrawSetPreviewModel(playerid, td, 19300);
+	gInvUiTD[playerid][IUI_PREVIEW] = td;
+	gInvUiTD[playerid][IUI_NAME]  = InvUi_Text(playerid, cx, INV_UI_GRID_Y + 70.0, "_", TEXT_DRAW_FONT_2, 0.20, 1.0, 0xFFFFFFFF, TEXT_DRAW_ALIGN_CENTER);
+	gInvUiTD[playerid][IUI_COUNT] = InvUi_Text(playerid, cx, INV_UI_GRID_Y + 82.0, "_", TEXT_DRAW_FONT_1, 0.20, 0.9, INV_UI_COL_ACCENT, TEXT_DRAW_ALIGN_CENTER);
+	gInvUiTD[playerid][IUI_HINT]  = InvUi_Text(playerid, cx, INV_UI_GRID_Y + 93.0, "_", TEXT_DRAW_FONT_1, 0.17, 0.8, INV_UI_COL_LABEL, TEXT_DRAW_ALIGN_CENTER);
+	PlayerTextDrawTextSize(playerid, gInvUiTD[playerid][IUI_HINT], 0.0, INV_UI_INFO_R - INV_UI_INFO_X - 6.0);    // перенос строк по ширине карточки
+	gInvUiTD[playerid][IUI_BTN_USE]  = InvUi_Button(playerid, cx, INV_UI_GRID_Y + 116.0, "USE");
+	gInvUiTD[playerid][IUI_BTN_GIVE] = InvUi_Button(playerid, cx, INV_UI_GRID_Y + 134.0, "GIVE");
+	gInvUiTD[playerid][IUI_BTN_DROP] = InvUi_Button(playerid, cx, INV_UI_GRID_Y + 152.0, "DROP");
+	InvUi_ShowInfo(playerid);
+
+	if (!gInvUiOpen[playerid])
+	{
+		gInvUiOpen[playerid] = true;
+		SelectTextDraw(playerid, INV_UI_COL_ACCENT);
+		printf("[inv-ui] id=%d cells=%d mobile=%d", playerid, n, IsPlayerMobile[playerid] ? 1 : 0);
+	}
 	return 1;
 }
 
@@ -957,13 +1154,7 @@ stock Inv_CloseUI(playerid)
 {
 	if (!gInvUiOpen[playerid]) return;
 	gInvUiOpen[playerid] = false;
-	for (new i = 0; i < sizeof (gInvUiTD[]); i++) PlayerTextDrawDestroy(playerid, gInvUiTD[playerid][i]);
-	for (new i = 0; i < gInvUiCells[playerid]; i++)
-	{
-		PlayerTextDrawDestroy(playerid, gInvUiCell[playerid][i]);
-		if (gInvUiCount[playerid][i] != INVALID_PLAYER_TEXT_DRAW) PlayerTextDrawDestroy(playerid, gInvUiCount[playerid][i]);
-	}
-	gInvUiCells[playerid] = 0;
+	InvUi_Destroy(playerid);
 	CancelSelectTextDraw(playerid);
 }
 
@@ -972,28 +1163,88 @@ stock Inv_UiReset(playerid)
 {
 	gInvUiOpen[playerid] = false;
 	gInvUiCells[playerid] = 0;
+	gInvUiSel[playerid] = -1;
+}
+
+// Кнопки карточки
+static InvUi_DoAction(playerid, action)
+{
+	new sel = gInvUiSel[playerid];
+	if (sel < 0 || sel >= gInvUiCells[playerid]) return;
+	new item = gInvUiItem[playerid][sel];
+
+	if (item == INV_NONE)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Канистру заливают командой /canister, стоя у машины.");
+		return;
+	}
+	if (item >= INV_OUTFIT)
+	{
+		new slot = item - INV_OUTFIT;
+		if (gOutfit[playerid][slot] == -1) return;
+		gInvSelected[playerid] = item;
+		switch (action)
+		{
+			case 0: { Outfit_Wear(playerid, slot); Inv_ShowUI(playerid); }
+			case 1:
+			{
+				Inv_CloseUI(playerid);
+				ShowPlayerDialog(playerid, DIALOG_INV_GIVE, DIALOG_STYLE_INPUT, "Передать одежду",
+					"{FFFFFF}Введи id игрока, которому передать одежду (скин %d).", "Передать", "Назад", gOutfit[playerid][slot]);
+			}
+			case 2: { Outfit_Drop(playerid, slot); Inv_ShowUI(playerid); }
+		}
+		return;
+	}
+	if (item <= INV_NONE || item >= INV_TYPES || gInv[playerid][item] <= 0) return;
+	gInvSelected[playerid] = item;
+	switch (action)
+	{
+		case 0: { Inv_Use(playerid, item); Inv_ShowUI(playerid, item); }
+		case 1:
+		{
+			Inv_CloseUI(playerid);
+			ShowPlayerDialog(playerid, DIALOG_INV_GIVE, DIALOG_STYLE_INPUT, "Передать",
+				"{FFFFFF}Кому передать: %s?\nВведи id игрока и, если нужно, количество (у тебя %d шт.).\nНапример: {FFFF00}5{FFFFFF} или {FFFF00}5 2", "Передать", "Назад", gInvNames[item], gInv[playerid][item]);
+		}
+		case 2:
+		{
+			if (gInv[playerid][item] == 1) { Inv_Drop(playerid, item, 1); Inv_ShowUI(playerid); }
+			else
+			{
+				Inv_CloseUI(playerid);
+				ShowPlayerDialog(playerid, DIALOG_INV_DROP, DIALOG_STYLE_INPUT, "Выбросить",
+					"{FFFFFF}Сколько выбросить: %s? (у тебя %d шт.)", "Выбросить", "Назад", gInvNames[item], gInv[playerid][item]);
+			}
+		}
+	}
 }
 
 // Из OnPlayerClickPlayerTextDraw
 stock Inv_OnClickPlayerTD(playerid, PlayerText:td)
 {
 	if (!gInvUiOpen[playerid]) return 0;
-	if (td == gInvUiTD[playerid][3])
+	if (td == gInvUiTD[playerid][IUI_CLOSE])
 	{
 		Inv_CloseUI(playerid);
 		return 1;
 	}
+	if (td == gInvUiTD[playerid][IUI_BTN_USE])  { InvUi_DoAction(playerid, 0); return 1; }
+	if (td == gInvUiTD[playerid][IUI_BTN_GIVE]) { InvUi_DoAction(playerid, 1); return 1; }
+	if (td == gInvUiTD[playerid][IUI_BTN_DROP]) { InvUi_DoAction(playerid, 2); return 1; }
 	for (new i = 0; i < gInvUiCells[playerid]; i++)
 	{
 		if (td != gInvUiCell[playerid][i]) continue;
-		new item = gInvUiItem[playerid][i];
-		Inv_CloseUI(playerid);
-		if (item >= INV_OUTFIT) Outfit_ShowActions(playerid, item - INV_OUTFIT);
-		else if (item == INV_NONE) SendClientMessage(playerid, COLOR_GREY, "Канистру заливают командой /canister, стоя у машины.");
-		else if (gInv[playerid][item] > 0) Inv_ShowActions(playerid, item);
+		if (gInvUiSel[playerid] != i)
+		{
+			InvUi_HighlightCell(playerid, gInvUiSel[playerid], false);
+			gInvUiSel[playerid] = i;
+			InvUi_HighlightCell(playerid, i, true);
+			InvUi_ShowInfo(playerid);
+		}
 		return 1;
 	}
-	return 0;
+	return 1;
 }
 
 // Из OnPlayerClickTextDraw: ESC во время выбора мышью

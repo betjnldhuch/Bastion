@@ -35,8 +35,6 @@ enum
 #define LIC_EXAM_MIN_HP      700.0
 #define LIC_MAX_ROUTE        30
 
-#define DIALOG_LIC_MENU     1110
-#define DIALOG_LIC_THEORY   1111
 
 static const gLicNames[LIC_COUNT][] = { "", "јвто", "ћото", "Ћодки", "ќружие" };
 static const gLicColumns[LIC_COUNT][] = { "", "lic_car", "lic_moto", "lic_boat", "lic_gun" };
@@ -105,8 +103,7 @@ stock Licenses_Init()
 
 	new Float:sx = LIC_SCHOOL_X, Float:sy = LIC_SCHOOL_Y, Float:sz = LIC_SCHOOL_Z;
 	gSchoolMk = Marker_Create(MK_SCHOOL, 0, "јвтошкола", 1239, sx, sy, sz, 0, 0, GPS_GOV);
-	Marker_SetLabel(gSchoolMk, "{33CCFF}јвтошкола
-{FFFFFF}ALT Ч сдать на права и лицензии");
+	Marker_SetLabel(gSchoolMk, "{33CCFF}јвтошкола\n{FFFFFF}ALT Ч сдать на права и лицензии");
 	SetTimer("Licenses_OnSecond", 1000, true);
 }
 

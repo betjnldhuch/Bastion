@@ -8,39 +8,10 @@
 //  3. —компилируй (F5) и перезапусти сервер.
 // =====================================================================
 
+// —правка: разделы со всеми командами (help.inc)
 stock bool:Cmd_Help(playerid)
 {
-	new text[2700];
-	strcat(text, "{FFFF00} нопки\n");
-	strcat(text, "{FFFFFF}ALT Ч действие р€дом (дом, банкомат, магазин, работа) или меню игрока перед тобой\n");
-	strcat(text, "Y Ч прин€ть / ответить на звонок, иначе сумка   N Ч отказатьс€   ¬ машине: 2 Ч двигатель, H Ч шлагбаум\n\n");
-	strcat(text, "{FFFF00}ќбщее\n");
-	strcat(text, "{FFFFFF}/stats Ч статистика   /time Ч врем€   /taxes Ч налоги и казна   /gps Ч навигатор   /pay Ч передать деньги   /fps Ч твой FPS\n/report Ч вопрос или жалоба администрации   /admins Ч админы онлайн\n");
-	strcat(text, "Y или /inv Ч сумка на экране (/invlist Ч списком), одежда: использовать, надеть, передать, выбросить (подн€ть: ALT или /pickup)   /hunger Ч сытость (поесть: бар или еда из 24/7)\n\n");
-	strcat(text, "{FFFF00}RP-чат\n");
-	strcat(text, "{FFFFFF}ѕросто пиши в чат Ч теб€ услышат игроки р€дом.\n");
-	strcat(text, "/me Ч действие   /do Ч описание   /try Ч попытка   /s Ч крик   /b Ч OOC   /pm Ч Ћ—\n\n");
-	strcat(text, "{FFFF00}–абота\n");
-	strcat(text, "{FFFFFF}/getjob Ч устроитьс€   /work Ч начать/закончить смену   /quitjob Ч уволитьс€\n");
-	strcat(text, "√рузчик и дальнобойщик Ч порт. ѕицца и механик Ч Idlewood. “акси и автобус Ч Unity Station.\n/taxi Ч вызвать такси   ћеханику: /repair /refill [id]   “аксисту: /gotaxi [id]\n\n");
-	strcat(text, "{FFFF00}“ранспорт\n");
-	strcat(text, "{FFFFFF}/engine Ч двигатель   /buycar Ч автосалон   /park Ч парковка   /lock Ч замок   /sellcar\n");
-	strcat(text, "ј«—: H в машине Ч заправка, ALT Ч канистра, /canister Ч залить, /fuel Ч бак, /speedo Ч спидометр\n");
-	strcat(text, "—“ќ: H за рулЄм (или /tune) Ч ремонт, покраска, нитро, диски   Ўтрафсто€нка у LSPD: ALT или /unimpound\n");
-	strcat(text, "јвтошкола у мэрии: /exam Ч права и лицензии, /licenses Ч мои, /showlic Ч показать\n\n");
-	strcat(text, "{FFFF00}ƒом\n");
-	strcat(text, "{FFFFFF}/buyhouse   /sellhouse   /enter   /exit   /lock   /house Ч меню (шкаф, сейф, счЄт) Ч или ALT внутри\n");
-	strcat(text, "/housepay Ч оплатить налог   /rent /unrent Ч сн€ть комнату   ¬ладельцу: /setrent /tenants /evict /evictall\n\n");
-	strcat(text, "{FFFF00}‘ракции\n");
-	strcat(text, "{FFFFFF}ѕолици€, больница, банды Grove / Ballas / Aztecas. ¬се команды фракций: /fhelp\n\n");
-	strcat(text, "{FFFF00}ƒеньги, телефон, бизнес\n");
-	strcat(text, "{FFFFFF}/bank Ч банкомат   /buy Ч купить в магазине   /call /sms /p /h /number /911 Ч телефон\n");
-	strcat(text, "/buybiz /sellbiz /bizinfo /bizcash Ч свой бизнес   /turfs /capture Ч районы банд\n\n");
-	strcat(text, "{FFFF00}јдминам\n");
-	strcat(text, "{FFFFFF}/ahelp Ч команды администрации по уровн€м   /amenu Ч панель (удобно с телефона)\n");
-	strcat(text, "/createhouse /createbiz /delbiz /addatm /delatm /addturf /setturf /delturf /addgate /delgate /addfuel /delfuel /setfuel /givelic /addexampoint /clearexam /givefood /giveitem /addgarage /delgarage /fpslist\n–азработка в игре: /pos /points /dev /mo Ч справка по маппингу   /markers Ч двигать маркеры и править GPS");
-	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "ѕомощь", "%s", "«акрыть", "", text);
-	return true;
+	return Help_Show(playerid);
 }
 
 stock bool:Cmd_Stats(playerid)
@@ -56,12 +27,12 @@ stock bool:Cmd_Stats(playerid)
 	else format(car, sizeof car, "модель %d", GetVehicleModel(gPlayerVeh[playerid]));
 
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "—татистика",
-		"{FFFFFF}»м€: {33CCFF}%s\n{FFFFFF}”ровень: %d (опыт %d/%d)\nƒеньги: $%d (в банке $%d)\n“елефон: %s\n–абота: %s\n‘ракци€: %s (%s)\n–озыск: %d зв.\n—ытость: %d%%\nƒом: %s\nћашина: %s\nјдминка: %d",
+		"{FFFFFF}»м€: {33CCFF}%s\n{FFFFFF}”ровень: %d (опыт %d/%d)\nƒеньги: $%d (в банке $%d)\n“елефон: %s\n–абота: %s\n‘ракци€: %s (%s)\n—емь€: %s\n–озыск: %d зв.\nƒолг штату: $%d\n—ытость: %d%%\nƒом: %s\nћашина: %s\nјдминка: %d",
 		"«акрыть", "",
 		GetRPName(playerid), Player[playerid][pLevel], Player[playerid][pExp], Player[playerid][pLevel] * EXP_PER_LEVEL,
 		GetMoney(playerid), Player[playerid][pBank], phone, Job_GetName(Player[playerid][pJob]),
 		Faction_GetName(Player[playerid][pFaction]), Faction_GetRankName(Player[playerid][pFaction], Player[playerid][pRank]),
-		Player[playerid][pWanted], Needs_GetHunger(playerid), house, car, Player[playerid][pAdmin]);
+		Family_GetPlayerText(playerid), Player[playerid][pWanted], Debts_Total(playerid), Needs_GetHunger(playerid), house, car, Player[playerid][pAdmin]);
 	return true;
 }
 
@@ -109,17 +80,43 @@ stock Commands_Pay(playerid, const params[])
 	Cmd_Pay(playerid, params);
 }
 
+//  оманды-действи€: раненый и задержанный в наручниках выполнить их не могут
+// (иначе из-под ареста уход€т через /enter у своего дома, а лЄжа торгуют и работают)
+static bool:Commands_IsAction(const cmd[])
+{
+	static const list[][12] =
+	{
+		"/enter", "/exit", "/lock", "/house", "/buyhouse", "/sellhouse", "/rent",
+		"/work", "/getjob", "/taxi", "/exam", "/duty", "/capture", "/rob",
+		"/buy", "/buycar", "/sellcar", "/park", "/engine", "/fill", "/canister",
+		"/tune", "/unimpound", "/bank", "/atm", "/pay", "/fbank", "/fstorage",
+		"/buybiz", "/sellbiz", "/bizcash", "/inv", "/i", "/invlist", "/pickup",
+		"/aid", "/carry"
+	};
+	for (new i = 0; i < sizeof (list); i++)
+	{
+		if (!strcmp(cmd, list[i], true)) return true;
+	}
+	return false;
+}
+
 // ---------------------------------------------------------------------
 //  √лавный разбор команд. ¬ызываетс€ из OnPlayerCommandText.
 //  ¬озвращает 1 Ч команда найдена, 0 Ч неизвестна€ команда.
 // ---------------------------------------------------------------------
-stock Commands_Process(playerid, const cmdtext[])
+stock Commands_Process(playerid, const input[])
 {
 	if (!Player[playerid][pLogged])
 	{
 		SendClientMessage(playerid, COLOR_GREY, "—начала войди в аккаунт.");
 		return 1;
 	}
+
+	//  опи€ строки: у игроков вырезаем цветовые коды {RRGGBB}, чтобы в /me, /do и т.п.
+	// нельз€ было подделать сообщение сервера или админа
+	new cmdtext[145];
+	strcat(cmdtext, input);
+	if (Player[playerid][pAdmin] < 1) StripColorCodes(cmdtext);
 
 	new cmd[32], pos = 0;
 	NextParam(cmdtext, pos, cmd);
@@ -128,11 +125,19 @@ stock Commands_Process(playerid, const cmdtext[])
 	// --- администраци€ (admin.inc): мут, /report, все админ-команды ---
 	if (Admin_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
 
+	if ((Player[playerid][pCuffed] || Wound_IsWounded(playerid)) && Commands_IsAction(cmd))
+	{
+		if (Player[playerid][pCuffed]) SendClientMessage(playerid, COLOR_GREY, "“ы в наручниках и не можешь этого сделать.");
+		else SendClientMessage(playerid, COLOR_GREY, "“ы ранен и не можешь этого сделать.");
+		return 1;
+	}
+
 	// --- общее ---
 	if (!strcmp(cmd, "/help", true))        { Cmd_Help(playerid); return 1; }
 	if (!strcmp(cmd, "/stats", true))       { Cmd_Stats(playerid); return 1; }
 	if (!strcmp(cmd, "/time", true))        { Cmd_Time(playerid); return 1; }
 	if (!strcmp(cmd, "/taxes", true))       { Cmd_Taxes(playerid); return 1; }
+	if (!strcmp(cmd, "/debts", true))       { Cmd_Debts(playerid); return 1; }
 	if (!strcmp(cmd, "/settax", true))      { Cmd_SetTax(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/moneylog", true))    { Cmd_MoneyLog(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/pay", true))         { Cmd_Pay(playerid, cmdtext[pos]); return 1; }
@@ -179,6 +184,7 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/fuel", true))        { Cmd_Fuel(playerid); return 1; }
 	if (!strcmp(cmd, "/canister", true))    { Cmd_Canister(playerid); return 1; }
 	if (!strcmp(cmd, "/speedo", true))      { Cmd_Speedo(playerid); return 1; }
+	if (!strcmp(cmd, "/hud", true))         { Cmd_Hud(playerid); return 1; }
 	if (!strcmp(cmd, "/exam", true))        { Cmd_Exam(playerid); return 1; }
 	if (!strcmp(cmd, "/licenses", true))    { Cmd_Licenses(playerid); return 1; }
 	if (!strcmp(cmd, "/showlic", true))     { Cmd_ShowLic(playerid, cmdtext[pos]); return 1; }
@@ -209,6 +215,11 @@ stock Commands_Process(playerid, const cmdtext[])
 
 	// --- фракции (factions.inc) ---
 	if (Factions_OnCommand(playerid, cmd, cmdtext[pos])) return 1;   // /lmenu /fbank /fstorage /fedit
+	if (Families_OnCommand(playerid, cmd, cmdtext[pos])) return 1;   // /fam... /fc (families.inc)
+	if (!strcmp(cmd, "/mark", true))        { Cmd_Mark(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/celldoor", true))    { Cmd_CellDoor(playerid); return 1; }
+	if (!strcmp(cmd, "/bribe", true))       { Cmd_Bribe(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/fine", true))        { Cmd_Fine(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fhelp", true))       { Cmd_FHelp(playerid); return 1; }
 	if (!strcmp(cmd, "/f", true))           { Cmd_FactionChat(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/members", true))     { Cmd_Members(playerid); return 1; }
@@ -227,10 +238,19 @@ stock Commands_Process(playerid, const cmdtext[])
 	if (!strcmp(cmd, "/putcar", true))      { Cmd_PutCar(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/arrest", true))      { Cmd_Arrest(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/heal", true))        { Cmd_Heal(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/revive", true))      { Cmd_Revive(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/wounds", true))      { Cmd_Wounds(playerid); return 1; }
+	if (!strcmp(cmd, "/aid", true))         { Cmd_Aid(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/dead", true))        { Cmd_Dead(playerid); return 1; }
+	if (!strcmp(cmd, "/drag", true))        { Cmd_Drag(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/carry", true))       { Cmd_Carry(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/setfaction", true))  { Cmd_SetFaction(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/makeleader", true))  { Cmd_MakeLeader(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/setfspawn", true))   { Cmd_SetFSpawn(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/setfduty", true))    { Cmd_SetFDuty(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/setfint", true))     { Cmd_SetFInt(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/delfint", true))     { Cmd_DelFInt(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/fintlock", true))    { Cmd_FIntLock(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/addfcar", true))     { Cmd_AddFCar(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delfcar", true))     { Cmd_DelFCar(playerid); return 1; }
 	if (!strcmp(cmd, "/jail", true))        { Cmd_Jail(playerid, cmdtext[pos]); return 1; }
@@ -266,12 +286,14 @@ stock Commands_Process(playerid, const cmdtext[])
 
 	// --- бизнесы (business.inc) ---
 	if (!strcmp(cmd, "/buy", true))         { Cmd_Buy(playerid); return 1; }
+	if (!strcmp(cmd, "/rob", true))         { Cmd_Rob(playerid); return 1; }
 	if (!strcmp(cmd, "/buybiz", true))      { Cmd_BuyBiz(playerid); return 1; }
 	if (!strcmp(cmd, "/sellbiz", true))     { Cmd_SellBiz(playerid); return 1; }
 	if (!strcmp(cmd, "/bizinfo", true))     { Cmd_BizInfo(playerid); return 1; }
 	if (!strcmp(cmd, "/bizcash", true))     { Cmd_BizCash(playerid); return 1; }
 	if (!strcmp(cmd, "/createbiz", true))   { Cmd_CreateBiz(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delbiz", true))      { Cmd_DelBiz(playerid); return 1; }
+	if (!strcmp(cmd, "/setbizint", true))   { Cmd_SetBizInt(playerid, cmdtext[pos]); return 1; }
 
 	// --- кнопки и шлагбаумы (keys.inc, gates.inc) ---
 	if (!strcmp(cmd, "/deny", true))        { Cmd_Deny(playerid); return 1; }

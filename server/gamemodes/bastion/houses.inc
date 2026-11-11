@@ -29,13 +29,6 @@
 #define HOUSE_WEAPON_SLOTS  5       // мест в шкафу
 #define HOUSE_SAFE_MAX      500000  // максимум денег в сейфе
 
-#define DIALOG_HOUSE_MENU       1140
-#define DIALOG_HOUSE_TAKEGUN    1141
-#define DIALOG_HOUSE_SAFE_IN    1142
-#define DIALOG_HOUSE_SAFE_OUT   1143
-#define DIALOG_HOUSE_PAY        1144
-#define DIALOG_HOUSE_WITHDRAW   1145
-#define DIALOG_HOUSE_RENT       1146
 
 enum E_HOUSE
 {
@@ -55,6 +48,7 @@ enum E_HOUSE
 new House[MAX_HOUSES][E_HOUSE];
 
 forward bool:Doors_Try(playerid);     // doors.inc подключён позже
+forward bool:Biz_TryDoor(playerid);   // business.inc: вход и выход из интерьера бизнеса
 new gHouseCount = 0;
 
 static gRentHouse[MAX_PLAYERS] = { -1, ... };          // какой дом снимает игрок (-1 = нет)
@@ -243,6 +237,14 @@ stock House_GetOwned(playerid)
 	return -1;
 }
 
+// Игрок на самом деле стоит внутри дома h. Отметка pHouseInside одна не годится: после больницы,
+// тюрьмы или телепорта админом она остаётся, и меню дома (сейф, шкаф) открывалось бы откуда угодно
+stock bool:House_IsInside(playerid, h)
+{
+	if (h == -1 || Player[playerid][pHouseInside] != h) return false;
+	return (GetPlayerVirtualWorld(playerid) == HOUSE_WORLD_OFFSET + h);
+}
+
 // Дом, который снимает игрок (-1 = нет)
 stock House_GetRented(playerid)
 {
@@ -398,6 +400,7 @@ stock Houses_PayDay()
 // ---------------------------------------------------------------------
 stock bool:Cmd_BuyHouse(playerid)
 {
+	if (Debts_BlockBuy(playerid)) return true;      // большой долг штату (debts.inc)
 	new h = House_GetNearby(playerid);
 	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет дома. Подойди к зелёному домику.");
 	if (House[h][hOwner] != 0) return SendClientMessage(playerid, COLOR_GREY, "Этот дом уже куплен.");
@@ -444,6 +447,7 @@ stock bool:Cmd_SellHouse(playerid)
 stock bool:Cmd_Enter(playerid)
 {
 	if (Doors_Try(playerid)) return true;     // здания с интерьером (doors.inc)
+	if (Biz_TryDoor(playerid)) return true;   // интерьер бизнеса
 	new h = House_GetNearby(playerid);
 	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет входа.");
 	if (House[h][hOwner] == 0) return SendClientMessage(playerid, COLOR_GREY, "Дом продаётся и закрыт. Купить: /buyhouse");
@@ -469,8 +473,14 @@ stock bool:Cmd_Enter(playerid)
 stock bool:Cmd_Exit(playerid)
 {
 	if (Doors_Try(playerid)) return true;     // здания с интерьером (doors.inc)
+	if (Biz_TryDoor(playerid)) return true;   // интерьер бизнеса
 	new h = Player[playerid][pHouseInside];
 	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Ты не в доме.");
+	if (!House_IsInside(playerid, h))
+	{
+		Player[playerid][pHouseInside] = -1;    // отметка осталась после телепорта или больницы
+		return SendClientMessage(playerid, COLOR_GREY, "Ты не в доме.");
+	}
 	if (!IsPlayerInRangeOfPoint(playerid, 3.0, House[h][hIX], House[h][hIY], House[h][hIZ]))
 		return SendClientMessage(playerid, COLOR_GREY, "Подойди к двери (туда, где ты появился).");
 
@@ -486,7 +496,7 @@ stock bool:Cmd_Lock(playerid)
 {
 	// Сначала пробуем дом, потом машину (vehicles.inc)
 	new h = House_GetOwned(playerid);
-	if (h != -1 && (House_GetNearby(playerid) == h || Player[playerid][pHouseInside] == h))
+	if (h != -1 && (House_GetNearby(playerid) == h || House_IsInside(playerid, h)))
 	{
 		House[h][hLocked] = !House[h][hLocked];
 		House_Save(h);
@@ -638,7 +648,7 @@ stock bool:Cmd_House(playerid)
 {
 	new h = House_GetOwned(playerid);
 	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
-	if (Player[playerid][pHouseInside] != h) return SendClientMessage(playerid, COLOR_GREY, "Меню дома открывается внутри твоего дома.");
+	if (!House_IsInside(playerid, h)) return SendClientMessage(playerid, COLOR_GREY, "Меню дома открывается внутри твоего дома.");
 
 	ShowPlayerDialog(playerid, DIALOG_HOUSE_MENU, DIALOG_STYLE_LIST, "Дом",
 		"Шкаф: положить оружие из рук\nШкаф: взять оружие\nСейф: положить деньги (сейчас $%d)\nСейф: взять деньги\nСчёт дома: пополнить (сейчас $%d, налог $%d/час)\nСчёт дома: снять деньги\nАренда: изменить цену (сейчас $%d/час)\nЖильцы",
@@ -650,7 +660,7 @@ stock bool:Cmd_House(playerid)
 stock House_TryMenu(playerid)
 {
 	new h = Player[playerid][pHouseInside];
-	if (h == -1 || House[h][hOwner] != Player[playerid][pDbId]) return 0;
+	if (!House_IsInside(playerid, h) || House[h][hOwner] != Player[playerid][pDbId]) return 0;
 	Cmd_House(playerid);
 	return 1;
 }
@@ -754,7 +764,7 @@ stock Houses_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
 	if (dialogid < DIALOG_HOUSE_MENU || dialogid > DIALOG_HOUSE_RENT) return 0;
 	new h = House_GetOwned(playerid);
-	if (h == -1 || Player[playerid][pHouseInside] != h) return 1;
+	if (!House_IsInside(playerid, h)) return 1;
 
 	if (dialogid == DIALOG_HOUSE_MENU)
 	{

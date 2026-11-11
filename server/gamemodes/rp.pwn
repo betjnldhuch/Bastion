@@ -26,6 +26,9 @@
 //    bastion/dev.inc       — разработка в игре: координаты /pos, маппинг /mo
 //    bastion/textures.inc  — перекраска объектов маппинга: текстуры, цвет, надписи /mt
 //    bastion/doors.inc     — входы в здания со стандартными интерьерами (LSPD)
+//    bastion/dialogs.inc   — номера всех окон
+//    bastion/anticheat.inc — античит: оружие, здоровье, скорость, деньги
+//    bastion/backup.inc    — резервные копии базы
 //    bastion/commands.inc  — список команд
 //
 //  Компиляция: открой этот файл в Qawno и нажми F5.
@@ -35,11 +38,18 @@
 
 #define MAX_PLAYERS 100          // слотов на сервере (должно совпадать с max_players в config.json или быть больше)
 
+// Память под локальные переменные (в ячейках по 4 байта). Стандартных 16 КБ мало: окна
+// /amenu, /reports, /moneylog и списки фракций собирают текст по 3-4 тысячи символов
+// и без этой строки обрываются с ошибкой "stack/heap collision".
+#pragma dynamic 65536
+
 #include <open.mp>
 
 #include "bastion/config.inc"
+#include "bastion/dialogs.inc"    // номера всех окон в одном месте
 #include "bastion/base.inc"
 #include "bastion/platform.inc"   // ПК или телефон: IsPlayerMobile[playerid]
+#include "bastion/anticheat.inc"  // античит; подменяет SetPlayerPos, GivePlayerWeapon и др., поэтому стоит до модулей
 #include "bastion/database.inc"
 #include "bastion/markers.inc"    // все маркеры (значки и надписи) в одном месте
 #include "bastion/accounts.inc"
@@ -52,20 +62,28 @@
 #include "bastion/chat.inc"
 #include "bastion/admin.inc"
 #include "bastion/admin_tools.inc"
+#include "bastion/backup.inc"      // копии базы раз в сутки, /backup
 #include "bastion/dev.inc"         // разработка в игре: /pos, /dev, маппинг /mo
 #include "bastion/textures.inc"    // перекраска объектов маппинга: /mt
 #include "bastion/doors.inc"       // входы в здания: LSPD
 #include "bastion/factions.inc"   // после admin.inc: использует Admin_Check
+#include "bastion/law.inc"        // метка задержания, дверь участка, взятка
 #include "bastion/turfs.inc"
 #include "bastion/bank.inc"
 #include "bastion/phone.inc"
 #include "bastion/business.inc"
 #include "bastion/garage.inc"
 #include "bastion/gps.inc"        // /markers — правка маркеров в игре, /gps
+#include "bastion/debts.inc"      // долги штату: налоги и штрафы отдельными счетами
 #include "bastion/economy.inc"
+#include "bastion/families.inc"   // семьи: организации игроков
+#include "bastion/wounded.inc"    // ранение вместо смерти, /revive, /aid
+#include "bastion/robbery.inc"    // /rob — ограбление магазинов
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
 #include "bastion/fps.inc"
+#include "bastion/hud.inc"        // свой HUD: панель статуса и спидометр
+#include "bastion/help.inc"       // /help: разделы со всеми командами
 #include "bastion/commands.inc"
 
 new gLastPayDayHour = -1;
@@ -109,9 +127,17 @@ public OnGameModeInit()
 	Dev_Init();           // свои объекты карты, убранные здания
 	Doors_Init();         // входы в здания (маркеры LSPD)
 	Econ_Init();          // казна, налоги, журнал денег
+	Debts_Init();         // счета долгов в accounts
+	Law_Init();           // решётка камеры LSPD (law.inc)
+	Families_Init();      // семьи игроков
 	Garage_Init();        // СТО, штрафстоянка, поля тюнинга в vehicles
 	Gps_Init();
+	Hud_Init();           // панель статуса и спидометр (hud.inc)
 	Fuel_Init();          // после всех машин: им выдаётся бензин
+	Wound_Init();
+	Robbery_Init();
+	AC_Init();            // античит (anticheat.inc)
+	Backup_Init();        // копия базы, если сегодняшней ещё нет
 
 	new hour;
 	gettime(hour);
@@ -139,7 +165,11 @@ public OnPlayerConnect(playerid)
 {
 	Fps_Reset(playerid);
 	Platform_OnConnect(playerid);
+	AC_OnConnect(playerid);
 	Admin_OnConnect(playerid);
+	Law_OnConnect(playerid);
+	Debts_OnConnect(playerid);
+	Families_OnConnect(playerid);
 	Dev_OnConnect(playerid);            // убранные здания GTA (dev.inc)
 	Tex_OnConnect(playerid);
 	Gps_OnConnect(playerid);            // значки на карте, сброс GPS
@@ -154,6 +184,7 @@ public OnPlayerConnect(playerid)
 
 public OnPlayerDisconnect(playerid, reason)
 {
+	Law_OnDisconnect(playerid, reason); // метка задержания: вышел из игры — деморган (law.inc)
 	Platform_OnDisconnect(playerid);
 	Admin_OnDisconnect(playerid);
 	Job_Stop(playerid);
@@ -165,7 +196,10 @@ public OnPlayerDisconnect(playerid, reason)
 	Fuel_OnDisconnect(playerid);
 	Inv_ResetMask(playerid);
 	Inv_UiReset(playerid);
+	Hud_OnDisconnect(playerid);
 	Gps_OnDisconnect(playerid);
+	Wound_Reset(playerid);
+	Rob_OnDisconnect(playerid);
 	Player[playerid][pLogged] = false;
 	return 1;
 }
@@ -174,6 +208,7 @@ public OnPlayerDisconnect(playerid, reason)
 public OnPlayerUpdate(playerid)
 {
 	Fps_OnUpdate(playerid);
+	AC_OnUpdate(playerid);              // античит: отметка «клиент на связи»
 	AdminTools_OnUpdate(playerid);      // античит: джетпак
 	return 1;
 }
@@ -236,6 +271,7 @@ public OnPlayerSpawn(playerid)
 		return 1;
 	}
 
+	AC_OnSpawn(playerid);               // античит: первым, до выдачи здоровья и оружия
 	SetPlayerSkin(playerid, Player[playerid][pSkin]);
 	SetPlayerInterior(playerid, 0);
 	SetPlayerVirtualWorld(playerid, 0);
@@ -256,17 +292,32 @@ public OnPlayerSpawn(playerid)
 	Factions_OnSpawn(playerid);         // цвет ника, розыск, тюрьма
 	Admin_OnSpawn(playerid);            // деморган, возврат после /spec
 	Turfs_ShowForPlayer(playerid);      // районы банд на радаре
+	Wound_OnSpawn(playerid);            // после смерти — лежит раненым на месте
+	Hud_OnSpawn(playerid);              // панель статуса (hud.inc)
+	return 1;
+}
+
+// Урон: при малом здоровье игрок падает раненым (wounded.inc)
+public OnPlayerTakeDamage(playerid, issuerid, Float:amount, WEAPON:weaponid, bodypart)
+{
+	new bool:was = Wound_IsWounded(playerid);
+	Wound_OnDamage(playerid, amount);
+	// Упал раненым от чужой пули — в войне за район это считается убийством (turfs.inc)
+	if (!was && Wound_IsWounded(playerid)) Turfs_OnDeath(playerid, issuerid);
 	return 1;
 }
 
 public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 {
+	AC_OnDeath(playerid);
 	Job_Stop(playerid);
 	Licenses_Abort(playerid);
 	Factions_OnDeath(playerid);
 	Phone_HangUp(playerid);
 	Inv_ResetMask(playerid);            // маска слетает (needs.inc)
-	Turfs_OnDeath(playerid, killerid);
+	if (!Wound_IsWounded(playerid)) Turfs_OnDeath(playerid, killerid);   // раненого засчитали, когда он упал
+
+	if (Wound_OnDeath(playerid)) return 1;  // появится раненым на месте (wounded.inc)
 
 	Player[playerid][pDied] = true;
 	SetSpawnInfo(playerid, NO_TEAM, Player[playerid][pSkin], HOSPITAL_X, HOSPITAL_Y, HOSPITAL_Z, 0.0);
@@ -280,6 +331,9 @@ public OnPlayerText(playerid, text[])
 {
 	if (!Player[playerid][pLogged]) return 0;
 	if (Admin_IsMuted(playerid)) return 0;
+	// Игроки не могут красить текст кодами {RRGGBB}: так подделывают системные сообщения
+	if (Player[playerid][pAdmin] < 1) StripColorCodes(text);
+	if (text[0] == '\0') return 0;
 	Chat_OnText(playerid, text);
 	return 0;   // 0 = не отправлять стандартный глобальный чат
 }
@@ -319,6 +373,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Tex_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Houses_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Garage_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Help_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Wound_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Markers_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Factions_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	return 0;
@@ -341,6 +397,7 @@ public OnPlayerEnterRaceCheckpoint(playerid)
 
 public OnPlayerStateChange(playerid, PLAYER_STATE:newstate, PLAYER_STATE:oldstate)
 {
+	AC_OnStateChange(playerid, newstate);
 	if (newstate == PLAYER_STATE_DRIVER)
 	{
 		if (!Factions_OnBecomeDriver(playerid)) Vehicles_OnBecomeDriver(playerid);
@@ -357,6 +414,7 @@ public OnPlayerStateChange(playerid, PLAYER_STATE:newstate, PLAYER_STATE:oldstat
 // Нажатия кнопок: ALT, Y, N, H, 2 (keys.inc)
 public OnPlayerKeyStateChange(playerid, KEY:newkeys, KEY:oldkeys)
 {
+	if (Admin_OnKey(playerid, _:newkeys, _:oldkeys)) return 1;   // слежка: ЛКМ/ПКМ — следующий/предыдущий (admin.inc)
 	Keys_OnKeyStateChange(playerid, _:newkeys, _:oldkeys);
 	return 1;
 }
@@ -377,6 +435,9 @@ public OnMinuteTimer()
 	new hour, minute;
 	gettime(hour, minute);
 	SetWorldTime(hour);
+	// Все записи этой минуты (автосохранение, PayDay, журналы) идут в базу одной пачкой:
+	// диск трогаем один раз, и сервер не подвисает, когда игроков много
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "BEGIN"));
 	Needs_OnMinute();       // голод
 	Factions_OnMinute();    // тюремные сроки
 	Admin_OnMinute();       // деморган и муты
@@ -394,6 +455,8 @@ public OnMinuteTimer()
 			if (IsPlayerConnected(i)) Account_Save(i);
 		}
 	}
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "COMMIT"));
+	Backup_Daily();         // копия базы раз в сутки (после COMMIT: внутри транзакции копию не снять)
 	return 1;
 }
 
@@ -425,6 +488,7 @@ stock PayDay()
 		}
 
 		Econ_PayDay(i, PAYDAY_SALARY + fpay);   // налоги (economy.inc)
+		Debts_PayDay(i);                        // напоминание о долгах, розыск должников (debts.inc)
 		Bank_PayDay(i);         // проценты по счёту и баланс (bank.inc)
 
 		if (Player[i][pExp] >= Player[i][pLevel] * EXP_PER_LEVEL)

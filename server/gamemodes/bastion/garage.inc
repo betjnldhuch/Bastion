@@ -29,10 +29,6 @@
 #define IMPOUND_FINE_MAX    5000
 #define IMPOUND_REWARD      100     // премия полицейскому за эвакуацию
 
-#define DIALOG_TUNE         1150
-#define DIALOG_TUNE_PAINT   1151
-#define DIALOG_TUNE_WHEELS  1152
-#define DIALOG_UNIMPOUND    1153
 
 enum E_GARAGE
 {
@@ -65,6 +61,9 @@ stock Garage_Init()
 	DB_AddColumn("vehicles", "hydra", "INTEGER DEFAULT 0");
 	DB_AddColumn("vehicles", "wheels", "INTEGER DEFAULT 0");
 	DB_AddColumn("vehicles", "impound", "INTEGER DEFAULT 0");
+	DB_AddColumn("vehicles", "imp_by", "TEXT DEFAULT ''");       // кто отправил на штрафстоянку
+	DB_AddColumn("vehicles", "imp_date", "INTEGER DEFAULT 0");   // когда
+	DB_AddColumn("vehicles", "imp_reason", "TEXT DEFAULT ''");   // за что
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS garages (id INTEGER PRIMARY KEY AUTOINCREMENT, type INTEGER, x REAL, y REAL, z REAL)"));
 
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT COUNT(*) FROM garages");
@@ -393,9 +392,10 @@ stock bool:Cmd_Impound(playerid, const params[])
 {
 	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
 	if (IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Выйди из машины и подойди к той, которую эвакуируешь.");
-	new pos = 0, fine;
+	new pos = 0, fine, reason[64];
 	if (!NextIntParam(params, pos, fine) || fine < IMPOUND_FINE_MIN || fine > IMPOUND_FINE_MAX)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /impound [штраф $%d-%d] (стоя у личной машины)", IMPOUND_FINE_MIN, IMPOUND_FINE_MAX);
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /impound [штраф $%d-%d] [причина] (стоя у личной машины)", IMPOUND_FINE_MIN, IMPOUND_FINE_MAX);
+	if (!RestParam(params, pos, reason)) strcat(reason, "не указана");
 
 	new owner = INVALID_PLAYER_ID;
 	new v = Garage_FindPersonalNear(playerid, owner);
@@ -408,7 +408,8 @@ stock bool:Cmd_Impound(playerid, const params[])
 		if (IsPlayerConnected(i) && GetPlayerVehicleID(i) == v) RemovePlayerFromVehicle(i);
 	}
 	Vehicles_UnloadForPlayer(owner);
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET impound = %d WHERE owner = %d", fine, Player[owner][pDbId]));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET impound = %d, imp_by = '%q', imp_date = %d, imp_reason = '%q' WHERE owner = %d",
+		fine, GetRPName(playerid), gettime(), reason, Player[owner][pDbId]));
 	gImpoundFine[owner] = fine;
 
 	GiveMoney(playerid, IMPOUND_REWARD, "премия за эвакуацию");
@@ -417,7 +418,7 @@ stock bool:Cmd_Impound(playerid, const params[])
 	new msg[144];
 	format(msg, sizeof msg, "%s вызывает эвакуатор.", GetRPName(playerid));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
-	SendClientMessage(owner, COLOR_RED, "Твою машину эвакуировал %s. Штраф $%d, забрать: штрафстоянка у LSPD (ALT).", GetRPName(playerid), fine);
+	SendClientMessage(owner, COLOR_RED, "Твою машину эвакуировал %s. Причина: %s. Штраф $%d, забрать: штрафстоянка у LSPD (ALT).", GetRPName(playerid), reason, fine);
 	SendClientMessage(playerid, COLOR_GREEN, "Машина %s отправлена на штрафстоянку. Премия $%d.", GetRPName(owner), IMPOUND_REWARD);
 	format(msg, sizeof msg, "[Диспетчер] %s эвакуировал машину %s (штраф $%d).", GetRPName(playerid), GetRPName(owner), fine);
 	Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
@@ -428,8 +429,26 @@ stock bool:Cmd_Unimpound(playerid)
 {
 	if (Garage_GetNearby(playerid, GARAGE_IMPOUND, 3.0) == -1) return SendClientMessage(playerid, COLOR_GREY, "Подойди к штрафстоянке.");
 	if (gImpoundFine[playerid] <= 0) return SendClientMessage(playerid, COLOR_GREY, "Твоей машины здесь нет.");
+	// кто, когда и за что отправил машину сюда
+	new by[MAX_PLAYER_NAME], when[24], reason[64];
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT IFNULL(imp_by, ''), strftime('%q', imp_date, 'unixepoch', 'localtime'), IFNULL(imp_reason, ''), IFNULL(imp_date, 0) FROM vehicles WHERE owner = %d",
+		"%d.%m.%Y %H:%M", Player[playerid][pDbId]);
+	if (r != DBResult:0)
+	{
+		if (DB_GetRowCount(r) > 0)
+		{
+			DB_GetFieldString(r, 0, by, sizeof by);
+			if (DB_GetFieldInt(r, 3) > 0) DB_GetFieldString(r, 1, when, sizeof when);
+			DB_GetFieldString(r, 2, reason, sizeof reason);
+		}
+		DB_FreeResultSet(r);
+	}
+	if (by[0] == '\0') strcat(by, "неизвестно");
+	if (when[0] == '\0') strcat(when, "неизвестно");
+	if (reason[0] == '\0') strcat(reason, "не указана");
 	ShowPlayerDialog(playerid, DIALOG_UNIMPOUND, DIALOG_STYLE_MSGBOX, "Штрафстоянка",
-		"{FFFFFF}Твоя машина на штрафстоянке.\nШтраф: {FFFF00}$%d\n\n{FFFFFF}Оплатить и забрать?", "Оплатить", "Отмена", gImpoundFine[playerid]);
+		"{FFFFFF}Твоя машина на штрафстоянке.\n\nОтправил: {FFFF00}%s\n{FFFFFF}Когда: {FFFF00}%s\n{FFFFFF}Причина: {FFFF00}%s\n{FFFFFF}Штраф: {FFFF00}$%d\n\n{FFFFFF}Оплатить и забрать?",
+		"Оплатить", "Отмена", by, when, reason, gImpoundFine[playerid]);
 	return true;
 }
 

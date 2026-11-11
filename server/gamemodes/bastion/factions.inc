@@ -17,6 +17,7 @@
 //
 //  Базы и машины фракций хранятся в базе данных. Если точка стоит
 //  криво — встань в нужное место и введи /setfspawn или /setfduty.
+//  Вход в здание фракции: /setfint на улице у двери и ещё раз внутри (раздел в конце файла).
 //  Машину фракции можно добавить так: /veh 596, сесть в неё и /addfcar 1
 //
 //  Основа фракций (всё хранится в базе rp.db):
@@ -45,32 +46,13 @@
 #define FACTION_BANK_MAX        100000000
 #define FACTION_MAX_WARNS       3       // столько выговоров — и игрок уволен
 #define FACTION_MAX_SALARY      20000   // максимальная зарплата ранга, которую может поставить лидер
+// Общак полиции и больницы пополняет штат (FACTION_STATE_BUDGET), это не личные деньги лидера:
+#define FACTION_STATE_MAX_SALARY 3000   // потолок зарплаты ранга в госструктуре
+#define FACTION_STATE_WITHDRAW  0       // может ли лидер госструктуры снимать общак наличными
 #define FACTION_LOG_SHOW        25      // сколько последних записей журнала показывать
 #define FACTION_LIST_MAX        40      // сколько членов фракции показывать в /lmenu
 
-// Окна (диалоги) фракций. Номера с 700, чтобы не пересекаться с config.inc.
-enum
-{
-	DIALOG_LMENU = 700,
-	DIALOG_FBANK,
-	DIALOG_FBANK_DEPOSIT,
-	DIALOG_FBANK_WITHDRAW,
-	DIALOG_FSTORE,
-	DIALOG_FSTORE_BUY,
-	DIALOG_FSTORE_BUY_QTY,
-	DIALOG_FSTORE_RANK,
-	DIALOG_LMEMBERS,
-	DIALOG_LMEMBER_ACT,
-	DIALOG_LMEMBER_RANK,
-	DIALOG_LMEMBER_WARN,
-	DIALOG_LRANKS,
-	DIALOG_LRANK_ACT,
-	DIALOG_LRANK_NAME,
-	DIALOG_LRANK_SALARY,
-	DIALOG_LRANK_SKIN,
-	DIALOG_LLOGS,
-	DIALOG_FACTION_LAST
-}
+// Окна (диалоги) фракций — в dialogs.inc
 
 // Снаряжение на складе фракции
 enum
@@ -103,7 +85,9 @@ static const gFItemPrice[MAX_FITEMS] = { 500, 300, 600, 800, 1200, 2000, 2500 };
 
 // Тюремная камера (в здании LSPD, интерьер 6)
 #define JAIL_X                  264.0
-#define JAIL_Y                  77.5
+#define JAIL_Y                  84.3    // середина между двумя камерами: от неё проверяется, на месте ли заключённый
+#define JAIL_CELL1_Y            86.6    // камера у входа
+#define JAIL_CELL2_Y            82.0    // камера в центре
 #define JAIL_Z                  1001.04
 #define JAIL_INTERIOR           6
 // Где выпускают из тюрьмы (у входа в LSPD)
@@ -117,7 +101,9 @@ enum
 	OFFER_NONE,
 	OFFER_INVITE,       // приглашение во фракцию
 	OFFER_HEAL,         // медик предлагает лечение
-	OFFER_HANDSHAKE     // пожать руку
+	OFFER_CARRY,        // понести раненого (wounded.inc)
+	OFFER_HANDSHAKE,    // пожать руку
+	OFFER_BRIBE         // взятка полицейскому от заключённого (law.inc)
 }
 
 // Значения по умолчанию. Потом их меняют лидер (/lmenu) и админ (/fedit) — они хранятся в базе.
@@ -141,23 +127,23 @@ static const gFactionDefColor[MAX_FACTIONS] =
 	0x00C8F0FF      // Aztecas — голубой
 };
 
-// Скин для каждого ранга (1..6)
+// Скин для каждого ранга (1..10)
 static const gFactionDefSkin[MAX_FACTIONS][MAX_RANK] =
 {
-	{ 0,   0,   0,   0,   0,   0   },
-	{ 280, 280, 281, 282, 288, 265 },   // полиция
-	{ 274, 274, 275, 275, 276, 70  },   // медики
-	{ 105, 106, 105, 106, 107, 270 },   // Grove
-	{ 102, 103, 102, 104, 103, 104 },   // Ballas
-	{ 114, 115, 114, 116, 115, 116 }    // Aztecas
+	{ 0,   0,   0,   0,   0,   0,   0,   0,   0,   0   },
+	{ 280, 280, 281, 282, 282, 283, 283, 288, 288, 265 },   // полиция
+	{ 274, 274, 275, 275, 275, 276, 276, 276, 276, 70  },   // медики
+	{ 105, 106, 105, 106, 105, 106, 107, 107, 107, 270 },   // Grove
+	{ 102, 103, 102, 104, 102, 103, 104, 103, 103, 104 },   // Ballas
+	{ 114, 115, 114, 116, 114, 115, 116, 115, 115, 116 }    // Aztecas
 };
 
 // Названия рангов: 0 — полиция, 1 — медики, 2 — банды
 static const gDefRankNames[3][MAX_RANK][24] =
 {
-	{ "Кадет", "Офицер", "Сержант", "Лейтенант", "Капитан", "Шеф полиции" },
-	{ "Интерн", "Фельдшер", "Врач", "Хирург", "Зам. главврача", "Главврач" },
-	{ "Новичок", "Боец", "Бывалый", "Старший", "Правая рука", "Лидер" }
+	{ "Кадет", "Офицер", "Сержант", "Лейтенант", "Ст. лейтенант", "Капитан", "Майор", "Подполковник", "Зам. шефа", "Шеф полиции" },
+	{ "Интерн", "Фельдшер", "Врач", "Хирург", "Ст. хирург", "Зав. отделением", "Нач. смены", "Консультант", "Зам. главврача", "Главврач" },
+	{ "Новичок", "Боец", "Бывалый", "Старший", "Смотрящий", "Авторитет", "Советник", "Капитан", "Правая рука", "Лидер" }
 };
 
 // Базы по умолчанию: спавн (x, y, z, угол) и раздевалка /duty (x, y, z).
@@ -203,9 +189,13 @@ enum E_FACTION
 	Float:fSpawnY,
 	Float:fSpawnZ,
 	Float:fSpawnA,
+	fSpawnInt,          // интерьер спавна (0 — улица)
+	fSpawnWorld,        // мир спавна
 	Float:fDutyX,
 	Float:fDutyY,
 	Float:fDutyZ,
+	fDutyInt,           // интерьер раздевалки (0 — улица)
+	fDutyWorld,         // мир раздевалки
 	fMk,                // маркер раздевалки (markers.inc)
 	bool:fMarker,       // значок раздевалки уже создан
 	fName[32],          // название (из базы)
@@ -277,6 +267,13 @@ stock bool:Faction_IsState(f)
 	return (f == FACTION_POLICE || f == FACTION_EMS);
 }
 
+// Потолок зарплаты ранга (у госструктур ниже: их общак — бюджет штата)
+stock Faction_MaxSalary(f)
+{
+	if (Faction_IsState(f)) return FACTION_STATE_MAX_SALARY;
+	return FACTION_MAX_SALARY;
+}
+
 // Найти игрока онлайн по номеру аккаунта. INVALID_PLAYER_ID — не в сети.
 stock Faction_FindOnline(dbid)
 {
@@ -293,7 +290,7 @@ stock bool:Faction_AtBase(playerid)
 {
 	new f = Player[playerid][pFaction];
 	if (!Faction_IsValid(f)) return false;
-	if (GetPlayerVirtualWorld(playerid) != 0 || GetPlayerInterior(playerid) != 0) return false;
+	if (GetPlayerVirtualWorld(playerid) != Faction[f][fDutyWorld] || GetPlayerInterior(playerid) != Faction[f][fDutyInt]) return false;
 	return IsPlayerInRangeOfPoint(playerid, FACTION_BASE_RANGE, Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ]);
 }
 
@@ -413,14 +410,14 @@ stock Faction_Message(f, colour, const message[])
 	}
 }
 
-// Цвет ника: полиция и медики — только на смене, банды — всегда
+// Цвет ника и точки на карте: полиция и медики — только на смене, банды — всегда
 stock Faction_UpdateColor(playerid)
 {
 	new f = Player[playerid][pFaction];
-	if (Faction_IsGang(f) || (Faction_IsValid(f) && Player[playerid][pDuty]))
-		SetPlayerColor(playerid, Faction_GetColor(f));
-	else
-		SetPlayerColor(playerid, COLOR_CIVIL);
+	new color = COLOR_CIVIL;
+	if (Faction_IsGang(f) || (Faction_IsValid(f) && Player[playerid][pDuty])) color = Faction_GetColor(f);
+	if (Inv_IsMasked(playerid)) color &= 0xFFFFFF00;    // в маске: точки на карте нет ни у кого (needs.inc)
+	SetPlayerColor(playerid, color);
 }
 
 // Снять форму и оружие
@@ -463,12 +460,14 @@ stock Faction_CreateMarker(f)
 	format(text, sizeof text, "%s\n{FFFFFF}ALT — переодеться и взять снаряжение", Faction_GetName(f));
 	if (Faction[f][fMarker])
 	{
-		Marker_SetPos(Faction[f][fMk], Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ]);
+		// переехала в другое место или здание: значок пересоздаём, старый забываем
+		Marker_Destroy(Faction[f][fMk], true);
+		Faction[f][fMarker] = false;
 	}
-	else
+	if (!Faction[f][fMarker])
 	{
 		Faction[f][fMk] = Marker_Create(MK_FACTION, f, Faction_GetName(f), 1275,
-			Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ], 0, 0, GPS_FACTIONS);
+			Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ], Faction[f][fDutyWorld], Faction[f][fDutyInt], GPS_FACTIONS);
 		Faction[f][fMarker] = true;
 	}
 	Marker_SetLabel(Faction[f][fMk], text, Faction_GetColor(f));
@@ -536,7 +535,7 @@ stock Factions_Init()
 		Faction[f][fDutyY]  = gFactionDefBase[f][5];
 		Faction[f][fDutyZ]  = gFactionDefBase[f][6];
 	}
-	r = DB_ExecuteQuery(gDB, "SELECT id, sx, sy, sz, sa, dx, dy, dz FROM factions");
+	r = DB_ExecuteQuery(gDB, "SELECT id, sx, sy, sz, sa, dx, dy, dz, dint, dworld, sint, sworld FROM factions");
 	if (r != DBResult:0)
 	{
 		new rows = DB_GetRowCount(r);
@@ -552,6 +551,10 @@ stock Factions_Init()
 				Faction[f][fDutyX]  = DB_GetFieldFloat(r, 5);
 				Faction[f][fDutyY]  = DB_GetFieldFloat(r, 6);
 				Faction[f][fDutyZ]  = DB_GetFieldFloat(r, 7);
+				Faction[f][fDutyInt]   = DB_GetFieldInt(r, 8);
+				Faction[f][fDutyWorld] = DB_GetFieldInt(r, 9);
+				Faction[f][fSpawnInt]   = DB_GetFieldInt(r, 10);
+				Faction[f][fSpawnWorld] = DB_GetFieldInt(r, 11);
 			}
 			DB_SelectNextRow(r);
 		}
@@ -591,8 +594,29 @@ stock Factions_CreateTables()
 	DB_AddColumn("factions", "color", "INTEGER DEFAULT 0");
 	DB_AddColumn("factions", "bank", "INTEGER DEFAULT 0");
 	DB_AddColumn("factions", "store_rank", "INTEGER DEFAULT 2");
+	DB_AddColumn("factions", "dint", "INTEGER DEFAULT 0");
+	DB_AddColumn("factions", "dworld", "INTEGER DEFAULT 0");
+	DB_AddColumn("factions", "sint", "INTEGER DEFAULT 0");
+	DB_AddColumn("factions", "sworld", "INTEGER DEFAULT 0");
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_doors (faction INTEGER PRIMARY KEY, has_out INTEGER DEFAULT 0, ox REAL DEFAULT 0, oy REAL DEFAULT 0, oz REAL DEFAULT 0, oa REAL DEFAULT 0, oint INTEGER DEFAULT 0, oworld INTEGER DEFAULT 0, has_in INTEGER DEFAULT 0, ix REAL DEFAULT 0, iy REAL DEFAULT 0, iz REAL DEFAULT 0, ia REAL DEFAULT 0, iint INTEGER DEFAULT 0, iworld INTEGER DEFAULT 0, closed INTEGER DEFAULT 0)"));
 	DB_AddColumn("accounts", "fwarns", "INTEGER DEFAULT 0");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_ranks (faction INTEGER NOT NULL, rank INTEGER NOT NULL, name TEXT, skin INTEGER DEFAULT 0, salary INTEGER DEFAULT 0, PRIMARY KEY (faction, rank))"));
+
+	// Переход с 6 рангов на 10 (один раз, версия базы 2): лидер 6 -> 10, заместитель 5 -> 9.
+	// Названия, скины и зарплаты этих рангов переезжают вместе с ними, ранги 5-8 создаются новые.
+	if (DB_GetVersion() < 2)
+	{
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET frank = 10 WHERE frank = 6"));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET frank = 9 WHERE frank = 5"));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE faction_ranks SET rank = 10 WHERE rank = 6"));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE faction_ranks SET rank = 9 WHERE rank = 5"));
+		// чтобы новые ранги 5-8 не получали больше старших
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE faction_ranks SET salary = salary + %d WHERE rank >= 9 AND salary > 0", 4 * FACTION_SALARY_RANK));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE faction_ranks SET name = 'Зам. шефа' WHERE faction = %d AND rank = 9 AND name = 'Капитан'", FACTION_POLICE));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE factions SET store_rank = store_rank + 4 WHERE store_rank >= 5"));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "PRAGMA user_version = 2"));
+		print("[Factions] Ranks migrated: 6 -> 10");
+	}
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_storage (faction INTEGER NOT NULL, item INTEGER NOT NULL, amount INTEGER DEFAULT 0, PRIMARY KEY (faction, item))"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, faction INTEGER NOT NULL, date INTEGER DEFAULT 0, text TEXT)"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE INDEX IF NOT EXISTS faction_logs_f ON faction_logs (faction, id)"));
@@ -701,6 +725,7 @@ stock Factions_LoadData()
 
 	// Значки раздевалок создавались до загрузки названий — пересоздаём с новыми
 	for (new f = 1; f < MAX_FACTIONS; f++) Faction_CreateMarker(f);
+	FDoors_Load();      // входы в здания фракций (/setfint)
 	print("[Factions] Loaded names, ranks, banks and storage.");
 }
 
@@ -741,7 +766,9 @@ stock Jail_PutInCell(playerid)
 {
 	SetPlayerInterior(playerid, JAIL_INTERIOR);
 	SetPlayerVirtualWorld(playerid, 0);
-	SetPlayerPos(playerid, JAIL_X, JAIL_Y, JAIL_Z);
+	// две камеры с решётками (law.inc): заключённых делим между ними
+	if (playerid % 2 == 0) SetPlayerPos(playerid, JAIL_X, JAIL_CELL1_Y, JAIL_Z);
+	else SetPlayerPos(playerid, JAIL_X, JAIL_CELL2_Y, JAIL_Z);
 	ResetPlayerWeapons(playerid);
 	Player[playerid][pHouseInside] = -1;
 }
@@ -763,6 +790,15 @@ stock Factions_OnSpawn(playerid)
 	Faction_Uncuff(playerid);
 	Faction_UpdateColor(playerid);
 	SetPlayerWantedLevel(playerid, Player[playerid][pWanted]);
+
+	// Спавн фракции может стоять внутри здания (/setfspawn): OnPlayerSpawn уже вернул игрока на улицу
+	new f = Player[playerid][pFaction];
+	if (Faction_IsValid(f) && (Faction[f][fSpawnInt] != 0 || Faction[f][fSpawnWorld] != 0)
+		&& IsPlayerInRangeOfPoint(playerid, 3.0, Faction[f][fSpawnX], Faction[f][fSpawnY], Faction[f][fSpawnZ]))
+	{
+		SetPlayerInterior(playerid, Faction[f][fSpawnInt]);
+		SetPlayerVirtualWorld(playerid, Faction[f][fSpawnWorld]);
+	}
 
 	if (Player[playerid][pJail] > 0)
 	{
@@ -816,8 +852,8 @@ stock Factions_OnMinute()
 			Jail_Release(i);
 			continue;
 		}
-		// Сбежал из камеры — возвращаем
-		if (GetPlayerInterior(i) != JAIL_INTERIOR || !IsPlayerInRangeOfPoint(i, 15.0, JAIL_X, JAIL_Y, JAIL_Z))
+		// Ушёл от камеры — возвращаем (кроме случая, когда дверь открыл полицейский или взята взятка, law.inc)
+		if (!Law_MayLeaveCell(i) && (GetPlayerInterior(i) != JAIL_INTERIOR || !IsPlayerInRangeOfPoint(i, 15.0, JAIL_X, JAIL_Y, JAIL_Z)))
 		{
 			Jail_PutInCell(i);
 		}
@@ -834,6 +870,7 @@ stock Factions_GetSalary(playerid)
 	new rank = Player[playerid][pRank];
 	if (!Faction_IsValid(f) || rank < 1 || rank > MAX_RANK) return 0;
 	new salary = gRankSalary[f][rank - 1];
+	if (salary > Faction_MaxSalary(f)) salary = Faction_MaxSalary(f);   // ставка, сохранённая до появления потолка
 	if (salary <= 0) return 0;
 	if (!Faction_AddBank(f, -salary))
 	{
@@ -1045,6 +1082,8 @@ stock bool:Cmd_Accept(playerid)
 			SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 			SendClientMessage(from, COLOR_GREEN, "Ты вылечил пациента. +$%d.", price);
 		}
+		case OFFER_CARRY: Wound_AcceptCarry(playerid, from);
+		case OFFER_BRIBE: Law_AcceptBribe(playerid, from, Player[playerid][pOfferValue]);
 		case OFFER_HANDSHAKE:
 		{
 			if (!IsPlayerNearPlayer(playerid, from, 2.5)) return SendClientMessage(playerid, COLOR_GREY, "Человек отошёл.");
@@ -1263,6 +1302,7 @@ stock bool:Cmd_Arrest(playerid, const params[])
 	new minutes = stars * JAIL_MIN_PER_STAR;
 	if (IsPlayerInAnyVehicle(target)) RemovePlayerFromVehicle(target, true);
 	Faction_Uncuff(target);
+	Law_ClearMark(target);
 	Player[target][pWanted] = 0;
 	SetPlayerWantedLevel(target, 0);
 	Player[target][pJail] = minutes;
@@ -1617,6 +1657,9 @@ stock Factions_OnDialog(playerid, dialogid, response, listitem, const inputtext[
 			else
 			{
 				if (!Faction_IsLeader(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Снимать деньги из общака может только лидер."); return 1; }
+#if !FACTION_STATE_WITHDRAW
+				if (Faction_IsState(f)) { SendClientMessage(playerid, COLOR_GREY, "Бюджет госструктуры наличными не выдают: он идёт на зарплаты и снаряжение."); return 1; }
+#endif
 				ShowPlayerDialog(playerid, DIALOG_FBANK_WITHDRAW, DIALOG_STYLE_INPUT, "Снять из общака",
 					"Сколько снять из общака?\nВ общаке: $%d", "Снять", "Назад", Faction[f][fBank]);
 			}
@@ -1642,6 +1685,9 @@ stock Factions_OnDialog(playerid, dialogid, response, listitem, const inputtext[
 		{
 			if (!response) { Cmd_FBank(playerid); return 1; }
 			if (!Faction_IsLeader(playerid)) return 1;
+#if !FACTION_STATE_WITHDRAW
+			if (Faction_IsState(f)) return 1;
+#endif
 			if (!Faction_AtBase(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от базы."); return 1; }
 			if (!IsNumeric(inputtext) || (amount = strval(inputtext)) < 1 || amount > 1000000)
 			{
@@ -1848,7 +1894,7 @@ stock Factions_OnDialog(playerid, dialogid, response, listitem, const inputtext[
 				case 0: ShowPlayerDialog(playerid, DIALOG_LRANK_NAME, DIALOG_STYLE_INPUT, "Название ранга",
 					"Новое название ранга %d (2-23 символа)\nСейчас: %s", "Сохранить", "Назад", rk, gRankName[f][rk - 1]);
 				case 1: ShowPlayerDialog(playerid, DIALOG_LRANK_SALARY, DIALOG_STYLE_INPUT, "Зарплата ранга",
-					"Зарплата ранга %d на PayDay (0-%d). Платится из общака.\nСейчас: $%d", "Сохранить", "Назад", rk, FACTION_MAX_SALARY, gRankSalary[f][rk - 1]);
+					"Зарплата ранга %d на PayDay (0-%d). Платится из общака.\nСейчас: $%d", "Сохранить", "Назад", rk, Faction_MaxSalary(f), gRankSalary[f][rk - 1]);
 				case 2: ShowPlayerDialog(playerid, DIALOG_LRANK_SKIN, DIALOG_STYLE_INPUT, "Скин ранга",
 					"Скин формы для ранга %d (0-311)\nСейчас: %d", "Сохранить", "Назад", rk, gRankSkin[f][rk - 1]);
 			}
@@ -1873,9 +1919,9 @@ stock Factions_OnDialog(playerid, dialogid, response, listitem, const inputtext[
 			}
 			else if (dialogid == DIALOG_LRANK_SALARY)
 			{
-				if (!IsNumeric(inputtext) || (amount = strval(inputtext)) < 0 || amount > FACTION_MAX_SALARY)
+				if (!IsNumeric(inputtext) || (amount = strval(inputtext)) < 0 || amount > Faction_MaxSalary(f))
 				{
-					SendClientMessage(playerid, COLOR_GREY, "Зарплата от $0 до $%d.", FACTION_MAX_SALARY);
+					SendClientMessage(playerid, COLOR_GREY, "Зарплата от $0 до $%d.", Faction_MaxSalary(f));
 					return 1;
 				}
 				gRankSalary[f][rk - 1] = amount;
@@ -1977,25 +2023,27 @@ stock Factions_OnCommand(playerid, const cmd[], const params[])
 // =====================================================================
 stock bool:Cmd_FHelp(playerid)
 {
-	new text[2000];
+	new text[2400];
 	strcat(text, "{FFFF00}Все фракции\n");
 	strcat(text, "{FFFFFF}/f — рация   /members — кто онлайн   /duty — смена (в раздевалке)   /fleave — уйти\n");
 	strcat(text, "/accept — принять приглашение или лечение\n");
 	strcat(text, "/fbank — общак (на базе)   /fstorage — склад: оружие, бронежилет, аптечка (на базе)\n\n");
-	strcat(text, "{FFFF00}Лидер и заместитель (ранг 5-6)\n");
+	strcat(text, "{FFFF00}Лидер и заместитель (ранг 9-10)\n");
 	strcat(text, "{FFFFFF}/lmenu — панель лидера: состав (и оффлайн), выговоры, ранги, зарплаты, склад, журнал\n");
 	strcat(text, "/invite [id]   /uninvite [id]   /giverank [id] [ранг]\n\n");
 	strcat(text, "{3A6EFF}Полиция LSPD\n");
 	strcat(text, "{FFFFFF}/su [id] [звёзды] [причина] — розыск   /clear [id] — снять розыск   /wanted — список\n");
 	strcat(text, "/cuff /uncuff [id] — наручники   /putcar [id] — посадить в машину\n");
 	strcat(text, "/arrest [id] — посадить в тюрьму (у участка)   /m — мегафон\n");
-	strcat(text, "/impound [штраф] — эвакуировать личную машину на штрафстоянку (стоя рядом)\n\n");
+	strcat(text, "/mark [id] — метка задержания: выйдет из игры — попадёт в деморган\n");
+	strcat(text, "/fine [id] [сумма] [причина] — штраф   /celldoor — открыть дверь участка заключённым\n");
+	strcat(text, "/impound [штраф] [причина] — эвакуировать личную машину на штрафстоянку (стоя рядом)\n\n");
 	strcat(text, "{FF8080}Больница (EMS)\n");
 	strcat(text, "{FFFFFF}/heal [id] — предложить лечение\n\n");
 	strcat(text, "{10A010}Банды\n");
 	strcat(text, "{FFFFFF}/duty на базе — форма банды и оружие. /turfs /capture — войны за районы, районы пополняют общак.\n\n");
 	strcat(text, "{FF66FF}Админам (4+)\n");
-	strcat(text, "{FFFFFF}/makeleader /setfaction /setfspawn /setfduty /addfcar /delfcar /fedit   (2+) /jail /unjail");
+	strcat(text, "{FFFFFF}/makeleader /setfaction /setfspawn /setfduty /setfint /delfint /fintlock /addfcar /delfcar /fedit   (2+) /jail /unjail");
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Фракции", "%s", "Закрыть", "", text);
 	return true;
 }
@@ -2049,9 +2097,10 @@ stock bool:Cmd_MakeLeader(playerid, const params[])
 stock Faction_SaveBase(f)
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB,
-		"UPDATE factions SET sx = %f, sy = %f, sz = %f, sa = %f, dx = %f, dy = %f, dz = %f WHERE id = %d",
+		"UPDATE factions SET sx = %f, sy = %f, sz = %f, sa = %f, dx = %f, dy = %f, dz = %f, dint = %d, dworld = %d, sint = %d, sworld = %d WHERE id = %d",
 		Faction[f][fSpawnX], Faction[f][fSpawnY], Faction[f][fSpawnZ], Faction[f][fSpawnA],
-		Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ], f));
+		Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ], Faction[f][fDutyInt], Faction[f][fDutyWorld],
+		Faction[f][fSpawnInt], Faction[f][fSpawnWorld], f));
 }
 
 stock bool:Cmd_SetFSpawn(playerid, const params[])
@@ -2060,9 +2109,11 @@ stock bool:Cmd_SetFSpawn(playerid, const params[])
 	new pos = 0, f;
 	if (!NextIntParam(params, pos, f) || !Faction_IsValid(f))
 		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setfspawn [фракция 1-%d] — спавн фракции там, где ты стоишь", MAX_FACTIONS - 1);
-	if (GetPlayerInterior(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "Спавн можно ставить только на улице.");
+	// спавн может быть внутри здания: запоминаем интерьер и мир
 	GetPlayerPos(playerid, Faction[f][fSpawnX], Faction[f][fSpawnY], Faction[f][fSpawnZ]);
 	GetPlayerFacingAngle(playerid, Faction[f][fSpawnA]);
+	Faction[f][fSpawnInt] = GetPlayerInterior(playerid);
+	Faction[f][fSpawnWorld] = GetPlayerVirtualWorld(playerid);
 	Faction_SaveBase(f);
 	SendClientMessage(playerid, COLOR_ADMIN, "Спавн фракции «%s» перенесён сюда.", Faction_GetName(f));
 	return true;
@@ -2074,8 +2125,10 @@ stock bool:Cmd_SetFDuty(playerid, const params[])
 	new pos = 0, f;
 	if (!NextIntParam(params, pos, f) || !Faction_IsValid(f))
 		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setfduty [фракция 1-%d] — раздевалка там, где ты стоишь", MAX_FACTIONS - 1);
-	if (GetPlayerInterior(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "Раздевалку можно ставить только на улице.");
+	// раздевалка может быть внутри здания (например, в участке LSPD): запоминаем интерьер и мир
 	GetPlayerPos(playerid, Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ]);
+	Faction[f][fDutyInt] = GetPlayerInterior(playerid);
+	Faction[f][fDutyWorld] = GetPlayerVirtualWorld(playerid);
 	Faction_SaveBase(f);
 	Faction_CreateMarker(f);
 	SendClientMessage(playerid, COLOR_ADMIN, "Раздевалка фракции «%s» перенесена сюда.", Faction_GetName(f));
@@ -2153,5 +2206,215 @@ stock bool:Cmd_Unjail(playerid, const params[])
 	if (Player[target][pJail] <= 0) return SendClientMessage(playerid, COLOR_GREY, "Игрок не в тюрьме.");
 	Jail_Release(target);
 	SendClientMessage(playerid, COLOR_ADMIN, "%s выпущен из тюрьмы.", GetRPName(target));
+	return true;
+}
+
+// =====================================================================
+//  Вход в здание фракции (админ 4+)
+//
+//  /setfint [фракция]  — на улице у двери: точка входа; внутри интерьера: точка выхода.
+//                        Вставать у самой двери спиной к ней: игрок появится на шаг впереди.
+//                        Вторым словом можно указать сторону сам: out (снаружи) или in (внутри).
+//  /delfint [фракция]  — убрать вход.
+//  /fintlock [фракция] — пускать только своих (переключатель).
+//  Попасть в интерьер: /gotoint (список стандартных интерьеров GTA).
+//  Маркеры входа видны в /markers, там их можно подвинуть.
+// =====================================================================
+#define FDOOR_REF           1000    // ref маркеров MK_DOOR: 1000 + фракция * 2 (внутри: + 1)
+
+enum E_FDOOR
+{
+	bool:feOut,                 // точка снаружи задана
+	Float:feOX, Float:feOY, Float:feOZ, Float:feOA, feOInt, feOWorld,
+	bool:feIn,                  // точка внутри задана
+	Float:feIX, Float:feIY, Float:feIZ, Float:feIA, feIInt, feIWorld,
+	bool:feClosed,              // только для своих
+	feMkOut, feMkIn
+}
+static gFDoor[MAX_FACTIONS][E_FDOOR];
+
+static FDoor_Build(f)
+{
+	if (gFDoor[f][feMkOut] != -1) { Marker_Destroy(gFDoor[f][feMkOut]); gFDoor[f][feMkOut] = -1; }
+	if (gFDoor[f][feMkIn] != -1)  { Marker_Destroy(gFDoor[f][feMkIn]);  gFDoor[f][feMkIn] = -1; }
+	if (!gFDoor[f][feOut] || !gFDoor[f][feIn]) return;
+
+	new label[96], name[32];
+	new Float:x = gFDoor[f][feOX], Float:y = gFDoor[f][feOY], Float:z = gFDoor[f][feOZ];
+	gFDoor[f][feMkOut] = Marker_Create(MK_DOOR, FDOOR_REF + f * 2, Faction_GetName(f), DOOR_PICKUP_MODEL, x, y, z,
+		gFDoor[f][feOWorld], gFDoor[f][feOInt], GPS_NONE, gFDoor[f][feOA]);
+	format(label, sizeof label, "{FFFF66}%s\n{FFFFFF}ALT — войти", Faction_GetName(f));
+	if (gFDoor[f][feClosed]) strcat(label, " (только свои)");
+	Marker_SetLabel(gFDoor[f][feMkOut], label);
+
+	x = gFDoor[f][feIX]; y = gFDoor[f][feIY]; z = gFDoor[f][feIZ];
+	strcat(name, Faction_GetName(f), 22);
+	strcat(name, ", выход");
+	gFDoor[f][feMkIn] = Marker_Create(MK_DOOR, FDOOR_REF + f * 2 + 1, name, DOOR_PICKUP_MODEL, x, y, z,
+		gFDoor[f][feIWorld], gFDoor[f][feIInt], GPS_NONE, gFDoor[f][feIA]);
+	Marker_SetLabel(gFDoor[f][feMkIn], "{FFFFFF}ALT — выйти", COLOR_WHITE, 10.0);
+}
+
+static FDoor_Save(f)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB,
+		"INSERT OR REPLACE INTO faction_doors (faction, has_out, ox, oy, oz, oa, oint, oworld, has_in, ix, iy, iz, ia, iint, iworld, closed) VALUES (%d, %d, %f, %f, %f, %f, %d, %d, %d, %f, %f, %f, %f, %d, %d, %d)",
+		f, gFDoor[f][feOut] ? 1 : 0, gFDoor[f][feOX], gFDoor[f][feOY], gFDoor[f][feOZ], gFDoor[f][feOA], gFDoor[f][feOInt], gFDoor[f][feOWorld],
+		gFDoor[f][feIn] ? 1 : 0, gFDoor[f][feIX], gFDoor[f][feIY], gFDoor[f][feIZ], gFDoor[f][feIA], gFDoor[f][feIInt], gFDoor[f][feIWorld],
+		gFDoor[f][feClosed] ? 1 : 0));
+}
+
+// Забыть правки маркеров входа из /markers: точку только что поставили заново
+static FDoor_ForgetMarkers(f)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM markers WHERE type = %d AND ref IN (%d, %d)",
+		MK_DOOR, FDOOR_REF + f * 2, FDOOR_REF + f * 2 + 1));
+}
+
+stock FDoors_Load()
+{
+	for (new f = 0; f < MAX_FACTIONS; f++)
+	{
+		gFDoor[f][feOut] = false;
+		gFDoor[f][feIn] = false;
+		gFDoor[f][feClosed] = false;
+		gFDoor[f][feMkOut] = -1;
+		gFDoor[f][feMkIn] = -1;
+	}
+	new n = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT faction, has_out, ox, oy, oz, oa, oint, oworld, has_in, ix, iy, iz, ia, iint, iworld, closed FROM faction_doors");
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new i = 0; i < rows; i++)
+		{
+			new f = DB_GetFieldInt(r, 0);
+			if (Faction_IsValid(f))
+			{
+				gFDoor[f][feOut]    = DB_GetFieldInt(r, 1) != 0;
+				gFDoor[f][feOX]     = DB_GetFieldFloat(r, 2);
+				gFDoor[f][feOY]     = DB_GetFieldFloat(r, 3);
+				gFDoor[f][feOZ]     = DB_GetFieldFloat(r, 4);
+				gFDoor[f][feOA]     = DB_GetFieldFloat(r, 5);
+				gFDoor[f][feOInt]   = DB_GetFieldInt(r, 6);
+				gFDoor[f][feOWorld] = DB_GetFieldInt(r, 7);
+				gFDoor[f][feIn]     = DB_GetFieldInt(r, 8) != 0;
+				gFDoor[f][feIX]     = DB_GetFieldFloat(r, 9);
+				gFDoor[f][feIY]     = DB_GetFieldFloat(r, 10);
+				gFDoor[f][feIZ]     = DB_GetFieldFloat(r, 11);
+				gFDoor[f][feIA]     = DB_GetFieldFloat(r, 12);
+				gFDoor[f][feIInt]   = DB_GetFieldInt(r, 13);
+				gFDoor[f][feIWorld] = DB_GetFieldInt(r, 14);
+				gFDoor[f][feClosed] = DB_GetFieldInt(r, 15) != 0;
+				if (gFDoor[f][feOut] && gFDoor[f][feIn]) n++;
+			}
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	for (new f = 1; f < MAX_FACTIONS; f++) FDoor_Build(f);
+	printf("[Factions] %d faction entrances.", n);
+}
+
+// ALT, /enter, /exit у входа фракции (из Doors_Try). true — сработало.
+stock bool:FDoor_Try(playerid)
+{
+	for (new f = 1; f < MAX_FACTIONS; f++)
+	{
+		if (gFDoor[f][feMkOut] == -1 || gFDoor[f][feMkIn] == -1) continue;
+		if (Marker_InRange(playerid, gFDoor[f][feMkOut], DOOR_RANGE))
+		{
+			if (gFDoor[f][feClosed] && Player[playerid][pFaction] != f && Player[playerid][pAdmin] < 1)
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Сюда пускают только своих: %s.", Faction_GetName(f));
+				return true;
+			}
+			if (Law_TryLeave(playerid)) Door_SpawnAt(playerid, gFDoor[f][feMkIn]);
+			return true;
+		}
+		if (Marker_InRange(playerid, gFDoor[f][feMkIn], DOOR_RANGE))
+		{
+			if (Law_TryLeave(playerid)) Door_SpawnAt(playerid, gFDoor[f][feMkOut]);
+			return true;
+		}
+	}
+	return false;
+}
+
+stock bool:Cmd_SetFInt(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, f, side[8];
+	if (!NextIntParam(params, pos, f) || !Faction_IsValid(f))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Использование: /setfint [фракция 1-%d] [out/in — необязательно]", MAX_FACTIONS - 1);
+		SendClientMessage(playerid, COLOR_GREY, "На улице у двери — вход, внутри интерьера — выход. Вставай спиной к двери. В интерьер: /gotoint");
+		return true;
+	}
+	new bool:inside = GetPlayerInterior(playerid) != 0;
+	if (NextParam(params, pos, side))
+	{
+		if (!strcmp(side, "in", true)) inside = true;
+		else if (!strcmp(side, "out", true)) inside = false;
+		else return SendClientMessage(playerid, COLOR_GREY, "Сторона: out (снаружи) или in (внутри).");
+	}
+	new Float:x, Float:y, Float:z, Float:a;
+	GetPlayerPos(playerid, x, y, z);
+	GetPlayerFacingAngle(playerid, a);
+	if (inside)
+	{
+		gFDoor[f][feIn] = true;
+		gFDoor[f][feIX] = x; gFDoor[f][feIY] = y; gFDoor[f][feIZ] = z; gFDoor[f][feIA] = a;
+		gFDoor[f][feIInt] = GetPlayerInterior(playerid);
+		gFDoor[f][feIWorld] = GetPlayerVirtualWorld(playerid);
+	}
+	else
+	{
+		gFDoor[f][feOut] = true;
+		gFDoor[f][feOX] = x; gFDoor[f][feOY] = y; gFDoor[f][feOZ] = z; gFDoor[f][feOA] = a;
+		gFDoor[f][feOInt] = GetPlayerInterior(playerid);
+		gFDoor[f][feOWorld] = GetPlayerVirtualWorld(playerid);
+	}
+	FDoor_Save(f);
+	FDoor_ForgetMarkers(f);
+	FDoor_Build(f);
+	if (inside) SendClientMessage(playerid, COLOR_ADMIN, "«%s»: точка внутри (выход) сохранена.", Faction_GetName(f));
+	else SendClientMessage(playerid, COLOR_ADMIN, "«%s»: точка снаружи (вход) сохранена.", Faction_GetName(f));
+	if (!gFDoor[f][feIn]) SendClientMessage(playerid, COLOR_GREY, "Осталась точка внутри: зайди в интерьер (/gotoint) и введи /setfint %d ещё раз.", f);
+	else if (!gFDoor[f][feOut]) SendClientMessage(playerid, COLOR_GREY, "Осталась точка снаружи: встань у двери на улице и введи /setfint %d ещё раз.", f);
+	else SendClientMessage(playerid, COLOR_ADMIN, "Вход работает: ALT у стрелки. Раздевалку и спавн можно поставить внутри: /setfduty %d, /setfspawn %d", f, f);
+	return true;
+}
+
+stock bool:Cmd_DelFInt(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, f;
+	if (!NextIntParam(params, pos, f) || !Faction_IsValid(f))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /delfint [фракция 1-%d] — убрать вход в здание фракции", MAX_FACTIONS - 1);
+	gFDoor[f][feOut] = false;
+	gFDoor[f][feIn] = false;
+	gFDoor[f][feClosed] = false;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM faction_doors WHERE faction = %d", f));
+	FDoor_ForgetMarkers(f);
+	FDoor_Build(f);
+	SendClientMessage(playerid, COLOR_ADMIN, "Вход в здание фракции «%s» убран.", Faction_GetName(f));
+	if (Faction[f][fSpawnInt] != 0 || Faction[f][fDutyInt] != 0)
+		SendClientMessage(playerid, COLOR_GREY, "Спавн или раздевалка этой фракции стоят внутри здания: перенеси их (/setfspawn, /setfduty).");
+	return true;
+}
+
+stock bool:Cmd_FIntLock(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, f;
+	if (!NextIntParam(params, pos, f) || !Faction_IsValid(f))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /fintlock [фракция 1-%d] — пускать в здание только своих (переключатель)", MAX_FACTIONS - 1);
+	if (!gFDoor[f][feOut] || !gFDoor[f][feIn]) return SendClientMessage(playerid, COLOR_GREY, "У этой фракции нет входа. Поставить: /setfint");
+	gFDoor[f][feClosed] = !gFDoor[f][feClosed];
+	FDoor_Save(f);
+	FDoor_Build(f);
+	if (gFDoor[f][feClosed]) SendClientMessage(playerid, COLOR_ADMIN, "«%s»: вход теперь только для своих.", Faction_GetName(f));
+	else SendClientMessage(playerid, COLOR_ADMIN, "«%s»: вход теперь открыт для всех.", Faction_GetName(f));
 	return true;
 }

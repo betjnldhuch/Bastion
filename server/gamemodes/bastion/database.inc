@@ -20,6 +20,9 @@ stock DB_Init()
 		return 0;
 	}
 
+	// Ѕазу читает ещЄ и форум. ≈сли она на мгновение зан€та Ч ждЄм до 3 секунд, а не тер€ем запись
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "PRAGMA busy_timeout = 3000"));
+
 	// јккаунты игроков
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, password TEXT NOT NULL, salt TEXT NOT NULL, money INTEGER DEFAULT 0, level INTEGER DEFAULT 1, exp INTEGER DEFAULT 0, skin INTEGER DEFAULT 60, admin INTEGER DEFAULT 0, job INTEGER DEFAULT 0, reg_date INTEGER DEFAULT 0)"));
 
@@ -79,6 +82,20 @@ stock DB_Shutdown()
 		DB_Close(gDB);
 		gDB = DB:0;
 	}
+}
+
+// ¬ерси€ базы (PRAGMA user_version): по ней разовые переделки данных выполн€ютс€ один раз.
+// 1 Ч админка 7 уровней (admin.inc), 2 Ч 10 рангов во фракци€х (factions.inc)
+stock DB_GetVersion()
+{
+	new version = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "PRAGMA user_version");
+	if (r != DBResult:0)
+	{
+		if (DB_GetRowCount(r) > 0) version = DB_GetFieldInt(r, 0);
+		DB_FreeResultSet(r);
+	}
+	return version;
 }
 
 // Ќомер последней вставленной строки (после INSERT)

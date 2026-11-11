@@ -16,7 +16,7 @@ enum
 
 // Фракции (подробности — в factions.inc)
 #define MAX_FACTIONS        6           // 0 = нет фракции, 1..5 — фракции
-#define MAX_RANK            6           // 6 = лидер, 5 = заместитель
+#define MAX_RANK            10          // 10 = лидер, 9 = заместитель
 enum
 {
 	FACTION_NONE,
@@ -44,7 +44,7 @@ enum E_PLAYER
 	pAdmin,             // сохраняется (0 = игрок, 1..5 = админ)
 	pJob,               // сохраняется (JOB_*)
 	pFaction,           // сохраняется (FACTION_*)
-	pRank,              // сохраняется (1..6)
+	pRank,              // сохраняется (1..10)
 	pWanted,            // сохраняется (звёзды розыска 0..6)
 	pJail,              // сохраняется (минут тюрьмы осталось)
 	bool:pDuty,         // на смене во фракции (в форме)
@@ -176,6 +176,35 @@ stock RandomString(dest[], length, size = sizeof (dest))
 		dest[i] = chars[random(sizeof (chars) - 1)];
 	}
 	dest[length] = '\0';
+}
+
+// Вырезать из текста цветовые коды вида {RRGGBB}
+stock StripColorCodes(text[])
+{
+	new len = strlen(text), i = 0;
+	while (i + 7 < len)
+	{
+		if (text[i] == '{' && text[i + 7] == '}')
+		{
+			new bool:hex = true;
+			for (new j = i + 1; j < i + 7; j++)
+			{
+				new c = text[j];
+				if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+				{
+					hex = false;
+					break;
+				}
+			}
+			if (hex)
+			{
+				strdel(text, i, i + 8);
+				len -= 8;
+				continue;
+			}
+		}
+		i++;
+	}
 }
 
 // Есть ли в нике "_" (Имя_Фамилия)

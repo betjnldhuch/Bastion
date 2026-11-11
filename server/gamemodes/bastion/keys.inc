@@ -240,6 +240,7 @@ stock Keys_Interact(playerid)
 	new b = Biz_GetNearby(playerid);
 	if (b != -1)
 	{
+		if (Biz_TryDoor(playerid)) return;      // с улицы Ч войти, внутри у двери Ч выйти
 		Keys_ShowBizMenu(playerid, b);
 		return;
 	}
@@ -299,7 +300,7 @@ stock Keys_OnKeyStateChange(playerid, newkeys, oldkeys)
 	if (st == PLAYER_STATE_ONFOOT)
 	{
 		if (Player[playerid][pCuffed]) return 0;
-		if (KeyPressed(newkeys, oldkeys, _:KEY_WALK))
+		if (!Wound_IsWounded(playerid) && KeyPressed(newkeys, oldkeys, _:KEY_WALK))
 		{
 			Keys_Interact(playerid);
 			return 1;
@@ -325,7 +326,7 @@ stock Keys_OnKeyStateChange(playerid, newkeys, oldkeys)
 	{
 		if (Player[playerid][pCallState] == CALL_INCOMING) Cmd_PickUp(playerid);
 		else if (Player[playerid][pOfferType] != OFFER_NONE) Cmd_Accept(playerid);
-		else if (st == PLAYER_STATE_ONFOOT) Cmd_Inv(playerid);      // Y пешком Ч сумка
+		else if (st == PLAYER_STATE_ONFOOT && !Wound_IsWounded(playerid)) Cmd_Inv(playerid);      // Y пешком Ч сумка
 		return 1;
 	}
 	if (KeyPressed(newkeys, oldkeys, _:KEY_NO))
