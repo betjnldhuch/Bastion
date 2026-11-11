@@ -94,46 +94,62 @@ stock bool:Cmd_Mark(playerid, const params[])
 	return true;
 }
 
-// Решётка камеры: объект, который отъезжает в сторону вдоль стены. Координаты — примерные, проверь в игре.
-#define CELL_GATE_X         (JAIL_X + 2.0)
-#define CELL_GATE_Y         (JAIL_Y)
-#define CELL_GATE_Z         (JAIL_Z)
-#define CELL_GATE_A         90.0
+// Три решётки камеры: каждая отъезжает в своё открытое место и возвращается.
+// Координаты — из игры (/pos): закрытое и открытое положение, угол — у закрытого.
+#define CELL_BARS           3
+#define CELL_SPEED          2.0     // скорость движения решётки
+#define CELL_CENTER_X       266.4   // центр камеры: отсюда проверяется, стоит ли полицейский у решёток
+#define CELL_CENTER_Y       82.6
+#define CELL_CENTER_Z       1001.03
+#define CELL_USE_RANGE      6.0     // ALT у решётки
 #define CELL_GATE_MODEL     980
-#define CELL_GATE_SPEED     2.0
-#define CELL_SLIDE          3.0     // на сколько метров решётка отъезжает в сторону
-#define CELL_USE_RANGE      4.0     // полицейский у решётки ALT-ом или /celldoor
 
-static gCellObj = -1;               // объект решётки
-static gCellSerial = 0;             // номер открытия: старый таймер не закроет новое
+static const Float:gCellClosed[CELL_BARS][4] =
+{
+	{ 266.33, 87.89, 1001.03, 120.7 },   // у входа
+	{ 266.22, 83.20, 1001.03, 132.7 },   // в центре
+	{ 266.74, 76.82, 1001.03, 118.0 }    // у стены
+};
+static const Float:gCellOpen[CELL_BARS][3] =
+{
+	{ 265.90, 86.44, 1001.03 },          // у входа (в открытом виде z записано 331.2, принято 1001.03)
+	{ 265.89, 81.55, 1001.03 },          // в центре
+	{ 266.74, 78.65, 1001.03 }           // у стены
+};
+
+static gCellObj[CELL_BARS] = { -1, -1, -1 };
+static gCellSerial = 0;                  // номер открытия: старый таймер не закроет новое
 
 stock Law_Init()
 {
-	gCellObj = CreateObject(CELL_GATE_MODEL, CELL_GATE_X, CELL_GATE_Y, CELL_GATE_Z, 0.0, 0.0, CELL_GATE_A, 150.0);
+	for (new i = 0; i < CELL_BARS; i++)
+	{
+		gCellObj[i] = CreateObject(CELL_GATE_MODEL, gCellClosed[i][0], gCellClosed[i][1], gCellClosed[i][2], 0.0, 0.0, gCellClosed[i][3], 150.0);
+	}
 }
 
 stock bool:Law_NearCellGate(playerid, Float:range)
 {
 	return (GetPlayerInterior(playerid) == JAIL_INTERIOR)
-		&& IsPlayerInRangeOfPoint(playerid, range, CELL_GATE_X, CELL_GATE_Y, CELL_GATE_Z);
+		&& IsPlayerInRangeOfPoint(playerid, range, CELL_CENTER_X, CELL_CENTER_Y, CELL_CENTER_Z);
 }
 
-// Открыть или закрыть решётку (анимация движения самого объекта)
+// Открыть все три или закрыть все три (объекты едут в свои места)
 static Law_SetCellGate(bool:open)
 {
-	if (gCellObj == -1) return;
+	for (new i = 0; i < CELL_BARS; i++)
+	{
+		if (gCellObj[i] == -1) continue;
+		if (open) MoveObject(gCellObj[i], gCellOpen[i][0], gCellOpen[i][1], gCellOpen[i][2], CELL_SPEED);
+		else MoveObject(gCellObj[i], gCellClosed[i][0], gCellClosed[i][1], gCellClosed[i][2], CELL_SPEED);
+	}
 	if (open)
 	{
 		gCellSerial++;
 		gCellOpenUntil = gettime() + CELLDOOR_SECONDS;
-		MoveObject(gCellObj, CELL_GATE_X + CELL_SLIDE * floatcos(CELL_GATE_A, degrees), CELL_GATE_Y + CELL_SLIDE * floatsin(CELL_GATE_A, degrees), CELL_GATE_Z, CELL_GATE_SPEED);
 		SetTimerEx("OnCellGateClose", CELLDOOR_SECONDS * 1000, false, "i", gCellSerial);
 	}
-	else
-	{
-		gCellOpenUntil = 0;
-		MoveObject(gCellObj, CELL_GATE_X, CELL_GATE_Y, CELL_GATE_Z, CELL_GATE_SPEED);
-	}
+	else gCellOpenUntil = 0;
 }
 
 forward OnCellGateClose(serial);
