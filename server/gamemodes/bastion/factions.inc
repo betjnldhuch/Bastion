@@ -114,7 +114,8 @@ static const gFactionDefName[MAX_FACTIONS][32] =
 	"Больница LS (EMS)",
 	"Grove Street Families",
 	"The Ballas",
-	"Varrios Los Aztecas"
+	"Varrios Los Aztecas",
+	"ФБР"
 };
 
 static const gFactionDefColor[MAX_FACTIONS] =
@@ -124,7 +125,8 @@ static const gFactionDefColor[MAX_FACTIONS] =
 	0xFF8080FF,     // медики — розовый
 	0x10A010FF,     // Grove — зелёный
 	0xB040FFFF,     // Ballas — фиолетовый
-	0x00C8F0FF      // Aztecas — голубой
+	0x00C8F0FF,     // Aztecas — голубой
+	0x6C8CD5FF      // ФБР — серо-синий
 };
 
 // Скин для каждого ранга (1..10)
@@ -135,15 +137,17 @@ static const gFactionDefSkin[MAX_FACTIONS][MAX_RANK] =
 	{ 274, 274, 275, 275, 275, 276, 276, 276, 276, 70  },   // медики
 	{ 105, 106, 105, 106, 105, 106, 107, 107, 107, 270 },   // Grove
 	{ 102, 103, 102, 104, 102, 103, 104, 103, 103, 104 },   // Ballas
-	{ 114, 115, 114, 116, 114, 115, 116, 115, 115, 116 }    // Aztecas
+	{ 114, 115, 114, 116, 114, 115, 116, 115, 115, 116 },   // Aztecas
+	{ 286, 286, 286, 286, 165, 165, 166, 166, 166, 165 }    // ФБР
 };
 
-// Названия рангов: 0 — полиция, 1 — медики, 2 — банды
-static const gDefRankNames[3][MAX_RANK][24] =
+// Названия рангов: 0 — полиция, 1 — медики, 2 — банды, 3 — ФБР
+static const gDefRankNames[4][MAX_RANK][24] =
 {
 	{ "Кадет", "Офицер", "Сержант", "Лейтенант", "Ст. лейтенант", "Капитан", "Майор", "Подполковник", "Зам. шефа", "Шеф полиции" },
 	{ "Интерн", "Фельдшер", "Врач", "Хирург", "Ст. хирург", "Зав. отделением", "Нач. смены", "Консультант", "Зам. главврача", "Главврач" },
-	{ "Новичок", "Боец", "Бывалый", "Старший", "Смотрящий", "Авторитет", "Советник", "Капитан", "Правая рука", "Лидер" }
+	{ "Новичок", "Боец", "Бывалый", "Старший", "Смотрящий", "Авторитет", "Советник", "Капитан", "Правая рука", "Лидер" },
+	{ "Стажёр", "Мл. агент", "Агент", "Ст. агент", "Спец. агент", "Ст. спец. агент", "Нач. отдела", "Инспектор", "Зам. директора", "Директор ФБР" }
 };
 
 // Базы по умолчанию: спавн (x, y, z, угол) и раздевалка /duty (x, y, z).
@@ -155,7 +159,8 @@ static const Float:gFactionDefBase[MAX_FACTIONS][7] =
 	{ HOSPITAL_X, HOSPITAL_Y, HOSPITAL_Z, 90.0,   1172.0, -1323.3, 15.4 },   // All Saints
 	{ 2512.0, -1673.0, 13.5, 90.0,   2495.9, -1690.0, 14.8 },   // Grove Street
 	{ 2220.0, -1160.0, 25.8, 270.0,  2233.8, -1159.8, 25.9 },   // Jefferson Motel
-	{ 1975.0, -2040.0, 13.5, 0.0,    1978.0, -2036.0, 13.5 }    // El Corona
+	{ 1975.0, -2040.0, 13.5, 0.0,    1978.0, -2036.0, 13.5 },   // El Corona
+	{ 1481.0, -1771.0, 18.8, 0.0,    1481.0, -1766.5, 18.8 }    // ФБР: у мэрии (переставить: /setfspawn, /setfduty, /setfint)
 };
 
 // Машины по умолчанию (создаются один раз, при первом запуске)
@@ -232,7 +237,7 @@ stock bool:Faction_IsValid(f)
 
 stock bool:Faction_IsGang(f)
 {
-	return (f >= FACTION_GROVE && f < MAX_FACTIONS);
+	return (f >= FACTION_GROVE && f <= FACTION_AZTECAS);
 }
 
 stock Faction_GetName(f)
@@ -264,7 +269,7 @@ stock Faction_GetRankName(f, rank)
 // Госструктура (получает бюджет от штата)
 stock bool:Faction_IsState(f)
 {
-	return (f == FACTION_POLICE || f == FACTION_EMS);
+	return (f == FACTION_POLICE || f == FACTION_EMS || f == FACTION_FBI);
 }
 
 // Потолок зарплаты ранга (у госструктур ниже: их общак — бюджет штата)
@@ -398,6 +403,32 @@ stock bool:Faction_NeedLeader(playerid)
 	return true;
 }
 
+// Команда силовиков: полиция или ФБР на смене
+stock bool:Faction_NeedLaw(playerid)
+{
+	if (!Faction_IsLaw(Player[playerid][pFaction]))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Эта команда только для полиции и ФБР.");
+		return false;
+	}
+	if (!Player[playerid][pDuty])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Сначала заступи на смену: /duty в раздевалке фракции.");
+		return false;
+	}
+	return true;
+}
+
+// Сообщение диспетчера: всем полицейским и агентам ФБР онлайн
+stock Faction_MessageLaw(const message[])
+{
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && Player[i][pLogged] && Faction_IsLaw(Player[i][pFaction]))
+			SendClientMessage(i, Faction_GetColor(FACTION_POLICE), "%s", message);
+	}
+}
+
 // Сообщение всем онлайн-членам фракции
 stock Faction_Message(f, colour, const message[])
 {
@@ -485,7 +516,7 @@ stock Faction_OnMarkerMoved(f, Float:x, Float:y, Float:z)
 
 stock Faction_SpawnVehicle(dbid, f, model, Float:x, Float:y, Float:z, Float:a, c1, c2)
 {
-	new v = CreateVehicle(model, x, y, z, a, c1, c2, FACTION_VEH_RESPAWN, (f == FACTION_POLICE || f == FACTION_EMS));
+	new v = CreateVehicle(model, x, y, z, a, c1, c2, FACTION_VEH_RESPAWN, Faction_IsState(f));
 	if (v == INVALID_VEHICLE_ID) return INVALID_VEHICLE_ID;
 	Vehicle_Clear(v);
 	gVehFaction[v] = f;
@@ -505,15 +536,16 @@ stock Factions_Init()
 		if (DB_GetRowCount(r) > 0) count = DB_GetFieldInt(r, 0);
 		DB_FreeResultSet(r);
 	}
+	// Строка в базе для каждой фракции (новая фракция в старой базе появится сама)
+	for (new f = 1; f < MAX_FACTIONS; f++)
+	{
+		DB_FreeResultSet(DB_ExecuteQuery(gDB,
+			"INSERT OR IGNORE INTO factions (id, sx, sy, sz, sa, dx, dy, dz) VALUES (%d, %f, %f, %f, %f, %f, %f, %f)",
+			f, gFactionDefBase[f][0], gFactionDefBase[f][1], gFactionDefBase[f][2], gFactionDefBase[f][3],
+			gFactionDefBase[f][4], gFactionDefBase[f][5], gFactionDefBase[f][6]));
+	}
 	if (count == 0)
 	{
-		for (new f = 1; f < MAX_FACTIONS; f++)
-		{
-			DB_FreeResultSet(DB_ExecuteQuery(gDB,
-				"INSERT OR IGNORE INTO factions (id, sx, sy, sz, sa, dx, dy, dz) VALUES (%d, %f, %f, %f, %f, %f, %f, %f)",
-				f, gFactionDefBase[f][0], gFactionDefBase[f][1], gFactionDefBase[f][2], gFactionDefBase[f][3],
-				gFactionDefBase[f][4], gFactionDefBase[f][5], gFactionDefBase[f][6]));
-		}
 		for (new i = 0; i < sizeof (gFactionDefVeh); i++)
 		{
 			DB_FreeResultSet(DB_ExecuteQuery(gDB,
@@ -637,6 +669,7 @@ stock Factions_LoadData()
 		new t = 2;
 		if (f == FACTION_POLICE) t = 0;
 		else if (f == FACTION_EMS) t = 1;
+		else if (f == FACTION_FBI) t = 3;
 		for (new rk = 1; rk <= MAX_RANK; rk++)
 		{
 			new salary = Faction_IsState(f) ? (FACTION_SALARY_BASE + rk * FACTION_SALARY_RANK) : 0;
@@ -947,6 +980,13 @@ stock bool:Cmd_Duty(playerid)
 		{
 			GivePlayerWeapon(playerid, WEAPON_FIREEXTINGUISHER, 500);
 		}
+		case FACTION_FBI:
+		{
+			GivePlayerWeapon(playerid, WEAPON_DEAGLE, 70);
+			if (rank >= 2) GivePlayerWeapon(playerid, WEAPON_MP5, 200);
+			if (rank >= 4) GivePlayerWeapon(playerid, WEAPON_M4, 150);
+			SetPlayerArmour(playerid, 100.0);
+		}
 		default:    // банды
 		{
 			GivePlayerWeapon(playerid, WEAPON_BAT, 1);
@@ -1125,7 +1165,7 @@ stock Faction_OfferHandshake(playerid, target)
 // =====================================================================
 stock bool:Cmd_Megaphone(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	new text[110], msg[144];
 	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /m [текст] — мегафон");
 	format(msg, sizeof msg, "[Мегафон] %s: %s", GetRPName(playerid), text);
@@ -1135,13 +1175,13 @@ stock bool:Cmd_Megaphone(playerid, const params[])
 
 stock bool:Cmd_Suspect(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	new pos = 0, stars, reason[64];
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, stars) || stars < 1 || stars > 6 || !RestParam(params, pos, reason))
 		return SendClientMessage(playerid, COLOR_GREY, "Использование: /su [id] [звёзды 1-6] [причина]");
 	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
-	if (Player[target][pFaction] == FACTION_POLICE && Player[target][pDuty])
+	if (Faction_IsLaw(Player[target][pFaction]) && Player[target][pDuty])
 		return SendClientMessage(playerid, COLOR_GREY, "Нельзя объявить в розыск полицейского на смене.");
 
 	Player[target][pWanted] = stars;
@@ -1151,13 +1191,13 @@ stock bool:Cmd_Suspect(playerid, const params[])
 	new msg[144];
 	format(msg, sizeof msg, "[Диспетчер] %s объявил в розыск %s [%d] — %d зв. Причина: %s",
 		GetRPName(playerid), GetRPName(target), target, stars, reason);
-	Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
+	Faction_MessageLaw(msg);
 	return true;
 }
 
 stock bool:Cmd_ClearWanted(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	if (Player[playerid][pRank] < 2) return SendClientMessage(playerid, COLOR_GREY, "Снимать розыск можно с ранга 2.");
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
@@ -1169,7 +1209,7 @@ stock bool:Cmd_ClearWanted(playerid, const params[])
 	SendClientMessage(target, COLOR_GREEN, "С тебя сняли розыск.");
 	new msg[144];
 	format(msg, sizeof msg, "[Диспетчер] %s снял розыск с %s.", GetRPName(playerid), GetRPName(target));
-	Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
+	Faction_MessageLaw(msg);
 	return true;
 }
 
@@ -1190,7 +1230,7 @@ stock bool:Cmd_Wanted(playerid)
 
 stock bool:Cmd_Cuff(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /cuff [id]");
@@ -1209,7 +1249,7 @@ stock bool:Cmd_Cuff(playerid, const params[])
 
 stock bool:Cmd_Uncuff(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /uncuff [id]");
@@ -1226,7 +1266,7 @@ stock bool:Cmd_Uncuff(playerid, const params[])
 // Обыск: оружие и деньги задержанного
 stock bool:Cmd_Frisk(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /frisk [id]");
@@ -1253,13 +1293,13 @@ stock bool:Cmd_Frisk(playerid, const params[])
 // Посадить задержанного в свою машину (полицейский сидит за рулём)
 stock bool:Cmd_PutCar(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /putcar [id] (сидя за рулём)");
 	new v = GetPlayerVehicleID(playerid);
-	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER || gVehFaction[v] != FACTION_POLICE)
-		return SendClientMessage(playerid, COLOR_GREY, "Сядь за руль полицейской машины.");
+	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER || !Faction_IsLaw(gVehFaction[v]))
+		return SendClientMessage(playerid, COLOR_GREY, "Сядь за руль служебной машины полиции или ФБР.");
 	if (!Player[target][pCuffed]) return SendClientMessage(playerid, COLOR_GREY, "Сначала надень наручники: /cuff");
 	if (!IsPlayerNearPlayer(playerid, target, 6.0)) return SendClientMessage(playerid, COLOR_GREY, "Задержанный слишком далеко от машины.");
 
@@ -1286,7 +1326,7 @@ stock bool:Cmd_PutCar(playerid, const params[])
 
 stock bool:Cmd_Arrest(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /arrest [id]");
@@ -1316,7 +1356,7 @@ stock bool:Cmd_Arrest(playerid, const params[])
 	SendClientMessage(playerid, COLOR_GREEN, "Арест оформлен. Премия: $%d.", stars * ARREST_REWARD);
 	new msg[144];
 	format(msg, sizeof msg, "[Диспетчер] %s арестовал %s на %d мин.", GetRPName(playerid), GetRPName(target), minutes);
-	Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
+	Faction_MessageLaw(msg);
 	return true;
 }
 
@@ -2083,7 +2123,7 @@ stock bool:Cmd_MakeLeader(playerid, const params[])
 	new pos = 0, f;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, f) || !Faction_IsValid(f))
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /makeleader [id] [фракция 1-%d]  (1 LSPD, 2 EMS, 3 Grove, 4 Ballas, 5 Aztecas)", MAX_FACTIONS - 1);
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /makeleader [id] [фракция 1-%d]  (1 LSPD, 2 EMS, 3 Grove, 4 Ballas, 5 Aztecas, 6 ФБР)", MAX_FACTIONS - 1);
 	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
 
 	Faction_SetMember(target, f, MAX_RANK);

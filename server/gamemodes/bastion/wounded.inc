@@ -399,7 +399,7 @@ stock bool:Cmd_Drag(playerid, const params[])
 		return SendClientMessage(playerid, COLOR_GREY, "Использование: /drag [id] — вести задержанного, /drag — отпустить");
 	}
 	if (gDragBy[target] == playerid && !gCarried[target]) { Drag_Stop(target); return true; }
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Себя вести нельзя.");
 	if (!Drag_CanLead(playerid)) return true;
 	if (!IsPlayerNearPlayer(playerid, target, WOUND_RANGE)) return SendClientMessage(playerid, COLOR_GREY, "Подойди ближе.");
@@ -525,7 +525,7 @@ public Drag_Tick()
 		if (ok)
 		{
 			if (gCarried[t]) ok = gWounded[t] && !gWounded[by];
-			else ok = (gWounded[t] || Player[t][pCuffed]) && Player[by][pFaction] == FACTION_POLICE && Player[by][pDuty];
+			else ok = (gWounded[t] || Player[t][pCuffed]) && Faction_IsLaw(Player[by][pFaction]) && Player[by][pDuty];
 		}
 		if (!ok)
 		{

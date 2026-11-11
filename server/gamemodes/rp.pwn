@@ -52,6 +52,7 @@
 #include "bastion/anticheat.inc"  // античит; подмен€ет SetPlayerPos, GivePlayerWeapon и др., поэтому стоит до модулей
 #include "bastion/database.inc"
 #include "bastion/markers.inc"    // все маркеры (значки и надписи) в одном месте
+#include "bastion/spawns.inc"     // точки по€влени€ игроков (вокзалы): /addspawn
 #include "bastion/accounts.inc"
 #include "bastion/vehicles.inc"
 #include "bastion/fuel.inc"
@@ -115,6 +116,7 @@ public OnGameModeInit()
 
 	Vehicles_Init();
 	Jobs_Init();
+	Spawns_Init();        // точки по€влени€ игроков (вокзалы)
 	Houses_Load();
 	Factions_Init();
 	Turfs_Init();
@@ -289,6 +291,7 @@ public OnPlayerSpawn(playerid)
 	}
 
 	Account_SetNormalSpawn(playerid);   // следующий спавн Ч снова обычный
+	Houses_OnSpawn(playerid);           // дом в общежитии: вернуть интерьер
 	Factions_OnSpawn(playerid);         // цвет ника, розыск, тюрьма
 	Admin_OnSpawn(playerid);            // деморган, возврат после /spec
 	Turfs_ShowForPlayer(playerid);      // районы банд на радаре
@@ -360,6 +363,7 @@ public OnPlayerClickTextDraw(playerid, Text:clickedid)
 public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 {
 	if (Account_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Spawns_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Admin_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Vehicles_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Bank_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;

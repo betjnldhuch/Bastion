@@ -43,7 +43,7 @@ static Rob_PoliceOnline()
 	new n = 0;
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
-		if (IsPlayerConnected(i) && Player[i][pLogged] && Player[i][pFaction] == FACTION_POLICE) n++;
+		if (IsPlayerConnected(i) && Player[i][pLogged] && Faction_IsLaw(Player[i][pFaction])) n++;
 	}
 	return n;
 }
@@ -56,7 +56,7 @@ static Rob_Fail(playerid, const why[])
 	if (IsPlayerConnected(playerid)) SendClientMessage(playerid, COLOR_RED, "Ограбление сорвано: %s.", why);
 	new msg[144];
 	format(msg, sizeof msg, "[Диспетчер] Ограбление «%s» сорвано: %s.", Biz[b][bName], why);
-	Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
+	Faction_MessageLaw(msg);
 }
 
 stock bool:Cmd_Rob(playerid)
@@ -66,7 +66,7 @@ stock bool:Cmd_Rob(playerid)
 	if (b == -1 || (Biz[b][bType] != BIZ_SHOP && Biz[b][bType] != BIZ_BAR))
 		return SendClientMessage(playerid, COLOR_GREY, "Грабить можно магазин 24/7 или бар: встань у его значка.");
 	if (Player[playerid][pLevel] < ROB_MIN_LEVEL) return SendClientMessage(playerid, COLOR_GREY, "Грабить можно с %d уровня.", ROB_MIN_LEVEL);
-	if (Player[playerid][pDuty] && (Player[playerid][pFaction] == FACTION_POLICE || Player[playerid][pFaction] == FACTION_EMS))
+	if (Player[playerid][pDuty] && (Faction_IsLaw(Player[playerid][pFaction]) || Player[playerid][pFaction] == FACTION_EMS))
 		return SendClientMessage(playerid, COLOR_GREY, "На смене грабить нельзя.");
 	new w = _:GetPlayerWeapon(playerid);
 	if (w < 22 || w > 34) return SendClientMessage(playerid, COLOR_GREY, "Нужно огнестрельное оружие в руках.");
@@ -93,10 +93,10 @@ stock bool:Cmd_Rob(playerid)
 	SendClientMessage(playerid, COLOR_RED, "Ты начал ограбление «%s»! Продержись %d сек. рядом с магазином. Розыск: %d зв.", Biz[b][bName], ROB_TIME, stars);
 	new msg[144];
 	format(msg, sizeof msg, "[Диспетчер] Ограбление «%s»! Подозреваемый: %s [%d], %d зв. Метка на карте у всех на смене.", Biz[b][bName], GetRPName(playerid), playerid, stars);
-	Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
+	Faction_MessageLaw(msg);
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
-		if (!IsPlayerConnected(i) || Player[i][pFaction] != FACTION_POLICE || !Player[i][pDuty]) continue;
+		if (!IsPlayerConnected(i) || !Faction_IsLaw(Player[i][pFaction]) || !Player[i][pDuty]) continue;
 		Gps_SetPoint(i, Biz[b][bX], Biz[b][bY], Biz[b][bZ], "ограбление");
 	}
 	return true;
@@ -131,7 +131,7 @@ public Rob_OnSecond()
 		SendClientMessage(i, COLOR_GREEN, "Касса «%s» твоя: $%d. Уходи, полиция уже едет!", Biz[b][bName], money);
 		new msg[144];
 		format(msg, sizeof msg, "[Диспетчер] Из «%s» унесли $%d. Грабитель: %s [%d].", Biz[b][bName], money, GetRPName(i), i);
-		Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
+		Faction_MessageLaw(msg);
 	}
 	return 1;
 }

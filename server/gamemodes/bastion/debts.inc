@@ -90,7 +90,7 @@ stock Debts_PayDay(playerid)
 		SendClientMessage(playerid, COLOR_RED, "Ты объявлен в розыск за неуплату долга штату ($%d).", total);
 		new msg[144];
 		format(msg, sizeof msg, "[Диспетчер] %s [%d] объявлен в розыск: долг штату $%d.", GetRPName(playerid), playerid, total);
-		Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
+		Faction_MessageLaw(msg);
 	}
 	else if (total >= DEBT_LIMIT_BUY)
 		SendClientMessage(playerid, COLOR_ORANGE, "Пока долг больше $%d, ты не можешь покупать дом, машину и бизнес. От $%d — розыск.", DEBT_LIMIT_BUY, DEBT_LIMIT_WANTED);
@@ -135,7 +135,7 @@ stock bool:Cmd_Debts(playerid)
 // /fine [id] [сумма] [причина] — полицейский на смене выписывает штраф
 stock bool:Cmd_Fine(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	new pos = 0, amount, reason[64];
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, amount) || amount < FINE_MIN || amount > FINE_MAX || !RestParam(params, pos, reason))
@@ -149,6 +149,6 @@ stock bool:Cmd_Fine(playerid, const params[])
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	SendClientMessage(target, COLOR_RED, "Штраф $%d от %s. Причина: %s. Оплатить: банкомат. Всего штрафов: $%d.", amount, GetRPName(playerid), reason, gDebt[target][DEBT_FINE]);
 	format(msg, sizeof msg, "[Диспетчер] %s оштрафовал %s на $%d. Причина: %s", GetRPName(playerid), GetRPName(target), amount, reason);
-	Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
+	Faction_MessageLaw(msg);
 	return true;
 }

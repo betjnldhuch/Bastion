@@ -18,8 +18,9 @@ FACTIONS = {
     3: "Grove Street Families",
     4: "The Ballas",
     5: "Varrios Los Aztecas",
+    6: "ФБР",
 }
-FACTION_COLORS = {1: "#3a6eff", 2: "#ff8080", 3: "#10a010", 4: "#b040ff", 5: "#00c8f0"}
+FACTION_COLORS = {1: "#3a6eff", 2: "#ff8080", 3: "#10a010", 4: "#b040ff", 5: "#00c8f0", 6: "#6c8cd5"}
 MAX_RANK = 10
 LEADER_RANK = MAX_RANK - 1  # 9 = заместитель, 10 = лидер (как Faction_NeedLeader в моде)
 RANK_NAMES = {
@@ -29,13 +30,15 @@ RANK_NAMES = {
             "Зам. главврача", "Главврач"],
     "gang": ["Новичок", "Боец", "Бывалый", "Старший", "Смотрящий", "Авторитет", "Советник", "Капитан",
              "Правая рука", "Лидер"],
+    "fbi": ["Стажёр", "Мл. агент", "Агент", "Ст. агент", "Спец. агент", "Ст. спец. агент", "Нач. отдела",
+            "Инспектор", "Зам. директора", "Директор ФБР"],
 }
 
 
 def rank_name(faction, rank):
     if faction not in FACTIONS or faction == 0 or not 1 <= rank <= MAX_RANK:
         return ""
-    table = "police" if faction == 1 else "ems" if faction == 2 else "gang"
+    table = "police" if faction == 1 else "ems" if faction == 2 else "fbi" if faction == 6 else "gang"
     return RANK_NAMES[table][rank - 1]
 
 

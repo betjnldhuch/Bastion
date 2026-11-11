@@ -90,7 +90,7 @@ stock Keys_ShowInteract(playerid, target)
 	{
 		gInteractActs[playerid][n++] = ACT_INVITE; strcat(list, "Пригласить во фракцию\n");
 	}
-	if (f == FACTION_POLICE && Player[playerid][pDuty])
+	if (Faction_IsLaw(f) && Player[playerid][pDuty])
 	{
 		if (Player[target][pCuffed]) { gInteractActs[playerid][n++] = ACT_UNCUFF; strcat(list, "{FF6347}Снять наручники\n"); }
 		else { gInteractActs[playerid][n++] = ACT_CUFF; strcat(list, "{FF6347}Надеть наручники\n"); }
