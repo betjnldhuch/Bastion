@@ -71,6 +71,13 @@ bench = bench.crop((667, 0, 1334, 667)).resize((128, 128), Image.LANCZOS).rotate
 surr = L('bpd3_door.png').convert('RGB').crop((80, 28, 540, 60)).resize((128, 32), Image.LANCZOS)  # синяя рамка двери вместо оранжевой
 # пак 3: дверь без куска стены слева/сверху
 door = L('bpd3_door.png').convert('RGB').crop((66, 66, 572, 1024)).resize((256, 256), Image.LANCZOS)
+# Дверь двустворчатая: модель кладёт текстуру на каждую створку, вторую зеркально, ручками к центру.
+# Рисуем зазор у края с ручкой (справа) и тонкий шов у петель, чтобы створки не сливались в одну.
+from PIL import ImageDraw
+_d = ImageDraw.Draw(door)
+_d.rectangle((249, 0, 255, 255), fill=(12, 14, 20))         # зазор между створками
+_d.line((247, 0, 247, 255), fill=(70, 85, 115), width=2)   # кромка створки
+_d.rectangle((0, 0, 2, 255), fill=(15, 18, 26))            # шов у петель
 txdpatch.patch(os.path.join(src_dir, 'genintintpoliceb.txd'), os.path.join(out_dir, 'genintintpoliceb.txd'),
                {'coptop_blue': wall, 'copbtm_green': wains, 'p_floor4': floor, 'p_countr': desk,
                 'breezewall': sq('bpd_corridor_wall.png'), 'breezewall2': sq('bpd_corridor_wall.png'),
