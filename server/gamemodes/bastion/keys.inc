@@ -240,6 +240,7 @@ stock Keys_Interact(playerid)
 	new b = Biz_GetNearby(playerid);
 	if (b != -1)
 	{
+		if (Biz_TryDoor(playerid)) return;      // с улицы Ч войти, внутри у двери Ч выйти
 		Keys_ShowBizMenu(playerid, b);
 		return;
 	}

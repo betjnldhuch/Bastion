@@ -71,11 +71,13 @@ static Door_InnerMarker(d, &Float:x, &Float:y)
 
 // Войти или выйти, если игрок у маркера. true — сработало.
 forward bool:Law_CellGateUse(playerid);     // law.inc: полицейский у решётки камеры
+forward bool:FDoor_Try(playerid);           // factions.inc: входы в здания фракций (/setfint)
 
 stock bool:Doors_Try(playerid)
 {
 	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return false;
 	if (Law_CellGateUse(playerid)) return true;
+	if (FDoor_Try(playerid)) return true;
 	for (new d = 0; d < sizeof gDoors; d++)
 	{
 		if (Marker_InRange(playerid, gDoorMk[d][0], DOOR_RANGE))
@@ -95,7 +97,7 @@ stock bool:Doors_Try(playerid)
 }
 
 // Поставить игрока на шаг перед маркером двери, лицом по углу маркера
-static Door_SpawnAt(playerid, m)
+stock Door_SpawnAt(playerid, m)
 {
 	new Float:x, Float:y, Float:z;
 	if (!Marker_GetPos(m, x, y, z)) return;

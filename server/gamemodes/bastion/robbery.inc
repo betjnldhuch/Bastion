@@ -112,7 +112,7 @@ public Rob_OnSecond()
 		if (!IsPlayerConnected(i)) { gRobBiz[i] = -1; continue; }
 		if (Wound_IsWounded(i) || GetPlayerState(i) == PLAYER_STATE_WASTED) { Rob_Fail(i, "грабитель ранен"); continue; }
 		if (Player[i][pCuffed]) { Rob_Fail(i, "грабитель задержан"); continue; }
-		if (GetPlayerInterior(i) != 0 || !IsPlayerInRangeOfPoint(i, ROB_RANGE, Biz[b][bX], Biz[b][bY], Biz[b][bZ]))
+		if (!Biz_IsInside(i, b) && (GetPlayerInterior(i) != 0 || !IsPlayerInRangeOfPoint(i, ROB_RANGE, Biz[b][bX], Biz[b][bY], Biz[b][bZ])))
 		{
 			Rob_Fail(i, "грабитель ушёл без денег");
 			continue;
