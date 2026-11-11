@@ -123,7 +123,8 @@ static const Float:gCellOpen[CELL_BARS][3] =
 };
 
 static gCellObj[CELL_BARS] = { -1, -1, -1 };
-static gCellSerial = 0;                  // номер открытия: старый таймер не закроет новое
+static gCellUntil[CELL_BARS];            // до какого времени открыта каждая решётка (0 — закрыта)
+static gCellSerial[CELL_BARS];           // номер открытия: старый таймер не закроет новое
 
 stock Law_Init()
 {
@@ -139,44 +140,65 @@ stock bool:Law_NearCellGate(playerid, Float:range)
 		&& IsPlayerInRangeOfPoint(playerid, range, CELL_CENTER_X, CELL_CENTER_Y, CELL_CENTER_Z);
 }
 
-// Открыть все три или закрыть все три (объекты едут в свои места)
-static Law_SetCellGate(bool:open)
+// Ближайшая к игроку решётка (по её закрытому месту)
+static Law_NearestCell(playerid)
 {
+	new best = 0, Float:bestDist = 100000.0;
 	for (new i = 0; i < CELL_BARS; i++)
 	{
-		if (gCellObj[i] == -1) continue;
+		new Float:d = GetPlayerDistanceFromPoint(playerid, gCellClosed[i][0], gCellClosed[i][1], gCellClosed[i][2]);
+		if (d < bestDist) { bestDist = d; best = i; }
+	}
+	return best;
+}
+
+// Открыть или закрыть одну решётку (объект едет в своё место)
+static Law_SetCellGate(i, bool:open)
+{
+	if (gCellObj[i] != -1)
+	{
 		if (open) MoveObject(gCellObj[i], gCellOpen[i][0], gCellOpen[i][1], gCellOpen[i][2], CELL_SPEED);
 		else MoveObject(gCellObj[i], gCellClosed[i][0], gCellClosed[i][1], gCellClosed[i][2], CELL_SPEED);
 	}
 	if (open)
 	{
-		gCellSerial++;
-		gCellOpenUntil = gettime() + CELLDOOR_SECONDS;
-		SetTimerEx("OnCellGateClose", CELLDOOR_SECONDS * 1000, false, "i", gCellSerial);
+		gCellSerial[i]++;
+		gCellUntil[i] = gettime() + CELLDOOR_SECONDS;
+		SetTimerEx("OnCellGateClose", CELLDOOR_SECONDS * 1000, false, "ii", i, gCellSerial[i]);
 	}
-	else gCellOpenUntil = 0;
+	else gCellUntil[i] = 0;
+
+	// для побега и выхода из участка: открыта ли хоть одна решётка
+	gCellOpenUntil = 0;
+	for (new k = 0; k < CELL_BARS; k++)
+	{
+		if (gCellUntil[k] > gCellOpenUntil) gCellOpenUntil = gCellUntil[k];
+	}
 }
 
-forward OnCellGateClose(serial);
-public OnCellGateClose(serial)
+forward OnCellGateClose(cell, serial);
+public OnCellGateClose(cell, serial)
 {
-	if (serial == gCellSerial && gCellOpenUntil > 0) Law_SetCellGate(false);
+	if (cell < 0 || cell >= CELL_BARS) return 1;
+	if (serial == gCellSerial[cell] && gCellUntil[cell] > 0) Law_SetCellGate(cell, false);
 	return 1;
 }
 
-// Полицейский на смене у решётки: жмёт ALT или вводит /celldoor — решётка открывается или закрывается
+// Полицейский на смене у решётки: жмёт ALT или вводит /celldoor — ближайшая решётка открывается или закрывается
 static Law_ToggleCellGate(playerid)
 {
 	new msg[144];
-	new bool:opening = (gCellOpenUntil <= gettime());
-	Law_SetCellGate(opening);
+	new cell = Law_NearestCell(playerid);
+	new bool:opening = (gCellUntil[cell] <= gettime());
+	Law_SetCellGate(cell, opening);
 	ApplyAnimation(playerid, "BOMBER", "BOM_Plant_In", 4.1, false, false, false, false, 0, SYNC_ALL);
 	if (opening)
 	{
 		format(msg, sizeof msg, "%s поворачивает ключ и открывает решётку камеры.", GetRPName(playerid));
 		SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
-		format(msg, sizeof msg, "%s открыл решётку камеры для заключённых на %d сек.", GetRPName(playerid), CELLDOOR_SECONDS);
+		format(msg, sizeof msg, "%s открыл решётку камеры №%d для заключённых на %d сек.", GetRPName(playerid), cell + 1, CELLDOOR_SECONDS);
 		Faction_Log(FACTION_POLICE, msg);
+		SendClientMessage(playerid, COLOR_ORANGE, "Решётка открыта на %d сек. Закрыть раньше: /celldoor или ALT у неё.", CELLDOOR_SECONDS);
 	}
 	else
 	{
@@ -195,14 +217,13 @@ stock bool:Law_CellGateUse(playerid)
 	return true;
 }
 
-// /celldoor — полицейский на смене открывает или закрывает решётку камеры
+// /celldoor — полицейский на смене открывает или закрывает ближайшую решётку камеры
 stock bool:Cmd_CellDoor(playerid)
 {
 	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
 	if (!Law_NearCellGate(playerid, 12.0))
 		return SendClientMessage(playerid, COLOR_GREY, "Подойди к решётке камеры в участке LSPD.");
 	Law_ToggleCellGate(playerid);
-	SendClientMessage(playerid, COLOR_ORANGE, "Решётка открыта на %d сек. Закрыть раньше: /celldoor или ALT у неё.", CELLDOOR_SECONDS);
 	return true;
 }
 
