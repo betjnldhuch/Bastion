@@ -94,13 +94,14 @@ stock bool:Cmd_Mark(playerid, const params[])
 	return true;
 }
 
-// Решётка камеры: объект, который уезжает вниз. Координаты — примерные, проверь в игре.
+// Решётка камеры: объект, который отъезжает в сторону вдоль стены. Координаты — примерные, проверь в игре.
 #define CELL_GATE_X         (JAIL_X + 2.0)
 #define CELL_GATE_Y         (JAIL_Y)
 #define CELL_GATE_Z         (JAIL_Z)
 #define CELL_GATE_A         90.0
 #define CELL_GATE_MODEL     980
 #define CELL_GATE_SPEED     2.0
+#define CELL_SLIDE          3.0     // на сколько метров решётка отъезжает в сторону
 #define CELL_USE_RANGE      4.0     // полицейский у решётки ALT-ом или /celldoor
 
 static gCellObj = -1;               // объект решётки
@@ -125,7 +126,7 @@ static Law_SetCellGate(bool:open)
 	{
 		gCellSerial++;
 		gCellOpenUntil = gettime() + CELLDOOR_SECONDS;
-		MoveObject(gCellObj, CELL_GATE_X, CELL_GATE_Y, CELL_GATE_Z - 5.8, CELL_GATE_SPEED);
+		MoveObject(gCellObj, CELL_GATE_X + CELL_SLIDE * floatcos(CELL_GATE_A, degrees), CELL_GATE_Y + CELL_SLIDE * floatsin(CELL_GATE_A, degrees), CELL_GATE_Z, CELL_GATE_SPEED);
 		SetTimerEx("OnCellGateClose", CELLDOOR_SECONDS * 1000, false, "i", gCellSerial);
 	}
 	else
