@@ -75,10 +75,10 @@ door = L('bpd3_door.png').convert('RGB').crop((66, 66, 572, 1024)).resize((256, 
 # Рисуем зазор у края с ручкой (справа) и тонкий шов у петель, чтобы створки не сливались в одну.
 from PIL import ImageDraw
 # Модель показывает текстуру не до самого края, поэтому створку сжимаем, а зазор делаем широким.
-door = door.resize((226, 256), Image.LANCZOS)
+door = door.resize((237, 256), Image.LANCZOS)
 _c = Image.new('RGB', (256, 256), (10, 12, 18)); _c.paste(door, (0, 0)); door = _c
 _d = ImageDraw.Draw(door)
-_d.line((226, 0, 226, 255), fill=(80, 95, 125), width=3)   # кромка створки
+_d.line((237, 0, 237, 255), fill=(80, 95, 125), width=2)   # кромка створки
 _d.rectangle((0, 0, 2, 255), fill=(15, 18, 26))            # шов у петель
 txdpatch.patch(os.path.join(src_dir, 'genintintpoliceb.txd'), os.path.join(out_dir, 'genintintpoliceb.txd'),
                {'coptop_blue': wall, 'copbtm_green': wains, 'p_floor4': floor, 'p_countr': desk,
