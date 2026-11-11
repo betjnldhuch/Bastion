@@ -154,6 +154,7 @@ static const gHelp[][E_HELP] =
 	{ HT_GARAGE, "/unimpound", "забрать машину со штрафстоянки (заплатить штраф)" },
 
 	// --- Дом
+	{ HT_HOUSE, "/setspawn", "выбрать, где появляться: вокзал, дом или база фракции" },
 	{ HT_HOUSE, "/buyhouse", "купить дом" },
 	{ HT_HOUSE, "/sellhouse", "продать дом" },
 	{ HT_HOUSE, "/house", "меню дома: шкаф, сейф, счёт (или ALT внутри)" },

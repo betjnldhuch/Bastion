@@ -192,6 +192,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/takelic", true))     { Cmd_TakeLic(playerid, cmdtext[pos]); return 1; }
 
 	// --- дома (houses.inc) ---
+	if (!strcmp(cmd, "/setspawn", true))    { Cmd_SetSpawn(playerid); return 1; }
 	if (!strcmp(cmd, "/buyhouse", true))    { Cmd_BuyHouse(playerid); return 1; }
 	if (!strcmp(cmd, "/sellhouse", true))   { Cmd_SellHouse(playerid); return 1; }
 	if (!strcmp(cmd, "/enter", true))       { Cmd_Enter(playerid); return 1; }

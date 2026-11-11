@@ -130,5 +130,8 @@ enum
 
 	// --- Помощь (help.inc)
 	DIALOG_HELP_TOPICS,
-	DIALOG_HELP_TOPIC
+	DIALOG_HELP_TOPIC,
+
+	// --- Выбор места появления (spawns.inc)
+	DIALOG_SETSPAWN
 }

@@ -363,6 +363,7 @@ public OnPlayerClickTextDraw(playerid, Text:clickedid)
 public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 {
 	if (Account_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Spawns_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Admin_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Vehicles_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Bank_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
