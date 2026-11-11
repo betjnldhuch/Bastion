@@ -18,13 +18,17 @@ enum E_DOOR
 	Float:dOutX, Float:dOutY, Float:dOutZ, Float:dOutA,   // снаружи у двери (куда выходишь)
 	Float:dInX, Float:dInY, Float:dInZ, Float:dInA,       // внутри у двери (куда входишь)
 	dInterior,
-	dWorld
+	dWorld,
+	dOutInterior, dOutWorld                                 // где стоит вход (0, 0 — улица)
 }
 
 static const gDoors[][E_DOOR] =
 {
 	// Полиция Лос-Сантоса: главный вход со стороны Pershing Square -> интерьер 6
-	{ "Полиция LSPD", 1553.90, -1675.60, 16.19, 90.0,   246.78, 63.90, 1003.64, 0.0,   6, 0 }
+	{ "Полиция LSPD", 1553.90, -1675.60, 16.19, 90.0,   246.78, 63.90, 1003.64, 0.0,   6, 0,   0, 0 },
+	// Допросная LSPD: вход из коридора участка (комната в модели есть, но замурована).
+	// Внутреннюю точку ставили на глаз — если промахнулась, поправь через /markers.
+	{ "Допросная", 220.23, 67.17, 1003.64, 69.2,   224.72, 65.46, 1003.64, 249.2,   6, 0,   6, 0 }
 };
 
 
@@ -37,7 +41,8 @@ stock Doors_Init()
 	{
 		new Float:x, Float:y, Float:z = gDoors[d][dOutZ];
 		Door_OuterMarker(d, x, y);
-		gDoorMk[d][0] = Marker_Create(MK_DOOR, d * 2, gDoors[d][dName], DOOR_PICKUP_MODEL, x, y, z, 0, 0, GPS_GOV, gDoors[d][dOutA]);
+		gDoorMk[d][0] = Marker_Create(MK_DOOR, d * 2, gDoors[d][dName], DOOR_PICKUP_MODEL, x, y, z,
+			gDoors[d][dOutWorld], gDoors[d][dOutInterior], gDoors[d][dOutInterior] ? GPS_NONE : GPS_GOV, gDoors[d][dOutA]);
 		format(label, sizeof label, "{FFFF66}%s\n{FFFFFF}ALT — войти", gDoors[d][dName]);
 		Marker_SetLabel(gDoorMk[d][0], label);
 
