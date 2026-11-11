@@ -5,6 +5,9 @@
 //  Дома хранятся в таблице houses. При первом запуске создаются
 //  несколько домов на Grove Street. Админ (4+) может добавить дом
 //  там, где стоит: /createhouse [цена] [тип интерьера 1-5]
+//  Вход можно ставить и внутри здания (общежитие: двери комнат в коридоре интерьера).
+//  /sethouseint [№] — своя точка внутри дома (стоя в нужном интерьере),
+//  /delhouse [№] — снести дом (без номера — тот, что рядом), /gotohouse [№] — телепорт к дому.
 //
 //  Счёт дома (houses.balance): с него каждый PayDay списывается налог
 //  (0.1% цены, не меньше HOUSE_TAX_MIN), на него же приходит плата
@@ -39,6 +42,7 @@ enum E_HOUSE
 	Float:hX, Float:hY, Float:hZ,       // вход с улицы
 	Float:hIX, Float:hIY, Float:hIZ,    // точка внутри
 	hInterior,
+	hOutInt, hOutWorld,                 // где стоит вход (0, 0 — улица; иначе коридор общежития и т.п.)
 	bool:hLocked,
 	hRent,                      // аренда в час (0 = не сдаётся)
 	hBalance,                   // счёт дома (может быть в минусе — долг по налогу)
@@ -73,6 +77,8 @@ static Houses_Init()
 	DB_AddColumn("houses", "rent", "INTEGER DEFAULT 0");
 	DB_AddColumn("houses", "balance", "INTEGER DEFAULT 0");
 	DB_AddColumn("houses", "safe", "INTEGER DEFAULT 0");
+	DB_AddColumn("houses", "oint", "INTEGER DEFAULT 0");
+	DB_AddColumn("houses", "oworld", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "rent_house", "INTEGER DEFAULT 0");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS house_weapons (house INTEGER NOT NULL, slot INTEGER NOT NULL, weapon INTEGER, ammo INTEGER, PRIMARY KEY (house, slot))"));
 }
@@ -98,7 +104,7 @@ stock Houses_Load()
 		print("[Houses] Default houses created.");
 	}
 
-	r = DB_ExecuteQuery(gDB, "SELECT h.id, h.owner, h.price, h.x, h.y, h.z, h.ix, h.iy, h.iz, h.interior, h.locked, IFNULL(a.name, ''), h.rent, h.balance, h.safe FROM houses h LEFT JOIN accounts a ON a.id = h.owner ORDER BY h.id");
+	r = DB_ExecuteQuery(gDB, "SELECT h.id, h.owner, h.price, h.x, h.y, h.z, h.ix, h.iy, h.iz, h.interior, h.locked, IFNULL(a.name, ''), h.rent, h.balance, h.safe, h.oint, h.oworld FROM houses h LEFT JOIN accounts a ON a.id = h.owner ORDER BY h.id");
 	if (r == DBResult:0) return;
 
 	if (DB_GetRowCount(r) > 0)
@@ -122,6 +128,8 @@ stock Houses_Load()
 			House[h][hRent]     = DB_GetFieldInt(r, 12);
 			House[h][hBalance]  = DB_GetFieldInt(r, 13);
 			House[h][hSafe]     = DB_GetFieldInt(r, 14);
+			House[h][hOutInt]   = DB_GetFieldInt(r, 15);
+			House[h][hOutWorld] = DB_GetFieldInt(r, 16);
 			House[h][hMarker] = -1;
 			House_Refresh(h);
 		}
@@ -196,7 +204,8 @@ stock House_Refresh(h)
 	{
 		new name[32];
 		format(name, sizeof name, "Дом №%d", House[h][hDbId]);
-		House[h][hMarker] = Marker_Create(MK_HOUSE, House[h][hDbId], name, model, House[h][hX], House[h][hY], House[h][hZ]);
+		House[h][hMarker] = Marker_Create(MK_HOUSE, House[h][hDbId], name, model, House[h][hX], House[h][hY], House[h][hZ],
+			House[h][hOutWorld], House[h][hOutInt]);
 	}
 	else Marker_SetDefaultModel(House[h][hMarker], model);
 	Marker_SetLabel(House[h][hMarker], text);
@@ -218,9 +227,10 @@ stock House_OnMarkerMoved(dbid, Float:x, Float:y, Float:z)
 // Дом рядом с игроком на улице (-1 = нет)
 stock House_GetNearby(playerid, Float:range = 2.5)
 {
-	if (GetPlayerVirtualWorld(playerid) != 0) return -1;
+	new world = GetPlayerVirtualWorld(playerid), interior = GetPlayerInterior(playerid);
 	for (new h = 0; h < gHouseCount; h++)
 	{
+		if (House[h][hOutWorld] != world || House[h][hOutInt] != interior) continue;
 		if (IsPlayerInRangeOfPoint(playerid, range, House[h][hX], House[h][hY], House[h][hZ])) return h;
 	}
 	return -1;
@@ -257,11 +267,42 @@ stock Houses_GetSpawn(playerid, &Float:x, &Float:y, &Float:z, &Float:a)
 	new h = House_GetOwned(playerid);
 	if (h == -1) h = gRentHouse[playerid];
 	if (h == -1) return 0;
-	x = House[h][hX] + 1.0;
+	x = House[h][hX];
+	if (House[h][hOutInt] == 0) x += 1.0;      // на улице — на шаг от значка; в коридоре рядом может быть стена
 	y = House[h][hY];
 	z = House[h][hZ];
 	a = 0.0;
 	return 1;
+}
+
+// Из OnPlayerSpawn: дом стоит внутри здания (общежитие) — вернуть игроку интерьер и мир
+stock Houses_OnSpawn(playerid)
+{
+	new h = House_GetOwned(playerid);
+	if (h == -1) h = gRentHouse[playerid];
+	if (h == -1 || (House[h][hOutInt] == 0 && House[h][hOutWorld] == 0)) return;
+	if (!IsPlayerInRangeOfPoint(playerid, 3.0, House[h][hX], House[h][hY], House[h][hZ])) return;
+	SetPlayerInterior(playerid, House[h][hOutInt]);
+	SetPlayerVirtualWorld(playerid, House[h][hOutWorld]);
+}
+
+// Вывести игрока из дома к его входу
+static House_PutOutside(playerid, h)
+{
+	SetPlayerInterior(playerid, House[h][hOutInt]);
+	SetPlayerVirtualWorld(playerid, House[h][hOutWorld]);
+	SetPlayerPos(playerid, House[h][hX], House[h][hY], House[h][hZ]);
+	SetCameraBehindPlayer(playerid);
+	Player[playerid][pHouseInside] = -1;
+}
+
+// Всех, кто внутри дома, — к входу (дом сносят или меняют интерьер)
+static House_EmptyInside(h)
+{
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && House_IsInside(i, h)) House_PutOutside(i, h);
+	}
 }
 
 stock House_Save(h)
@@ -484,11 +525,7 @@ stock bool:Cmd_Exit(playerid)
 	if (!IsPlayerInRangeOfPoint(playerid, 3.0, House[h][hIX], House[h][hIY], House[h][hIZ]))
 		return SendClientMessage(playerid, COLOR_GREY, "Подойди к двери (туда, где ты появился).");
 
-	SetPlayerInterior(playerid, 0);
-	SetPlayerVirtualWorld(playerid, 0);
-	SetPlayerPos(playerid, House[h][hX], House[h][hY], House[h][hZ]);
-	SetCameraBehindPlayer(playerid);
-	Player[playerid][pHouseInside] = -1;
+	House_PutOutside(playerid, h);
 	return true;
 }
 
@@ -846,6 +883,9 @@ stock bool:Cmd_CreateHouse(playerid, const params[])
 	if (!NextIntParam(params, pos, price) || !NextIntParam(params, pos, type) || type < 1 || type > sizeof (gHouseIntId) || price < 1)
 		return SendClientMessage(playerid, COLOR_GREY, "Использование: /createhouse [цена] [тип 1-5]");
 	if (gHouseCount >= MAX_HOUSES) return SendClientMessage(playerid, COLOR_GREY, "Достигнут лимит домов (MAX_HOUSES).");
+	// вход можно ставить и внутри здания (коридор общежития), но не внутри другого дома или бизнеса
+	new oint = GetPlayerInterior(playerid), oworld = GetPlayerVirtualWorld(playerid);
+	if (oworld >= HOUSE_WORLD_OFFSET) return SendClientMessage(playerid, COLOR_GREY, "Здесь нельзя: ты внутри дома или бизнеса.");
 
 	new Float:x, Float:y, Float:z;
 	GetPlayerPos(playerid, x, y, z);
@@ -854,6 +894,9 @@ stock bool:Cmd_CreateHouse(playerid, const params[])
 	new h = gHouseCount++;
 	new t = type - 1;
 	House[h][hDbId] = DB_LastInsertId();
+	House[h][hOutInt] = oint;
+	House[h][hOutWorld] = oworld;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE houses SET oint = %d, oworld = %d WHERE id = %d", oint, oworld, House[h][hDbId]));
 	House[h][hOwner] = 0;
 	House[h][hOwnerName][0] = '\0';
 	House[h][hPrice] = price;
@@ -871,6 +914,99 @@ stock bool:Cmd_CreateHouse(playerid, const params[])
 	House[h][hMarker] = -1;
 	House_Refresh(h);
 
-	SendClientMessage(playerid, COLOR_GREEN, "Дом №%d создан. Цена $%d, интерьер %d.", House[h][hDbId], price, type);
+	SendClientMessage(playerid, COLOR_GREEN, "Дом №%d создан. Цена $%d, интерьер %d. Свой интерьер: /sethouseint %d, снести: /delhouse %d", House[h][hDbId], price, type, House[h][hDbId], House[h][hDbId]);
+	return true;
+}
+
+// Дом по номеру из команды; без номера — тот, у входа или внутри которого стоит админ (-1 = нет)
+static House_FromParam(playerid, const params[])
+{
+	new pos = 0, dbid;
+	if (NextIntParam(params, pos, dbid)) return House_FindByDbId(dbid);
+	new h = House_GetNearby(playerid);
+	if (h == -1 && House_IsInside(playerid, Player[playerid][pHouseInside])) h = Player[playerid][pHouseInside];
+	return h;
+}
+
+// /delhouse [№] — снести дом (уровень админа проверяется в commands.inc)
+stock bool:Cmd_DelHouse(playerid, const params[])
+{
+	new h = House_FromParam(playerid, params);
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Использование: /delhouse [№ дома] (без номера — дом, у входа которого ты стоишь)");
+	new dbid = House[h][hDbId];
+
+	// владельцу возвращается полная цена, сейф и остаток счёта
+	if (House[h][hOwner] != 0)
+	{
+		new refund = House[h][hPrice] + House[h][hSafe];
+		if (House[h][hBalance] > 0) refund += House[h][hBalance];
+		new owner = House_FindOnline(House[h][hOwner]);
+		if (owner != INVALID_PLAYER_ID)
+		{
+			House_GiveStoredWeapons(h, owner);
+			GiveMoney(owner, refund, "дом снесён администрацией");
+			Account_Save(owner);
+			SendClientMessage(owner, COLOR_ORANGE, "Администрация снесла твой дом №%d. Возвращено $%d, оружие из шкафа у тебя.", dbid, refund);
+		}
+		else DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET bank = bank + %d WHERE id = %d", refund, House[h][hOwner]));
+		SendClientMessage(playerid, COLOR_ADMIN, "Владельцу (%s) возвращено $%d.", House[h][hOwnerName], refund);
+	}
+	new ownerId = House[h][hOwner];
+
+	House_EmptyInside(h);
+	House_EvictAll(h, "дом снесён.");
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM house_weapons WHERE house = %d", dbid));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM houses WHERE id = %d", dbid));
+	Marker_Destroy(House[h][hMarker], true);
+
+	// последний дом переезжает на освободившееся место: мир его интерьера меняется
+	new last = gHouseCount - 1;
+	if (h != last)
+	{
+		House_EmptyInside(last);
+		House[h] = House[last];
+		for (new i = 0; i < MAX_PLAYERS; i++)
+		{
+			if (gRentHouse[i] == last) gRentHouse[i] = h;
+		}
+	}
+	gHouseCount--;
+
+	new owner = House_FindOnline(ownerId);
+	if (owner != INVALID_PLAYER_ID) Account_SetNormalSpawn(owner);
+	SendClientMessage(playerid, COLOR_ADMIN, "Дом №%d снесён.", dbid);
+	return true;
+}
+
+// /sethouseint [№] — точка внутри дома там, где стоит админ (в интерьере)
+stock bool:Cmd_SetHouseInt(playerid, const params[])
+{
+	new pos = 0, dbid;
+	if (!NextIntParam(params, pos, dbid))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /sethouseint [№ дома] — стоя в нужном интерьере у двери (попасть: /gotoint или /gotocoord)");
+	new h = House_FindByDbId(dbid);
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Дома с таким номером нет.");
+	new interior = GetPlayerInterior(playerid);
+	if (interior == 0) return SendClientMessage(playerid, COLOR_GREY, "Встань внутри интерьера у двери.");
+
+	House_EmptyInside(h);
+	GetPlayerPos(playerid, House[h][hIX], House[h][hIY], House[h][hIZ]);
+	House[h][hInterior] = interior;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE houses SET ix = %f, iy = %f, iz = %f, interior = %d WHERE id = %d",
+		House[h][hIX], House[h][hIY], House[h][hIZ], interior, dbid));
+	SendClientMessage(playerid, COLOR_ADMIN, "Дом №%d: вход теперь ведёт сюда (интерьер %d).", dbid, interior);
+	return true;
+}
+
+// /gotohouse [№] — телепорт ко входу дома
+stock bool:Cmd_GotoHouse(playerid, const params[])
+{
+	new pos = 0, dbid;
+	if (!NextIntParam(params, pos, dbid)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /gotohouse [№ дома]");
+	new h = House_FindByDbId(dbid);
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Дома с таким номером нет.");
+	if (IsPlayerInAnyVehicle(playerid)) RemovePlayerFromVehicle(playerid);
+	House_PutOutside(playerid, h);
+	SendClientMessage(playerid, COLOR_ADMIN, "Ты у дома №%d.", dbid);
 	return true;
 }

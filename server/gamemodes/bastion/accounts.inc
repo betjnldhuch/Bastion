@@ -228,6 +228,7 @@ stock Account_FinishLogin(playerid)
 stock Account_SetNormalSpawn(playerid)
 {
 	new Float:x = SPAWN_X, Float:y = SPAWN_Y, Float:z = SPAWN_Z, Float:a = SPAWN_A;
+	Spawns_Get(x, y, z, a);                  // spawns.inc Ч вокзалы, расставленные админом (случайный)
 	Factions_GetSpawn(playerid, x, y, z, a); // factions.inc Ч база фракции
 	Houses_GetSpawn(playerid, x, y, z, a);   // houses.inc Ч мен€ет координаты, если есть дом
 	SetSpawnInfo(playerid, NO_TEAM, Player[playerid][pSkin], x, y, z, a);

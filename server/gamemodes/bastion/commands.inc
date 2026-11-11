@@ -307,6 +307,25 @@ stock Commands_Process(playerid, const input[])
 		if (Admin_Check(playerid, 4)) Cmd_CreateHouse(playerid, cmdtext[pos]);
 		return 1;
 	}
+	if (!strcmp(cmd, "/delhouse", true) || !strcmp(cmd, "/dellhouse", true))
+	{
+		if (Admin_Check(playerid, 4)) Cmd_DelHouse(playerid, cmdtext[pos]);
+		return 1;
+	}
+	if (!strcmp(cmd, "/sethouseint", true))
+	{
+		if (Admin_Check(playerid, 4)) Cmd_SetHouseInt(playerid, cmdtext[pos]);
+		return 1;
+	}
+	if (!strcmp(cmd, "/addspawn", true))    { if (Admin_Check(playerid, 4)) Cmd_AddSpawn(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/delspawn", true))    { if (Admin_Check(playerid, 4)) Cmd_DelSpawn(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/spawns", true))      { if (Admin_Check(playerid, 3)) Cmd_Spawns(playerid); return 1; }
+	if (!strcmp(cmd, "/gotospawn", true))   { if (Admin_Check(playerid, 3)) Cmd_GotoSpawn(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/gotohouse", true))
+	{
+		if (Admin_Check(playerid, 3)) Cmd_GotoHouse(playerid, cmdtext[pos]);
+		return 1;
+	}
 
 	SendClientMessage(playerid, COLOR_GREY, "Неизвестная команда. Список команд: /help");
 	return 1;

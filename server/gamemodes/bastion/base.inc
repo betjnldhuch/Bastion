@@ -15,7 +15,7 @@ enum
 }
 
 // ‘ракции (подробности Ч в factions.inc)
-#define MAX_FACTIONS        6           // 0 = нет фракции, 1..5 Ч фракции
+#define MAX_FACTIONS        7           // 0 = нет фракции, 1..6 Ч фракции
 #define MAX_RANK            10          // 10 = лидер, 9 = заместитель
 enum
 {
@@ -24,8 +24,11 @@ enum
 	FACTION_EMS,        // 2 Ч Ѕольница
 	FACTION_GROVE,      // 3 Ч Grove Street Families
 	FACTION_BALLAS,     // 4 Ч The Ballas
-	FACTION_AZTECAS     // 5 Ч Varrios Los Aztecas
+	FACTION_AZTECAS,    // 5 Ч Varrios Los Aztecas
+	FACTION_FBI         // 6 Ч ‘Ѕ– (силова€ структура, права как у полиции)
 }
+// —илова€ структура: полици€ или ‘Ѕ– (наручники, розыск, арест, штрафы, решЄтки камер)
+#define Faction_IsLaw(%0)   ((%0) == FACTION_POLICE || (%0) == FACTION_FBI)
 
 // ¬сЄ, что мы знаем об игроке. ѕол€ с "сохран€етс€" пишутс€ в базу.
 enum E_PLAYER

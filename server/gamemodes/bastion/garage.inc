@@ -390,7 +390,7 @@ static Garage_FindPersonalNear(playerid, &owner)
 
 stock bool:Cmd_Impound(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	if (IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Выйди из машины и подойди к той, которую эвакуируешь.");
 	new pos = 0, fine, reason[64];
 	if (!NextIntParam(params, pos, fine) || fine < IMPOUND_FINE_MIN || fine > IMPOUND_FINE_MAX)
@@ -421,7 +421,7 @@ stock bool:Cmd_Impound(playerid, const params[])
 	SendClientMessage(owner, COLOR_RED, "Твою машину эвакуировал %s. Причина: %s. Штраф $%d, забрать: штрафстоянка у LSPD (ALT).", GetRPName(playerid), reason, fine);
 	SendClientMessage(playerid, COLOR_GREEN, "Машина %s отправлена на штрафстоянку. Премия $%d.", GetRPName(owner), IMPOUND_REWARD);
 	format(msg, sizeof msg, "[Диспетчер] %s эвакуировал машину %s (штраф $%d).", GetRPName(playerid), GetRPName(owner), fine);
-	Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
+	Faction_MessageLaw(msg);
 	return true;
 }
 

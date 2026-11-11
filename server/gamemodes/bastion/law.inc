@@ -61,13 +61,13 @@ stock Law_OnDisconnect(playerid, reason)
 	GetPlayerName(playerid, name, sizeof name);
 	Admin_LogName("Сервер", 0, "ajail", name, Player[playerid][pDbId], "выход из игры с меткой задержания", minutes);
 	format(msg, sizeof msg, "[Диспетчер] %s вышел из игры с меткой задержания. Деморган: %d мин.", GetRPName(playerid), minutes);
-	Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
+	Faction_MessageLaw(msg);
 }
 
 // /mark [id] — поставить или снять метку задержания
 stock bool:Cmd_Mark(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /mark [id] — метка задержания (ещё раз — снять)");
@@ -79,18 +79,18 @@ stock bool:Cmd_Mark(playerid, const params[])
 		gMarkUntil[target] = 0;
 		SendClientMessage(target, COLOR_GREEN, "Метка задержания снята.");
 		format(msg, sizeof msg, "[Диспетчер] %s снял метку задержания с %s.", GetRPName(playerid), GetRPName(target));
-		Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
+		Faction_MessageLaw(msg);
 		return true;
 	}
 	if (Player[target][pJail] > 0) return SendClientMessage(playerid, COLOR_GREY, "Этот человек уже в тюрьме.");
-	if (Player[target][pFaction] == FACTION_POLICE && Player[target][pDuty])
+	if (Faction_IsLaw(Player[target][pFaction]) && Player[target][pDuty])
 		return SendClientMessage(playerid, COLOR_GREY, "Нельзя поставить метку полицейскому на смене.");
 	if (!IsPlayerNearPlayer(playerid, target, MARK_RANGE)) return SendClientMessage(playerid, COLOR_GREY, "Игрок слишком далеко.");
 
 	gMarkUntil[target] = gettime() + MARK_SECONDS;
 	SendClientMessage(target, COLOR_RED, "Полиция поставила на тебя метку задержания на %d мин. Выйдешь из игры — попадёшь в деморган.", MARK_SECONDS / 60);
 	format(msg, sizeof msg, "[Диспетчер] %s поставил метку задержания на %s [%d] (%d мин).", GetRPName(playerid), GetRPName(target), target, MARK_SECONDS / 60);
-	Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
+	Faction_MessageLaw(msg);
 	return true;
 }
 
@@ -210,7 +210,7 @@ static Law_ToggleCellGate(playerid)
 // Из Doors_Try (doors.inc): ALT у двери участка рядом с решёткой. true — обработано.
 stock bool:Law_CellGateUse(playerid)
 {
-	if (Player[playerid][pFaction] != FACTION_POLICE || !Player[playerid][pDuty]) return false;
+	if (!Faction_IsLaw(Player[playerid][pFaction]) || !Player[playerid][pDuty]) return false;
 	if (!Law_NearCellGate(playerid, CELL_USE_RANGE)) return false;
 	Law_ToggleCellGate(playerid);
 	return true;
@@ -219,7 +219,7 @@ stock bool:Law_CellGateUse(playerid)
 // /celldoor — полицейский на смене открывает или закрывает ближайшую решётку камеры
 stock bool:Cmd_CellDoor(playerid)
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	if (!Law_NearCellGate(playerid, 12.0))
 		return SendClientMessage(playerid, COLOR_GREY, "Подойди к решётке камеры в участке LSPD.");
 	Law_ToggleCellGate(playerid);
@@ -257,7 +257,7 @@ stock Law_TryLeave(playerid)
 		SendClientMessage(playerid, COLOR_RED, "Ты сбежал из участка! Розыск: %d зв.", Player[playerid][pWanted]);
 		new msg[144];
 		format(msg, sizeof msg, "[Диспетчер] Побег из участка LSPD: %s [%d]. Розыск %d зв.", GetRPName(playerid), playerid, Player[playerid][pWanted]);
-		Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
+		Faction_MessageLaw(msg);
 		return 1;
 	}
 	SendClientMessage(playerid, COLOR_GREY, "Дверь заперта. Открыть её может только полицейский. Договориться: /bribe [id] [сумма]");
@@ -273,7 +273,7 @@ stock bool:Cmd_Bribe(playerid, const params[])
 	if (target == INVALID_PLAYER_ID || target == playerid || !NextIntParam(params, pos, amount))
 		return SendClientMessage(playerid, COLOR_GREY, "Использование: /bribe [id полицейского] [сумма от $%d]", BRIBE_MIN);
 	if (amount < BRIBE_MIN || amount > BRIBE_MAX) return SendClientMessage(playerid, COLOR_GREY, "Сумма от $%d до $%d.", BRIBE_MIN, BRIBE_MAX);
-	if (!Player[target][pLogged] || Player[target][pFaction] != FACTION_POLICE || !Player[target][pDuty])
+	if (!Player[target][pLogged] || !Faction_IsLaw(Player[target][pFaction]) || !Player[target][pDuty])
 		return SendClientMessage(playerid, COLOR_GREY, "Это не полицейский на смене.");
 	if (!IsPlayerNearPlayer(playerid, target, 5.0)) return SendClientMessage(playerid, COLOR_GREY, "Полицейский слишком далеко.");
 	if (GetMoney(playerid) < amount) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет столько наличных.");
@@ -290,7 +290,7 @@ stock bool:Cmd_Bribe(playerid, const params[])
 // Из Cmd_Accept (factions.inc): полицейский playerid берёт взятку у заключённого from
 stock Law_AcceptBribe(playerid, from, amount)
 {
-	if (Player[playerid][pFaction] != FACTION_POLICE || !Player[playerid][pDuty] || Player[from][pJail] <= 0
+	if (!Faction_IsLaw(Player[playerid][pFaction]) || !Player[playerid][pDuty] || Player[from][pJail] <= 0
 		|| amount < BRIBE_MIN || !IsPlayerNearPlayer(playerid, from, 5.0))
 	{
 		SendClientMessage(playerid, COLOR_GREY, "Предложение больше не действует.");
