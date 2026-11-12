@@ -305,6 +305,7 @@ static const gHelp[][E_HELP] =
 	{ HT_ADMIN3, "/gotocoord [x] [y] [z] [инт]", "телепорт по координатам" },
 	{ HT_ADMIN3, "/gotoint [номер] [мир]", "телепорт в стандартный интерьер GTA (без номера Ч список)" },
 	{ HT_ADMIN3, "/gotohouse [є]", "телепорт ко входу дома" },
+	{ HT_ADMIN3, "/gotobiz [є], /gotobizint [є]", "ко входу бизнеса / внутрь; список: /bizlist" },
 	{ HT_ADMIN3, "/spawns, /gotospawn [є]", "список точек спавна / телепорт к точке" },
 	{ HT_ADMIN3, "/respawncars", "вернуть пустые машины на места" },
 	{ HT_ADMIN3, "/setweather [0-45]", "погода" },

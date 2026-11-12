@@ -323,6 +323,9 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/sellbiz", true))     { Cmd_SellBiz(playerid); return 1; }
 	if (!strcmp(cmd, "/bizinfo", true))     { Cmd_BizInfo(playerid); return 1; }
 	if (!strcmp(cmd, "/bizlock", true))     { Cmd_BizLock(playerid); return 1; }
+	if (!strcmp(cmd, "/gotobiz", true))     { Cmd_GotoBiz(playerid, cmdtext[pos], false); return 1; }
+	if (!strcmp(cmd, "/gotobizint", true))  { Cmd_GotoBiz(playerid, cmdtext[pos], true); return 1; }
+	if (!strcmp(cmd, "/bizlist", true))     { Cmd_BizList(playerid); return 1; }
 	if (!strcmp(cmd, "/bizcash", true))     { Cmd_BizCash(playerid); return 1; }
 	if (!strcmp(cmd, "/createbiz", true))   { Cmd_CreateBiz(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delbiz", true))      { Cmd_DelBiz(playerid); return 1; }

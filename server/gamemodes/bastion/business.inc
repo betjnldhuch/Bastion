@@ -311,6 +311,59 @@ stock Biz_Exit(playerid, b)
 	Player[playerid][pHouseInside] = -1;
 }
 
+// /gotobiz [є] Ч ко входу бизнеса, /gotobizint [є] Ч внутрь (админ 3+), /bizlist Ч все бизнесы
+static Biz_FromParam(playerid, const params[], const usage[])
+{
+	new pos = 0, dbid;
+	if (!NextIntParam(params, pos, dbid)) { SendClientMessage(playerid, COLOR_GREY, "%s", usage); return -1; }
+	new b = Biz_FindByDbId(dbid);
+	if (b == -1) SendClientMessage(playerid, COLOR_GREY, "Ѕизнеса с таким номером нет. —писок: /bizlist");
+	return b;
+}
+
+stock bool:Cmd_GotoBiz(playerid, const params[], bool:inside)
+{
+	if (!Admin_Check(playerid, 3)) return true;
+	new b = Biz_FromParam(playerid, params, inside ? ("»спользование: /gotobizint [є] Ч внутрь бизнеса. —писок: /bizlist") : ("»спользование: /gotobiz [є] Ч ко входу бизнеса. —писок: /bizlist"));
+	if (b == -1) return true;
+	if (inside && Biz[b][bInt] == 0) return SendClientMessage(playerid, COLOR_GREY, "” Ђ%sї нет интерьера.  о входу: /gotobiz %d", Biz[b][bName], Biz[b][bDbId]);
+	Teleport_SaveBack(playerid);
+	if (IsPlayerInAnyVehicle(playerid)) RemovePlayerFromVehicle(playerid);
+	if (inside) Door_SpawnAt(playerid, Biz[b][bExitMk]);
+	else
+	{
+		new Float:x = Biz[b][bX], Float:y = Biz[b][bY], Float:z = Biz[b][bZ];
+		Marker_GetPos(Biz[b][bMarker], x, y, z);
+		SetPlayerInterior(playerid, 0);
+		SetPlayerVirtualWorld(playerid, 0);
+		SetPlayerPos(playerid, x + 1.0, y, z);
+		SetCameraBehindPlayer(playerid);
+	}
+	Player[playerid][pHouseInside] = -1;
+	SendClientMessage(playerid, COLOR_ADMIN, "Ђ%sї (є%d)%s. Ќазад: /back", Biz[b][bName], Biz[b][bDbId], inside ? (", внутри") : (""));
+	return true;
+}
+
+stock bool:Cmd_BizList(playerid)
+{
+	if (!Admin_Check(playerid, 3)) return true;
+	if (gBizCount == 0) return SendClientMessage(playerid, COLOR_GREY, "Ѕизнесов нет.");
+	SendClientMessage(playerid, COLOR_YELLOW, "Ѕизнесы (є Ч название, тип):");
+	new line[144], part[64];
+	for (new b = 0; b < gBizCount; b++)
+	{
+		format(part, sizeof part, "%d %s (%s)%s   ", Biz[b][bDbId], Biz[b][bName], Biz_GetTypeName(Biz[b][bType]), Biz[b][bLocked] ? (" закр.") : (""));
+		if (strlen(line) + strlen(part) >= sizeof (line) - 1)
+		{
+			SendClientMessage(playerid, COLOR_WHITE, "%s", line);
+			line[0] = '\0';
+		}
+		strcat(line, part);
+	}
+	if (line[0] != '\0') SendClientMessage(playerid, COLOR_WHITE, "%s", line);
+	return true;
+}
+
 // /bizlock Ч закрыть или открыть вход (владелец у своего бизнеса или админ 4+ у любого)
 stock bool:Cmd_BizLock(playerid)
 {
