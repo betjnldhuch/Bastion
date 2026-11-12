@@ -269,7 +269,12 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/dropcrate", true))   { Cmd_DropCrate(playerid); return 1; }
 	if (!strcmp(cmd, "/unload", true))      { Cmd_Supply(playerid); return 1; }
 	if (!strcmp(cmd, "/setarmystore", true)) { Cmd_SetSPoint(playerid, SP_ARMY); return 1; }
-	if (!strcmp(cmd, "/setbm", true))       { Cmd_SetSPoint(playerid, SP_BM); return 1; }
+	if (!strcmp(cmd, "/setbm", true) || !strcmp(cmd, "/addbm", true)) { Cmd_AddBM(playerid); return 1; }
+	if (!strcmp(cmd, "/delbm", true))       { Cmd_DelBM(playerid); return 1; }
+	if (!strcmp(cmd, "/squads", true))      { Cmd_Squads(playerid); return 1; }
+	if (!strcmp(cmd, "/squadname", true))   { Cmd_SquadName(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/setsquad", true))    { Cmd_SetSquad(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/setrankname", true)) { Cmd_SetRankName(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/bmprice", true))     { Cmd_BMPrice(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/bm", true))          { Cmd_BM(playerid); return 1; }
 	if (!strcmp(cmd, "/steal", true))       { Cmd_Steal(playerid); return 1; }
