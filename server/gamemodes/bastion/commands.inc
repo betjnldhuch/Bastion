@@ -199,6 +199,11 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/exit", true))        { Cmd_Exit(playerid); return 1; }
 	if (!strcmp(cmd, "/lock", true))        { Cmd_Lock(playerid); return 1; }
 	if (!strcmp(cmd, "/house", true))       { Cmd_House(playerid); return 1; }
+	if (!strcmp(cmd, "/disguise", true))    { Cmd_Disguise(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/tap", true))         { Cmd_Tap(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/untap", true))       { Cmd_Untap(playerid); return 1; }
+	if (!strcmp(cmd, "/track", true))       { Cmd_Track(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/dossier", true))     { Cmd_Dossier(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/makestorage", true) || !strcmp(cmd, "/makestorgage", true)) { Cmd_MakeStorage(playerid); return 1; }
 	if (!strcmp(cmd, "/housepay", true))    { Cmd_HousePay(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/rent", true))        { Cmd_Rent(playerid); return 1; }

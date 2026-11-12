@@ -72,6 +72,7 @@
 #include "bastion/turfs.inc"
 #include "bastion/bank.inc"
 #include "bastion/phone.inc"
+#include "bastion/fbi.inc"        // ‘Ѕ–: маскировка, прослушка, слежка, досье
 #include "bastion/business.inc"
 #include "bastion/garage.inc"
 #include "bastion/gps.inc"        // /markers Ч правка маркеров в игре, /gps
@@ -203,6 +204,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Gps_OnDisconnect(playerid);
 	Wound_Reset(playerid);
 	Rob_OnDisconnect(playerid);
+	Fbi_OnDisconnect(playerid);
 	Player[playerid][pLogged] = false;
 	return 1;
 }

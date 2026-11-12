@@ -89,6 +89,7 @@ stock Phone_OnText(playerid, const text[])
 	new other = Player[playerid][pCallWith];
 	if (other == INVALID_PLAYER_ID || !IsPlayerConnected(other)) return 0;
 	SendClientMessage(other, COLOR_YELLOW, "[Телефон] %s: %s", GetRPName(playerid), text);
+	Fbi_OnPhoneText(playerid, other, text);     // прослушка ФБР (fbi.inc)
 	return 1;
 }
 
@@ -160,6 +161,7 @@ stock bool:Cmd_PickUp(playerid)
 	SetPlayerSpecialAction(caller, SPECIAL_ACTION_USECELLPHONE);
 	SendClientMessage(playerid, COLOR_GREEN, "Ты ответил на звонок. Говори в обычный чат. Положить трубку: /h");
 	SendClientMessage(caller, COLOR_GREEN, "Абонент ответил. Говори в обычный чат. Положить трубку: /h");
+	Fbi_OnCallStart(caller, playerid);
 	return true;
 }
 
@@ -185,6 +187,7 @@ stock bool:Cmd_Sms(playerid, const params[])
 	GiveMoney(playerid, -SMS_PRICE);
 	SendClientMessage(target, COLOR_YELLOW, "SMS от %d: %s", Player[playerid][pPhone], text);
 	SendClientMessage(playerid, COLOR_YELLOW, "SMS на %d: %s ($%d)", number, text, SMS_PRICE);
+	Fbi_OnSms(playerid, target, text);
 	return true;
 }
 
