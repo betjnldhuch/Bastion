@@ -46,6 +46,9 @@ public final class Remote {
         try {
             URL u = new URL(ClientInstaller.GAME_ARCHIVE_URL);
             if (!"https".equals(u.getProtocol())) return "";
+            // Яндекс Диск и GitHub не раздают папку launcher/ — удалённых файлов нет
+            String h = u.getHost().toLowerCase(java.util.Locale.ROOT);
+            if (h.equals("yadi.sk") || h.startsWith("disk.") || h.equals("github.com")) return "";
             return "https://" + u.getAuthority() + "/launcher/";
         } catch (Exception e) {
             return "";

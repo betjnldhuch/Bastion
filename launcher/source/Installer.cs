@@ -14,8 +14,8 @@ namespace BastionLauncher
 {
     static class GameInstaller
     {
-        const long MaxArchive = 4294967296L;    // 4 ГБ
-        const long MaxExtracted = 8589934592L;  // 8 ГБ
+        const long MaxArchive = 17179869184L;   // 16 ГБ
+        const long MaxExtracted = 34359738368L; // 32 ГБ
 
         // Ключ уходит только по https и только на хост официального архива
         static bool SendsKey(string url)
@@ -32,10 +32,16 @@ namespace BastionLauncher
 
         // dest — папка, куда ляжет игра (её не должно быть или она пустая).
         // progress вызывается из рабочего потока.
+        // url может содержать несколько ссылок через пробел или | — это части одного ZIP
+        // (например, нарезка по 900 МБ для Яндекс Диска). Они скачиваются по порядку и
+        // склеиваются, MD5 сверяется у склеенного архива.
         public static void Install(string url, string md5, string dest, Action<string> progress)
         {
-            if (!url.StartsWith("http://") && !url.StartsWith("https://") && !url.StartsWith("b2://"))
-                throw new Exception("Нужна прямая ссылка на ZIP (http:// или https://).");
+            string[] parts = url.Split(new char[] { ' ', '|', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0) throw new Exception("Нужна прямая ссылка на ZIP (http:// или https://).");
+            foreach (string p in parts)
+                if (!p.StartsWith("http://") && !p.StartsWith("https://") && !p.StartsWith("b2://"))
+                    throw new Exception("Нужна прямая ссылка на ZIP (http:// или https://).");
             dest = Path.GetFullPath(dest);
             if (Directory.Exists(dest) && Directory.GetFileSystemEntries(dest).Length > 0)
                 throw new Exception("Папка " + dest + " не пустая. Выбери пустую папку для игры.");
@@ -45,7 +51,8 @@ namespace BastionLauncher
             string staging = dest + ".installing";
             try
             {
-                Download(url, archive, progress);
+                if (parts.Length == 1) Download(parts[0], archive, progress);
+                else DownloadParts(parts, archive, progress);
                 if (md5 != null && md5.Trim().Length > 0)
                 {
                     progress("Проверка архива (MD5)…");
@@ -125,10 +132,78 @@ namespace BastionLauncher
             return m.Success ? m.Groups[1].Value.Replace("\\/", "/") : "";
         }
 
+        // Ссылка на Яндекс Диск (disk.yandex.ru/d/…, yadi.sk/…)?
+        static bool IsYandexDisk(string url)
+        {
+            try
+            {
+                string h = new Uri(url).Host.ToLowerInvariant();
+                return h == "yadi.sk" || h == "disk.yandex.ru" || h == "disk.yandex.com" || h == "disk.360.yandex.ru";
+            }
+            catch (Exception) { return false; }
+        }
+
+        // Публичная ссылка Яндекс Диска → временная прямая ссылка на файл (API Диска)
+        static string ResolveYandexDisk(string url)
+        {
+            HttpWebRequest rq = (HttpWebRequest)WebRequest.Create(
+                "https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=" + Uri.EscapeDataString(url));
+            rq.UserAgent = "Bastion-Launcher-PC";
+            rq.Timeout = 30000;
+            string json;
+            try
+            {
+                using (WebResponse rs = rq.GetResponse())
+                using (StreamReader sr = new StreamReader(rs.GetResponseStream(), Encoding.UTF8))
+                    json = sr.ReadToEnd();
+            }
+            catch (WebException ex)
+            {
+                HttpWebResponse er = ex.Response as HttpWebResponse;
+                if (er != null && (int)er.StatusCode == 404)
+                    throw new Exception("Яндекс Диск: файл по ссылке не найден или доступ по ссылке выключен.");
+                if (er != null && ((int)er.StatusCode == 403 || (int)er.StatusCode == 429))
+                    throw new Exception("Яндекс Диск временно ограничил скачивание этого файла. Попробуй позже.");
+                if (er != null) throw new Exception("Яндекс Диск недоступен: HTTP " + (int)er.StatusCode);
+                throw new Exception("Нет связи с Яндекс Диском: " + ex.Message);
+            }
+            string href = JsonString(json, "href");
+            if (!href.StartsWith("https://")) throw new Exception("Яндекс Диск вернул непонятную ссылку.");
+            return href;
+        }
+
+        static void DownloadParts(string[] parts, string target, Action<string> progress)
+        {
+            string piece = target + ".piece";
+            try
+            {
+                using (FileStream output = new FileStream(target, FileMode.Create, FileAccess.Write))
+                {
+                    for (int i = 0; i < parts.Length; i++)
+                    {
+                        string prefix = "Часть " + (i + 1) + " из " + parts.Length + ". ";
+                        Download(parts[i], piece, delegate (string msg) { progress(prefix + msg); });
+                        using (FileStream input = File.OpenRead(piece)) input.CopyTo(output, 1 << 20);
+                        File.Delete(piece);
+                        if (output.Length > MaxArchive) throw new Exception("Архив больше 16 ГБ.");
+                    }
+                }
+            }
+            finally
+            {
+                try { if (File.Exists(piece)) File.Delete(piece); } catch (Exception) { }
+            }
+        }
+
         static void Download(string url, string target, Action<string> progress)
         {
             progress("Подключение к серверу…");
             ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; // TLS 1.2
+            if (IsYandexDisk(url))
+            {
+                progress("Получение ссылки Яндекс Диска…");
+                url = ResolveYandexDisk(url);
+            }
             string b2Token = null;
             if (url.StartsWith("b2://"))
             {
@@ -163,14 +238,14 @@ namespace BastionLauncher
             using (FileStream output = new FileStream(target, FileMode.Create, FileAccess.Write))
             {
                 long expected = rs.ContentLength;
-                if (expected > MaxArchive) throw new Exception("Архив больше 4 ГБ.");
+                if (expected > MaxArchive) throw new Exception("Архив больше 16 ГБ.");
                 byte[] buf = new byte[1 << 16];
                 long total = 0;
                 int n, last = -1;
                 while ((n = input.Read(buf, 0, buf.Length)) > 0)
                 {
                     total += n;
-                    if (total > MaxArchive) throw new Exception("Архив больше 4 ГБ.");
+                    if (total > MaxArchive) throw new Exception("Архив больше 16 ГБ.");
                     output.Write(buf, 0, n);
                     int mb = (int)(total / 1048576);
                     int mark = expected > 0 ? (int)(total * 100 / expected) : mb;
@@ -234,7 +309,7 @@ namespace BastionLauncher
                         throw new Exception("Небезопасный путь в архиве: " + e.FullName);
                     if (rel.EndsWith("/")) { Directory.CreateDirectory(path); continue; }
                     size += e.Length;
-                    if (size > MaxExtracted) throw new Exception("Распакованная игра больше 8 ГБ.");
+                    if (size > MaxExtracted) throw new Exception("Распакованная игра больше 32 ГБ.");
                     Directory.CreateDirectory(Path.GetDirectoryName(path));
                     e.ExtractToFile(path, true);
                     int pct = (int)((long)done * 100 / count);
