@@ -150,5 +150,8 @@ enum
 	DIALOG_FCLOSE,
 	DIALOG_FMANAGE,
 	DIALOG_FTRANSFER,
-	DIALOG_LOCKER
+	DIALOG_LOCKER,
+
+	// --- Аренда мопедов (rental.inc)
+	DIALOG_RENTAL
 }

@@ -80,6 +80,7 @@
 #include "bastion/families.inc"   // семьи: организации игроков
 #include "bastion/wounded.inc"    // ранение вместо смерти, /revive, /aid
 #include "bastion/robbery.inc"    // /rob Ч ограбление магазинов
+#include "bastion/rental.inc"     // аренда мопедов: /addmoped, ALT у точки
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
 #include "bastion/fps.inc"
@@ -138,6 +139,7 @@ public OnGameModeInit()
 	Fuel_Init();          // после всех машин: им выдаЄтс€ бензин
 	Wound_Init();
 	Robbery_Init();
+	Rental_Init();         // точки проката мопедов (rental.inc)
 	AC_Init();            // античит (anticheat.inc)
 	Backup_Init();        // копи€ базы, если сегодн€шней ещЄ нет
 
@@ -203,6 +205,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Gps_OnDisconnect(playerid);
 	Wound_Reset(playerid);
 	Rob_OnDisconnect(playerid);
+	Rental_OnDisconnect(playerid);
 	Player[playerid][pLogged] = false;
 	return 1;
 }
@@ -385,6 +388,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (BM_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Factory_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Factions_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Rental_OnDialog(playerid, dialogid, response)) return 1;
 	return 0;
 }
 
@@ -411,6 +415,7 @@ public OnPlayerStateChange(playerid, PLAYER_STATE:newstate, PLAYER_STATE:oldstat
 		if (!Factions_OnBecomeDriver(playerid)) Vehicles_OnBecomeDriver(playerid);
 		Jobs_OnBecomeDriver(playerid);      // рабочие машины Ч только работникам
 		Licenses_OnBecomeDriver(playerid);  // учебна€ машина, предупреждение без прав
+		Rental_OnBecomeDriver(playerid);    // чужой прокатный мопед
 	}
 	else if (newstate == PLAYER_STATE_PASSENGER)
 	{
@@ -429,6 +434,7 @@ public OnPlayerKeyStateChange(playerid, KEY:newkeys, KEY:oldkeys)
 
 public OnVehicleSpawn(vehicleid)
 {
+	if (Rental_OnVehicleSpawn(vehicleid)) return 1;   // разбитый прокатный мопед пропадает
 	Fuel_OnVehicleSpawn(vehicleid);
 	Vehicles_OnSpawn(vehicleid);
 	return 1;
@@ -449,6 +455,7 @@ public OnMinuteTimer()
 	Needs_OnMinute();       // голод
 	Factions_OnMinute();    // тюремные сроки
 	Admin_OnMinute();       // деморган и муты
+	Rental_OnMinute();      // срок аренды мопедов
 
 	if (minute == 0 && hour != gLastPayDayHour)
 	{
