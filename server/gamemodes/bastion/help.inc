@@ -283,6 +283,7 @@ static const gHelp[][E_HELP] =
 	{ HT_ADMIN2, "/freeze [id], /unfreeze [id]", "заморозить / разморозить" },
 	{ HT_ADMIN2, "/slap [id]", "подкинуть" },
 	{ HT_ADMIN2, "/gethere [id]", "телепортировать игрока к себе" },
+	{ HT_ADMIN2, "/spawn [id]", "заспавнить игрока на его месте появления" },
 	{ HT_ADMIN2, "/sethp [id] [0-100]", "здоровье" },
 	{ HT_ADMIN2, "/setskin [id] [скин]", "скин" },
 	{ HT_ADMIN2, "/jail [id] [мин] [причина]", "тюрьма LSPD" },
