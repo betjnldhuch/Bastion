@@ -15,7 +15,7 @@
 #define MARKER_ADMIN        4
 #define MARKER_NEAR         4.0
 #define MARKER_STEP         0.25
-#define MARKER_ICON_SLOTS   99      // значки маркеров: слоты 0..98
+#define MARKER_ICON_SLOTS   98      // значки маркеров: слоты 0..98
 #define GPS_ICON_SLOT       99      // слот 99 Ч метка GPS
 #define GPS_ICON            41      // значок Ђпутева€ точкаї
 #define GPS_ARRIVE          12.0
