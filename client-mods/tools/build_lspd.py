@@ -80,6 +80,9 @@ _c = Image.new('RGB', (256, 256), (10, 12, 18)); _c.paste(door, (0, 0)); door = 
 _d = ImageDraw.Draw(door)
 _d.line((237, 0, 237, 255), fill=(80, 95, 125), width=2)   # кромка створки
 _d.rectangle((0, 0, 2, 255), fill=(15, 18, 26))            # шов у петель
+# Пак 5: пол с квадратами, ступени
+tile = L('bpd5_floor_tile.png').convert('RGB').resize((256, 256), Image.LANCZOS)
+stair = L('bpd5_stair_step.png').convert('RGB').crop((0, 59, 1024, 307)).resize((128, 128), Image.LANCZOS)  # одна ступень, кромка на той же высоте, что в оригинале
 txdpatch.patch(os.path.join(src_dir, 'genintintpoliceb.txd'), os.path.join(out_dir, 'genintintpoliceb.txd'),
                {'coptop_blue': wall, 'copbtm_green': wains, 'p_floor4': floor, 'p_countr': desk,
                 'breezewall': sq('bpd_corridor_wall.png'), 'breezewall2': sq('bpd_corridor_wall.png'),
@@ -88,9 +91,25 @@ txdpatch.patch(os.path.join(src_dir, 'genintintpoliceb.txd'), os.path.join(out_d
                 'pol_flr3': sq('bpd3_floor_checker.png'), 'p_floor2': sq('bpd_floor_lino.png'),
                 'cop_cellwall': sq('bpd3_cell_tiles.png'), 'cop_cellwall_btm': sq('bpd_cell_wall_btm.png'),
                 'cop_cellfloor': sq('bpd3_cell_floor.png'),
-                'p_door1': door, 'lockers': sq('bpd3_lockers.png'), 'cop_bench': bench, 'pol_dor_surr2': surr})
+                'p_door1': door, 'lockers': sq('bpd3_lockers.png'), 'cop_bench': bench, 'pol_dor_surr2': surr,
+                'pol_flr2': tile, 'pol_stairs2': stair})
+# Пак 5: столы и шкафы (genintintpolicea)
+from rw import txd_images
+_orig_a = txd_images(open(os.path.join(src_dir, 'genintintpolicea.txd'), 'rb').read())
+deskside = L('bpd5_desk_top.png').convert('RGB').crop((160, 160, 864, 864)).resize((128, 128), Image.LANCZOS)
+# столешница: серый ламинат, бумаги и папки переносим со старой текстуры (светлые пиксели)
+desktop = L('bpd5_desk_top.png').convert('RGB').crop((120, 300, 904, 692)).resize((512, 256), Image.LANCZOS)
+_old = _orig_a['poldesktop'].convert('RGB').resize((512, 256), Image.BICUBIC)
+_mask = _old.convert('L').point(lambda v: 255 if v > 150 else 0).filter(ImageFilter.MaxFilter(3))
+desktop.paste(_old, (0, 0), _mask)
+# шкаф: как в оригинале — слева боковина (гладкий металл), справа ящики
+_cab = L('bpd5_filing_cabinet.png').convert('RGB')
+cabinet = Image.new('RGB', (256, 256))
+cabinet.paste(_cab.crop((70, 70, 290, 230)).resize((136, 256), Image.LANCZOS), (0, 0))  # гладкий кусок ящика без ручки
+cabinet.paste(_cab.crop((40, 20, 984, 1000)).resize((120, 256), Image.LANCZOS), (136, 0))
 txdpatch.patch(os.path.join(src_dir, 'genintintpolicea.txd'), os.path.join(out_dir, 'genintintpolicea.txd'),
-               {'copcell_bars': bars, 'cop_notice': board})
+               {'copcell_bars': bars, 'cop_notice': board,
+                'poldesk': deskside, 'poldesktop': desktop, 'filing_cabnu': cabinet})
 
 # Лампы на потолке (int_policea03a.txd, текстура striplight1)
 lamp = L('bpd2_ceiling.png').convert('RGB').crop((295, 280, 765, 605)).resize((128, 128), Image.LANCZOS)
