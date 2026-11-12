@@ -11,5 +11,8 @@ namespace BastionLauncher
         public const string GameUrl = "";
         public const string GameMd5 = "";
         public const string DownloadKey = "";
+        // Закрытый бакет Backblaze B2 (GameUrl = b2://бакет/game.zip), ключ только на чтение
+        public const string B2KeyId = "";
+        public const string B2Key = "";
     }
 }
