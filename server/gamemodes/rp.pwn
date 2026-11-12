@@ -203,8 +203,8 @@ public OnPlayerDisconnect(playerid, reason)
 	Hud_OnDisconnect(playerid);
 	Gps_OnDisconnect(playerid);
 	Wound_Reset(playerid);
+	Fbi_OnDisconnect(playerid);         // ФБР: маскировка, прослушка, слежка
 	Rob_OnDisconnect(playerid);
-	Fbi_OnDisconnect(playerid);
 	Player[playerid][pLogged] = false;
 	return 1;
 }
