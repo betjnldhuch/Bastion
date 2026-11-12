@@ -206,6 +206,9 @@ stock Keys_Interact(playerid)
 	// 0. ¬ход/выход в здание с интерьером (doors.inc)
 	if (Doors_Try(playerid)) return;
 
+	// 0а. «аводы, €щики, склады организаций, чЄрный рынок (factions.inc)
+	if (Factory_TryAlt(playerid)) return;
+
 	// 1. ¬нутри дома у двери Ч выйти
 	new h = Player[playerid][pHouseInside];
 	if (h != -1 && IsPlayerInRangeOfPoint(playerid, 2.0, House[h][hIX], House[h][hIY], House[h][hIZ]))
@@ -316,7 +319,8 @@ stock Keys_OnKeyStateChange(playerid, newkeys, oldkeys)
 		if (KeyPressed(newkeys, oldkeys, _:KEY_CROUCH))     // H в машине (это ещЄ и гудок)
 		{
 			// на ј«— Ч заправка, на —“ќ Ч меню —“ќ, иначе шлагбаум
-			if (!Fuel_TryFill(playerid) && !Garage_TryOpen(playerid)) Gates_TryOpen(playerid);
+			// на складе организации с грузом Ч разгрузка (factions.inc)
+			if (!Fuel_TryFill(playerid) && !Garage_TryOpen(playerid) && !Factory_TryUnload(playerid, false)) Gates_TryOpen(playerid);
 			return 1;
 		}
 	}
