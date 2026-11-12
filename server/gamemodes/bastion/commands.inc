@@ -199,15 +199,15 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/exit", true))        { Cmd_Exit(playerid); return 1; }
 	if (!strcmp(cmd, "/lock", true))        { Cmd_Lock(playerid); return 1; }
 	if (!strcmp(cmd, "/house", true))       { Cmd_House(playerid); return 1; }
+	if (!strcmp(cmd, "/housepay", true))    { Cmd_HousePay(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/rent", true))        { Cmd_Rent(playerid); return 1; }
+	if (!strcmp(cmd, "/unrent", true))      { Cmd_Unrent(playerid); return 1; }
+	if (!strcmp(cmd, "/setrent", true))     { Cmd_SetRent(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/unrentmoped", true)) { Cmd_UnrentMoped(playerid); return 1; }
 	if (!strcmp(cmd, "/addmoped", true))    { Cmd_AddMoped(playerid); return 1; }
 	if (!strcmp(cmd, "/delmoped", true))    { Cmd_DelMoped(playerid); return 1; }
 	if (!strcmp(cmd, "/mopeds", true))      { Cmd_Mopeds(playerid); return 1; }
 	if (!strcmp(cmd, "/mopedprice", true))  { Cmd_MopedPrice(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/housepay", true))    { Cmd_HousePay(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/rent", true))        { Cmd_Rent(playerid); return 1; }
-	if (!strcmp(cmd, "/unrent", true))      { Cmd_Unrent(playerid); return 1; }
-	if (!strcmp(cmd, "/setrent", true))     { Cmd_SetRent(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/tenants", true))     { Cmd_Tenants(playerid); return 1; }
 	if (!strcmp(cmd, "/evict", true))       { Cmd_Evict(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/evictall", true))    { Cmd_EvictAll(playerid); return 1; }
