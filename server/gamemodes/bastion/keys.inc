@@ -252,7 +252,7 @@ stock Keys_Interact(playerid)
 	new f = Player[playerid][pFaction];
 	if (Faction_IsValid(f) && IsPlayerInRangeOfPoint(playerid, FACTION_DUTY_RANGE, Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ]))
 	{
-		Cmd_Duty(playerid);
+		Locker_Show(playerid);     // переодеться или взять снаряжение (factions.inc)
 		return;
 	}
 

@@ -220,6 +220,7 @@ stock Account_FinishLogin(playerid)
 	Families_OnLogin(playerid);         // семья игрока (families.inc)
 	Debts_OnLogin(playerid);            // долги по налогам и штрафам (debts.inc)
 	Spawns_LoadPlayer(playerid);        // выбор из /setspawn (spawns.inc)
+	Squad_Load(playerid);               // взвод во фракции (factions.inc)
 
 	Account_SetNormalSpawn(playerid);
 	TogglePlayerSpectating(playerid, false);  // выход из режима наблюдения = спавн
@@ -236,6 +237,7 @@ stock Account_SetNormalSpawn(playerid)
 		case SPAWN_STATION: chosen = Spawns_GetChosen(playerid, x, y, z, a);
 		case SPAWN_HOUSE:   chosen = Houses_GetSpawn(playerid, x, y, z, a);
 		case SPAWN_FACTION: chosen = Factions_GetSpawn(playerid, x, y, z, a);
+		case SPAWN_ANYSTATION: chosen = Spawns_Get(x, y, z, a);
 	}
 	if (!chosen)
 	{
