@@ -133,5 +133,9 @@ enum
 	DIALOG_HELP_TOPIC,
 
 	// --- Выбор места появления (spawns.inc)
-	DIALOG_SETSPAWN
+	DIALOG_SETSPAWN,
+
+	// --- Цвет фракции (/fcolor, factions.inc)
+	DIALOG_FCOLOR,
+	DIALOG_FCOLOR_HEX
 }

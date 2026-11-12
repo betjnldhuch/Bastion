@@ -32,6 +32,8 @@ new gVehOwner[MAX_VEHICLES];        // id аккаунта владельца (0 = обща€ машина)
 new bool:gVehLocked[MAX_VEHICLES];
 new bool:gVehAdmin[MAX_VEHICLES];   // создана админом через /veh
 new gVehFaction[MAX_VEHICLES];      // машина фракции (FACTION_*, 0 = не фракционна€)
+new gVehCargo[MAX_VEHICLES];        // припасы в кузове машины армии (factions.inc, /supply)
+new gVehCargoSrc[MAX_VEHICLES];     // откуда груз: 1 Ч база снабжени€, 2 Ч склад армии
 new gPlayerVeh[MAX_PLAYERS] = { INVALID_VEHICLE_ID, ... };
 
 static const gDealerModels[] = { 462, 410, 401, 516, 405, 560 };
@@ -86,6 +88,8 @@ stock Vehicle_Clear(vehicleid)
 	gVehLocked[vehicleid] = false;
 	gVehAdmin[vehicleid] = false;
 	gVehFaction[vehicleid] = 0;
+	gVehCargo[vehicleid] = 0;
+	gVehCargoSrc[vehicleid] = 0;
 	Fuel_ResetVehicle(vehicleid);     // fuel.inc: нова€ машина Ч полный бак
 	Garage_ResetVehicle(vehicleid);   // garage.inc: без тюнинга
 }

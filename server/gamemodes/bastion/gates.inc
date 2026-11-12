@@ -146,8 +146,8 @@ stock bool:Cmd_AddGate(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, f, type;
-	if (!NextIntParam(params, pos, f) || f < 0 || f >= MAX_FACTIONS || !NextIntParam(params, pos, type) || type < 1 || type > 2)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /addgate [фракция 0-5] [тип: 1 шлагбаум, 2 ворота]");
+	if (!NextIntParam(params, pos, f) || f < 0 || f >= MAX_FACTIONS || (f != FACTION_NONE && !Faction_IsValid(f)) || !NextIntParam(params, pos, type) || type < 1 || type > 2)
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /addgate [фракция, 0 — для всех] [тип: 1 шлагбаум, 2 ворота]");
 	if (GetPlayerInterior(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "Только на улице.");
 	if (gGateCount >= MAX_GATES) return SendClientMessage(playerid, COLOR_GREY, "Достигнут лимит (MAX_GATES).");
 
