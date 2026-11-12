@@ -96,7 +96,7 @@ stock Keys_ShowInteract(playerid, target)
 		else { gInteractActs[playerid][n++] = ACT_CUFF; strcat(list, "{FF6347}Надеть наручники\n"); }
 		gInteractActs[playerid][n++] = ACT_FRISK; strcat(list, "{FF6347}Обыскать\n");
 	}
-	if (f == FACTION_EMS && Player[playerid][pDuty])
+	if (Faction_IsMedic(f) && Player[playerid][pDuty])
 	{
 		gInteractActs[playerid][n++] = ACT_HEAL; strcat(list, "{FF8080}Предложить лечение\n");
 	}

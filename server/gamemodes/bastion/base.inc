@@ -15,7 +15,8 @@ enum
 }
 
 // ‘ракции (подробности Ч в factions.inc)
-#define MAX_FACTIONS        7           // 0 = нет фракции, 1..6 Ч фракции
+#define MAX_FACTIONS        51          // 0 = нет фракции, 1..7 Ч посто€нные, 8..50 Ч созданные в игре (/createfaction)
+#define FACTION_BUILTIN     8           // с этого номера идут фракции, созданные в игре
 #define MAX_RANK            10          // 10 = лидер, 9 = заместитель
 enum
 {
@@ -25,10 +26,12 @@ enum
 	FACTION_GROVE,      // 3 Ч Grove Street Families
 	FACTION_BALLAS,     // 4 Ч The Ballas
 	FACTION_AZTECAS,    // 5 Ч Varrios Los Aztecas
-	FACTION_FBI         // 6 Ч ‘Ѕ– (силова€ структура, права как у полиции)
+	FACTION_FBI,        // 6 Ч ‘Ѕ– (силова€ структура, права как у полиции)
+	FACTION_ARMY        // 7 Ч јрми€ (возит припасы на склады госструктур)
 }
-// —илова€ структура: полици€ или ‘Ѕ– (наручники, розыск, арест, штрафы, решЄтки камер)
-#define Faction_IsLaw(%0)   ((%0) == FACTION_POLICE || (%0) == FACTION_FBI)
+// —илова€ структура: полици€, ‘Ѕ– и созданные в игре фракции этого типа
+// (наручники, розыск, арест, штрафы, решЄтки камер). —ама функци€ Ч в factions.inc.
+forward bool:Faction_IsLaw(f);
 
 // ¬сЄ, что мы знаем об игроке. ѕол€ с "сохран€етс€" пишутс€ в базу.
 enum E_PLAYER

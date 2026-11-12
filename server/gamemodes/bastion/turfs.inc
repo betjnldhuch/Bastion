@@ -102,6 +102,24 @@ stock Turf_CountOwned(f)
 	return count;
 }
 
+// ‘ракцию удалили (/delfaction): еЄ районы станов€тс€ ничьими
+stock Turfs_FreeFaction(f)
+{
+	for (new t = 0; t < gTurfCount; t++)
+	{
+		if (Turf[t][tOwner] != f) continue;
+		Turf[t][tOwner] = FACTION_NONE;
+		Turf_Save(t);
+		GangZoneShowForAll(Turf[t][tZone], Turf_GetColor(t));
+	}
+}
+
+// ÷вет фракции сменили (/fcolor, /fedit): перекрасить районы на радаре
+stock Turfs_Recolor()
+{
+	for (new t = 0; t < gTurfCount; t++) GangZoneShowForAll(Turf[t][tZone], Turf_GetColor(t));
+}
+
 stock Turf_Save(t)
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE turfs SET owner = %d WHERE id = %d", Turf[t][tOwner], Turf[t][tDbId]));
@@ -325,7 +343,7 @@ stock bool:Cmd_SetTurf(playerid, const params[])
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, f;
 	if (!NextIntParam(params, pos, f) || (f != FACTION_NONE && !Faction_IsGang(f)))
-		return SendClientMessage(playerid, COLOR_GREY, "»спользование: /setturf [0 Ч ничей, 3 Grove, 4 Ballas, 5 Aztecas]");
+		return SendClientMessage(playerid, COLOR_GREY, "»спользование: /setturf [0 Ч ничей или номер банды: 3 Grove, 4 Ballas, 5 Aztecas, свои Ч /flist]");
 	new t = Turf_GetAt(playerid);
 	if (t == -1) return SendClientMessage(playerid, COLOR_GREY, "¬стань в район.");
 	if (t == gWarTurf) return SendClientMessage(playerid, COLOR_GREY, "«десь идЄт захват, подожди.");

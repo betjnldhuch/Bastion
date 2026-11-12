@@ -66,7 +66,7 @@ stock bool:Cmd_Rob(playerid)
 	if (b == -1 || (Biz[b][bType] != BIZ_SHOP && Biz[b][bType] != BIZ_BAR))
 		return SendClientMessage(playerid, COLOR_GREY, "Грабить можно магазин 24/7 или бар: встань у его значка.");
 	if (Player[playerid][pLevel] < ROB_MIN_LEVEL) return SendClientMessage(playerid, COLOR_GREY, "Грабить можно с %d уровня.", ROB_MIN_LEVEL);
-	if (Player[playerid][pDuty] && (Faction_IsLaw(Player[playerid][pFaction]) || Player[playerid][pFaction] == FACTION_EMS))
+	if (Player[playerid][pDuty] && (Faction_IsLaw(Player[playerid][pFaction]) || Faction_IsMedic(Player[playerid][pFaction])))
 		return SendClientMessage(playerid, COLOR_GREY, "На смене грабить нельзя.");
 	new w = _:GetPlayerWeapon(playerid);
 	if (w < 22 || w > 34) return SendClientMessage(playerid, COLOR_GREY, "Нужно огнестрельное оружие в руках.");
