@@ -609,7 +609,7 @@ stock Faction_UpdateColor(playerid)
 	new f = Player[playerid][pFaction];
 	new color = COLOR_CIVIL;
 	if (Faction_IsGang(f) || (Faction_IsValid(f) && Player[playerid][pDuty])) color = Faction_GetColor(f);
-	if (Fbi_IsDisguised(playerid)) color = COLOR_CIVIL;  // агент ‘Ѕ– в маскировке (fbi.inc)
+	if (Fbi_IsDisguised(playerid)) color = Fbi_DisguiseColor(playerid);  // агент ‘Ѕ– в маскировке (fbi.inc)
 	if (Inv_IsMasked(playerid)) color &= 0xFFFFFF00;    // в маске: точки на карте нет ни у кого (needs.inc)
 	SetPlayerColor(playerid, color);
 }
@@ -1165,6 +1165,7 @@ stock bool:Cmd_FactionChat(playerid, const params[])
 	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "»спользование: /f [текст] Ч раци€ фракции");
 	format(msg, sizeof msg, "[–аци€] %s %s: %s", Faction_GetRankName(f, Player[playerid][pRank]), GetRPName(playerid), text);
 	Faction_Message(f, Faction_GetColor(f), msg);
+	Fbi_OnRadio(f, msg);        // прослушка ‘Ѕ– (fbi.inc)
 	return true;
 }
 
@@ -2324,7 +2325,7 @@ stock bool:Cmd_FHelp(playerid)
 	strcat(text, "ALT на маркере склада армии Ч красть материалы в сумку. ќружие из них: сумка, Ђиспользоватьї.\n");
 	strcat(text, "«аводы можно захватывать: ALT на маркере завода (ранг 7+). “орговец чЄрного рынка Ч ALT. /gd Ч чат банд.\n\n");
 	strcat(text, "{FFFF00}√осструктуры\n{FFFFFF}/d Ч общий чат госструктур (департамент)\n\n");
-	strcat(text, "{4682B4}‘Ѕ–\n{FFFFFF}/disguise [скин] Ч маскировка (на смене)   /dossier [id] Ч досье\n/track [id] Ч слежка на карте (ранг 2+)   /tap [номер] /untap Ч прослушка телефона (ранг 3+)\n\n");
+	strcat(text, "{4682B4}‘Ѕ–\n{FFFFFF}/disguise [скин] Ч маскировка в гражданское   /fdisguise [фракци€] [ранг] Ч в форму организации (на смене)\n/dossier [id] Ч досье   /track [id] Ч слежка на карте (ранг 2+)\n/tap [номер] Ч прослушка телефона   /tapf [фракци€] Ч раци€ организации, у банд и /gd (ранг 3+)   /untap\n\n");
 	strcat(text, "{6B8E23}јрми€\n");
 	strcat(text, "{FFFFFF}Ќа заводе: ALT у сырь€, у станка, потом €щик на склад завода. —о склада €щик кладут в грузовик сзади (ALT).\n");
 	strcat(text, "«а рулЄм на складе организации Ч H или /unload. Ѕез материалов госструктурам не закупить оружие.\n\n");
@@ -4312,6 +4313,7 @@ stock bool:Cmd_GangChat(playerid, const params[])
 	{
 		if (IsPlayerConnected(i) && Player[i][pLogged] && Faction_IsGang(Player[i][pFaction])) SendClientMessage(i, 0xC0A060FF, "%s", msg);
 	}
+	Fbi_OnGangChat(msg);        // прослушка ‘Ѕ– (fbi.inc)
 	return true;
 }
 
