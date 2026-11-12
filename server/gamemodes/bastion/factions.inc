@@ -2881,8 +2881,9 @@ stock bool:Cmd_FList(playerid)
 //
 //  Захват (вид 2): когда рядом нет живых членов организации-владельца, ранг FACTORY_CAPTURE_RANK+
 //  жмёт ALT на маркере завода и стоит FACTORY_CAPTURE_TIME секунд. Завод переходит его организации
-//  и снова работает, материалы на складе остаются. Ранг 9+ своей организации может закрыть завод
-//  (оборудование уничтожено): работать нельзя, пока завод не захватит кто-то другой.
+//  и работает, материалы на складе остаются. Ранг 9+ сразу получает выбор: оставить или закрыть
+//  (позже — ALT на маркере). Закрытый завод перестаёт быть заводом: точки пропадают, остаётся
+//  только склад, пока с него не вывезут ящики. Вернуть завод может админ: /setfowner.
 //
 //  Чёрный рынок: торговец (/setbm), ALT или /bm рядом. Цены: /bmprice.
 //  /d — общий чат госструктур, /gd — общий чат банд.
@@ -3134,7 +3135,11 @@ stock Factory_Label(i, p)
 		}
 		case FP_RAW: strcat(text, "Сырьё\n{FFFFFF}ALT — взять");
 		case FP_BENCH: strcat(text, "Станок\n{FFFFFF}ALT — сделать ящик");
-		default: format(text, sizeof text, "Склад завода\n{FFFFFF}Ящиков: %d\nALT — сдать или взять ящик", Factory[i][fcStock] / CRATE_MATS);
+		default:
+		{
+			if (Factory[i][fcClosed]) format(text, sizeof text, "Склад закрытого завода\n{FFFFFF}Осталось ящиков: %d\nALT — забрать ящик", Factory[i][fcStock] / CRATE_MATS);
+			else format(text, sizeof text, "Склад завода\n{FFFFFF}Ящиков: %d\nALT — сдать или взять ящик", Factory[i][fcStock] / CRATE_MATS);
+		}
 	}
 	Marker_SetLabel(gFcMk[i][p], text, 0xE0A030FF);
 }
@@ -3143,6 +3148,8 @@ stock Factory_BuildPoint(i, p)
 {
 	if (gFcMk[i][p] != -1) { Marker_Destroy(gFcMk[i][p]); gFcMk[i][p] = -1; }
 	if (!Factory[i][fcUsed] || !gFcSet[i][p]) return;
+	// Закрытый завод — просто интерьер: точек нет. Склад виден, пока с него не вывезли ящики.
+	if (Factory[i][fcClosed] && (p != FP_STORE || Factory[i][fcStock] < CRATE_MATS)) return;
 	new model = 1239, gps = GPS_NONE;
 	if (p == FP_OWNER) { model = 1247; gps = GPS_FACTIONS; }
 	gFcMk[i][p] = Marker_Create(MK_FACTION, FACTORY_REF + Factory[i][fcDbId] * 4 + p, Factory[i][fcName], model,
@@ -3472,6 +3479,7 @@ stock Factory_TakeCrate(playerid, i)
 	Factory[i][fcStock] -= CRATE_MATS;
 	Factory_Save(i);
 	Factory_Label(i, FP_STORE);
+	if (Factory[i][fcClosed] && Factory[i][fcStock] < CRATE_MATS) Factory_BuildPoint(i, FP_STORE);   // всё вывезли: склад пропадает
 	Crate_Give(playerid, 2, i);
 	SendClientMessage(playerid, COLOR_WHITE, "Ты взял ящик (%d материалов). Встань сзади грузовика или фургона и положи: ALT.", CRATE_MATS);
 }
@@ -3511,7 +3519,7 @@ stock Factory_OwnerAlt(playerid, i)
 		if (Player[playerid][pRank] < MAX_RANK - 1) return;
 		gFcSel[playerid] = i;
 		ShowPlayerDialog(playerid, DIALOG_FCLOSE, DIALOG_STYLE_MSGBOX, "Закрыть завод",
-			"{FFFFFF}Закрыть завод «%s» и уничтожить оборудование?\n\nРаботать на нём будет нельзя, пока его не захватит другая организация.\nМатериалы на складе останутся, их можно вывезти.",
+			"{FFFFFF}Закрыть завод «%s» и уничтожить оборудование?\n\nЭто больше не будет заводом: точки пропадут, работать и захватывать его будет нельзя.\nОставшиеся ящики можно вывезти со склада. Вернуть завод может только администратор.",
 			"Закрыть", "Отмена", Factory[i][fcName]);
 		return;
 	}
@@ -3584,7 +3592,12 @@ stock Capture_Tick(playerid)
 		Faction_Log(old, msg[10]);
 	}
 	if (Player[playerid][pRank] >= MAX_RANK - 1)
-		SendClientMessage(playerid, COLOR_WHITE, "Завод ваш и работает. Чтобы закрыть его и уничтожить оборудование, нажми ALT на маркере ещё раз.");
+	{
+		gFcSel[playerid] = i;
+		ShowPlayerDialog(playerid, DIALOG_FCLOSE, DIALOG_STYLE_MSGBOX, "Завод захвачен",
+			"{FFFFFF}Завод «%s» захвачен. Что с ним сделать?\n\n{33AA33}Оставить{FFFFFF} — завод переходит вашей организации и работает.\n{FF6347}Закрыть{FFFFFF} — оборудование уничтожено: это больше не завод, а просто помещение.\nОставшиеся ящики можно вывезти со склада.",
+			"Закрыть", "Оставить", Factory[i][fcName]);
+	}
 	else
 		SendClientMessage(playerid, COLOR_WHITE, "Завод ваш и работает. Закрыть его может ранг %d и выше: ALT на маркере.", MAX_RANK - 1);
 }
@@ -3718,6 +3731,7 @@ stock Factory_TryAlt(playerid)
 		for (new i = 0; i < MAX_FACTORIES; i++)
 		{
 			if (!Factory[i][fcUsed] || !Factory_At(playerid, i, FP_STORE, FACTORY_POINT_RANGE)) continue;
+			if (Factory[i][fcClosed]) { SendClientMessage(playerid, COLOR_GREY, "Завод закрыт: ящики отсюда только вывозят."); return 1; }
 			if (Factory[i][fcStock] + CRATE_MATS > FACTORY_STOCK_MAX) { SendClientMessage(playerid, COLOR_GREY, "Склад завода забит."); return 1; }
 			Factory[i][fcStock] += CRATE_MATS;
 			Factory_Save(i);
@@ -3959,7 +3973,8 @@ stock Factory_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			if (!Factory_At(playerid, i, FP_OWNER, 6.0)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от маркера завода."); return 1; }
 			Factory[i][fcClosed] = true;
 			Factory_Save(i);
-			Factory_Label(i, FP_OWNER);
+			if (Factory[i][fcCapBy] != INVALID_PLAYER_ID) Capture_Stop(Factory[i][fcCapBy]);
+			for (new p = 0; p < MAX_FPOINTS; p++) Factory_BuildPoint(i, p);    // точки завода пропадают
 			format(msg, sizeof msg, "[Фракция] %s закрыл завод «%s»: оборудование уничтожено.", GetRPName(playerid), Factory[i][fcName]);
 			Faction_Message(f, Faction_GetColor(f), msg);
 			Faction_Log(f, msg[10]);
@@ -4055,7 +4070,7 @@ stock bool:Cmd_SetFOwner(playerid, const params[])
 	Factory[i][fcOwner] = f;
 	Factory[i][fcClosed] = false;
 	Factory_Save(i);
-	for (new p = 0; p < MAX_FPOINTS; p++) Factory_Label(i, p);
+	for (new p = 0; p < MAX_FPOINTS; p++) Factory_BuildPoint(i, p);    // закрытый завод снова становится заводом
 	if (f == FACTION_NONE) SendClientMessage(playerid, COLOR_ADMIN, "Завод №%d «%s» теперь без владельца.", n, Factory[i][fcName]);
 	else SendClientMessage(playerid, COLOR_ADMIN, "Завод №%d «%s» теперь у фракции «%s» и работает.", n, Factory[i][fcName], Faction_GetName(f));
 	return true;
