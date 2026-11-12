@@ -125,10 +125,55 @@ namespace BastionLauncher
             return m.Success ? m.Groups[1].Value.Replace("\\/", "/") : "";
         }
 
+        // Ссылка на Яндекс Диск (disk.yandex.ru/d/…, yadi.sk/…)?
+        static bool IsYandexDisk(string url)
+        {
+            try
+            {
+                string h = new Uri(url).Host.ToLowerInvariant();
+                return h == "yadi.sk" || h == "disk.yandex.ru" || h == "disk.yandex.com" || h == "disk.360.yandex.ru";
+            }
+            catch (Exception) { return false; }
+        }
+
+        // Публичная ссылка Яндекс Диска → временная прямая ссылка на файл (API Диска)
+        static string ResolveYandexDisk(string url)
+        {
+            HttpWebRequest rq = (HttpWebRequest)WebRequest.Create(
+                "https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=" + Uri.EscapeDataString(url));
+            rq.UserAgent = "Bastion-Launcher-PC";
+            rq.Timeout = 30000;
+            string json;
+            try
+            {
+                using (WebResponse rs = rq.GetResponse())
+                using (StreamReader sr = new StreamReader(rs.GetResponseStream(), Encoding.UTF8))
+                    json = sr.ReadToEnd();
+            }
+            catch (WebException ex)
+            {
+                HttpWebResponse er = ex.Response as HttpWebResponse;
+                if (er != null && (int)er.StatusCode == 404)
+                    throw new Exception("Яндекс Диск: файл по ссылке не найден или доступ по ссылке выключен.");
+                if (er != null && ((int)er.StatusCode == 403 || (int)er.StatusCode == 429))
+                    throw new Exception("Яндекс Диск временно ограничил скачивание этого файла. Попробуй позже.");
+                if (er != null) throw new Exception("Яндекс Диск недоступен: HTTP " + (int)er.StatusCode);
+                throw new Exception("Нет связи с Яндекс Диском: " + ex.Message);
+            }
+            string href = JsonString(json, "href");
+            if (!href.StartsWith("https://")) throw new Exception("Яндекс Диск вернул непонятную ссылку.");
+            return href;
+        }
+
         static void Download(string url, string target, Action<string> progress)
         {
             progress("Подключение к серверу…");
             ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; // TLS 1.2
+            if (IsYandexDisk(url))
+            {
+                progress("Получение ссылки Яндекс Диска…");
+                url = ResolveYandexDisk(url);
+            }
             string b2Token = null;
             if (url.StartsWith("b2://"))
             {

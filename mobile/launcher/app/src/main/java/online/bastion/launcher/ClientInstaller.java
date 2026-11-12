@@ -535,7 +535,48 @@ public final class ClientInstaller {
         } finally { auth.disconnect(); }
     }
 
+    /** Ссылка на Яндекс Диск (disk.yandex.ru/d/…, yadi.sk/…)? */
+    private static boolean isYandexDisk(String address) {
+        try {
+            String h = new URL(address).getHost().toLowerCase(java.util.Locale.ROOT);
+            return h.equals("yadi.sk") || h.equals("disk.yandex.ru") || h.equals("disk.yandex.com")
+                    || h.equals("disk.360.yandex.ru");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** Публичная ссылка Яндекс Диска → временная прямая ссылка на файл (API Диска). */
+    private static String resolveYandexDisk(String address) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(
+                "https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key="
+                        + java.net.URLEncoder.encode(address, "UTF-8")).openConnection();
+        c.setConnectTimeout(CONNECT_TIMEOUT);
+        c.setReadTimeout(READ_TIMEOUT);
+        try {
+            int code = c.getResponseCode();
+            if (code == 404) throw new IllegalStateException("Яндекс Диск: файл по ссылке не найден или доступ по ссылке выключен.");
+            if (code == 403 || code == 429)
+                throw new IllegalStateException("Яндекс Диск временно ограничил скачивание этого файла (HTTP " + code + "). Попробуй позже.");
+            if (code != 200) throw new IllegalStateException("Яндекс Диск недоступен: HTTP " + code);
+            java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+            InputStream in = c.getInputStream();
+            try {
+                byte[] b = new byte[8192];
+                int n;
+                while ((n = in.read(b)) != -1) { buf.write(b, 0, n); if (buf.size() > 65536) break; }
+            } finally { in.close(); }
+            String href = new JSONObject(buf.toString("UTF-8")).getString("href");
+            if (!href.startsWith("https://")) throw new IllegalStateException("Яндекс Диск вернул непонятную ссылку.");
+            return href;
+        } finally { c.disconnect(); }
+    }
+
     private void downloadArchive(String address, File target, Callback callback) throws Exception {
+        if (isYandexDisk(address)) {
+            report(callback, "Получение ссылки Яндекс Диска…");
+            address = resolveYandexDisk(address);
+        }
         String b2Token = null;
         if (address.startsWith("b2://")) {
             report(callback, "Получение доступа к хранилищу…");
