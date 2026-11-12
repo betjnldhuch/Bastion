@@ -34,7 +34,7 @@ namespace BastionLauncher
         // progress вызывается из рабочего потока.
         public static void Install(string url, string md5, string dest, Action<string> progress)
         {
-            if (!url.StartsWith("http://") && !url.StartsWith("https://"))
+            if (!url.StartsWith("http://") && !url.StartsWith("https://") && !url.StartsWith("b2://"))
                 throw new Exception("Нужна прямая ссылка на ZIP (http:// или https://).");
             dest = Path.GetFullPath(dest);
             if (Directory.Exists(dest) && Directory.GetFileSystemEntries(dest).Length > 0)
@@ -72,21 +72,87 @@ namespace BastionLauncher
             }
         }
 
+        // b2://бакет/путь → ссылка на файл в закрытом бакете Backblaze B2 и временный
+        // токен (b2_authorize_account, ключ только на чтение). Возвращает {url, token}.
+        static string[] ResolveB2(string address)
+        {
+            if (Secrets.B2KeyId.Length == 0 || Secrets.B2Key.Length == 0)
+                throw new Exception("В этой сборке нет ключа для закрытого хранилища B2.");
+            string rest = address.Substring("b2://".Length);
+            int slash = rest.IndexOf('/');
+            if (slash <= 0 || slash == rest.Length - 1)
+                throw new Exception("Ссылка B2 должна быть вида b2://бакет/файл.zip");
+            string bucket = rest.Substring(0, slash), file = rest.Substring(slash + 1);
+
+            HttpWebRequest rq = (HttpWebRequest)WebRequest.Create("https://api.backblazeb2.com/b2api/v2/b2_authorize_account");
+            rq.UserAgent = "Bastion-Launcher-PC";
+            rq.Timeout = 30000;
+            rq.Headers["Authorization"] = "Basic " +
+                Convert.ToBase64String(Encoding.UTF8.GetBytes(Secrets.B2KeyId + ":" + Secrets.B2Key));
+            string json;
+            try
+            {
+                using (WebResponse rs = rq.GetResponse())
+                using (StreamReader sr = new StreamReader(rs.GetResponseStream(), Encoding.UTF8))
+                    json = sr.ReadToEnd();
+            }
+            catch (WebException ex)
+            {
+                HttpWebResponse er = ex.Response as HttpWebResponse;
+                if (er != null && (int)er.StatusCode == 401)
+                    throw new Exception("Хранилище B2 не приняло ключ лаунчера (401): ключ удалён или устарел.");
+                if (er != null) throw new Exception("Хранилище B2 недоступно: HTTP " + (int)er.StatusCode);
+                throw new Exception("Нет связи с хранилищем B2: " + ex.Message);
+            }
+            string downloadUrl = JsonString(json, "downloadUrl");
+            string token = JsonString(json, "authorizationToken");
+            if (downloadUrl.Length == 0 || token.Length == 0)
+                throw new Exception("Хранилище B2 вернуло непонятный ответ.");
+            StringBuilder path = new StringBuilder();
+            foreach (string part in file.Split('/'))
+            {
+                if (path.Length > 0) path.Append('/');
+                path.Append(Uri.EscapeDataString(part));
+            }
+            return new string[] { downloadUrl + "/file/" + Uri.EscapeDataString(bucket) + "/" + path, token };
+        }
+
+        // Строковое поле верхнего уровня из JSON (без экранированных кавычек внутри)
+        static string JsonString(string json, string key)
+        {
+            System.Text.RegularExpressions.Match m = System.Text.RegularExpressions.Regex.Match(
+                json, "\"" + key + "\"\\s*:\\s*\"([^\"]*)\"");
+            return m.Success ? m.Groups[1].Value.Replace("\\/", "/") : "";
+        }
+
         static void Download(string url, string target, Action<string> progress)
         {
             progress("Подключение к серверу…");
             ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; // TLS 1.2
+            string b2Token = null;
+            if (url.StartsWith("b2://"))
+            {
+                progress("Получение доступа к хранилищу…");
+                string[] r = ResolveB2(url);
+                url = r[0];
+                b2Token = r[1];
+            }
             HttpWebRequest rq = (HttpWebRequest)WebRequest.Create(url);
             rq.UserAgent = "Bastion-Launcher-PC";
             rq.Timeout = 30000;
             rq.ReadWriteTimeout = 60000;
-            bool keyed = SendsKey(url);
-            if (keyed) rq.Headers["X-Bastion-Key"] = Secrets.DownloadKey;
+            bool keyed = b2Token == null && SendsKey(url);
+            if (b2Token != null) rq.Headers["Authorization"] = b2Token;
+            else if (keyed) rq.Headers["X-Bastion-Key"] = Secrets.DownloadKey;
             HttpWebResponse rs;
             try { rs = (HttpWebResponse)rq.GetResponse(); }
             catch (WebException ex)
             {
                 HttpWebResponse er = ex.Response as HttpWebResponse;
+                if (er != null && b2Token != null && (int)er.StatusCode == 404)
+                    throw new Exception("В хранилище B2 нет файла архива (404). Проверь имя бакета и файла.");
+                if (er != null && b2Token != null && ((int)er.StatusCode == 401 || (int)er.StatusCode == 403))
+                    throw new Exception("Хранилище B2 не отдало архив (" + (int)er.StatusCode + "): у ключа нет доступа к этому бакету.");
                 if (er != null && (int)er.StatusCode == 404 && keyed)
                     throw new Exception("Сервер не отдал архив (404): файла нет в хранилище или ключ лаунчера устарел.");
                 if (er != null) throw new Exception("Ошибка загрузки архива: HTTP " + (int)er.StatusCode);

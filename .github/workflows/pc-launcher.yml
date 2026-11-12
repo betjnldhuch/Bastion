@@ -29,6 +29,8 @@ jobs:
           BASTION_GAME_URL: ${{ secrets.BASTION_GAME_URL }}
           BASTION_GAME_MD5: ${{ secrets.BASTION_GAME_MD5 }}
           BASTION_DOWNLOAD_KEY: ${{ secrets.BASTION_DOWNLOAD_KEY }}
+          BASTION_B2_KEY_ID: ${{ secrets.BASTION_B2_KEY_ID }}
+          BASTION_B2_KEY: ${{ secrets.BASTION_B2_KEY }}
         run: |
           function Lit([string]$v) { '"' + ($v.Trim() -replace '\\', '\\' -replace '"', '\"') + '"' }
           $src = @"
@@ -39,6 +41,8 @@ jobs:
                   public const string GameUrl = $(Lit $env:BASTION_GAME_URL);
                   public const string GameMd5 = $(Lit $env:BASTION_GAME_MD5);
                   public const string DownloadKey = $(Lit $env:BASTION_DOWNLOAD_KEY);
+                  public const string B2KeyId = $(Lit $env:BASTION_B2_KEY_ID);
+                  public const string B2Key = $(Lit $env:BASTION_B2_KEY);
               }
           }
           "@
