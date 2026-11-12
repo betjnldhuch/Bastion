@@ -31,6 +31,7 @@
 #define HOUSE_RENT_MAX      1000    // максимальная аренда в час
 #define HOUSE_WEAPON_SLOTS  5       // мест в шкафу
 #define HOUSE_SAFE_MAX      500000  // максимум денег в сейфе
+#define HOUSE_STORE_RANGE   1.5     // как близко к шкафу открываются шкаф и сейф
 
 
 enum E_HOUSE
@@ -47,12 +48,16 @@ enum E_HOUSE
 	hRent,                      // аренда в час (0 = не сдаётся)
 	hBalance,                   // счёт дома (может быть в минусе — долг по налогу)
 	hSafe,                      // деньги в сейфе
-	hMarker                     // маркер входа (markers.inc)
+	hMarker,                    // маркер входа (markers.inc)
+	bool:hHasStore,             // шкаф поставлен (/makestorage)
+	Float:hSX, Float:hSY, Float:hSZ,    // где стоит шкаф (внутри дома)
+	Text3D:hStoreLabel          // надпись «Шкаф» над ним
 }
 new House[MAX_HOUSES][E_HOUSE];
 
 forward bool:Doors_Try(playerid);     // doors.inc подключён позже
-forward bool:Biz_TryDoor(playerid);   // business.inc: вход и выход из интерьера бизнеса
+forward bool:Biz_TryDoor(playerid);
+forward bool:House_AtStore(playerid, h);   // business.inc: вход и выход из интерьера бизнеса
 new gHouseCount = 0;
 
 static gRentHouse[MAX_PLAYERS] = { -1, ... };          // какой дом снимает игрок (-1 = нет)
@@ -79,6 +84,10 @@ static Houses_Init()
 	DB_AddColumn("houses", "safe", "INTEGER DEFAULT 0");
 	DB_AddColumn("houses", "oint", "INTEGER DEFAULT 0");
 	DB_AddColumn("houses", "oworld", "INTEGER DEFAULT 0");
+	DB_AddColumn("houses", "has_st", "INTEGER DEFAULT 0");
+	DB_AddColumn("houses", "stx", "REAL DEFAULT 0");
+	DB_AddColumn("houses", "sty", "REAL DEFAULT 0");
+	DB_AddColumn("houses", "stz", "REAL DEFAULT 0");
 	DB_AddColumn("accounts", "rent_house", "INTEGER DEFAULT 0");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS house_weapons (house INTEGER NOT NULL, slot INTEGER NOT NULL, weapon INTEGER, ammo INTEGER, PRIMARY KEY (house, slot))"));
 }
@@ -104,7 +113,7 @@ stock Houses_Load()
 		print("[Houses] Default houses created.");
 	}
 
-	r = DB_ExecuteQuery(gDB, "SELECT h.id, h.owner, h.price, h.x, h.y, h.z, h.ix, h.iy, h.iz, h.interior, h.locked, IFNULL(a.name, ''), h.rent, h.balance, h.safe, h.oint, h.oworld FROM houses h LEFT JOIN accounts a ON a.id = h.owner ORDER BY h.id");
+	r = DB_ExecuteQuery(gDB, "SELECT h.id, h.owner, h.price, h.x, h.y, h.z, h.ix, h.iy, h.iz, h.interior, h.locked, IFNULL(a.name, ''), h.rent, h.balance, h.safe, h.oint, h.oworld, h.has_st, h.stx, h.sty, h.stz FROM houses h LEFT JOIN accounts a ON a.id = h.owner ORDER BY h.id");
 	if (r == DBResult:0) return;
 
 	if (DB_GetRowCount(r) > 0)
@@ -130,8 +139,14 @@ stock Houses_Load()
 			House[h][hSafe]     = DB_GetFieldInt(r, 14);
 			House[h][hOutInt]   = DB_GetFieldInt(r, 15);
 			House[h][hOutWorld] = DB_GetFieldInt(r, 16);
+			House[h][hHasStore] = (DB_GetFieldInt(r, 17) != 0);
+			House[h][hSX]       = DB_GetFieldFloat(r, 18);
+			House[h][hSY]       = DB_GetFieldFloat(r, 19);
+			House[h][hSZ]       = DB_GetFieldFloat(r, 20);
+			House[h][hStoreLabel] = Text3D:INVALID_3DTEXT_ID;
 			House[h][hMarker] = -1;
 			House_Refresh(h);
+			House_BuildStore(h);
 		}
 		while (DB_SelectNextRow(r));
 	}
@@ -156,6 +171,24 @@ static House_FindByDbId(dbid)
 		if (House[h][hDbId] == dbid) return h;
 	}
 	return -1;
+}
+
+// Для doors.inc: мир интерьера дома по id в базе (-1 = дома нет) и дом по миру (-1 = это не дом)
+stock House_WorldByDbId(dbid)
+{
+	new h = House_FindByDbId(dbid);
+	return (h == -1) ? -1 : HOUSE_WORLD_OFFSET + h;
+}
+stock House_DbIdByWorld(world)
+{
+	new h = world - HOUSE_WORLD_OFFSET;
+	if (h < 0 || h >= gHouseCount) return 0;
+	return House[h][hDbId];
+}
+stock House_ByWorld(world)
+{
+	new h = world - HOUSE_WORLD_OFFSET;
+	return (h >= 0 && h < gHouseCount) ? h : -1;
 }
 
 // Игрок онлайн с этим аккаунтом (INVALID_PLAYER_ID = нет)
@@ -505,7 +538,7 @@ stock bool:Cmd_Enter(playerid)
 	SetCameraBehindPlayer(playerid);
 	Player[playerid][pHouseInside] = h;
 	if (House[h][hOwner] == Player[playerid][pDbId])
-		SendClientMessage(playerid, COLOR_WHITE, "Выйти: /exit у двери. Меню дома (шкаф, сейф, налог, аренда): ALT или /house");
+		SendClientMessage(playerid, COLOR_WHITE, "Выйти: /exit у двери. Шкаф и сейф: ALT у шкафа (/makestorage). Налог и аренда: /house");
 	else
 		SendClientMessage(playerid, COLOR_WHITE, "Выйти из дома: /exit (стоя у двери)");
 	return true;
@@ -693,13 +726,61 @@ stock bool:Cmd_House(playerid)
 	return true;
 }
 
-// ALT внутри дома (keys.inc): 1 — меню открыто
+// ALT внутри дома (keys.inc): меню открывается только у шкафа. 1 — сработало
 stock House_TryMenu(playerid)
 {
 	new h = Player[playerid][pHouseInside];
 	if (!House_IsInside(playerid, h) || House[h][hOwner] != Player[playerid][pDbId]) return 0;
+	if (!House[h][hHasStore])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Шкафа в доме ещё нет. Встань, где он должен быть, и введи /makestorage.");
+		return 1;
+	}
+	if (!House_AtStore(playerid, h)) return 0;
 	Cmd_House(playerid);
 	return 1;
+}
+
+// Игрок стоит у шкафа своего дома h
+stock bool:House_AtStore(playerid, h)
+{
+	if (!House[h][hHasStore]) return false;
+	return IsPlayerInRangeOfPoint(playerid, HOUSE_STORE_RANGE, House[h][hSX], House[h][hSY], House[h][hSZ]);
+}
+
+// Надпись над шкафом (пересоздаётся, когда шкаф переставили или дом сменил мир)
+stock House_BuildStore(h)
+{
+	if (House[h][hStoreLabel] != Text3D:INVALID_3DTEXT_ID)
+	{
+		Delete3DTextLabel(House[h][hStoreLabel]);
+		House[h][hStoreLabel] = Text3D:INVALID_3DTEXT_ID;
+	}
+	if (!House[h][hHasStore]) return;
+	House[h][hStoreLabel] = Create3DTextLabel("{FFFF66}Шкаф\n{FFFFFF}ALT — шкаф и сейф", COLOR_WHITE,
+		House[h][hSX], House[h][hSY], House[h][hSZ] + 0.3, 6.0, HOUSE_WORLD_OFFSET + h, true);
+}
+
+// /makestorage — поставить шкаф (с сейфом) там, где стоишь. Владелец — в своём доме, админ 4+ — в любом
+stock bool:Cmd_MakeStorage(playerid)
+{
+	new h = Player[playerid][pHouseInside];
+	if (!House_IsInside(playerid, h)) return SendClientMessage(playerid, COLOR_GREY, "Встань внутри дома там, где должен быть шкаф.");
+	if (House[h][hOwner] != Player[playerid][pDbId] && Player[playerid][pAdmin] < 4)
+		return SendClientMessage(playerid, COLOR_GREY, "Шкаф ставит только владелец дома.");
+	GetPlayerPos(playerid, House[h][hSX], House[h][hSY], House[h][hSZ]);
+	House[h][hHasStore] = true;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE houses SET has_st = 1, stx = %f, sty = %f, stz = %f WHERE id = %d",
+		House[h][hSX], House[h][hSY], House[h][hSZ], House[h][hDbId]));
+	House_BuildStore(h);
+	SendClientMessage(playerid, COLOR_GREEN, "Шкаф поставлен здесь. Шкаф и сейф открываются ALT рядом с ним, остальное меню дома: /house.");
+	return true;
+}
+
+// Шкаф и сейф выбраны в /house не у шкафа
+stock House_StoreFar(playerid)
+{
+	return SendClientMessage(playerid, COLOR_GREY, "Шкаф и сейф открываются только у шкафа (надпись «Шкаф»). Нет шкафа: /makestorage.");
 }
 
 static House_PutGun(playerid, h)
@@ -808,10 +889,10 @@ stock Houses_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		if (!response) return 1;
 		switch (listitem)
 		{
-			case 0: House_PutGun(playerid, h);
-			case 1: House_ShowGuns(playerid, h);
-			case 2: ShowPlayerDialog(playerid, DIALOG_HOUSE_SAFE_IN, DIALOG_STYLE_INPUT, "Сейф", "{FFFFFF}Сколько положить в сейф?\nВ сейфе: $%d, у тебя: $%d", "Положить", "Назад", House[h][hSafe], GetMoney(playerid));
-			case 3: ShowPlayerDialog(playerid, DIALOG_HOUSE_SAFE_OUT, DIALOG_STYLE_INPUT, "Сейф", "{FFFFFF}Сколько взять из сейфа?\nВ сейфе: $%d", "Взять", "Назад", House[h][hSafe]);
+			case 0: { if (House_AtStore(playerid, h)) House_PutGun(playerid, h); else House_StoreFar(playerid); }
+			case 1: { if (House_AtStore(playerid, h)) House_ShowGuns(playerid, h); else House_StoreFar(playerid); }
+			case 2: if (!House_AtStore(playerid, h)) House_StoreFar(playerid); else ShowPlayerDialog(playerid, DIALOG_HOUSE_SAFE_IN, DIALOG_STYLE_INPUT, "Сейф", "{FFFFFF}Сколько положить в сейф?\nВ сейфе: $%d, у тебя: $%d", "Положить", "Назад", House[h][hSafe], GetMoney(playerid));
+			case 3: if (!House_AtStore(playerid, h)) House_StoreFar(playerid); else ShowPlayerDialog(playerid, DIALOG_HOUSE_SAFE_OUT, DIALOG_STYLE_INPUT, "Сейф", "{FFFFFF}Сколько взять из сейфа?\nВ сейфе: $%d", "Взять", "Назад", House[h][hSafe]);
 			case 4: ShowPlayerDialog(playerid, DIALOG_HOUSE_PAY, DIALOG_STYLE_INPUT, "Счёт дома", "{FFFFFF}С этого счёта платится налог $%d в час, сюда же приходит аренда.\nНа счёте: $%d\n\nСколько положить?", "Пополнить", "Назад", House_GetTax(h), House[h][hBalance]);
 			case 5: ShowPlayerDialog(playerid, DIALOG_HOUSE_WITHDRAW, DIALOG_STYLE_INPUT, "Счёт дома", "{FFFFFF}На счёте: $%d\n\nСколько снять?", "Снять", "Назад", House[h][hBalance]);
 			case 6: ShowPlayerDialog(playerid, DIALOG_HOUSE_RENT, DIALOG_STYLE_INPUT, "Аренда", "{FFFFFF}Цена комнаты в час (0 — не сдавать, максимум $%d).\nСейчас: $%d", "Готово", "Назад", HOUSE_RENT_MAX, House[h][hRent]);
@@ -911,6 +992,8 @@ stock bool:Cmd_CreateHouse(playerid, const params[])
 	House[h][hRent] = 0;
 	House[h][hBalance] = 0;
 	House[h][hSafe] = 0;
+	House[h][hHasStore] = false;
+	House[h][hStoreLabel] = Text3D:INVALID_3DTEXT_ID;
 	House[h][hMarker] = -1;
 	House_Refresh(h);
 
@@ -958,6 +1041,8 @@ stock bool:Cmd_DelHouse(playerid, const params[])
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM house_weapons WHERE house = %d", dbid));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM houses WHERE id = %d", dbid));
 	Marker_Destroy(House[h][hMarker], true);
+	House[h][hHasStore] = false;
+	House_BuildStore(h);    // убрать надпись шкафа
 
 	// последний дом переезжает на освободившееся место: мир его интерьера меняется
 	new last = gHouseCount - 1;
@@ -969,8 +1054,10 @@ stock bool:Cmd_DelHouse(playerid, const params[])
 		{
 			if (gRentHouse[i] == last) gRentHouse[i] = h;
 		}
+		House_BuildStore(h);    // надпись шкафа — в новом мире интерьера
 	}
 	gHouseCount--;
+	PDoors_Rebuild();       // входы из /adddoor внутри домов тоже переезжают в новый мир
 
 	new owner = House_FindOnline(ownerId);
 	if (owner != INVALID_PLAYER_ID) Account_SetNormalSpawn(owner);
