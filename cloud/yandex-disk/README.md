@@ -12,6 +12,21 @@
 Правой кнопкой по файлу → **Поделиться** → **Скопировать ссылку**.
 Ссылка вида `https://disk.yandex.ru/d/AbCdEf123`. Права — только просмотр.
 
+## Архив больше 1 ГБ (ПК)
+Бесплатный Яндекс Диск не принимает файлы больше 1 ГБ. Нарежь ZIP на части
+по 900 МБ командой в PowerShell (в папке с архивом):
+
+```powershell
+$f="game.zip"; $n=900MB; $i=1; $in=[IO.File]::OpenRead($f); $buf=New-Object byte[] (4MB)
+while($in.Position -lt $in.Length){ $out=[IO.File]::Create("$f.part$i"); $w=0
+  while($w -lt $n -and ($r=$in.Read($buf,0,[Math]::Min($buf.Length,$n-$w))) -gt 0){ $out.Write($buf,0,$r); $w+=$r }
+  $out.Close(); $i++ }; $in.Close()
+```
+
+Получатся `game.zip.part1`, `game.zip.part2`, … Залей их, возьми ссылку на каждую
+и впиши в `BASTION_PC_GAME_URL` все ссылки через пробел, по порядку.
+ПК-лаунчер скачает части и склеит. MD5 указывается для целого `game.zip`.
+
 ## 3. Секреты GitHub
 Settings → Secrets and variables → Actions:
 

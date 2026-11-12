@@ -41,6 +41,9 @@ namespace BastionLauncher
                     if (Secrets.GameUrl.Length == 0) return "";
                     Uri u = new Uri(Secrets.GameUrl);
                     if (u.Scheme != "https") return "";
+                    // Яндекс Диск и GitHub не раздают папку launcher/ — удалённых файлов нет
+                    string h = u.Host.ToLowerInvariant();
+                    if (h == "yadi.sk" || h.StartsWith("disk.") || h == "github.com") return "";
                     return "https://" + u.Authority + "/launcher/";
                 }
                 catch (Exception) { return ""; }

@@ -32,10 +32,16 @@ namespace BastionLauncher
 
         // dest — папка, куда ляжет игра (её не должно быть или она пустая).
         // progress вызывается из рабочего потока.
+        // url может содержать несколько ссылок через пробел или | — это части одного ZIP
+        // (например, нарезка по 900 МБ для Яндекс Диска). Они скачиваются по порядку и
+        // склеиваются, MD5 сверяется у склеенного архива.
         public static void Install(string url, string md5, string dest, Action<string> progress)
         {
-            if (!url.StartsWith("http://") && !url.StartsWith("https://") && !url.StartsWith("b2://"))
-                throw new Exception("Нужна прямая ссылка на ZIP (http:// или https://).");
+            string[] parts = url.Split(new char[] { ' ', '|', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0) throw new Exception("Нужна прямая ссылка на ZIP (http:// или https://).");
+            foreach (string p in parts)
+                if (!p.StartsWith("http://") && !p.StartsWith("https://") && !p.StartsWith("b2://"))
+                    throw new Exception("Нужна прямая ссылка на ZIP (http:// или https://).");
             dest = Path.GetFullPath(dest);
             if (Directory.Exists(dest) && Directory.GetFileSystemEntries(dest).Length > 0)
                 throw new Exception("Папка " + dest + " не пустая. Выбери пустую папку для игры.");
@@ -45,7 +51,8 @@ namespace BastionLauncher
             string staging = dest + ".installing";
             try
             {
-                Download(url, archive, progress);
+                if (parts.Length == 1) Download(parts[0], archive, progress);
+                else DownloadParts(parts, archive, progress);
                 if (md5 != null && md5.Trim().Length > 0)
                 {
                     progress("Проверка архива (MD5)…");
@@ -163,6 +170,29 @@ namespace BastionLauncher
             string href = JsonString(json, "href");
             if (!href.StartsWith("https://")) throw new Exception("Яндекс Диск вернул непонятную ссылку.");
             return href;
+        }
+
+        static void DownloadParts(string[] parts, string target, Action<string> progress)
+        {
+            string piece = target + ".piece";
+            try
+            {
+                using (FileStream output = new FileStream(target, FileMode.Create, FileAccess.Write))
+                {
+                    for (int i = 0; i < parts.Length; i++)
+                    {
+                        string prefix = "Часть " + (i + 1) + " из " + parts.Length + ". ";
+                        Download(parts[i], piece, delegate (string msg) { progress(prefix + msg); });
+                        using (FileStream input = File.OpenRead(piece)) input.CopyTo(output, 1 << 20);
+                        File.Delete(piece);
+                        if (output.Length > MaxArchive) throw new Exception("Архив больше 4 ГБ.");
+                    }
+                }
+            }
+            finally
+            {
+                try { if (File.Exists(piece)) File.Delete(piece); } catch (Exception) { }
+            }
         }
 
         static void Download(string url, string target, Action<string> progress)
