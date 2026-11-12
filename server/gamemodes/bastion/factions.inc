@@ -3519,16 +3519,10 @@ stock Factory_OwnerAlt(playerid, i)
 		if (Factory[i][fcClosed]) { SendClientMessage(playerid, COLOR_GREY, "Завод закрыт. Материалы со склада можно вывезти."); return; }
 		if (Player[playerid][pRank] < MAX_RANK - 1) return;
 		gFcSel[playerid] = i;
-		if (Factory[i][fcKind] != FKIND_MILITARY)
-		{
-			// лидер и заместитель: передать завод другой организации или закрыть
-			ShowPlayerDialog(playerid, DIALOG_FMANAGE, DIALOG_STYLE_LIST, Factory[i][fcName],
-				"Передать завод другой организации\nЗакрыть завод {AFAFAF}(уничтожить оборудование)", "Выбрать", "Отмена");
-			return;
-		}
-		ShowPlayerDialog(playerid, DIALOG_FCLOSE, DIALOG_STYLE_MSGBOX, "Закрыть завод",
-			"{FFFFFF}Закрыть завод «%s» и уничтожить оборудование?\n\nЭто больше не будет заводом: точки пропадут, работать и захватывать его будет нельзя.\nОставшиеся ящики можно вывезти со склада. Вернуть завод может только администратор.",
-			"Закрыть", "Отмена", Factory[i][fcName]);
+		if (Factory[i][fcKind] == FKIND_MILITARY) return;   // военный завод не закрывают и не передают
+		// лидер и заместитель: передать завод другой организации или закрыть
+		ShowPlayerDialog(playerid, DIALOG_FMANAGE, DIALOG_STYLE_LIST, Factory[i][fcName],
+			"Передать завод другой организации\nЗакрыть завод {AFAFAF}(уничтожить оборудование)", "Выбрать", "Отмена");
 		return;
 	}
 	if (Factory[i][fcKind] == FKIND_MILITARY) { SendClientMessage(playerid, COLOR_GREY, "Это завод на военной части. Его не захватить."); return; }
@@ -3978,6 +3972,7 @@ stock Factory_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			if (!response) return 1;
 			new i = gFcSel[playerid];
 			if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed] || Factory[i][fcClosed] || Factory[i][fcOwner] != f || Player[playerid][pRank] < MAX_RANK - 1) return 1;
+			if (Factory[i][fcKind] == FKIND_MILITARY) return 1;
 			if (listitem == 1)
 			{
 				ShowPlayerDialog(playerid, DIALOG_FCLOSE, DIALOG_STYLE_MSGBOX, "Закрыть завод",
@@ -4020,6 +4015,7 @@ stock Factory_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			if (!response) return 1;
 			new i = gFcSel[playerid];
 			if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed] || Factory[i][fcOwner] != f || Player[playerid][pRank] < MAX_RANK - 1) return 1;
+			if (Factory[i][fcKind] == FKIND_MILITARY) return 1;     // военный завод не закрывают
 			if (!Factory_At(playerid, i, FP_OWNER, 6.0)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от маркера завода."); return 1; }
 			Factory[i][fcClosed] = true;
 			Factory_Save(i);
