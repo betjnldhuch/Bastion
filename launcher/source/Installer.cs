@@ -14,8 +14,8 @@ namespace BastionLauncher
 {
     static class GameInstaller
     {
-        const long MaxArchive = 4294967296L;    // 4 ГБ
-        const long MaxExtracted = 8589934592L;  // 8 ГБ
+        const long MaxArchive = 17179869184L;   // 16 ГБ
+        const long MaxExtracted = 34359738368L; // 32 ГБ
 
         // Ключ уходит только по https и только на хост официального архива
         static bool SendsKey(string url)
@@ -185,7 +185,7 @@ namespace BastionLauncher
                         Download(parts[i], piece, delegate (string msg) { progress(prefix + msg); });
                         using (FileStream input = File.OpenRead(piece)) input.CopyTo(output, 1 << 20);
                         File.Delete(piece);
-                        if (output.Length > MaxArchive) throw new Exception("Архив больше 4 ГБ.");
+                        if (output.Length > MaxArchive) throw new Exception("Архив больше 16 ГБ.");
                     }
                 }
             }
@@ -238,14 +238,14 @@ namespace BastionLauncher
             using (FileStream output = new FileStream(target, FileMode.Create, FileAccess.Write))
             {
                 long expected = rs.ContentLength;
-                if (expected > MaxArchive) throw new Exception("Архив больше 4 ГБ.");
+                if (expected > MaxArchive) throw new Exception("Архив больше 16 ГБ.");
                 byte[] buf = new byte[1 << 16];
                 long total = 0;
                 int n, last = -1;
                 while ((n = input.Read(buf, 0, buf.Length)) > 0)
                 {
                     total += n;
-                    if (total > MaxArchive) throw new Exception("Архив больше 4 ГБ.");
+                    if (total > MaxArchive) throw new Exception("Архив больше 16 ГБ.");
                     output.Write(buf, 0, n);
                     int mb = (int)(total / 1048576);
                     int mark = expected > 0 ? (int)(total * 100 / expected) : mb;
@@ -309,7 +309,7 @@ namespace BastionLauncher
                         throw new Exception("Небезопасный путь в архиве: " + e.FullName);
                     if (rel.EndsWith("/")) { Directory.CreateDirectory(path); continue; }
                     size += e.Length;
-                    if (size > MaxExtracted) throw new Exception("Распакованная игра больше 8 ГБ.");
+                    if (size > MaxExtracted) throw new Exception("Распакованная игра больше 32 ГБ.");
                     Directory.CreateDirectory(Path.GetDirectoryName(path));
                     e.ExtractToFile(path, true);
                     int pct = (int)((long)done * 100 / count);
