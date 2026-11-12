@@ -179,6 +179,7 @@ static const gHelp[][E_HELP] =
 	{ HT_BIZ, "/bizinfo", "информация о бизнесе" },
 	{ HT_BIZ, "/rob", "ограбить 24/7 или бар (оружие в руках, 2+ уровень)" },
 	{ HT_BIZ, "/bizcash", "забрать деньги из кассы" },
+	{ HT_BIZ, "/bizlock", "закрыть / открыть вход в свой бизнес" },
 
 	// --- Телефон
 	{ HT_PHONE, "/number", "мой номер" },
@@ -310,6 +311,7 @@ static const gHelp[][E_HELP] =
 	{ HT_ADMIN3, "/gotocoord [x] [y] [z] [инт]", "телепорт по координатам" },
 	{ HT_ADMIN3, "/gotoint [номер] [мир]", "телепорт в стандартный интерьер GTA (без номера — список)" },
 	{ HT_ADMIN3, "/gotohouse [№]", "телепорт ко входу дома" },
+	{ HT_ADMIN3, "/gotobiz [№], /gotobizint [№]", "ко входу бизнеса / внутрь; список: /bizlist" },
 	{ HT_ADMIN3, "/spawns, /gotospawn [№]", "список точек спавна / телепорт к точке" },
 	{ HT_ADMIN3, "/respawncars", "вернуть пустые машины на места" },
 	{ HT_ADMIN3, "/setweather [0-45]", "погода" },
@@ -326,7 +328,7 @@ static const gHelp[][E_HELP] =
 	{ HT_ADMIN4, "/sethouseint [№]", "своя точка внутри дома (стоя в интерьере)" },
 	{ HT_ADMIN4, "/createbiz [тип] [цена] [имя]", "создать бизнес здесь" },
 	{ HT_ADMIN4, "/delbiz", "удалить бизнес рядом" },
-	{ HT_ADMIN4, "/setbizint [№] [def/off]", "интерьер бизнеса: здесь, стандартный или без него" },
+	{ HT_ADMIN4, "/setbizint [№] [def/off]", "интерьер бизнеса: здесь, стандартный или без него; out — вход снаружи" },
 	{ HT_ADMIN4, "/addatm, /delatm", "поставить / удалить банкомат" },
 	{ HT_ADMIN4, "/addfuel [цена], /delfuel", "поставить / удалить АЗС" },
 	{ HT_ADMIN4, "/addgarage [1-2], /delgarage", "СТО (1) или штрафстоянка (2)" },
