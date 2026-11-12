@@ -2941,6 +2941,7 @@ new gFcW[MAX_FACTORIES][MAX_FPOINTS];
 new gFcI[MAX_FACTORIES][MAX_FPOINTS];
 new gFcMk[MAX_FACTORIES][MAX_FPOINTS];
 new gFcSel[MAX_PLAYERS];
+new gFcList[MAX_PLAYERS][MAX_FACTIONS];     // кому можно передать завод (строки окна)
 
 // Склады организаций (/setfstore). Не задан — складом считается раздевалка.
 new bool:gFsSet[MAX_FACTIONS];
@@ -3518,9 +3519,10 @@ stock Factory_OwnerAlt(playerid, i)
 		if (Factory[i][fcClosed]) { SendClientMessage(playerid, COLOR_GREY, "Завод закрыт. Материалы со склада можно вывезти."); return; }
 		if (Player[playerid][pRank] < MAX_RANK - 1) return;
 		gFcSel[playerid] = i;
-		ShowPlayerDialog(playerid, DIALOG_FCLOSE, DIALOG_STYLE_MSGBOX, "Закрыть завод",
-			"{FFFFFF}Закрыть завод «%s» и уничтожить оборудование?\n\nЭто больше не будет заводом: точки пропадут, работать и захватывать его будет нельзя.\nОставшиеся ящики можно вывезти со склада. Вернуть завод может только администратор.",
-			"Закрыть", "Отмена", Factory[i][fcName]);
+		if (Factory[i][fcKind] == FKIND_MILITARY) return;   // военный завод не закрывают и не передают
+		// лидер и заместитель: передать завод другой организации или закрыть
+		ShowPlayerDialog(playerid, DIALOG_FMANAGE, DIALOG_STYLE_LIST, Factory[i][fcName],
+			"Передать завод другой организации\nЗакрыть завод {AFAFAF}(уничтожить оборудование)", "Выбрать", "Отмена");
 		return;
 	}
 	if (Factory[i][fcKind] == FKIND_MILITARY) { SendClientMessage(playerid, COLOR_GREY, "Это завод на военной части. Его не захватить."); return; }
@@ -3599,7 +3601,7 @@ stock Capture_Tick(playerid)
 			"Закрыть", "Оставить", Factory[i][fcName]);
 	}
 	else
-		SendClientMessage(playerid, COLOR_WHITE, "Завод ваш и работает. Закрыть его может ранг %d и выше: ALT на маркере.", MAX_RANK - 1);
+		SendClientMessage(playerid, COLOR_WHITE, "Завод ваш и работает. Передать или закрыть его может ранг %d и выше: ALT на маркере.", MAX_RANK - 1);
 }
 
 // ---------------------------------------------------------------------
@@ -3905,7 +3907,7 @@ stock Craft_Make(playerid, it, qty)
 // Окна заводов, складов и крафта. Вызывается из OnDialogResponse (rp.pwn). 1 — окно наше.
 stock Factory_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
-	if (dialogid < DIALOG_CRAFT || dialogid > DIALOG_FCLOSE) return 0;
+	if (dialogid < DIALOG_CRAFT || dialogid > DIALOG_FTRANSFER) return 0;
 	new f = Player[playerid][pFaction], msg[144];
 	switch (dialogid)
 	{
@@ -3965,11 +3967,55 @@ stock Factory_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			format(msg, sizeof msg, "%s положил на склад %d материалов (на складе %d).", GetRPName(playerid), n, Faction[f][fMats]);
 			Faction_Log(f, msg);
 		}
+		case DIALOG_FMANAGE:
+		{
+			if (!response) return 1;
+			new i = gFcSel[playerid];
+			if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed] || Factory[i][fcClosed] || Factory[i][fcOwner] != f || Player[playerid][pRank] < MAX_RANK - 1) return 1;
+			if (Factory[i][fcKind] == FKIND_MILITARY) return 1;
+			if (listitem == 1)
+			{
+				ShowPlayerDialog(playerid, DIALOG_FCLOSE, DIALOG_STYLE_MSGBOX, "Закрыть завод",
+					"{FFFFFF}Закрыть завод «%s» и уничтожить оборудование?\n\nЭто больше не будет заводом: точки пропадут, работать и захватывать его будет нельзя.\nОставшиеся ящики можно вывезти со склада. Вернуть завод может только администратор.",
+					"Закрыть", "Отмена", Factory[i][fcName]);
+				return 1;
+			}
+			new body[1800], line[48], n = 0;
+			for (new t = 1; t < MAX_FACTIONS; t++)
+			{
+				if (t == f || !Faction_IsValid(t)) continue;
+				format(line, sizeof line, "{%06x}%s\n", Faction_GetColor(t) >>> 8, Faction_GetName(t));
+				strcat(body, line);
+				gFcList[playerid][n++] = t;
+			}
+			for (new k = n; k < MAX_FACTIONS; k++) gFcList[playerid][k] = 0;
+			if (n == 0) { SendClientMessage(playerid, COLOR_GREY, "Передавать некому."); return 1; }
+			ShowPlayerDialog(playerid, DIALOG_FTRANSFER, DIALOG_STYLE_LIST, "Кому передать завод", "%s", "Передать", "Отмена", body);
+		}
+		case DIALOG_FTRANSFER:
+		{
+			if (!response || listitem < 0 || listitem >= MAX_FACTIONS) return 1;
+			new i = gFcSel[playerid], t = gFcList[playerid][listitem];
+			if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed] || Factory[i][fcClosed] || Factory[i][fcOwner] != f || Player[playerid][pRank] < MAX_RANK - 1) return 1;
+			if (Factory[i][fcKind] == FKIND_MILITARY || t == f || !Faction_IsValid(t)) return 1;
+			if (!Factory_At(playerid, i, FP_OWNER, 6.0)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от маркера завода."); return 1; }
+			if (Factory[i][fcCapBy] != INVALID_PLAYER_ID) { SendClientMessage(playerid, COLOR_GREY, "Завод сейчас захватывают. Сначала отбейте его."); return 1; }
+			Factory[i][fcOwner] = t;
+			Factory_Save(i);
+			for (new p = 0; p < MAX_FPOINTS; p++) Factory_Label(i, p);
+			format(msg, sizeof msg, "[Фракция] %s передал завод «%s»: %s.", GetRPName(playerid), Factory[i][fcName], Faction_GetName(t));
+			Faction_Message(f, Faction_GetColor(f), msg);
+			Faction_Log(f, msg[10]);
+			format(msg, sizeof msg, "[Фракция] Организации передан завод «%s» (от: %s). Материалов на складе: %d.", Factory[i][fcName], Faction_GetName(f), Factory[i][fcStock]);
+			Faction_Message(t, Faction_GetColor(t), msg);
+			Faction_Log(t, msg[10]);
+		}
 		case DIALOG_FCLOSE:
 		{
 			if (!response) return 1;
 			new i = gFcSel[playerid];
 			if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed] || Factory[i][fcOwner] != f || Player[playerid][pRank] < MAX_RANK - 1) return 1;
+			if (Factory[i][fcKind] == FKIND_MILITARY) return 1;     // военный завод не закрывают
 			if (!Factory_At(playerid, i, FP_OWNER, 6.0)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от маркера завода."); return 1; }
 			Factory[i][fcClosed] = true;
 			Factory_Save(i);
