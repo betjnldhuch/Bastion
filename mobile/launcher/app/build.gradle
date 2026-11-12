@@ -31,7 +31,9 @@ android {
         // Архив игры и ключ закрытой раздачи (cloud/download-worker) приходят из
         // секретов GitHub Actions, в репозитории их нет. Без них — домашний сервер.
         buildConfigField 'String', 'GAME_ARCHIVE_URL', quoted(envOr('BASTION_GAME_URL', 'http://192.168.31.182:8000/game.zip'))
-        buildConfigField 'String', 'GAME_ARCHIVE_MD5', quoted(envOr('BASTION_GAME_MD5', '57A0F9765B2C229FD814E11D36F5EF00'))
+        // MD5 по умолчанию подходит только к домашнему архиву; для своей ссылки без MD5 проверки нет
+        buildConfigField 'String', 'GAME_ARCHIVE_MD5', quoted(envOr('BASTION_GAME_MD5',
+                envOr('BASTION_GAME_URL', '') ? '' : '57A0F9765B2C229FD814E11D36F5EF00'))
         buildConfigField 'String', 'DOWNLOAD_KEY', quoted(envOr('BASTION_DOWNLOAD_KEY', ''))
         // Закрытый бакет Backblaze B2: BASTION_GAME_URL = b2://бакет/game.zip и ключ только на чтение
         buildConfigField 'String', 'B2_KEY_ID', quoted(envOr('BASTION_B2_KEY_ID', ''))
