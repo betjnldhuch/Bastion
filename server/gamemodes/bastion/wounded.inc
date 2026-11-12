@@ -111,7 +111,7 @@ static Wound_Start(playerid)
 
 	new msg[144];
 	format(msg, sizeof msg, "[Вызов] Ранен %s [%d]. Метка на карте: /wounds, поднять: /revive %d", GetRPName(playerid), playerid, playerid);
-	Faction_Message(FACTION_EMS, Faction_GetColor(FACTION_EMS), msg);
+	Faction_MessageMedic(msg);
 }
 
 // Из OnPlayerTakeDamage: при малом здоровье — упасть раненым, а не умереть
@@ -226,7 +226,7 @@ static gReviveRewardAt[MAX_PLAYERS];
 stock bool:Cmd_Revive(playerid, const params[])
 {
 	new bool:admin = Player[playerid][pAdmin] >= 2;
-	if (!admin && !Faction_Need(playerid, FACTION_EMS, true)) return true;
+	if (!admin && !Faction_NeedMedic(playerid)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /revive [id]");
@@ -237,7 +237,7 @@ stock bool:Cmd_Revive(playerid, const params[])
 	Wound_StandUp(target, WOUND_REVIVE_HP);
 	if (near) ApplyAnimation(playerid, "MEDIC", "CPR", 4.1, false, false, false, false, 0, SYNC_ALL);
 	SendClientMessage(target, COLOR_GREEN, "%s поставил тебя на ноги. Долечиться: медик (/heal) или аптечка.", GetRPName(playerid));
-	if (Player[playerid][pFaction] == FACTION_EMS && near)
+	if (Faction_IsMedic(Player[playerid][pFaction]) && near)
 	{
 		if (gettime() - gReviveRewardAt[target] >= WOUND_REWARD_COOLDOWN)
 		{
@@ -272,7 +272,7 @@ stock bool:Cmd_Aid(playerid, const params[])
 // /wounds — список раненых (медикам и админам), выбор — метка GPS
 stock bool:Cmd_Wounds(playerid)
 {
-	if (Player[playerid][pFaction] != FACTION_EMS && Player[playerid][pAdmin] < 2)
+	if (!Faction_IsMedic(Player[playerid][pFaction]) && Player[playerid][pAdmin] < 2)
 		return SendClientMessage(playerid, COLOR_GREY, "Только для медиков EMS.");
 	new list[1024], line[96], n = 0, Float:x, Float:y, Float:z;
 	strcat(list, "Раненый\tДистанция\tОсталось\n");
@@ -399,7 +399,7 @@ stock bool:Cmd_Drag(playerid, const params[])
 		return SendClientMessage(playerid, COLOR_GREY, "Использование: /drag [id] — вести задержанного, /drag — отпустить");
 	}
 	if (gDragBy[target] == playerid && !gCarried[target]) { Drag_Stop(target); return true; }
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Себя вести нельзя.");
 	if (!Drag_CanLead(playerid)) return true;
 	if (!IsPlayerNearPlayer(playerid, target, WOUND_RANGE)) return SendClientMessage(playerid, COLOR_GREY, "Подойди ближе.");
@@ -525,7 +525,7 @@ public Drag_Tick()
 		if (ok)
 		{
 			if (gCarried[t]) ok = gWounded[t] && !gWounded[by];
-			else ok = (gWounded[t] || Player[t][pCuffed]) && Player[by][pFaction] == FACTION_POLICE && Player[by][pDuty];
+			else ok = (gWounded[t] || Player[t][pCuffed]) && Faction_IsLaw(Player[by][pFaction]) && Player[by][pDuty];
 		}
 		if (!ok)
 		{

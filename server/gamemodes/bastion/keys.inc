@@ -90,13 +90,13 @@ stock Keys_ShowInteract(playerid, target)
 	{
 		gInteractActs[playerid][n++] = ACT_INVITE; strcat(list, "Пригласить во фракцию\n");
 	}
-	if (f == FACTION_POLICE && Player[playerid][pDuty])
+	if (Faction_IsLaw(f) && Player[playerid][pDuty])
 	{
 		if (Player[target][pCuffed]) { gInteractActs[playerid][n++] = ACT_UNCUFF; strcat(list, "{FF6347}Снять наручники\n"); }
 		else { gInteractActs[playerid][n++] = ACT_CUFF; strcat(list, "{FF6347}Надеть наручники\n"); }
 		gInteractActs[playerid][n++] = ACT_FRISK; strcat(list, "{FF6347}Обыскать\n");
 	}
-	if (f == FACTION_EMS && Player[playerid][pDuty])
+	if (Faction_IsMedic(f) && Player[playerid][pDuty])
 	{
 		gInteractActs[playerid][n++] = ACT_HEAL; strcat(list, "{FF8080}Предложить лечение\n");
 	}
@@ -205,6 +205,9 @@ stock Keys_Interact(playerid)
 {
 	// 0. Вход/выход в здание с интерьером (doors.inc)
 	if (Doors_Try(playerid)) return;
+
+	// 0а. Заводы, ящики, склады организаций, чёрный рынок (factions.inc)
+	if (Factory_TryAlt(playerid)) return;
 
 	// 1. Внутри дома у двери — выйти
 	new h = Player[playerid][pHouseInside];
@@ -316,7 +319,8 @@ stock Keys_OnKeyStateChange(playerid, newkeys, oldkeys)
 		if (KeyPressed(newkeys, oldkeys, _:KEY_CROUCH))     // H в машине (это ещё и гудок)
 		{
 			// на АЗС — заправка, на СТО — меню СТО, иначе шлагбаум
-			if (!Fuel_TryFill(playerid) && !Garage_TryOpen(playerid)) Gates_TryOpen(playerid);
+			// на складе организации с грузом — разгрузка (factions.inc)
+			if (!Fuel_TryFill(playerid) && !Garage_TryOpen(playerid) && !Factory_TryUnload(playerid, false)) Gates_TryOpen(playerid);
 			return 1;
 		}
 	}

@@ -452,7 +452,7 @@ stock bool:Cmd_ShowLic(playerid, const params[])
 // Полиция на смене
 static bool:Licenses_IsCop(playerid)
 {
-	return Player[playerid][pFaction] == FACTION_POLICE && Player[playerid][pDuty];
+	return Faction_IsLaw(Player[playerid][pFaction]) && Player[playerid][pDuty];
 }
 
 stock bool:Cmd_CheckLic(playerid, const params[])

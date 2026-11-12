@@ -192,6 +192,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/takelic", true))     { Cmd_TakeLic(playerid, cmdtext[pos]); return 1; }
 
 	// --- дома (houses.inc) ---
+	if (!strcmp(cmd, "/setspawn", true))    { Cmd_SetSpawn(playerid); return 1; }
 	if (!strcmp(cmd, "/buyhouse", true))    { Cmd_BuyHouse(playerid); return 1; }
 	if (!strcmp(cmd, "/sellhouse", true))   { Cmd_SellHouse(playerid); return 1; }
 	if (!strcmp(cmd, "/enter", true))       { Cmd_Enter(playerid); return 1; }
@@ -249,8 +250,33 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/setfspawn", true))   { Cmd_SetFSpawn(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/setfduty", true))    { Cmd_SetFDuty(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/setfint", true))     { Cmd_SetFInt(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/adddoor", true) || !strcmp(cmd, "/adddor", true)) { Cmd_AddDoor(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/setdoor", true))     { Cmd_SetDoor(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/deldoor", true))     { Cmd_DelDoor(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/doors", true))       { Cmd_Doors(playerid); return 1; }
 	if (!strcmp(cmd, "/delfint", true))     { Cmd_DelFInt(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fintlock", true))    { Cmd_FIntLock(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/createfaction", true)) { Cmd_CreateFaction(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/delfaction", true))  { Cmd_DelFaction(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/flist", true))       { Cmd_FList(playerid); return 1; }
+	if (!strcmp(cmd, "/fcolor", true))      { Cmd_FColor(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/addfactory", true))  { Cmd_AddFactory(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/setfpoint", true))   { Cmd_SetFPoint(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/setfowner", true))   { Cmd_SetFOwner(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/delfactory", true))  { Cmd_DelFactory(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/factories", true))   { Cmd_Factories(playerid); return 1; }
+	if (!strcmp(cmd, "/setfstore", true))   { Cmd_SetFStore(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/dropcrate", true))   { Cmd_DropCrate(playerid); return 1; }
+	if (!strcmp(cmd, "/unload", true))      { Cmd_Supply(playerid); return 1; }
+	if (!strcmp(cmd, "/setarmystore", true)) { Cmd_SetSPoint(playerid, SP_ARMY); return 1; }
+	if (!strcmp(cmd, "/setbm", true))       { Cmd_SetSPoint(playerid, SP_BM); return 1; }
+	if (!strcmp(cmd, "/bmprice", true))     { Cmd_BMPrice(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/bm", true))          { Cmd_BM(playerid); return 1; }
+	if (!strcmp(cmd, "/steal", true))       { Cmd_Steal(playerid); return 1; }
+	if (!strcmp(cmd, "/mats", true))        { Cmd_Mats(playerid); return 1; }
+	if (!strcmp(cmd, "/d", true))           { Cmd_DeptChat(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/gd", true))          { Cmd_GangChat(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/supply", true))      { Cmd_Supply(playerid); return 1; }
 	if (!strcmp(cmd, "/addfcar", true))     { Cmd_AddFCar(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delfcar", true))     { Cmd_DelFCar(playerid); return 1; }
 	if (!strcmp(cmd, "/jail", true))        { Cmd_Jail(playerid, cmdtext[pos]); return 1; }
@@ -305,6 +331,25 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/createhouse", true))
 	{
 		if (Admin_Check(playerid, 4)) Cmd_CreateHouse(playerid, cmdtext[pos]);
+		return 1;
+	}
+	if (!strcmp(cmd, "/delhouse", true) || !strcmp(cmd, "/dellhouse", true))
+	{
+		if (Admin_Check(playerid, 4)) Cmd_DelHouse(playerid, cmdtext[pos]);
+		return 1;
+	}
+	if (!strcmp(cmd, "/sethouseint", true))
+	{
+		if (Admin_Check(playerid, 4)) Cmd_SetHouseInt(playerid, cmdtext[pos]);
+		return 1;
+	}
+	if (!strcmp(cmd, "/addspawn", true))    { if (Admin_Check(playerid, 4)) Cmd_AddSpawn(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/delspawn", true))    { if (Admin_Check(playerid, 4)) Cmd_DelSpawn(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/spawns", true))      { if (Admin_Check(playerid, 3)) Cmd_Spawns(playerid); return 1; }
+	if (!strcmp(cmd, "/gotospawn", true))   { if (Admin_Check(playerid, 3)) Cmd_GotoSpawn(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/gotohouse", true))
+	{
+		if (Admin_Check(playerid, 3)) Cmd_GotoHouse(playerid, cmdtext[pos]);
 		return 1;
 	}
 

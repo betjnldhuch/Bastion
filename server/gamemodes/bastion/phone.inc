@@ -199,7 +199,7 @@ stock bool:Cmd_911(playerid, const params[])
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!IsPlayerConnected(i) || !Player[i][pLogged] || !Player[i][pDuty]) continue;
-		if (Player[i][pFaction] != FACTION_POLICE && Player[i][pFaction] != FACTION_EMS) continue;
+		if (!Faction_IsLaw(Player[i][pFaction]) && !Faction_IsMedic(Player[i][pFaction])) continue;
 		SendClientMessage(i, COLOR_RED, "%s", msg);
 		count++;
 	}

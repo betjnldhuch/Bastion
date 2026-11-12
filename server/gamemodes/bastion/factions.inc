@@ -33,7 +33,13 @@
 //    - журнал действий фракции (кто кого принял, уволил, что взял со склада).
 //    - панель лидера /lmenu: состав (и оффлайн), ранги, зарплаты, скины,
 //      выговоры, общак, склад, журнал.
-//  Админы (4+): /fedit [фракция] name|color|bank — название, цвет, общак.
+//  Админы (4+): /fedit [фракция] name|color|bank|mats — название, цвет, общак, материалы.
+//
+//  Фракции 1..7 постоянные, 8..50 админ создаёт в игре: /createfaction [тип] [название],
+//  /delfaction, /flist. Права фракции задаёт её тип (FTYPE_*), а не номер.
+//  Завод, склад армии, кражи банд, чёрный рынок, чаты /d и /gd — раздел «Материалы» в конце файла.
+//  Оружие на смене не выдаётся: его берут со склада. Госструктурам для закупки на склад
+//  нужны материалы, их привозит армия (/supply). Цвет фракции: /fcolor. Всё это — в конце файла.
 // =====================================================================
 
 #define FACTION_DUTY_RANGE      3.0     // как близко подойти к раздевалке
@@ -52,6 +58,44 @@
 #define FACTION_LOG_SHOW        25      // сколько последних записей журнала показывать
 #define FACTION_LIST_MAX        40      // сколько членов фракции показывать в /lmenu
 
+// Тип фракции: от него зависят права (а не от номера фракции)
+enum
+{
+	FTYPE_NONE,         // фракции нет (свободный номер)
+	FTYPE_LAW,          // силовая структура: права полиции
+	FTYPE_MEDIC,        // медики: лечение, вызовы раненых
+	FTYPE_GANG,         // банда: районы, войны
+	FTYPE_CIVIL,        // гос. организация без особых прав (мэрия, СМИ и т.п.)
+	FTYPE_ARMY          // армия: возит материалы
+}
+
+// Материалы: армия возит их с базы снабжения на свой склад, а оттуда — госструктурам
+#define SUPPLY_REF              200     // ref маркеров точек снабжения (MK_FACTION): 200 + SP_*
+#define SUPPLY_RANGE            15.0    // как близко подъехать к заводу или складу
+#define SUPPLY_TRUCK_CAP        1000    // сколько материалов входит в одну машину армии
+#define SUPPLY_PAY_HAUL         30      // водителю за каждые 100 материалов, привезённых с завода на склад армии
+#define SUPPLY_PAY_DELIVER      50      // водителю за каждые 100 материалов, доставленных другой фракции
+// Расчёт: смена бойца (бронежилет + Desert Eagle + MP5) = 110 материалов; 10 активных бойцов по два
+// комплекта в час тратят около 2200. Один рабочий делает ящик (50) примерно за 40 секунд, то есть
+// около 4500 в час: одного-двух рабочих хватает на все госструктуры. Цифры завода — в конце файла.
+#define STEAL_MIN_ARMY          2       // склад грабят, только когда в сети столько военных
+#define BM_RANGE                4.0     // как близко подойти к торговцу чёрного рынка
+#define BM_SKIN                 28      // скин торговца
+#define BM_MAT_PRICE            2       // сколько торговец платит за 1 материал (меняется: /bmprice 0)
+// Точки снабжения: их ставит админ (/setfactory, /setarmystore, /setbm) или двигает в /markers
+enum
+{
+	SP_FACTORY,         // больше не используется: заводы ставятся через /addfactory
+	SP_ARMY,            // склад армии
+	SP_BM,              // торговец чёрного рынка
+	MAX_SPOINTS
+}
+#define SUPPLY_SRC_BASE         1       // груз взят на базе снабжения
+#define SUPPLY_SRC_ARMY         2       // груз взят со склада армии
+#define FACTION_MATS_MAX        20000   // сколько материалов вмещает склад фракции
+#define ARMY_MATS_MAX           100000  // сколько вмещает склад армии
+#define FACTION_START_MATS      2000    // материалы новой госструктуры
+
 // Окна (диалоги) фракций — в dialogs.inc
 
 // Снаряжение на складе фракции
@@ -64,6 +108,7 @@ enum
 	FITEM_MP5,
 	FITEM_M4,
 	FITEM_RIFLE,
+	FITEM_COLT,
 	MAX_FITEMS
 }
 static const gFItemName[MAX_FITEMS][24] =
@@ -74,14 +119,16 @@ static const gFItemName[MAX_FITEMS][24] =
 	"Дробовик",
 	"MP5",
 	"M4",
-	"Винтовка"
+	"Винтовка",
+	"Пистолет 9мм"
 };
 static const WEAPON:gFItemWeapon[MAX_FITEMS] =
 {
-	WEAPON_FIST, WEAPON_FIST, WEAPON_DEAGLE, WEAPON_SHOTGUN, WEAPON_MP5, WEAPON_M4, WEAPON_RIFLE
+	WEAPON_FIST, WEAPON_FIST, WEAPON_DEAGLE, WEAPON_SHOTGUN, WEAPON_MP5, WEAPON_M4, WEAPON_RIFLE, WEAPON_COLT45
 };
-static const gFItemAmmo[MAX_FITEMS]  = { 0,   0,   35,  20,  150,  150,  15   };
-static const gFItemPrice[MAX_FITEMS] = { 500, 300, 600, 800, 1200, 2000, 2500 };   // цена закупки за 1 шт. из общака
+static const gFItemAmmo[MAX_FITEMS]  = { 0,   0,   35,  20,  150,  150,  15,   60  };
+static const gFItemPrice[MAX_FITEMS] = { 500, 300, 600, 800, 1200, 2000, 2500, 400 };   // цена закупки за 1 шт. из общака
+static const gFItemMats[MAX_FITEMS]  = { 20,  10,  30,  40,  60,   100,  120,  20  };   // материалов на 1 шт. (только госструктуры)
 
 // Тюремная камера (в здании LSPD, интерьер 6)
 #define JAIL_X                  264.0
@@ -107,55 +154,66 @@ enum
 }
 
 // Значения по умолчанию. Потом их меняют лидер (/lmenu) и админ (/fedit) — они хранятся в базе.
-static const gFactionDefName[MAX_FACTIONS][32] =
+static const gFactionDefName[FACTION_BUILTIN][32] =
 {
 	"Нет",
 	"Полиция LSPD",
 	"Больница LS (EMS)",
 	"Grove Street Families",
 	"The Ballas",
-	"Varrios Los Aztecas"
+	"Varrios Los Aztecas",
+	"ФБР",
+	"Армия"
 };
 
-static const gFactionDefColor[MAX_FACTIONS] =
+static const gFactionDefColor[FACTION_BUILTIN] =
 {
 	COLOR_CIVIL,
 	0x3A6EFFFF,     // полиция — синий
 	0xFF8080FF,     // медики — розовый
 	0x10A010FF,     // Grove — зелёный
 	0xB040FFFF,     // Ballas — фиолетовый
-	0x00C8F0FF      // Aztecas — голубой
+	0x00C8F0FF,     // Aztecas — голубой
+	0x6C8CD5FF,     // ФБР — серо-синий
+	0x6B8E23FF      // армия — оливковый
 };
 
 // Скин для каждого ранга (1..10)
-static const gFactionDefSkin[MAX_FACTIONS][MAX_RANK] =
+static const gFactionDefSkin[FACTION_BUILTIN][MAX_RANK] =
 {
 	{ 0,   0,   0,   0,   0,   0,   0,   0,   0,   0   },
 	{ 280, 280, 281, 282, 282, 283, 283, 288, 288, 265 },   // полиция
 	{ 274, 274, 275, 275, 275, 276, 276, 276, 276, 70  },   // медики
 	{ 105, 106, 105, 106, 105, 106, 107, 107, 107, 270 },   // Grove
 	{ 102, 103, 102, 104, 102, 103, 104, 103, 103, 104 },   // Ballas
-	{ 114, 115, 114, 116, 114, 115, 116, 115, 115, 116 }    // Aztecas
+	{ 114, 115, 114, 116, 114, 115, 116, 115, 115, 116 },   // Aztecas
+	{ 286, 286, 286, 286, 165, 165, 166, 166, 166, 165 },   // ФБР
+	{ 287, 287, 287, 287, 287, 287, 287, 287, 287, 287 }    // армия
 };
 
-// Названия рангов: 0 — полиция, 1 — медики, 2 — банды
-static const gDefRankNames[3][MAX_RANK][24] =
+// Названия рангов: 0 — полиция, 1 — медики, 2 — банды, 3 — ФБР, 4 — армия, 5 — гос. организация
+static const gDefRankNames[6][MAX_RANK][24] =
 {
 	{ "Кадет", "Офицер", "Сержант", "Лейтенант", "Ст. лейтенант", "Капитан", "Майор", "Подполковник", "Зам. шефа", "Шеф полиции" },
 	{ "Интерн", "Фельдшер", "Врач", "Хирург", "Ст. хирург", "Зав. отделением", "Нач. смены", "Консультант", "Зам. главврача", "Главврач" },
-	{ "Новичок", "Боец", "Бывалый", "Старший", "Смотрящий", "Авторитет", "Советник", "Капитан", "Правая рука", "Лидер" }
+	{ "Новичок", "Боец", "Бывалый", "Старший", "Смотрящий", "Авторитет", "Советник", "Капитан", "Правая рука", "Лидер" },
+	{ "Стажёр", "Мл. агент", "Агент", "Ст. агент", "Спец. агент", "Ст. спец. агент", "Нач. отдела", "Инспектор", "Зам. директора", "Директор ФБР" },
+	{ "Рядовой", "Ефрейтор", "Сержант", "Ст. сержант", "Прапорщик", "Лейтенант", "Капитан", "Майор", "Полковник", "Генерал" },
+	{ "Стажёр", "Мл. сотрудник", "Сотрудник", "Ст. сотрудник", "Специалист", "Вед. специалист", "Нач. отдела", "Советник", "Заместитель", "Руководитель" }
 };
 
 // Базы по умолчанию: спавн (x, y, z, угол) и раздевалка /duty (x, y, z).
 // Координаты примерные — их можно поправить в игре через /setfspawn и /setfduty.
-static const Float:gFactionDefBase[MAX_FACTIONS][7] =
+static const Float:gFactionDefBase[FACTION_BUILTIN][7] =
 {
 	{ 0.0, 0.0, 0.0, 0.0,          0.0, 0.0, 0.0 },
 	{ 1544.0, -1675.5, 13.6, 90.0,   1553.0, -1675.5, 16.2 },   // LSPD, Pershing Square
 	{ HOSPITAL_X, HOSPITAL_Y, HOSPITAL_Z, 90.0,   1172.0, -1323.3, 15.4 },   // All Saints
 	{ 2512.0, -1673.0, 13.5, 90.0,   2495.9, -1690.0, 14.8 },   // Grove Street
 	{ 2220.0, -1160.0, 25.8, 270.0,  2233.8, -1159.8, 25.9 },   // Jefferson Motel
-	{ 1975.0, -2040.0, 13.5, 0.0,    1978.0, -2036.0, 13.5 }    // El Corona
+	{ 1975.0, -2040.0, 13.5, 0.0,    1978.0, -2036.0, 13.5 },   // El Corona
+	{ 1481.0, -1771.0, 18.8, 0.0,    1481.0, -1766.5, 18.8 },   // ФБР: у мэрии (переставить: /setfspawn, /setfduty, /setfint)
+	{ 2745.0, -2440.0, 13.7, 180.0,  2750.0, -2440.0, 13.7 }    // армия: Ocean Docks, примерно (переставить: /setfspawn 7, /setfduty 7)
 };
 
 // Машины по умолчанию (создаются один раз, при первом запуске)
@@ -201,7 +259,9 @@ enum E_FACTION
 	fName[32],          // название (из базы)
 	fColor,             // цвет (из базы)
 	fBank,              // общак
-	fStoreRank          // с какого ранга можно брать со склада
+	fStoreRank,         // с какого ранга можно брать со склада
+	fType,              // тип (FTYPE_*); FTYPE_NONE — номер свободен
+	fMats               // материалы на складе (привозит армия)
 }
 new Faction[MAX_FACTIONS][E_FACTION];
 
@@ -222,17 +282,89 @@ new gFactionBudgetHour = -1;                     // час последнего начисления бю
 
 new gVehFactionDb[MAX_VEHICLES];    // номер машины фракции в таблице fvehicles
 
+// Точки снабжения (SP_*): завод, склад армии, чёрный рынок. Места по умолчанию примерные.
+new Float:gSpX[MAX_SPOINTS] = { 2200.0, 2760.0, 2447.0 };
+new Float:gSpY[MAX_SPOINTS] = { -2250.0, -2440.0, -1975.0 };
+new Float:gSpZ[MAX_SPOINTS] = { 13.6, 13.7, 13.55 };
+new Float:gSpA[MAX_SPOINTS];
+new gSpWorld[MAX_SPOINTS];
+new gSpInt[MAX_SPOINTS];
+new gSpMk[MAX_SPOINTS] = { -1, ... };
+new gBMActor = INVALID_ACTOR_ID;    // торговец чёрного рынка
+new gBMPrice[MAX_FITEMS];           // цены чёрного рынка (0 — не продаётся)
+new gBMMatPrice = BM_MAT_PRICE;     // сколько торговец платит за 1 припас
+new bool:gStealing[MAX_PLAYERS];    // стоит на складе армии и крадёт материалы
+new gStealTotal[MAX_PLAYERS];       // сколько украл за этот заход
+new gCrate[MAX_PLAYERS];            // ящик в руках: 0 — нет, 1 — только что сделан на заводе, 2 — взят со склада
+new gCrateFc[MAX_PLAYERS];          // на каком заводе сделан ящик
+new gWorkStage[MAX_PLAYERS];        // работа на заводе: 0 — нет, 1 — несёт сырьё, 2 — стоит у станка
+new gWorkFc[MAX_PLAYERS];
+new gCapFc[MAX_PLAYERS] = { -1, ... };  // какой завод захватывает
+new gCapLeft[MAX_PLAYERS];
+new gCraftSel[MAX_PLAYERS];
+new gFColorSel[MAX_PLAYERS];        // какой фракции админ выбирает цвет (/fcolor)
+
 // =====================================================================
 //  Помощники
 // =====================================================================
-stock bool:Faction_IsValid(f)
+// Номер в границах массива (сама фракция может быть ещё не создана)
+stock bool:Faction_InRange(f)
 {
 	return (f > FACTION_NONE && f < MAX_FACTIONS);
 }
 
+// Фракция существует
+stock bool:Faction_IsValid(f)
+{
+	return (f > FACTION_NONE && f < MAX_FACTIONS && Faction[f][fType] != FTYPE_NONE);
+}
+
 stock bool:Faction_IsGang(f)
 {
-	return (f >= FACTION_GROVE && f < MAX_FACTIONS);
+	return (f > FACTION_NONE && f < MAX_FACTIONS && Faction[f][fType] == FTYPE_GANG);
+}
+
+// Силовая структура (объявлена в base.inc)
+stock bool:Faction_IsLaw(f)
+{
+	return (f > FACTION_NONE && f < MAX_FACTIONS && Faction[f][fType] == FTYPE_LAW);
+}
+
+stock bool:Faction_IsMedic(f)
+{
+	return (f > FACTION_NONE && f < MAX_FACTIONS && Faction[f][fType] == FTYPE_MEDIC);
+}
+
+stock bool:Faction_IsArmy(f)
+{
+	return (f > FACTION_NONE && f < MAX_FACTIONS && Faction[f][fType] == FTYPE_ARMY);
+}
+
+// Тип постоянной фракции (1..7)
+stock Faction_BuiltinType(f)
+{
+	switch (f)
+	{
+		case FACTION_POLICE, FACTION_FBI: return FTYPE_LAW;
+		case FACTION_EMS: return FTYPE_MEDIC;
+		case FACTION_GROVE, FACTION_BALLAS, FACTION_AZTECAS: return FTYPE_GANG;
+		case FACTION_ARMY: return FTYPE_ARMY;
+	}
+	return FTYPE_NONE;
+}
+
+// Какой набор названий рангов по умолчанию (строка gDefRankNames)
+stock Faction_RankSet(f)
+{
+	if (f == FACTION_FBI) return 3;
+	switch (Faction[f][fType])
+	{
+		case FTYPE_LAW: return 0;
+		case FTYPE_MEDIC: return 1;
+		case FTYPE_ARMY: return 4;
+		case FTYPE_CIVIL: return 5;
+	}
+	return 2;
 }
 
 stock Faction_GetName(f)
@@ -264,7 +396,8 @@ stock Faction_GetRankName(f, rank)
 // Госструктура (получает бюджет от штата)
 stock bool:Faction_IsState(f)
 {
-	return (f == FACTION_POLICE || f == FACTION_EMS);
+	if (f <= FACTION_NONE || f >= MAX_FACTIONS) return false;
+	return (Faction[f][fType] != FTYPE_NONE && Faction[f][fType] != FTYPE_GANG);
 }
 
 // Потолок зарплаты ранга (у госструктур ниже: их общак — бюджет штата)
@@ -329,6 +462,11 @@ stock Faction_SaveStore(f, item)
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO faction_storage (faction, item, amount) VALUES (%d, %d, %d)",
 		f, item, gFStore[f][item]));
+}
+
+stock Faction_SaveMats(f)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE factions SET mats = %d WHERE id = %d", Faction[f][fMats], f));
 }
 
 stock Faction_SaveRank(f, rank)
@@ -396,6 +534,58 @@ stock bool:Faction_NeedLeader(playerid)
 		return false;
 	}
 	return true;
+}
+
+// Команда силовиков: полиция или ФБР на смене
+stock bool:Faction_NeedLaw(playerid)
+{
+	if (!Faction_IsLaw(Player[playerid][pFaction]))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Эта команда только для полиции и ФБР.");
+		return false;
+	}
+	if (!Player[playerid][pDuty])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Сначала заступи на смену: /duty в раздевалке фракции.");
+		return false;
+	}
+	return true;
+}
+
+// Команда медиков: любая фракция типа «медики» на смене
+stock bool:Faction_NeedMedic(playerid)
+{
+	if (!Faction_IsMedic(Player[playerid][pFaction]))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Эта команда только для медиков.");
+		return false;
+	}
+	if (!Player[playerid][pDuty])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Сначала заступи на смену: /duty в раздевалке фракции.");
+		return false;
+	}
+	return true;
+}
+
+// Вызов медикам: всем медикам онлайн
+stock Faction_MessageMedic(const message[])
+{
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && Player[i][pLogged] && Faction_IsMedic(Player[i][pFaction]))
+			SendClientMessage(i, Faction_GetColor(FACTION_EMS), "%s", message);
+	}
+}
+
+// Сообщение диспетчера: всем полицейским и агентам ФБР онлайн
+stock Faction_MessageLaw(const message[])
+{
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && Player[i][pLogged] && Faction_IsLaw(Player[i][pFaction]))
+			SendClientMessage(i, Faction_GetColor(FACTION_POLICE), "%s", message);
+	}
 }
 
 // Сообщение всем онлайн-членам фракции
@@ -476,7 +666,23 @@ stock Faction_CreateMarker(f)
 // Админ перенёс маркер раздевалки (/markers)
 stock Faction_OnMarkerMoved(f, Float:x, Float:y, Float:z)
 {
-	if (f < 1 || f >= MAX_FACTIONS) return;
+	if (f >= 300)   // склады организаций и точки заводов
+	{
+		Factory_OnMarkerMoved(f, x, y, z);
+		return;
+	}
+	if (f >= SUPPLY_REF && f < SUPPLY_REF + MAX_SPOINTS)    // склад армии, чёрный рынок
+	{
+		new i = f - SUPPLY_REF;
+		gSpX[i] = x;
+		gSpY[i] = y;
+		gSpZ[i] = z;
+		gSpA[i] = Marker_GetAngle(gSpMk[i]);
+		SPoint_Save(i);
+		if (i == SP_BM) BM_PlaceActor();
+		return;
+	}
+	if (!Faction_IsValid(f)) return;
 	Faction[f][fDutyX] = x;
 	Faction[f][fDutyY] = y;
 	Faction[f][fDutyZ] = z;
@@ -485,7 +691,7 @@ stock Faction_OnMarkerMoved(f, Float:x, Float:y, Float:z)
 
 stock Faction_SpawnVehicle(dbid, f, model, Float:x, Float:y, Float:z, Float:a, c1, c2)
 {
-	new v = CreateVehicle(model, x, y, z, a, c1, c2, FACTION_VEH_RESPAWN, (f == FACTION_POLICE || f == FACTION_EMS));
+	new v = CreateVehicle(model, x, y, z, a, c1, c2, FACTION_VEH_RESPAWN, Faction_IsState(f));
 	if (v == INVALID_VEHICLE_ID) return INVALID_VEHICLE_ID;
 	Vehicle_Clear(v);
 	gVehFaction[v] = f;
@@ -497,6 +703,25 @@ stock Factions_Init()
 {
 	Factions_CreateTables();
 
+	// Какие фракции есть: 1..7 постоянные, остальные — созданные в игре (строка в базе)
+	for (new f = 1; f < MAX_FACTIONS; f++)
+	{
+		Faction[f][fType] = (f < FACTION_BUILTIN) ? Faction_BuiltinType(f) : FTYPE_NONE;
+		Faction[f][fMarker] = false;
+	}
+	new DBResult:tr = DB_ExecuteQuery(gDB, "SELECT id, ftype FROM factions WHERE id >= %d", FACTION_BUILTIN);
+	if (tr != DBResult:0)
+	{
+		new trows = DB_GetRowCount(tr);
+		for (new i = 0; i < trows; i++)
+		{
+			new f = DB_GetFieldInt(tr, 0), type = DB_GetFieldInt(tr, 1);
+			if (f >= FACTION_BUILTIN && f < MAX_FACTIONS && type >= FTYPE_LAW && type <= FTYPE_CIVIL) Faction[f][fType] = type;
+			DB_SelectNextRow(tr);
+		}
+		DB_FreeResultSet(tr);
+	}
+
 	// Первый запуск: записываем базы и машины по умолчанию
 	new count = 0;
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT COUNT(*) FROM factions");
@@ -505,15 +730,16 @@ stock Factions_Init()
 		if (DB_GetRowCount(r) > 0) count = DB_GetFieldInt(r, 0);
 		DB_FreeResultSet(r);
 	}
+	// Строка в базе для каждой постоянной фракции (новая фракция в старой базе появится сама)
+	for (new f = 1; f < FACTION_BUILTIN; f++)
+	{
+		DB_FreeResultSet(DB_ExecuteQuery(gDB,
+			"INSERT OR IGNORE INTO factions (id, sx, sy, sz, sa, dx, dy, dz) VALUES (%d, %f, %f, %f, %f, %f, %f, %f)",
+			f, gFactionDefBase[f][0], gFactionDefBase[f][1], gFactionDefBase[f][2], gFactionDefBase[f][3],
+			gFactionDefBase[f][4], gFactionDefBase[f][5], gFactionDefBase[f][6]));
+	}
 	if (count == 0)
 	{
-		for (new f = 1; f < MAX_FACTIONS; f++)
-		{
-			DB_FreeResultSet(DB_ExecuteQuery(gDB,
-				"INSERT OR IGNORE INTO factions (id, sx, sy, sz, sa, dx, dy, dz) VALUES (%d, %f, %f, %f, %f, %f, %f, %f)",
-				f, gFactionDefBase[f][0], gFactionDefBase[f][1], gFactionDefBase[f][2], gFactionDefBase[f][3],
-				gFactionDefBase[f][4], gFactionDefBase[f][5], gFactionDefBase[f][6]));
-		}
 		for (new i = 0; i < sizeof (gFactionDefVeh); i++)
 		{
 			DB_FreeResultSet(DB_ExecuteQuery(gDB,
@@ -525,7 +751,7 @@ stock Factions_Init()
 	}
 
 	// Базы фракций
-	for (new f = 1; f < MAX_FACTIONS; f++)
+	for (new f = 1; f < FACTION_BUILTIN; f++)
 	{
 		Faction[f][fSpawnX] = gFactionDefBase[f][0];
 		Faction[f][fSpawnY] = gFactionDefBase[f][1];
@@ -598,6 +824,8 @@ stock Factions_CreateTables()
 	DB_AddColumn("factions", "dworld", "INTEGER DEFAULT 0");
 	DB_AddColumn("factions", "sint", "INTEGER DEFAULT 0");
 	DB_AddColumn("factions", "sworld", "INTEGER DEFAULT 0");
+	DB_AddColumn("factions", "ftype", "INTEGER DEFAULT 0");     // тип фракции, созданной в игре
+	DB_AddColumn("factions", "mats", "INTEGER DEFAULT 2000");   // материалы на складе
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_doors (faction INTEGER PRIMARY KEY, has_out INTEGER DEFAULT 0, ox REAL DEFAULT 0, oy REAL DEFAULT 0, oz REAL DEFAULT 0, oa REAL DEFAULT 0, oint INTEGER DEFAULT 0, oworld INTEGER DEFAULT 0, has_in INTEGER DEFAULT 0, ix REAL DEFAULT 0, iy REAL DEFAULT 0, iz REAL DEFAULT 0, ia REAL DEFAULT 0, iint INTEGER DEFAULT 0, iworld INTEGER DEFAULT 0, closed INTEGER DEFAULT 0)"));
 	DB_AddColumn("accounts", "fwarns", "INTEGER DEFAULT 0");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_ranks (faction INTEGER NOT NULL, rank INTEGER NOT NULL, name TEXT, skin INTEGER DEFAULT 0, salary INTEGER DEFAULT 0, PRIMARY KEY (faction, rank))"));
@@ -628,15 +856,34 @@ stock Factions_LoadData()
 {
 	for (new f = 1; f < MAX_FACTIONS; f++)
 	{
+		if (f >= FACTION_BUILTIN)
+		{
+			// Созданные в игре: всё лежит в базе, тут только запасные значения
+			Faction[f][fName][0] = '\0';
+			strcat(Faction[f][fName], "Фракция", 32);
+			Faction[f][fColor] = COLOR_WHITE;
+			Faction[f][fBank] = 0;
+			Faction[f][fStoreRank] = 2;
+			Faction[f][fMats] = 0;
+			for (new rk = 0; rk < MAX_RANK; rk++)
+			{
+				gRankName[f][rk][0] = '\0';
+				strcat(gRankName[f][rk], "Ранг", 24);
+				gRankSkin[f][rk] = 0;
+				gRankSalary[f][rk] = 0;
+			}
+			for (new it = 0; it < MAX_FITEMS; it++) gFStore[f][it] = 0;
+			continue;
+		}
+		// Армия возит материалы другим, поэтому её склад с самого начала больше
+		if (f == FACTION_ARMY) DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE factions SET mats = 20000 WHERE id = %d AND name IS NULL", f));
 		// Название и цвет по умолчанию — только если их ещё нет в базе
 		new startBank = Faction_IsState(f) ? FACTION_START_BANK : 0;
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE factions SET name = '%q', color = %d, bank = %d WHERE id = %d AND name IS NULL",
 			gFactionDefName[f], gFactionDefColor[f], startBank, f));
 
 		// Ранги по умолчанию
-		new t = 2;
-		if (f == FACTION_POLICE) t = 0;
-		else if (f == FACTION_EMS) t = 1;
+		new t = Faction_RankSet(f);
 		for (new rk = 1; rk <= MAX_RANK; rk++)
 		{
 			new salary = Faction_IsState(f) ? (FACTION_SALARY_BASE + rk * FACTION_SALARY_RANK) : 0;
@@ -650,6 +897,7 @@ stock Factions_LoadData()
 		Faction[f][fColor] = gFactionDefColor[f];
 		Faction[f][fBank] = 0;
 		Faction[f][fStoreRank] = 2;
+		Faction[f][fMats] = 0;
 		for (new rk = 0; rk < MAX_RANK; rk++)
 		{
 			gRankName[f][rk][0] = '\0';
@@ -660,7 +908,7 @@ stock Factions_LoadData()
 		for (new it = 0; it < MAX_FITEMS; it++) gFStore[f][it] = 0;
 	}
 
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, name, color, bank, store_rank FROM factions");
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, name, color, bank, store_rank, mats FROM factions");
 	if (r != DBResult:0)
 	{
 		new rows = DB_GetRowCount(r);
@@ -680,6 +928,8 @@ stock Factions_LoadData()
 				Faction[f][fBank] = DB_GetFieldInt(r, 3);
 				Faction[f][fStoreRank] = DB_GetFieldInt(r, 4);
 				if (Faction[f][fStoreRank] < 1 || Faction[f][fStoreRank] > MAX_RANK) Faction[f][fStoreRank] = 2;
+				Faction[f][fMats] = DB_GetFieldInt(r, 5);
+				if (Faction[f][fMats] < 0) Faction[f][fMats] = 0;
 			}
 			DB_SelectNextRow(r);
 		}
@@ -724,8 +974,12 @@ stock Factions_LoadData()
 	}
 
 	// Значки раздевалок создавались до загрузки названий — пересоздаём с новыми
-	for (new f = 1; f < MAX_FACTIONS; f++) Faction_CreateMarker(f);
+	for (new f = 1; f < MAX_FACTIONS; f++)
+	{
+		if (Faction_IsValid(f)) Faction_CreateMarker(f);
+	}
 	FDoors_Load();      // входы в здания фракций (/setfint)
+	Supply_Init();      // завод, склад армии, чёрный рынок
 	print("[Factions] Loaded names, ranks, banks and storage.");
 }
 
@@ -810,6 +1064,7 @@ stock Factions_OnSpawn(playerid)
 // Из OnPlayerDeath
 stock Factions_OnDeath(playerid)
 {
+	Supply_ResetPlayer(playerid);   // краденое теряется
 	Faction_Uncuff(playerid);
 	Player[playerid][pDuty] = false;
 }
@@ -823,6 +1078,12 @@ stock Factions_OnBecomeDriver(playerid)
 	if (Player[playerid][pFaction] == f || Player[playerid][pAdmin] >= 3)
 	{
 		SendClientMessage(playerid, Faction_GetColor(f), "Машина фракции «%s». Двигатель: 2, шлагбаум: H", Faction_GetName(f));
+		return 1;
+	}
+	// Машину с ящиками может угнать член другой организации (перехват груза)
+	if (gVehCargo[v] > 0 && Faction_IsValid(Player[playerid][pFaction]))
+	{
+		SendClientMessage(playerid, COLOR_YELLOW, "Чужая машина с грузом (%d материалов). Довези до склада своей организации и разгрузи: H.", gVehCargo[v]);
 		return 1;
 	}
 	RemovePlayerFromVehicle(playerid);
@@ -933,31 +1194,14 @@ stock bool:Cmd_Duty(playerid)
 	SetPlayerSkin(playerid, gRankSkin[f][rank - 1]);
 	ResetPlayerWeapons(playerid);
 
-	switch (f)
-	{
-		case FACTION_POLICE:
-		{
-			GivePlayerWeapon(playerid, WEAPON_NITESTICK, 1);
-			GivePlayerWeapon(playerid, WEAPON_DEAGLE, 70);
-			if (rank >= 3) GivePlayerWeapon(playerid, WEAPON_SHOTGUN, 30);
-			if (rank >= 4) GivePlayerWeapon(playerid, WEAPON_MP5, 200);
-			SetPlayerArmour(playerid, 100.0);
-		}
-		case FACTION_EMS:
-		{
-			GivePlayerWeapon(playerid, WEAPON_FIREEXTINGUISHER, 500);
-		}
-		default:    // банды
-		{
-			GivePlayerWeapon(playerid, WEAPON_BAT, 1);
-			GivePlayerWeapon(playerid, WEAPON_COLT45, 60);
-			if (rank >= 4) GivePlayerWeapon(playerid, WEAPON_DEAGLE, 35);
-		}
-	}
+	// Оружие и броню на смене не выдаём: их берут со склада фракции (/fstorage).
+	// Силовикам остаётся только дубинка.
+	if (Faction_IsLaw(f)) GivePlayerWeapon(playerid, WEAPON_NITESTICK, 1);
 	Faction_UpdateColor(playerid);
 	format(msg, sizeof msg, "%s переодевается в форму.", GetRPName(playerid));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	SendClientMessage(playerid, Faction_GetColor(f), "Ты на смене (%s). Команды фракции: /fhelp", Faction_GetRankName(f, rank));
+	SendClientMessage(playerid, COLOR_WHITE, "Оружие и бронежилет лежат на складе фракции: /fstorage.");
 	return true;
 }
 
@@ -1068,7 +1312,7 @@ stock bool:Cmd_Accept(playerid)
 		case OFFER_HEAL:
 		{
 			new price = Player[playerid][pOfferValue];
-			if (Player[from][pFaction] != FACTION_EMS || !Player[from][pDuty] || !IsPlayerNearPlayer(playerid, from, 5.0))
+			if (!Faction_IsMedic(Player[from][pFaction]) || !Player[from][pDuty] || !IsPlayerNearPlayer(playerid, from, 5.0))
 				return SendClientMessage(playerid, COLOR_GREY, "Медик ушёл или закончил смену.");
 			if (GetMoney(playerid) < price) return SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", price);
 
@@ -1125,7 +1369,7 @@ stock Faction_OfferHandshake(playerid, target)
 // =====================================================================
 stock bool:Cmd_Megaphone(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	new text[110], msg[144];
 	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /m [текст] — мегафон");
 	format(msg, sizeof msg, "[Мегафон] %s: %s", GetRPName(playerid), text);
@@ -1135,13 +1379,13 @@ stock bool:Cmd_Megaphone(playerid, const params[])
 
 stock bool:Cmd_Suspect(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	new pos = 0, stars, reason[64];
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, stars) || stars < 1 || stars > 6 || !RestParam(params, pos, reason))
 		return SendClientMessage(playerid, COLOR_GREY, "Использование: /su [id] [звёзды 1-6] [причина]");
 	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
-	if (Player[target][pFaction] == FACTION_POLICE && Player[target][pDuty])
+	if (Faction_IsLaw(Player[target][pFaction]) && Player[target][pDuty])
 		return SendClientMessage(playerid, COLOR_GREY, "Нельзя объявить в розыск полицейского на смене.");
 
 	Player[target][pWanted] = stars;
@@ -1151,13 +1395,13 @@ stock bool:Cmd_Suspect(playerid, const params[])
 	new msg[144];
 	format(msg, sizeof msg, "[Диспетчер] %s объявил в розыск %s [%d] — %d зв. Причина: %s",
 		GetRPName(playerid), GetRPName(target), target, stars, reason);
-	Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
+	Faction_MessageLaw(msg);
 	return true;
 }
 
 stock bool:Cmd_ClearWanted(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	if (Player[playerid][pRank] < 2) return SendClientMessage(playerid, COLOR_GREY, "Снимать розыск можно с ранга 2.");
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
@@ -1169,7 +1413,7 @@ stock bool:Cmd_ClearWanted(playerid, const params[])
 	SendClientMessage(target, COLOR_GREEN, "С тебя сняли розыск.");
 	new msg[144];
 	format(msg, sizeof msg, "[Диспетчер] %s снял розыск с %s.", GetRPName(playerid), GetRPName(target));
-	Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
+	Faction_MessageLaw(msg);
 	return true;
 }
 
@@ -1190,7 +1434,7 @@ stock bool:Cmd_Wanted(playerid)
 
 stock bool:Cmd_Cuff(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /cuff [id]");
@@ -1209,7 +1453,7 @@ stock bool:Cmd_Cuff(playerid, const params[])
 
 stock bool:Cmd_Uncuff(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /uncuff [id]");
@@ -1226,7 +1470,7 @@ stock bool:Cmd_Uncuff(playerid, const params[])
 // Обыск: оружие и деньги задержанного
 stock bool:Cmd_Frisk(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /frisk [id]");
@@ -1253,13 +1497,13 @@ stock bool:Cmd_Frisk(playerid, const params[])
 // Посадить задержанного в свою машину (полицейский сидит за рулём)
 stock bool:Cmd_PutCar(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /putcar [id] (сидя за рулём)");
 	new v = GetPlayerVehicleID(playerid);
-	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER || gVehFaction[v] != FACTION_POLICE)
-		return SendClientMessage(playerid, COLOR_GREY, "Сядь за руль полицейской машины.");
+	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER || !Faction_IsLaw(gVehFaction[v]))
+		return SendClientMessage(playerid, COLOR_GREY, "Сядь за руль служебной машины полиции или ФБР.");
 	if (!Player[target][pCuffed]) return SendClientMessage(playerid, COLOR_GREY, "Сначала надень наручники: /cuff");
 	if (!IsPlayerNearPlayer(playerid, target, 6.0)) return SendClientMessage(playerid, COLOR_GREY, "Задержанный слишком далеко от машины.");
 
@@ -1286,7 +1530,7 @@ stock bool:Cmd_PutCar(playerid, const params[])
 
 stock bool:Cmd_Arrest(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_POLICE, true)) return true;
+	if (!Faction_NeedLaw(playerid)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /arrest [id]");
@@ -1316,7 +1560,7 @@ stock bool:Cmd_Arrest(playerid, const params[])
 	SendClientMessage(playerid, COLOR_GREEN, "Арест оформлен. Премия: $%d.", stars * ARREST_REWARD);
 	new msg[144];
 	format(msg, sizeof msg, "[Диспетчер] %s арестовал %s на %d мин.", GetRPName(playerid), GetRPName(target), minutes);
-	Faction_Message(FACTION_POLICE, Faction_GetColor(FACTION_POLICE), msg);
+	Faction_MessageLaw(msg);
 	return true;
 }
 
@@ -1325,7 +1569,7 @@ stock bool:Cmd_Arrest(playerid, const params[])
 // =====================================================================
 stock bool:Cmd_Heal(playerid, const params[])
 {
-	if (!Faction_Need(playerid, FACTION_EMS, true)) return true;
+	if (!Faction_NeedMedic(playerid)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /heal [id]");
@@ -1375,9 +1619,9 @@ stock bool:Cmd_FStorage(playerid)
 		format(line, sizeof line, "%s\t%d шт.\t$%d\n", gFItemName[it], gFStore[f][it], gFItemPrice[it]);
 		strcat(body, line);
 	}
-	strcat(body, "{FFFF00}» Закупить снаряжение из общака\t{AFAFAF}лидер и зам\t");
+	strcat(body, "{FFFF00}» Пополнить склад (закупка, у банд — изготовление)\t{AFAFAF}лидер и зам\t");
 	new title[64];
-	format(title, sizeof title, "Склад фракции (брать можно с ранга %d)", Faction[f][fStoreRank]);
+	format(title, sizeof title, "Склад: брать с ранга %d, материалов %d", Faction[f][fStoreRank], Faction[f][fMats]);
 	ShowPlayerDialog(playerid, DIALOG_FSTORE, DIALOG_STYLE_TABLIST_HEADERS, title, "%s", "Взять", "Закрыть", body);
 	return true;
 }
@@ -1413,15 +1657,16 @@ stock Faction_TakeItem(playerid, it)
 stock Faction_ShowBuyList(playerid)
 {
 	new f = Player[playerid][pFaction];
-	new body[700], line[96];
-	strcat(body, "Снаряжение\tЦена за 1 шт.\tНа складе\n");
+	new body[900], line[96];
+	new bool:gov = Faction_IsState(f);    // госструктуры платят из общака, банды делают оружие сами — только из материалов
+	strcat(body, "Снаряжение\tЦена за 1 шт.\tМатериалов за 1 шт.\tНа складе\n");
 	for (new it = 0; it < MAX_FITEMS; it++)
 	{
-		format(line, sizeof line, "%s\t$%d\t%d шт.\n", gFItemName[it], gFItemPrice[it], gFStore[f][it]);
+		format(line, sizeof line, "%s\t$%d\t%d\t%d шт.\n", gFItemName[it], gov ? gFItemPrice[it] : 0, gFItemMats[it], gFStore[f][it]);
 		strcat(body, line);
 	}
 	new title[64];
-	format(title, sizeof title, "Закупка (общак: $%d)", Faction[f][fBank]);
+	format(title, sizeof title, "Закупка (общак: $%d, материалов: %d)", Faction[f][fBank], Faction[f][fMats]);
 	ShowPlayerDialog(playerid, DIALOG_FSTORE_BUY, DIALOG_STYLE_TABLIST_HEADERS, title, "%s", "Выбрать", "Назад", body);
 }
 
@@ -1720,8 +1965,8 @@ stock Factions_OnDialog(playerid, dialogid, response, listitem, const inputtext[
 			if (listitem < 0 || listitem >= MAX_FITEMS) return 1;
 			gLSelItem[playerid] = listitem;
 			ShowPlayerDialog(playerid, DIALOG_FSTORE_BUY_QTY, DIALOG_STYLE_INPUT, "Закупка",
-				"%s — $%d за 1 шт.\nСколько закупить? (1-100)\nВ общаке: $%d", "Купить", "Назад",
-				gFItemName[listitem], gFItemPrice[listitem], Faction[f][fBank]);
+				"%s — $%d и %d материалов за 1 шт.\nСколько закупить? (1-100)\nВ общаке: $%d, материалов: %d", "Купить", "Назад",
+				gFItemName[listitem], Faction_IsState(f) ? gFItemPrice[listitem] : 0, gFItemMats[listitem], Faction[f][fBank], Faction[f][fMats]);
 		}
 		case DIALOG_FSTORE_BUY_QTY:
 		{
@@ -1735,8 +1980,19 @@ stock Factions_OnDialog(playerid, dialogid, response, listitem, const inputtext[
 				SendClientMessage(playerid, COLOR_GREY, "Количество от 1 до 100.");
 				return 1;
 			}
-			new cost = amount * gFItemPrice[it];
+			new cost = Faction_IsState(f) ? (amount * gFItemPrice[it]) : 0;   // банды делают оружие сами, без денег
+			new need = amount * gFItemMats[it];
+			if (Faction[f][fMats] < need)
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Не хватает материалов: нужно %d, на складе %d. Госструктурам их возит армия, банды добывают сами.", need, Faction[f][fMats]);
+				return 1;
+			}
 			if (!Faction_AddBank(f, -cost)) { SendClientMessage(playerid, COLOR_GREY, "В общаке не хватает денег: нужно $%d.", cost); return 1; }
+			if (need > 0)
+			{
+				Faction[f][fMats] -= need;
+				Faction_SaveMats(f);
+			}
 			gFStore[f][it] += amount;
 			Faction_SaveStore(f, it);
 			SendClientMessage(playerid, COLOR_GREEN, "Закуплено: %s x%d за $%d. На складе: %d.", gFItemName[it], amount, cost, gFStore[f][it]);
@@ -1955,7 +2211,7 @@ stock bool:Cmd_FEdit(playerid, const params[])
 	new pos = 0, f, what[16], value[32];
 	if (!NextIntParam(params, pos, f) || !Faction_IsValid(f) || !NextParam(params, pos, what) || !RestParam(params, pos, value))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Использование: /fedit [фракция 1-%d] name [название] | color [RRGGBB] | bank [сумма]", MAX_FACTIONS - 1);
+		SendClientMessage(playerid, COLOR_GREY, "Использование: /fedit [фракция 1-%d] name [название] | color [RRGGBB] | bank [сумма] | mats [материалы]", MAX_FACTIONS - 1);
 		return true;
 	}
 
@@ -1992,10 +2248,20 @@ stock bool:Cmd_FEdit(playerid, const params[])
 		Faction_SaveBank(f);
 		format(msg, sizeof msg, "Администратор %s установил общак: $%d.", GetRPName(playerid), amount);
 	}
-	else return SendClientMessage(playerid, COLOR_GREY, "Можно менять: name, color, bank.");
+	else if (!strcmp(what, "mats", true))
+	{
+		if (!IsNumeric(value)) return SendClientMessage(playerid, COLOR_GREY, "Материалы — число.");
+		new amount = strval(value);
+		if (amount < 0 || amount > ARMY_MATS_MAX) return SendClientMessage(playerid, COLOR_GREY, "Материалы от 0 до %d.", ARMY_MATS_MAX);
+		Faction[f][fMats] = amount;
+		Faction_SaveMats(f);
+		format(msg, sizeof msg, "Администратор %s установил материалы на складе: %d.", GetRPName(playerid), amount);
+	}
+	else return SendClientMessage(playerid, COLOR_GREY, "Можно менять: name, color, bank, mats.");
 
 	Faction_SaveInfo(f);
 	Faction_CreateMarker(f);
+	Turfs_Recolor();
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (IsPlayerConnected(i) && Player[i][pLogged] && Player[i][pFaction] == f) Faction_UpdateColor(i);
@@ -2023,7 +2289,7 @@ stock Factions_OnCommand(playerid, const cmd[], const params[])
 // =====================================================================
 stock bool:Cmd_FHelp(playerid)
 {
-	new text[2400];
+	new text[4000];
 	strcat(text, "{FFFF00}Все фракции\n");
 	strcat(text, "{FFFFFF}/f — рация   /members — кто онлайн   /duty — смена (в раздевалке)   /fleave — уйти\n");
 	strcat(text, "/accept — принять приглашение или лечение\n");
@@ -2041,9 +2307,15 @@ stock bool:Cmd_FHelp(playerid)
 	strcat(text, "{FF8080}Больница (EMS)\n");
 	strcat(text, "{FFFFFF}/heal [id] — предложить лечение\n\n");
 	strcat(text, "{10A010}Банды\n");
-	strcat(text, "{FFFFFF}/duty на базе — форма банды и оружие. /turfs /capture — войны за районы, районы пополняют общак.\n\n");
+	strcat(text, "{FFFFFF}/duty на базе — форма банды. /turfs /capture — войны за районы, районы пополняют общак.\n");
+	strcat(text, "ALT на маркере склада армии — красть материалы в сумку. Оружие из них: сумка, «использовать».\n");
+	strcat(text, "Заводы можно захватывать: ALT на маркере завода (ранг 7+). Торговец чёрного рынка — ALT. /gd — чат банд.\n\n");
+	strcat(text, "{FFFF00}Госструктуры\n{FFFFFF}/d — общий чат госструктур (департамент)\n\n");
+	strcat(text, "{6B8E23}Армия\n");
+	strcat(text, "{FFFFFF}На заводе: ALT у сырья, у станка, потом ящик на склад завода. Со склада ящик кладут в грузовик сзади (ALT).\n");
+	strcat(text, "За рулём на складе организации — H или /unload. Без материалов госструктурам не закупить оружие.\n\n");
 	strcat(text, "{FF66FF}Админам (4+)\n");
-	strcat(text, "{FFFFFF}/makeleader /setfaction /setfspawn /setfduty /setfint /delfint /fintlock /addfcar /delfcar /fedit   (2+) /jail /unjail");
+	strcat(text, "{FFFFFF}/makeleader /setfaction /setfspawn /setfduty /setfint /delfint /fintlock /addfcar /delfcar /fedit\n/createfaction /delfaction /flist /fcolor /setarmystore /setfstore /setbm /bmprice\n/addfactory /setfpoint /setfowner /delfactory /factories   (2+) /jail /unjail");
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Фракции", "%s", "Закрыть", "", text);
 	return true;
 }
@@ -2056,7 +2328,7 @@ stock bool:Cmd_SetFaction(playerid, const params[])
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, f, rank = 1;
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, f) || f < 0 || f >= MAX_FACTIONS)
+	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, f) || f < 0 || f >= MAX_FACTIONS || (f != FACTION_NONE && !Faction_IsValid(f)))
 		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setfaction [id] [фракция 0-%d] [ранг 1-%d]  (0 — выгнать)", MAX_FACTIONS - 1, MAX_RANK);
 	NextIntParam(params, pos, rank);
 	if (rank < 1 || rank > MAX_RANK) rank = 1;
@@ -2083,7 +2355,7 @@ stock bool:Cmd_MakeLeader(playerid, const params[])
 	new pos = 0, f;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, f) || !Faction_IsValid(f))
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /makeleader [id] [фракция 1-%d]  (1 LSPD, 2 EMS, 3 Grove, 4 Ballas, 5 Aztecas)", MAX_FACTIONS - 1);
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /makeleader [id] [фракция 1-%d]  (1 LSPD, 2 EMS, 3 Grove, 4 Ballas, 5 Aztecas, 6 ФБР)", MAX_FACTIONS - 1);
 	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
 
 	Faction_SetMember(target, f, MAX_RANK);
@@ -2417,4 +2689,1689 @@ stock bool:Cmd_FIntLock(playerid, const params[])
 	if (gFDoor[f][feClosed]) SendClientMessage(playerid, COLOR_ADMIN, "«%s»: вход теперь только для своих.", Faction_GetName(f));
 	else SendClientMessage(playerid, COLOR_ADMIN, "«%s»: вход теперь открыт для всех.", Faction_GetName(f));
 	return true;
+}
+
+// =====================================================================
+//  Создание и удаление фракций в игре (админ 4+)
+//  /createfaction [тип] [название] — новая фракция; спавн и раздевалка там, где стоишь
+//  /delfaction [№] confirm         — удалить созданную в игре фракцию со всем её имуществом
+//  /flist                          — список фракций
+//  Дальше фракция настраивается как обычная: /setfspawn, /setfduty, /setfint,
+//  /addfcar, /fcolor, /fedit, /makeleader; ранги, скины и зарплаты — лидер в /lmenu.
+// =====================================================================
+static const gFTypeName[6][24] =
+{
+	"нет", "силовая структура", "медики", "банда", "гос. организация", "армия"
+};
+static const gFTypeColor[6] = { 0xFFFFFFFF, 0x3A6EFFFF, 0xFF8080FF, 0xE0A030FF, 0xC8C8C8FF, 0x6B8E23FF };
+static const gFTypeSkin[6]  = { 0, 280, 274, 21, 17, 287 };
+
+stock bool:Cmd_CreateFaction(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, type, name[32];
+	if (!NextIntParam(params, pos, type) || type < FTYPE_LAW || type > FTYPE_CIVIL || !RestParam(params, pos, name))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Использование: /createfaction [тип] [название]");
+		SendClientMessage(playerid, COLOR_GREY, "Типы: 1 — силовая (права полиции), 2 — медики, 3 — банда, 4 — гос. организация без особых прав.");
+		return true;
+	}
+	if (!Faction_IsGoodName(name, 2, 31)) return SendClientMessage(playerid, COLOR_GREY, "Название: от 2 до 31 символа, без фигурных скобок и знака процента.");
+
+	new f = 0;
+	for (new i = FACTION_BUILTIN; i < MAX_FACTIONS; i++)
+	{
+		if (Faction[i][fType] == FTYPE_NONE) { f = i; break; }
+	}
+	if (f == 0) return SendClientMessage(playerid, COLOR_GREY, "Свободных номеров нет (всего фракций может быть %d). Удалить лишнюю: /delfaction", MAX_FACTIONS - 1);
+
+	Faction_WipeRows(f);    // на всякий случай: остатки прежней фракции с этим номером
+	Faction[f][fType] = type;
+	Faction[f][fName][0] = '\0';
+	strcat(Faction[f][fName], name, 32);
+	Faction[f][fColor] = gFTypeColor[type];
+	Faction[f][fBank] = Faction_IsState(f) ? FACTION_START_BANK : 0;
+	Faction[f][fMats] = Faction_IsState(f) ? FACTION_START_MATS : 0;
+	Faction[f][fStoreRank] = 2;
+	Faction[f][fMarker] = false;
+
+	// спавн и раздевалка — там, где стоит админ; потом их можно переставить
+	GetPlayerPos(playerid, Faction[f][fSpawnX], Faction[f][fSpawnY], Faction[f][fSpawnZ]);
+	GetPlayerFacingAngle(playerid, Faction[f][fSpawnA]);
+	Faction[f][fSpawnInt] = GetPlayerInterior(playerid);
+	Faction[f][fSpawnWorld] = GetPlayerVirtualWorld(playerid);
+	Faction[f][fDutyX] = Faction[f][fSpawnX];
+	Faction[f][fDutyY] = Faction[f][fSpawnY];
+	Faction[f][fDutyZ] = Faction[f][fSpawnZ];
+	Faction[f][fDutyInt] = Faction[f][fSpawnInt];
+	Faction[f][fDutyWorld] = Faction[f][fSpawnWorld];
+
+	DB_FreeResultSet(DB_ExecuteQuery(gDB,
+		"INSERT OR REPLACE INTO factions (id, sx, sy, sz, sa, dx, dy, dz, dint, dworld, sint, sworld, name, color, bank, store_rank, ftype, mats) VALUES (%d, %f, %f, %f, %f, %f, %f, %f, %d, %d, %d, %d, '%q', %d, %d, %d, %d, %d)",
+		f, Faction[f][fSpawnX], Faction[f][fSpawnY], Faction[f][fSpawnZ], Faction[f][fSpawnA],
+		Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ], Faction[f][fDutyInt], Faction[f][fDutyWorld],
+		Faction[f][fSpawnInt], Faction[f][fSpawnWorld], Faction[f][fName], Faction[f][fColor], Faction[f][fBank],
+		Faction[f][fStoreRank], type, Faction[f][fMats]));
+
+	new t = Faction_RankSet(f);
+	for (new rk = 0; rk < MAX_RANK; rk++)
+	{
+		gRankName[f][rk][0] = '\0';
+		strcat(gRankName[f][rk], gDefRankNames[t][rk], 24);
+		gRankSkin[f][rk] = gFTypeSkin[type];
+		gRankSalary[f][rk] = Faction_IsState(f) ? (FACTION_SALARY_BASE + (rk + 1) * FACTION_SALARY_RANK) : 0;
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO faction_ranks (faction, rank, name, skin, salary) VALUES (%d, %d, '%q', %d, %d)",
+			f, rk + 1, gRankName[f][rk], gRankSkin[f][rk], gRankSalary[f][rk]));
+	}
+	for (new it = 0; it < MAX_FITEMS; it++) gFStore[f][it] = 0;
+
+	gFDoor[f][feOut] = false;
+	gFDoor[f][feIn] = false;
+	gFDoor[f][feClosed] = false;
+	Faction_CreateMarker(f);
+
+	new msg[144];
+	format(msg, sizeof msg, "Администратор %s создал фракцию (%s).", GetRPName(playerid), gFTypeName[type]);
+	Faction_Log(f, msg);
+	SendClientMessage(playerid, COLOR_ADMIN, "Создана фракция №%d «%s» (%s). Спавн и раздевалка стоят здесь.", f, Faction[f][fName], gFTypeName[type]);
+	SendClientMessage(playerid, COLOR_ADMIN, "Дальше: /setfspawn %d, /setfduty %d, /setfint %d, /addfcar %d, /fcolor %d, /makeleader [id] %d", f, f, f, f, f, f);
+	return true;
+}
+
+// Стереть из базы всё, что относится к фракции f
+stock Faction_WipeRows(f)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM factions WHERE id = %d", f));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM faction_ranks WHERE faction = %d", f));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM faction_storage WHERE faction = %d", f));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM faction_logs WHERE faction = %d", f));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM faction_doors WHERE faction = %d", f));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM fvehicles WHERE faction = %d", f));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET faction = 0, frank = 0, fwarns = 0 WHERE faction = %d", f));
+}
+
+stock bool:Cmd_DelFaction(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, f, word[16];
+	if (!NextIntParam(params, pos, f) || f < FACTION_BUILTIN || !Faction_IsValid(f))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /delfaction [№] confirm — удалить можно только фракцию, созданную в игре (№%d-%d). Список: /flist", FACTION_BUILTIN, MAX_FACTIONS - 1);
+	if (!NextParam(params, pos, word) || strcmp(word, "confirm", true) != 0)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Фракция «%s» будет удалена навсегда: состав, общак, склад, машины, вход.", Faction_GetName(f));
+		SendClientMessage(playerid, COLOR_GREY, "Если уверен, напиши: /delfaction %d confirm", f);
+		return true;
+	}
+
+	new name[32];
+	strcat(name, Faction[f][fName], 32);
+
+	// 1. члены фракции онлайн (оффлайн — строкой в базе, см. Faction_WipeRows)
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (!IsPlayerConnected(i) || !Player[i][pLogged] || Player[i][pFaction] != f) continue;
+		Faction_SetMember(i, FACTION_NONE, 0);
+		SendClientMessage(i, COLOR_ADMIN, "Фракция «%s» расформирована администрацией.", name);
+	}
+	// 2. машины
+	for (new v = 1; v < MAX_VEHICLES; v++)
+	{
+		if (gVehFaction[v] != f || !IsValidVehicle(v)) continue;
+		Vehicle_Clear(v);
+		DestroyVehicle(v);
+	}
+	// 3. районы, вход в здание, значок раздевалки
+	Turfs_FreeFaction(f);
+	Factories_FreeFaction(f);   // её заводы остаются без владельца
+	FStore_Remove(f);
+	gFDoor[f][feOut] = false;
+	gFDoor[f][feIn] = false;
+	gFDoor[f][feClosed] = false;
+	FDoor_Build(f);
+	FDoor_ForgetMarkers(f);
+	if (Faction[f][fMarker])
+	{
+		Marker_Destroy(Faction[f][fMk], true);
+		Faction[f][fMarker] = false;
+	}
+	// 4. база
+	Faction_WipeRows(f);
+	Faction[f][fType] = FTYPE_NONE;
+	Faction[f][fBank] = 0;
+	Faction[f][fMats] = 0;
+	for (new it = 0; it < MAX_FITEMS; it++) gFStore[f][it] = 0;
+
+	SendClientMessage(playerid, COLOR_ADMIN, "Фракция №%d «%s» удалена.", f, name);
+	return true;
+}
+
+stock bool:Cmd_FList(playerid)
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	SendClientMessage(playerid, COLOR_ADMIN, "Фракции (№ — название, тип, общак, материалы):");
+	for (new f = 1; f < MAX_FACTIONS; f++)
+	{
+		if (!Faction_IsValid(f)) continue;
+		SendClientMessage(playerid, Faction_GetColor(f), " %d — %s, %s, $%d, материалов %d", f, Faction_GetName(f),
+			gFTypeName[Faction[f][fType]], Faction[f][fBank], Faction[f][fMats]);
+	}
+	return true;
+}
+
+// =====================================================================
+//  Материалы: заводы, ящики, склады организаций, кража, захват, чёрный рынок, чаты
+//
+//  Заводы ставит админ: /addfactory [вид] [название], точки — /setfpoint [№] raw|bench|store|owner.
+//    вид 1 — военный (на военной части): работает и берёт ящики только владелец, захватить нельзя;
+//    вид 2 — обычный: его захватывают. Если владелец — госструктура, работать может любой
+//            (кроме банд); если банда — только её члены.
+//  Работа (всё по ALT): взять сырьё -> станок (анимация, в руках появляется ящик) -> отнести
+//  ящик на склад завода. За ящик платят FACTORY_PAY, на склад завода падает CRATE_MATS материалов.
+//
+//  Перевозка: на складе завода владелец (а у госзавода ещё и армия) берёт ящик, встаёт сзади
+//  грузовика или фургона и кладёт (ALT). За рулём на складе организации — H или /unload.
+//  Разгружать можно на складе своей организации; армия — ещё и на складах госструктур (ей платят).
+//  Машину с ящиками может угнать член другой организации и разгрузить у себя — это перехват.
+//
+//  Склад организации ставит админ: /setfstore [фракция] (у армии это /setarmystore).
+//  ALT на нём пешком: положить материалы из сумки, взять ящик для перевозки.
+//  Банды на складе армии: ALT — и пока стоишь на маркере, в сумку идёт 1-5 материалов в секунду.
+//
+//  Материалы лежат в сумке (INV_MATS, needs.inc). «Использовать» — сделать оружие: это может любой.
+//
+//  Захват (вид 2): когда рядом нет живых членов организации-владельца, ранг FACTORY_CAPTURE_RANK+
+//  жмёт ALT на маркере завода и стоит FACTORY_CAPTURE_TIME секунд. Завод переходит его организации
+//  и работает, материалы на складе остаются. Ранг 9+ сразу получает выбор: оставить или закрыть
+//  (позже — ALT на маркере). Закрытый завод перестаёт быть заводом: точки пропадают, остаётся
+//  только склад, пока с него не вывезут ящики. Вернуть завод может админ: /setfowner.
+//
+//  Чёрный рынок: торговец (/setbm), ALT или /bm рядом. Цены: /bmprice.
+//  /d — общий чат госструктур, /gd — общий чат банд.
+// =====================================================================
+forward Supply_OnSecond();
+forward Factory_OnBenchDone(playerid);
+forward bool:Cmd_BM(playerid);
+forward bool:Wound_IsWounded(playerid);    // wounded.inc
+
+#define CRATE_MATS              50      // материалов в одном ящике
+#define CRATE_MODEL             1271
+#define CRATE_SLOT              8       // слот прикреплённого объекта (9 занят работами)
+#define CARGO_TRUCK             1000    // материалов в грузовик (20 ящиков)
+#define CARGO_VAN               300     // материалов в фургон или пикап (6 ящиков)
+#define FACTORY_PAY             15      // рабочему за ящик (один круг — около 40 секунд)
+#define FACTORY_BENCH_TIME      8       // секунд у станка
+#define FACTORY_STOCK_MAX       20000   // сколько материалов вмещает склад завода
+#define FACTORY_POINT_RANGE     2.5
+#define FACTORY_CLEAR_RANGE     60.0    // в этом радиусе от маркера не должно быть живых защитников
+#define FACTORY_CAPTURE_TIME    60      // секунд стоять на маркере
+#define FACTORY_CAPTURE_RANK    7
+#define FACTORY_CAPTURE_PAUSE   1800    // пауза между захватами одного завода, секунд
+#define MAX_FACTORIES           30
+#define FKIND_MILITARY          1
+#define FKIND_COMMON            2
+#define STORE_REF               300     // ref маркера склада организации: 300 + фракция
+#define FACTORY_REF             400     // ref маркеров завода: 400 + номер завода * 4 + точка
+
+enum
+{
+	FP_OWNER,           // маркер завода: владелец, захват
+	FP_RAW,             // сырьё
+	FP_BENCH,           // станок
+	FP_STORE,           // склад ящиков
+	MAX_FPOINTS
+}
+enum E_FACTORY
+{
+	bool:fcUsed,
+	fcDbId,
+	fcName[32],
+	fcKind,
+	fcOwner,            // фракция-владелец (0 — нет)
+	bool:fcClosed,      // оборудование уничтожено
+	fcStock,            // материалов на складе завода
+	fcLastCap,          // когда захватывали в последний раз
+	fcCapBy             // кто сейчас захватывает
+}
+new Factory[MAX_FACTORIES][E_FACTORY];
+new bool:gFcSet[MAX_FACTORIES][MAX_FPOINTS];
+new Float:gFcX[MAX_FACTORIES][MAX_FPOINTS];
+new Float:gFcY[MAX_FACTORIES][MAX_FPOINTS];
+new Float:gFcZ[MAX_FACTORIES][MAX_FPOINTS];
+new gFcW[MAX_FACTORIES][MAX_FPOINTS];
+new gFcI[MAX_FACTORIES][MAX_FPOINTS];
+new gFcMk[MAX_FACTORIES][MAX_FPOINTS];
+new gFcSel[MAX_PLAYERS];
+new gFcList[MAX_PLAYERS][MAX_FACTIONS];     // кому можно передать завод (строки окна)
+
+// Склады организаций (/setfstore). Не задан — складом считается раздевалка.
+new bool:gFsSet[MAX_FACTIONS];
+new Float:gFsX[MAX_FACTIONS];
+new Float:gFsY[MAX_FACTIONS];
+new Float:gFsZ[MAX_FACTIONS];
+new gFsW[MAX_FACTIONS];
+new gFsI[MAX_FACTIONS];
+new gFsMk[MAX_FACTIONS];
+
+// ---------------------------------------------------------------------
+//  Точки снабжения: склад армии и торговец чёрного рынка
+// ---------------------------------------------------------------------
+stock SPoint_Save(i)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO supply_points (id, x, y, z, a, world, interior) VALUES (%d, %f, %f, %f, %f, %d, %d)",
+		i, gSpX[i], gSpY[i], gSpZ[i], gSpA[i], gSpWorld[i], gSpInt[i]));
+}
+
+// Торговец чёрного рынка стоит на своей точке
+stock BM_PlaceActor()
+{
+	if (gBMActor != INVALID_ACTOR_ID) DestroyActor(gBMActor);
+	gBMActor = CreateActor(BM_SKIN, gSpX[SP_BM], gSpY[SP_BM], gSpZ[SP_BM], gSpA[SP_BM]);
+	if (gBMActor == INVALID_ACTOR_ID) return;
+	SetActorVirtualWorld(gBMActor, gSpWorld[SP_BM]);
+	SetActorInvulnerable(gBMActor, true);
+}
+
+// Поставить маркер точки (заново)
+stock SPoint_Build(i)
+{
+	if (i == SP_FACTORY) return;    // заводы теперь ставятся через /addfactory
+	if (gSpMk[i] != -1) Marker_Destroy(gSpMk[i]);
+	if (i == SP_ARMY)
+	{
+		gSpMk[i] = Marker_Create(MK_FACTION, SUPPLY_REF + i, "Склад армии", 1242, gSpX[i], gSpY[i], gSpZ[i], gSpWorld[i], gSpInt[i], GPS_FACTIONS, gSpA[i]);
+		Marker_SetLabel(gSpMk[i], "Склад армии\n{FFFFFF}ALT — материалы и ящики\nЗа рулём с грузом: H — разгрузить", 0x6B8E23FF);
+	}
+	else
+	{
+		gSpMk[i] = Marker_Create(MK_FACTION, SUPPLY_REF + i, "Чёрный рынок", 0, gSpX[i], gSpY[i], gSpZ[i], gSpWorld[i], gSpInt[i], GPS_NONE, gSpA[i]);
+		Marker_SetLabel(gSpMk[i], "Торговец\n{FFFFFF}ALT — посмотреть товар", 0xC0A060FF, 10.0, 1.2);
+	}
+	// маркер мог быть сдвинут в /markers: берём то, что получилось
+	gSpA[i] = Marker_GetAngle(gSpMk[i]);
+	gSpWorld[i] = Marker_GetWorld(gSpMk[i]);
+	gSpInt[i] = Marker_GetInterior(gSpMk[i]);
+	if (i == SP_BM) BM_PlaceActor();
+}
+
+// Стоит ли игрок у точки снабжения
+stock Supply_AtPoint(playerid, i, Float:range)
+{
+	if (GetPlayerVirtualWorld(playerid) != gSpWorld[i] || GetPlayerInterior(playerid) != gSpInt[i]) return 0;
+	return IsPlayerInRangeOfPoint(playerid, range, gSpX[i], gSpY[i], gSpZ[i]) ? 1 : 0;
+}
+
+// /setarmystore, /setbm — перенести точку туда, где стоит админ
+stock bool:Cmd_SetSPoint(playerid, i)
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	if (i <= SP_FACTORY || i >= MAX_SPOINTS) return true;
+	GetPlayerPos(playerid, gSpX[i], gSpY[i], gSpZ[i]);
+	GetPlayerFacingAngle(playerid, gSpA[i]);
+	gSpWorld[i] = GetPlayerVirtualWorld(playerid);
+	gSpInt[i] = GetPlayerInterior(playerid);
+	SPoint_Save(i);
+	if (gSpMk[i] != -1)
+	{
+		Marker_Destroy(gSpMk[i], true);     // прежние правки из /markers больше не нужны
+		gSpMk[i] = -1;
+	}
+	SPoint_Build(i);
+	if (i == SP_ARMY) SendClientMessage(playerid, COLOR_ADMIN, "Склад армии перенесён сюда. Чтобы сюда заезжали грузовики, ставь его на улице.");
+	else SendClientMessage(playerid, COLOR_ADMIN, "Торговец чёрного рынка теперь стоит здесь. Цены: /bmprice");
+	return true;
+}
+
+// ---------------------------------------------------------------------
+//  Склады организаций
+// ---------------------------------------------------------------------
+stock FStore_Get(f, &Float:x, &Float:y, &Float:z, &world, &interior)
+{
+	if (Faction_IsArmy(f))
+	{
+		x = gSpX[SP_ARMY]; y = gSpY[SP_ARMY]; z = gSpZ[SP_ARMY];
+		world = gSpWorld[SP_ARMY]; interior = gSpInt[SP_ARMY];
+	}
+	else if (gFsSet[f])
+	{
+		x = gFsX[f]; y = gFsY[f]; z = gFsZ[f];
+		world = gFsW[f]; interior = gFsI[f];
+	}
+	else
+	{
+		x = Faction[f][fDutyX]; y = Faction[f][fDutyY]; z = Faction[f][fDutyZ];
+		world = Faction[f][fDutyWorld]; interior = Faction[f][fDutyInt];
+	}
+}
+
+stock FStore_At(playerid, f, Float:range)
+{
+	new Float:x, Float:y, Float:z, world, interior;
+	FStore_Get(f, x, y, z, world, interior);
+	if (GetPlayerVirtualWorld(playerid) != world || GetPlayerInterior(playerid) != interior) return 0;
+	return IsPlayerInRangeOfPoint(playerid, range, x, y, z) ? 1 : 0;
+}
+
+stock FStore_Build(f)
+{
+	if (gFsMk[f] != -1) { Marker_Destroy(gFsMk[f]); gFsMk[f] = -1; }
+	if (!gFsSet[f] || !Faction_IsValid(f)) return;
+	new text[MK_TEXT_LEN], name[32];
+	strcat(name, "Склад: ");
+	strcat(name, Faction_GetName(f), 32);
+	gFsMk[f] = Marker_Create(MK_FACTION, STORE_REF + f, name, 1242, gFsX[f], gFsY[f], gFsZ[f], gFsW[f], gFsI[f], GPS_NONE);
+	format(text, sizeof text, "Склад: %s\n{FFFFFF}ALT — материалы и ящики\nЗа рулём с грузом: H — разгрузить", Faction_GetName(f));
+	Marker_SetLabel(gFsMk[f], text, Faction_GetColor(f));
+}
+
+stock FStore_Save(f)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO faction_stores (faction, x, y, z, world, interior) VALUES (%d, %f, %f, %f, %d, %d)",
+		f, gFsX[f], gFsY[f], gFsZ[f], gFsW[f], gFsI[f]));
+}
+
+// Фракцию удалили
+stock FStore_Remove(f)
+{
+	if (gFsMk[f] != -1) { Marker_Destroy(gFsMk[f], true); gFsMk[f] = -1; }
+	gFsSet[f] = false;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM faction_stores WHERE faction = %d", f));
+}
+
+stock bool:Cmd_SetFStore(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, f;
+	if (!NextIntParam(params, pos, f) || !Faction_IsValid(f))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setfstore [фракция] — склад организации здесь: сюда разгружают машины и кладут материалы. Номера: /flist");
+	if (Faction_IsArmy(f)) return Cmd_SetSPoint(playerid, SP_ARMY);
+	GetPlayerPos(playerid, gFsX[f], gFsY[f], gFsZ[f]);
+	gFsW[f] = GetPlayerVirtualWorld(playerid);
+	gFsI[f] = GetPlayerInterior(playerid);
+	gFsSet[f] = true;
+	FStore_Save(f);
+	if (gFsMk[f] != -1) { Marker_Destroy(gFsMk[f], true); gFsMk[f] = -1; }
+	FStore_Build(f);
+	SendClientMessage(playerid, COLOR_ADMIN, "Склад фракции «%s» теперь здесь. Чтобы сюда заезжали грузовики, ставь его на улице.", Faction_GetName(f));
+	return true;
+}
+
+// ---------------------------------------------------------------------
+//  Заводы: данные
+// ---------------------------------------------------------------------
+stock Factory_Find(dbid)
+{
+	for (new i = 0; i < MAX_FACTORIES; i++)
+	{
+		if (Factory[i][fcUsed] && Factory[i][fcDbId] == dbid) return i;
+	}
+	return -1;
+}
+
+stock Factory_Save(i)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE factories SET name = '%q', kind = %d, owner = %d, closed = %d, stock = %d WHERE id = %d",
+		Factory[i][fcName], Factory[i][fcKind], Factory[i][fcOwner], Factory[i][fcClosed] ? 1 : 0, Factory[i][fcStock], Factory[i][fcDbId]));
+}
+
+stock Factory_SavePoint(i, p)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO factory_points (factory, point, x, y, z, world, interior) VALUES (%d, %d, %f, %f, %f, %d, %d)",
+		Factory[i][fcDbId], p, gFcX[i][p], gFcY[i][p], gFcZ[i][p], gFcW[i][p], gFcI[i][p]));
+}
+
+// Подпись точки завода
+stock Factory_Label(i, p)
+{
+	if (gFcMk[i][p] == -1) return;
+	new text[MK_TEXT_LEN];
+	switch (p)
+	{
+		case FP_OWNER:
+		{
+			if (Factory[i][fcOwner] != FACTION_NONE) format(text, sizeof text, "%s\n{FFFFFF}Владелец: %s", Factory[i][fcName], Faction_GetName(Factory[i][fcOwner]));
+			else format(text, sizeof text, "%s\n{FFFFFF}Владельца нет", Factory[i][fcName]);
+			if (Factory[i][fcClosed]) strcat(text, "\n{FF6347}Закрыт: оборудование уничтожено");
+			if (Factory[i][fcKind] == FKIND_MILITARY) strcat(text, "\n{AFAFAF}Военный завод");
+			else strcat(text, "\n{AFAFAF}ALT — захват (ранг 7+)");
+		}
+		case FP_RAW: strcat(text, "Сырьё\n{FFFFFF}ALT — взять");
+		case FP_BENCH: strcat(text, "Станок\n{FFFFFF}ALT — сделать ящик");
+		default:
+		{
+			if (Factory[i][fcClosed]) format(text, sizeof text, "Склад закрытого завода\n{FFFFFF}Осталось ящиков: %d\nALT — забрать ящик", Factory[i][fcStock] / CRATE_MATS);
+			else format(text, sizeof text, "Склад завода\n{FFFFFF}Ящиков: %d\nALT — сдать или взять ящик", Factory[i][fcStock] / CRATE_MATS);
+		}
+	}
+	Marker_SetLabel(gFcMk[i][p], text, 0xE0A030FF);
+}
+
+stock Factory_BuildPoint(i, p)
+{
+	if (gFcMk[i][p] != -1) { Marker_Destroy(gFcMk[i][p]); gFcMk[i][p] = -1; }
+	if (!Factory[i][fcUsed] || !gFcSet[i][p]) return;
+	// Закрытый завод — просто интерьер: точек нет. Склад виден, пока с него не вывезли ящики.
+	if (Factory[i][fcClosed] && (p != FP_STORE || Factory[i][fcStock] < CRATE_MATS)) return;
+	new model = 1239, gps = GPS_NONE;
+	if (p == FP_OWNER) { model = 1247; gps = GPS_FACTIONS; }
+	gFcMk[i][p] = Marker_Create(MK_FACTION, FACTORY_REF + Factory[i][fcDbId] * 4 + p, Factory[i][fcName], model,
+		gFcX[i][p], gFcY[i][p], gFcZ[i][p], gFcW[i][p], gFcI[i][p], gps);
+	Factory_Label(i, p);
+}
+
+stock Factory_At(playerid, i, p, Float:range)
+{
+	if (!gFcSet[i][p]) return 0;
+	if (GetPlayerVirtualWorld(playerid) != gFcW[i][p] || GetPlayerInterior(playerid) != gFcI[i][p]) return 0;
+	return IsPlayerInRangeOfPoint(playerid, range, gFcX[i][p], gFcY[i][p], gFcZ[i][p]) ? 1 : 0;
+}
+
+// Админ сдвинул маркер в /markers (из Faction_OnMarkerMoved)
+stock Factory_OnMarkerMoved(ref, Float:x, Float:y, Float:z)
+{
+	if (ref >= FACTORY_REF)
+	{
+		new k = ref - FACTORY_REF;
+		new i = Factory_Find(k / 4), p = k % 4;
+		if (i == -1) return;
+		gFcX[i][p] = x;
+		gFcY[i][p] = y;
+		gFcZ[i][p] = z;
+		Factory_SavePoint(i, p);
+		return;
+	}
+	new f = ref - STORE_REF;
+	if (f < 1 || f >= MAX_FACTIONS || !gFsSet[f]) return;
+	gFsX[f] = x;
+	gFsY[f] = y;
+	gFsZ[f] = z;
+	FStore_Save(f);
+}
+
+stock Factories_Load()
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS factories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, kind INTEGER DEFAULT 2, owner INTEGER DEFAULT 0, closed INTEGER DEFAULT 0, stock INTEGER DEFAULT 0)"));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS factory_points (factory INTEGER NOT NULL, point INTEGER NOT NULL, x REAL DEFAULT 0, y REAL DEFAULT 0, z REAL DEFAULT 0, world INTEGER DEFAULT 0, interior INTEGER DEFAULT 0, PRIMARY KEY (factory, point))"));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_stores (faction INTEGER PRIMARY KEY, x REAL DEFAULT 0, y REAL DEFAULT 0, z REAL DEFAULT 0, world INTEGER DEFAULT 0, interior INTEGER DEFAULT 0)"));
+
+	for (new i = 0; i < MAX_FACTORIES; i++)
+	{
+		Factory[i][fcUsed] = false;
+		Factory[i][fcCapBy] = INVALID_PLAYER_ID;
+		for (new p = 0; p < MAX_FPOINTS; p++)
+		{
+			gFcSet[i][p] = false;
+			gFcMk[i][p] = -1;
+		}
+	}
+	for (new f = 0; f < MAX_FACTIONS; f++)
+	{
+		gFsSet[f] = false;
+		gFsMk[f] = -1;
+	}
+
+	new n = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, name, kind, owner, closed, stock FROM factories");
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new k = 0; k < rows && n < MAX_FACTORIES; k++)
+		{
+			Factory[n][fcUsed] = true;
+			Factory[n][fcDbId] = DB_GetFieldInt(r, 0);
+			DB_GetFieldString(r, 1, Factory[n][fcName], 32);
+			Factory[n][fcKind] = DB_GetFieldInt(r, 2);
+			Factory[n][fcOwner] = DB_GetFieldInt(r, 3);
+			if (!Faction_IsValid(Factory[n][fcOwner])) Factory[n][fcOwner] = FACTION_NONE;
+			Factory[n][fcClosed] = DB_GetFieldInt(r, 4) != 0;
+			Factory[n][fcStock] = DB_GetFieldInt(r, 5);
+			Factory[n][fcLastCap] = 0;
+			n++;
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	r = DB_ExecuteQuery(gDB, "SELECT factory, point, x, y, z, world, interior FROM factory_points");
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new k = 0; k < rows; k++)
+		{
+			new i = Factory_Find(DB_GetFieldInt(r, 0)), p = DB_GetFieldInt(r, 1);
+			if (i != -1 && p >= 0 && p < MAX_FPOINTS)
+			{
+				gFcSet[i][p] = true;
+				gFcX[i][p] = DB_GetFieldFloat(r, 2);
+				gFcY[i][p] = DB_GetFieldFloat(r, 3);
+				gFcZ[i][p] = DB_GetFieldFloat(r, 4);
+				gFcW[i][p] = DB_GetFieldInt(r, 5);
+				gFcI[i][p] = DB_GetFieldInt(r, 6);
+			}
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	for (new i = 0; i < MAX_FACTORIES; i++)
+	{
+		if (!Factory[i][fcUsed]) continue;
+		for (new p = 0; p < MAX_FPOINTS; p++) Factory_BuildPoint(i, p);
+	}
+
+	r = DB_ExecuteQuery(gDB, "SELECT faction, x, y, z, world, interior FROM faction_stores");
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new k = 0; k < rows; k++)
+		{
+			new f = DB_GetFieldInt(r, 0);
+			if (Faction_IsValid(f))
+			{
+				gFsSet[f] = true;
+				gFsX[f] = DB_GetFieldFloat(r, 1);
+				gFsY[f] = DB_GetFieldFloat(r, 2);
+				gFsZ[f] = DB_GetFieldFloat(r, 3);
+				gFsW[f] = DB_GetFieldInt(r, 4);
+				gFsI[f] = DB_GetFieldInt(r, 5);
+				FStore_Build(f);
+			}
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	printf("[Factions] %d factories.", n);
+}
+
+// Фракцию удалили: её заводы остаются без владельца
+stock Factories_FreeFaction(f)
+{
+	for (new i = 0; i < MAX_FACTORIES; i++)
+	{
+		if (!Factory[i][fcUsed] || Factory[i][fcOwner] != f) continue;
+		Factory[i][fcOwner] = FACTION_NONE;
+		Factory_Save(i);
+		Factory_Label(i, FP_OWNER);
+	}
+}
+
+stock Supply_Init()
+{
+	static bool:started = false;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS supply_points (id INTEGER PRIMARY KEY, x REAL DEFAULT 0, y REAL DEFAULT 0, z REAL DEFAULT 0, a REAL DEFAULT 0, world INTEGER DEFAULT 0, interior INTEGER DEFAULT 0)"));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS bm_prices (item INTEGER PRIMARY KEY, price INTEGER DEFAULT 0)"));
+
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, x, y, z, a, world, interior FROM supply_points");
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new n = 0; n < rows; n++)
+		{
+			new i = DB_GetFieldInt(r, 0);
+			if (i >= 0 && i < MAX_SPOINTS)
+			{
+				gSpX[i] = DB_GetFieldFloat(r, 1);
+				gSpY[i] = DB_GetFieldFloat(r, 2);
+				gSpZ[i] = DB_GetFieldFloat(r, 3);
+				gSpA[i] = DB_GetFieldFloat(r, 4);
+				gSpWorld[i] = DB_GetFieldInt(r, 5);
+				gSpInt[i] = DB_GetFieldInt(r, 6);
+			}
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+
+	// Цены чёрного рынка по умолчанию — втрое дороже закупки для фракций
+	for (new it = 0; it < MAX_FITEMS; it++) gBMPrice[it] = gFItemPrice[it] * 3;
+	gBMMatPrice = BM_MAT_PRICE;
+	r = DB_ExecuteQuery(gDB, "SELECT item, price FROM bm_prices");
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new n = 0; n < rows; n++)
+		{
+			new it = DB_GetFieldInt(r, 0), price = DB_GetFieldInt(r, 1);
+			if (price < 0) price = 0;
+			if (it == -1) gBMMatPrice = price;
+			else if (it >= 0 && it < MAX_FITEMS) gBMPrice[it] = price;
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+
+	for (new i = 0; i < MAX_SPOINTS; i++) SPoint_Build(i);
+	Factories_Load();
+	if (!started)
+	{
+		started = true;
+		SetTimer("Supply_OnSecond", 1000, true);
+	}
+}
+
+// ---------------------------------------------------------------------
+//  Ящик в руках
+// ---------------------------------------------------------------------
+stock Crate_Give(playerid, kind, fc)
+{
+	gCrate[playerid] = kind;
+	gCrateFc[playerid] = fc;
+	SetPlayerAttachedObject(playerid, CRATE_SLOT, CRATE_MODEL, 1, 0.11, 0.36, 0.0, 0.0, 90.0, 0.0, 0.6, 0.6, 0.6);
+	SetPlayerSpecialAction(playerid, SPECIAL_ACTION_CARRY);
+}
+
+stock Crate_Drop(playerid)
+{
+	if (gCrate[playerid] == 0) return;
+	gCrate[playerid] = 0;
+	if (!IsPlayerConnected(playerid)) return;
+	RemovePlayerAttachedObject(playerid, CRATE_SLOT);
+	if (GetPlayerSpecialAction(playerid) == SPECIAL_ACTION_CARRY) SetPlayerSpecialAction(playerid, SPECIAL_ACTION_NONE);
+}
+
+stock bool:Cmd_DropCrate(playerid)
+{
+	if (gCrate[playerid] == 0) return SendClientMessage(playerid, COLOR_GREY, "У тебя в руках нет ящика.");
+	Crate_Drop(playerid);
+	SendClientMessage(playerid, COLOR_GREY, "Ты бросил ящик. Он пропал.");
+	return true;
+}
+
+// Сколько материалов входит в машину этой модели (0 — ящики в неё не кладут)
+stock Cargo_Cap(model)
+{
+	switch (model)
+	{
+		case 414, 455, 456, 433, 578, 498, 499, 609, 427, 428: return CARGO_TRUCK;
+		case 413, 440, 482, 459, 418, 422, 478, 543, 554, 582: return CARGO_VAN;
+	}
+	return 0;
+}
+
+// Ближайший грузовик или фургон (0 — нет рядом)
+stock Cargo_NearVehicle(playerid)
+{
+	new Float:x, Float:y, Float:z, best = 0, Float:bestDist = 7.0;
+	GetPlayerPos(playerid, x, y, z);
+	new world = GetPlayerVirtualWorld(playerid);
+	for (new v = 1; v < MAX_VEHICLES; v++)
+	{
+		if (!IsValidVehicle(v) || GetVehicleVirtualWorld(v) != world) continue;
+		if (Cargo_Cap(GetVehicleModel(v)) == 0) continue;
+		new Float:d = GetVehicleDistanceFromPoint(v, x, y, z);
+		if (d < bestDist) { bestDist = d; best = v; }
+	}
+	return best;
+}
+
+// Стоит ли игрок сзади машины
+stock Cargo_IsBehind(playerid, v)
+{
+	new Float:x, Float:y, Float:z, Float:vx, Float:vy, Float:vz, Float:a;
+	GetPlayerPos(playerid, x, y, z);
+	GetVehiclePos(v, vx, vy, vz);
+	GetVehicleZAngle(v, a);
+	// вперёд машина смотрит по (sin(-a), cos(-a)); сзади — значит против этого направления
+	return ((x - vx) * floatsin(-a, degrees) + (y - vy) * floatcos(-a, degrees) < 0.0) ? 1 : 0;
+}
+
+// ---------------------------------------------------------------------
+//  Работа на заводе
+// ---------------------------------------------------------------------
+stock Factory_CanWork(playerid, i)
+{
+	new owner = Factory[i][fcOwner], f = Player[playerid][pFaction];
+	if (Factory[i][fcClosed]) { SendClientMessage(playerid, COLOR_GREY, "Завод закрыт: оборудование уничтожено."); return 0; }
+	if (!Faction_IsValid(owner)) { SendClientMessage(playerid, COLOR_GREY, "У завода нет владельца, он не работает."); return 0; }
+	if (Factory[i][fcKind] == FKIND_MILITARY || !Faction_IsState(owner))
+	{
+		if (f != owner) { SendClientMessage(playerid, COLOR_GREY, "Здесь работают только свои: %s.", Faction_GetName(owner)); return 0; }
+		return 1;
+	}
+	// обычный завод у госструктуры: работают простые люди
+	if (Faction_IsGang(f)) { SendClientMessage(playerid, COLOR_GREY, "Этот завод держит государство. Бандам тут работы нет."); return 0; }
+	return 1;
+}
+
+stock Factory_TakeRaw(playerid, i)
+{
+	if (!Factory_CanWork(playerid, i)) return;
+	if (gWorkStage[playerid] == 2) { SendClientMessage(playerid, COLOR_GREY, "Ты уже у станка."); return; }
+	if (Factory[i][fcStock] + CRATE_MATS > FACTORY_STOCK_MAX) { SendClientMessage(playerid, COLOR_GREY, "Склад завода забит. Пусть сначала вывезут ящики."); return; }
+	gWorkStage[playerid] = 1;
+	gWorkFc[playerid] = i;
+	ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
+	SendClientMessage(playerid, COLOR_WHITE, "Ты взял сырьё. Отнеси его к станку (ALT).");
+}
+
+stock Factory_UseBench(playerid, i)
+{
+	if (!Factory_CanWork(playerid, i)) return;
+	if (gWorkStage[playerid] == 2) { SendClientMessage(playerid, COLOR_GREY, "Ты уже работаешь. Подожди."); return; }
+	if (gWorkStage[playerid] != 1 || gWorkFc[playerid] != i) { SendClientMessage(playerid, COLOR_GREY, "Сначала возьми сырьё."); return; }
+	gWorkStage[playerid] = 2;
+	ApplyAnimation(playerid, "BOMBER", "BOM_Plant_Loop", 4.1, true, false, false, false, 0);
+	GameTextForPlayer(playerid, "~y~Working...", FACTORY_BENCH_TIME * 1000, 3);
+	SetTimerEx("Factory_OnBenchDone", FACTORY_BENCH_TIME * 1000, false, "i", playerid);
+}
+
+public Factory_OnBenchDone(playerid)
+{
+	if (!IsPlayerConnected(playerid) || gWorkStage[playerid] != 2) return 1;
+	new i = gWorkFc[playerid];
+	gWorkStage[playerid] = 0;
+	ClearAnimations(playerid);
+	if (!Factory[i][fcUsed] || !Factory_At(playerid, i, FP_BENCH, 5.0) || GetPlayerState(playerid) != PLAYER_STATE_ONFOOT || Wound_IsWounded(playerid))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от станка. Сырьё испорчено.");
+		return 1;
+	}
+	Crate_Give(playerid, 1, i);
+	SendClientMessage(playerid, COLOR_WHITE, "Ящик готов. Отнеси его на склад завода (ALT).");
+	return 1;
+}
+
+stock Factory_TakeCrate(playerid, i)
+{
+	new owner = Factory[i][fcOwner], f = Player[playerid][pFaction];
+	if (!Faction_IsValid(f) || (f != owner && !(Faction_IsState(owner) && Faction_IsArmy(f))))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Ящики отсюда берёт владелец завода, а с госзавода ещё и армия. Сюда их сдают рабочие.");
+		return;
+	}
+	if (Factory[i][fcStock] < CRATE_MATS) { SendClientMessage(playerid, COLOR_GREY, "На складе завода нет готовых ящиков."); return; }
+	Factory[i][fcStock] -= CRATE_MATS;
+	Factory_Save(i);
+	Factory_Label(i, FP_STORE);
+	if (Factory[i][fcClosed] && Factory[i][fcStock] < CRATE_MATS) Factory_BuildPoint(i, FP_STORE);   // всё вывезли: склад пропадает
+	Crate_Give(playerid, 2, i);
+	SendClientMessage(playerid, COLOR_WHITE, "Ты взял ящик (%d материалов). Встань сзади грузовика или фургона и положи: ALT.", CRATE_MATS);
+}
+
+// ---------------------------------------------------------------------
+//  Захват завода
+// ---------------------------------------------------------------------
+stock Factory_Defenders(i)
+{
+	new owner = Factory[i][fcOwner], n = 0;
+	if (!Faction_IsValid(owner)) return 0;
+	for (new p = 0; p < MAX_PLAYERS; p++)
+	{
+		if (!IsPlayerConnected(p) || !Player[p][pLogged] || Player[p][pFaction] != owner) continue;
+		if (Wound_IsWounded(p) || GetPlayerState(p) == PLAYER_STATE_WASTED || GetPlayerState(p) == PLAYER_STATE_SPECTATING) continue;
+		if (Factory_At(p, i, FP_OWNER, FACTORY_CLEAR_RANGE)) n++;
+	}
+	return n;
+}
+
+stock Capture_Stop(playerid)
+{
+	new i = gCapFc[playerid];
+	gCapFc[playerid] = -1;
+	if (i >= 0 && i < MAX_FACTORIES && Factory[i][fcCapBy] == playerid) Factory[i][fcCapBy] = INVALID_PLAYER_ID;
+}
+
+// ALT на маркере завода
+stock Factory_OwnerAlt(playerid, i)
+{
+	new owner = Factory[i][fcOwner], f = Player[playerid][pFaction], msg[144];
+	SendClientMessage(playerid, COLOR_WHITE, "Завод «%s». На складе материалов: %d (ящиков: %d).", Factory[i][fcName], Factory[i][fcStock], Factory[i][fcStock] / CRATE_MATS);
+	if (!Faction_IsValid(f)) return;
+	if (f == owner)
+	{
+		if (Factory[i][fcClosed]) { SendClientMessage(playerid, COLOR_GREY, "Завод закрыт. Материалы со склада можно вывезти."); return; }
+		if (Player[playerid][pRank] < MAX_RANK - 1) return;
+		gFcSel[playerid] = i;
+		if (Factory[i][fcKind] == FKIND_MILITARY) return;   // военный завод не закрывают и не передают
+		// лидер и заместитель: передать завод другой организации или закрыть
+		ShowPlayerDialog(playerid, DIALOG_FMANAGE, DIALOG_STYLE_LIST, Factory[i][fcName],
+			"Передать завод другой организации\nЗакрыть завод {AFAFAF}(уничтожить оборудование)", "Выбрать", "Отмена");
+		return;
+	}
+	if (Factory[i][fcKind] == FKIND_MILITARY) { SendClientMessage(playerid, COLOR_GREY, "Это завод на военной части. Его не захватить."); return; }
+	if (!Faction_IsGang(f) && !Faction_IsLaw(f) && !Faction_IsArmy(f)) { SendClientMessage(playerid, COLOR_GREY, "Захватывать заводы могут силовики, армия и банды."); return; }
+	if (Faction_IsState(f) && Faction_IsState(owner)) { SendClientMessage(playerid, COLOR_GREY, "Завод уже у государства."); return; }
+	if (Player[playerid][pRank] < FACTORY_CAPTURE_RANK) { SendClientMessage(playerid, COLOR_GREY, "Захватить завод может ранг %d и выше.", FACTORY_CAPTURE_RANK); return; }
+	if (Faction_IsState(f) && !Player[playerid][pDuty]) { SendClientMessage(playerid, COLOR_GREY, "Сначала заступи на смену: /duty."); return; }
+	if (gCapFc[playerid] != -1) { SendClientMessage(playerid, COLOR_GREY, "Ты уже захватываешь. Стой на маркере."); return; }
+	if (Factory[i][fcCapBy] != INVALID_PLAYER_ID) { SendClientMessage(playerid, COLOR_GREY, "Этот завод уже захватывают."); return; }
+	new now = gettime();
+	if (now - Factory[i][fcLastCap] < FACTORY_CAPTURE_PAUSE)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Завод недавно захватывали. Подожди ещё %d мин.", (FACTORY_CAPTURE_PAUSE - (now - Factory[i][fcLastCap])) / 60 + 1);
+		return;
+	}
+	new n = Factory_Defenders(i);
+	if (n > 0) { SendClientMessage(playerid, COLOR_GREY, "Завод ещё не зачищен: рядом защитников — %d.", n); return; }
+
+	gCapFc[playerid] = i;
+	gCapLeft[playerid] = FACTORY_CAPTURE_TIME;
+	Factory[i][fcCapBy] = playerid;
+	SendClientMessage(playerid, COLOR_YELLOW, "Захват начат. Стой на маркере %d сек. Вернутся защитники — захват сорвётся.", FACTORY_CAPTURE_TIME);
+	if (Faction_IsValid(owner))
+	{
+		format(msg, sizeof msg, "[Тревога] Завод «%s» захватывают: %s! Осталось %d сек.", Factory[i][fcName], Faction_GetName(f), FACTORY_CAPTURE_TIME);
+		Faction_Message(owner, COLOR_RED, msg);
+	}
+}
+
+stock Capture_Tick(playerid)
+{
+	new i = gCapFc[playerid], f = Player[playerid][pFaction], msg[144], buf[48];
+	if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed] || !Faction_IsValid(f)) { Capture_Stop(playerid); return; }
+	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT || Wound_IsWounded(playerid) || !Factory_At(playerid, i, FP_OWNER, 6.0))
+	{
+		Capture_Stop(playerid);
+		SendClientMessage(playerid, COLOR_RED, "Захват сорван: ты ушёл с маркера.");
+		return;
+	}
+	if (Factory_Defenders(i) > 0)
+	{
+		Capture_Stop(playerid);
+		SendClientMessage(playerid, COLOR_RED, "Захват сорван: вернулись защитники.");
+		return;
+	}
+	gCapLeft[playerid]--;
+	if (gCapLeft[playerid] > 0)
+	{
+		format(buf, sizeof buf, "~r~Capture~n~~w~%d s", gCapLeft[playerid]);
+		GameTextForPlayer(playerid, buf, 1100, 3);
+		return;
+	}
+
+	new old = Factory[i][fcOwner];
+	Capture_Stop(playerid);
+	Factory[i][fcOwner] = f;
+	Factory[i][fcClosed] = false;       // новый владелец ставит оборудование заново
+	Factory[i][fcLastCap] = gettime();
+	Factory_Save(i);
+	for (new p = 0; p < MAX_FPOINTS; p++) Factory_Label(i, p);
+	GameTextForPlayer(playerid, "~g~Captured", 2500, 3);
+	format(msg, sizeof msg, "[Фракция] %s захватил завод «%s». На складе материалов: %d.", GetRPName(playerid), Factory[i][fcName], Factory[i][fcStock]);
+	Faction_Message(f, Faction_GetColor(f), msg);
+	Faction_Log(f, msg[10]);
+	if (Faction_IsValid(old))
+	{
+		format(msg, sizeof msg, "[Фракция] Завод «%s» потерян: его захватили %s.", Factory[i][fcName], Faction_GetName(f));
+		Faction_Message(old, COLOR_RED, msg);
+		Faction_Log(old, msg[10]);
+	}
+	if (Player[playerid][pRank] >= MAX_RANK - 1)
+	{
+		gFcSel[playerid] = i;
+		ShowPlayerDialog(playerid, DIALOG_FCLOSE, DIALOG_STYLE_MSGBOX, "Завод захвачен",
+			"{FFFFFF}Завод «%s» захвачен. Что с ним сделать?\n\n{33AA33}Оставить{FFFFFF} — завод переходит вашей организации и работает.\n{FF6347}Закрыть{FFFFFF} — оборудование уничтожено: это больше не завод, а просто помещение.\nОставшиеся ящики можно вывезти со склада.",
+			"Закрыть", "Оставить", Factory[i][fcName]);
+	}
+	else
+		SendClientMessage(playerid, COLOR_WHITE, "Завод ваш и работает. Передать или закрыть его может ранг %d и выше: ALT на маркере.", MAX_RANK - 1);
+}
+
+// ---------------------------------------------------------------------
+//  Кража материалов со склада армии (банды)
+// ---------------------------------------------------------------------
+stock Supply_ArmyOnline()
+{
+	new n = 0;
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && Player[i][pLogged] && Faction_IsArmy(Player[i][pFaction])) n++;
+	}
+	return n;
+}
+
+// Тревога: армии и силовикам
+stock Supply_Alarm(const message[])
+{
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (!IsPlayerConnected(i) || !Player[i][pLogged]) continue;
+		if (Faction_IsArmy(Player[i][pFaction]) || Faction_IsLaw(Player[i][pFaction])) SendClientMessage(i, COLOR_RED, "%s", message);
+	}
+}
+
+stock Steal_Stop(playerid, const why[])
+{
+	if (!gStealing[playerid]) return;
+	gStealing[playerid] = false;
+	Faction_SaveMats(FACTION_ARMY);
+	if (!IsPlayerConnected(playerid)) return;
+	SendClientMessage(playerid, COLOR_YELLOW, "%s Украдено за этот раз: %d. В сумке материалов: %d.", why, gStealTotal[playerid], Inv_Count(playerid, INV_MATS));
+	if (gStealTotal[playerid] > 0)
+	{
+		new msg[144];
+		format(msg, sizeof msg, "Со склада украли %d материалов (осталось %d).", gStealTotal[playerid], Faction[FACTION_ARMY][fMats]);
+		Faction_Log(FACTION_ARMY, msg);
+	}
+}
+
+// ALT на маркере склада армии
+stock Steal_Toggle(playerid)
+{
+	if (gStealing[playerid]) { Steal_Stop(playerid, "Ты перестал красть."); return; }
+	if (Player[playerid][pJail] > 0) return;
+	if (Faction[FACTION_ARMY][fMats] <= 0) { SendClientMessage(playerid, COLOR_GREY, "Склад армии пуст."); return; }
+	if (Supply_ArmyOnline() < STEAL_MIN_ARMY) { SendClientMessage(playerid, COLOR_GREY, "Склад грабят, только когда в сети хотя бы %d военных.", STEAL_MIN_ARMY); return; }
+	if (Inv_Count(playerid, INV_MATS) >= Inv_GetMax(INV_MATS)) { SendClientMessage(playerid, COLOR_GREY, "Сумка полная: больше %d материалов не унести.", Inv_GetMax(INV_MATS)); return; }
+	gStealing[playerid] = true;
+	gStealTotal[playerid] = 0;
+	SendClientMessage(playerid, COLOR_YELLOW, "Ты крадёшь материалы. Стой на маркере: в сумку идёт 1-5 в секунду. ALT ещё раз — перестать.");
+	new msg[144];
+	format(msg, sizeof msg, "[Тревога] Грабят склад армии! Грабитель: %s [%d].", GetRPName(playerid), playerid);
+	Supply_Alarm(msg);
+}
+
+stock Steal_Tick(playerid)
+{
+	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT || Wound_IsWounded(playerid) || Player[playerid][pCuffed]) { Steal_Stop(playerid, "Кража сорвалась."); return; }
+	if (!Supply_AtPoint(playerid, SP_ARMY, 3.0)) { Steal_Stop(playerid, "Ты сошёл с маркера."); return; }
+	new n = 1 + random(5);
+	new room = Inv_GetMax(INV_MATS) - Inv_Count(playerid, INV_MATS);
+	if (n > room) n = room;
+	if (n > Faction[FACTION_ARMY][fMats]) n = Faction[FACTION_ARMY][fMats];
+	if (n <= 0)
+	{
+		if (room <= 0) Steal_Stop(playerid, "Сумка полная.");
+		else Steal_Stop(playerid, "Склад армии пуст.");
+		return;
+	}
+	if (!Inv_Add(playerid, INV_MATS, n)) { Steal_Stop(playerid, "Сумка полная."); return; }
+	Faction[FACTION_ARMY][fMats] -= n;
+	gStealTotal[playerid] += n;
+	if (gStealTotal[playerid] % 20 < n) Faction_SaveMats(FACTION_ARMY);   // в базу — не каждую секунду
+	new buf[32];
+	format(buf, sizeof buf, "~r~+%d", n);
+	GameTextForPlayer(playerid, buf, 1100, 3);
+}
+
+// Смерть или выход: всё, чем был занят, обрывается
+stock Supply_ResetPlayer(playerid)
+{
+	if (gStealing[playerid]) Steal_Stop(playerid, "Кража сорвалась.");
+	if (gCapFc[playerid] != -1) Capture_Stop(playerid);
+	Crate_Drop(playerid);
+	gWorkStage[playerid] = 0;
+}
+
+// Раз в секунду: ящик в руках, кража, захват
+public Supply_OnSecond()
+{
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (!IsPlayerConnected(i))
+		{
+			if (gStealing[i] || gCapFc[i] != -1 || gCrate[i] != 0) Supply_ResetPlayer(i);
+			continue;
+		}
+		if (gCrate[i] != 0 && (GetPlayerState(i) != PLAYER_STATE_ONFOOT || Wound_IsWounded(i)))
+		{
+			Crate_Drop(i);
+			SendClientMessage(i, COLOR_GREY, "Ты уронил ящик. Он пропал.");
+		}
+		if (gStealing[i]) Steal_Tick(i);
+		if (gCapFc[i] != -1) Capture_Tick(i);
+	}
+	return 1;
+}
+
+// ---------------------------------------------------------------------
+//  ALT пешком (из Keys_Interact). 1 — сработало.
+// ---------------------------------------------------------------------
+stock FStore_Menu(playerid)
+{
+	new f = Player[playerid][pFaction], title[64];
+	format(title, sizeof title, "Склад: материалов %d", Faction[f][fMats]);
+	ShowPlayerDialog(playerid, DIALOG_FSTOREPT, DIALOG_STYLE_LIST, title,
+		"Положить материалы из сумки {AFAFAF}(в сумке %d)\nВзять ящик для перевозки {AFAFAF}(%d материалов, с ранга %d)",
+		"Выбрать", "Закрыть", Inv_Count(playerid, INV_MATS), CRATE_MATS, Faction[f][fStoreRank]);
+}
+
+stock Factory_TryAlt(playerid)
+{
+	new f = Player[playerid][pFaction], msg[144];
+
+	// 1. В руках ящик: на склад завода, на склад своей организации или в кузов
+	if (gCrate[playerid] != 0)
+	{
+		for (new i = 0; i < MAX_FACTORIES; i++)
+		{
+			if (!Factory[i][fcUsed] || !Factory_At(playerid, i, FP_STORE, FACTORY_POINT_RANGE)) continue;
+			if (Factory[i][fcClosed]) { SendClientMessage(playerid, COLOR_GREY, "Завод закрыт: ящики отсюда только вывозят."); return 1; }
+			if (Factory[i][fcStock] + CRATE_MATS > FACTORY_STOCK_MAX) { SendClientMessage(playerid, COLOR_GREY, "Склад завода забит."); return 1; }
+			Factory[i][fcStock] += CRATE_MATS;
+			Factory_Save(i);
+			Factory_Label(i, FP_STORE);
+			if (gCrate[playerid] == 1 && gCrateFc[playerid] == i)
+			{
+				GiveMoney(playerid, FACTORY_PAY, "работа на заводе");
+				SendClientMessage(playerid, COLOR_GREEN, "Ящик сдан на склад завода: +$%d. Ящиков на складе: %d.", FACTORY_PAY, Factory[i][fcStock] / CRATE_MATS);
+			}
+			else SendClientMessage(playerid, COLOR_WHITE, "Ящик вернулся на склад завода. Ящиков: %d.", Factory[i][fcStock] / CRATE_MATS);
+			Crate_Drop(playerid);
+			return 1;
+		}
+		if (Faction_IsValid(f) && FStore_At(playerid, f, 3.0))
+		{
+			new cap = Faction_IsArmy(f) ? ARMY_MATS_MAX : FACTION_MATS_MAX;
+			if (Faction[f][fMats] + CRATE_MATS > cap) { SendClientMessage(playerid, COLOR_GREY, "Склад организации полон."); return 1; }
+			Faction[f][fMats] += CRATE_MATS;
+			Faction_SaveMats(f);
+			Crate_Drop(playerid);
+			SendClientMessage(playerid, COLOR_GREEN, "Ящик сдан на склад организации. Материалов на складе: %d.", Faction[f][fMats]);
+			format(msg, sizeof msg, "%s принёс на склад ящик (%d материалов, на складе %d).", GetRPName(playerid), CRATE_MATS, Faction[f][fMats]);
+			Faction_Log(f, msg);
+			return 1;
+		}
+		new v = Cargo_NearVehicle(playerid);
+		if (v != 0)
+		{
+			new cap = Cargo_Cap(GetVehicleModel(v));
+			if (!Cargo_IsBehind(playerid, v)) { SendClientMessage(playerid, COLOR_GREY, "Встань сзади машины."); return 1; }
+			if (gVehCargo[v] + CRATE_MATS > cap) { SendClientMessage(playerid, COLOR_GREY, "Кузов полон (%d из %d).", gVehCargo[v], cap); return 1; }
+			gVehCargo[v] += CRATE_MATS;
+			Crate_Drop(playerid);
+			ApplyAnimation(playerid, "CARRY", "putdwn", 4.1, false, false, false, false, 0);
+			SendClientMessage(playerid, COLOR_GREEN, "Ящик в кузове: %d из %d материалов.", gVehCargo[v], cap);
+			return 1;
+		}
+		SendClientMessage(playerid, COLOR_GREY, "Ящик кладут в грузовик или фургон (сзади), на склад завода или своей организации. Бросить: /dropcrate");
+		return 1;
+	}
+
+	// 2. Точки заводов
+	for (new i = 0; i < MAX_FACTORIES; i++)
+	{
+		if (!Factory[i][fcUsed]) continue;
+		if (Factory_At(playerid, i, FP_RAW, FACTORY_POINT_RANGE))   { Factory_TakeRaw(playerid, i); return 1; }
+		if (Factory_At(playerid, i, FP_BENCH, FACTORY_POINT_RANGE)) { Factory_UseBench(playerid, i); return 1; }
+		if (Factory_At(playerid, i, FP_STORE, FACTORY_POINT_RANGE)) { Factory_TakeCrate(playerid, i); return 1; }
+		if (Factory_At(playerid, i, FP_OWNER, FACTORY_POINT_RANGE)) { Factory_OwnerAlt(playerid, i); return 1; }
+	}
+
+	// 3. Склад армии для банд — кража; склад своей организации — меню
+	if (Faction_IsGang(f) && Supply_AtPoint(playerid, SP_ARMY, 3.0)) { Steal_Toggle(playerid); return 1; }
+	if (Faction_IsValid(f) && (gFsSet[f] || Faction_IsArmy(f)) && FStore_At(playerid, f, 3.0)) { FStore_Menu(playerid); return 1; }
+
+	// 4. Торговец чёрного рынка
+	if (Supply_AtPoint(playerid, SP_BM, BM_RANGE)) { Cmd_BM(playerid); return 1; }
+	return 0;
+}
+
+// ---------------------------------------------------------------------
+//  Разгрузка: за рулём на складе организации (H или /unload). 1 — сработало.
+// ---------------------------------------------------------------------
+stock Factory_TryUnload(playerid, bool:verbose)
+{
+	new v = GetPlayerVehicleID(playerid), f = Player[playerid][pFaction];
+	if (v == 0 || GetPlayerState(playerid) != PLAYER_STATE_DRIVER)
+	{
+		if (verbose) SendClientMessage(playerid, COLOR_GREY, "Разгружают за рулём, на складе организации.");
+		return 0;
+	}
+	if (gVehCargo[v] <= 0)
+	{
+		if (verbose) SendClientMessage(playerid, COLOR_GREY, "В машине нет ящиков.");
+		return 0;
+	}
+	if (!Faction_IsValid(f))
+	{
+		if (verbose) SendClientMessage(playerid, COLOR_GREY, "Разгружать можно только на складе своей организации.");
+		return 0;
+	}
+	new t = 0, bool:denied = false;
+	for (new k = 1; k < MAX_FACTIONS; k++)
+	{
+		if (!Faction_IsValid(k) || !FStore_At(playerid, k, SUPPLY_RANGE)) continue;
+		if (k == f || (Faction_IsArmy(f) && Faction_IsState(k))) { t = k; break; }
+		denied = true;
+	}
+	if (t == 0)
+	{
+		if (denied) { SendClientMessage(playerid, COLOR_GREY, "Это чужой склад. Разгружать можно на складе своей организации."); return 1; }
+		if (verbose) SendClientMessage(playerid, COLOR_GREY, "Рядом нет склада организации. В кузове материалов: %d.", gVehCargo[v]);
+		return 0;
+	}
+
+	new cap = Faction_IsArmy(t) ? ARMY_MATS_MAX : FACTION_MATS_MAX;
+	new room = cap - Faction[t][fMats], n = gVehCargo[v], pay = 0, msg[144];
+	if (room <= 0) { SendClientMessage(playerid, COLOR_GREY, "Склад «%s» полон.", Faction_GetName(t)); return 1; }
+	if (n > room) n = room;
+	Faction[t][fMats] += n;
+	Faction_SaveMats(t);
+	gVehCargo[v] -= n;
+	if (Faction_IsArmy(f) && Player[playerid][pDuty])
+	{
+		if (t == f) pay = (n / 100) * SUPPLY_PAY_HAUL;
+		else pay = (n / 100) * SUPPLY_PAY_DELIVER;
+		if (pay > 0) GiveMoney(playerid, pay, "доставка материалов");
+	}
+	SendClientMessage(playerid, COLOR_GREEN, "Разгружено на склад «%s»: %d. В кузове осталось: %d. Оплата: $%d.", Faction_GetName(t), n, gVehCargo[v], pay);
+	format(msg, sizeof msg, "%s привёз на склад %d материалов (на складе %d).", GetRPName(playerid), n, Faction[t][fMats]);
+	Faction_Log(t, msg);
+	format(msg, sizeof msg, "[Фракция] На склад привезли %d материалов. На складе: %d.", n, Faction[t][fMats]);
+	Faction_Message(t, Faction_GetColor(t), msg);
+	return 1;
+}
+
+// /unload, /supply
+stock bool:Cmd_Supply(playerid)
+{
+	Factory_TryUnload(playerid, true);
+	return true;
+}
+
+stock bool:Cmd_Steal(playerid)
+{
+	return SendClientMessage(playerid, COLOR_GREY, "Красть можно только со склада армии: встань на его маркер и нажми ALT.");
+}
+
+stock bool:Cmd_Mats(playerid)
+{
+	return SendClientMessage(playerid, COLOR_WHITE, "В сумке материалов: %d из %d. Сделать оружие: сумка (Y), «использовать». Сдать: ALT на складе организации.",
+		Inv_Count(playerid, INV_MATS), Inv_GetMax(INV_MATS));
+}
+
+// ---------------------------------------------------------------------
+//  Оружие из материалов (сумка -> «использовать»)
+// ---------------------------------------------------------------------
+stock Craft_Show(playerid)
+{
+	new body[700], line[64], title[64];
+	strcat(body, "Что сделать\tМатериалов\n");
+	for (new it = 0; it < MAX_FITEMS; it++)
+	{
+		format(line, sizeof line, "%s\t%d\n", gFItemName[it], gFItemMats[it]);
+		strcat(body, line);
+	}
+	format(title, sizeof title, "Материалов в сумке: %d", Inv_Count(playerid, INV_MATS));
+	ShowPlayerDialog(playerid, DIALOG_CRAFT, DIALOG_STYLE_TABLIST_HEADERS, title, "%s", "Выбрать", "Закрыть", body);
+}
+
+stock Craft_Make(playerid, it, qty)
+{
+	new need = gFItemMats[it] * qty;
+	if (!Inv_Remove(playerid, INV_MATS, need))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Не хватает материалов: нужно %d, в сумке %d.", need, Inv_Count(playerid, INV_MATS));
+		return;
+	}
+	switch (it)
+	{
+		case FITEM_ARMOUR: SetPlayerArmour(playerid, 100.0);
+		case FITEM_MEDKIT: SetPlayerHealth(playerid, 100.0);
+		default: GivePlayerWeapon(playerid, gFItemWeapon[it], gFItemAmmo[it] * qty);
+	}
+	new msg[144];
+	format(msg, sizeof msg, "%s что-то мастерит из деталей.", GetRPName(playerid));
+	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
+	SendClientMessage(playerid, COLOR_GREEN, "Сделано: %s x%d. Потрачено материалов: %d, осталось %d.", gFItemName[it], qty, need, Inv_Count(playerid, INV_MATS));
+}
+
+// Окна заводов, складов и крафта. Вызывается из OnDialogResponse (rp.pwn). 1 — окно наше.
+stock Factory_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
+{
+	if (dialogid < DIALOG_CRAFT || dialogid > DIALOG_FTRANSFER) return 0;
+	new f = Player[playerid][pFaction], msg[144];
+	switch (dialogid)
+	{
+		case DIALOG_CRAFT:
+		{
+			if (!response || listitem < 0 || listitem >= MAX_FITEMS) return 1;
+			if (Wound_IsWounded(playerid) || Player[playerid][pCuffed] || Player[playerid][pJail] > 0) return 1;
+			gCraftSel[playerid] = listitem;
+			if (listitem == FITEM_ARMOUR || listitem == FITEM_MEDKIT) { Craft_Make(playerid, listitem, 1); return 1; }
+			ShowPlayerDialog(playerid, DIALOG_CRAFT_QTY, DIALOG_STYLE_INPUT, "Сколько сделать",
+				"%s: %d материалов за штуку, в каждой %d патронов.\nСколько сделать? (1-10)\nВ сумке материалов: %d", "Сделать", "Назад",
+				gFItemName[listitem], gFItemMats[listitem], gFItemAmmo[listitem], Inv_Count(playerid, INV_MATS));
+		}
+		case DIALOG_CRAFT_QTY:
+		{
+			if (!response) { Craft_Show(playerid); return 1; }
+			new it = gCraftSel[playerid];
+			if (it < 0 || it >= MAX_FITEMS) return 1;
+			if (Wound_IsWounded(playerid) || Player[playerid][pCuffed] || Player[playerid][pJail] > 0) return 1;
+			if (!IsNumeric(inputtext) || strval(inputtext) < 1 || strval(inputtext) > 10) { SendClientMessage(playerid, COLOR_GREY, "Количество от 1 до 10."); return 1; }
+			Craft_Make(playerid, it, strval(inputtext));
+		}
+		case DIALOG_FSTOREPT:
+		{
+			if (!response) return 1;
+			if (!Faction_IsValid(f) || !FStore_At(playerid, f, 5.0)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от склада."); return 1; }
+			if (listitem == 0)
+			{
+				if (Inv_Count(playerid, INV_MATS) <= 0) { SendClientMessage(playerid, COLOR_GREY, "В сумке нет материалов."); return 1; }
+				ShowPlayerDialog(playerid, DIALOG_FSTOREPT_PUT, DIALOG_STYLE_INPUT, "Положить материалы",
+					"Сколько материалов положить на склад организации?\nВ сумке: %d", "Положить", "Отмена", Inv_Count(playerid, INV_MATS));
+				return 1;
+			}
+			if (Player[playerid][pRank] < Faction[f][fStoreRank]) { SendClientMessage(playerid, COLOR_GREY, "Брать со склада можно с ранга %d.", Faction[f][fStoreRank]); return 1; }
+			if (gCrate[playerid] != 0) { SendClientMessage(playerid, COLOR_GREY, "У тебя уже ящик в руках."); return 1; }
+			if (Faction[f][fMats] < CRATE_MATS) { SendClientMessage(playerid, COLOR_GREY, "На складе не хватает материалов на ящик."); return 1; }
+			Faction[f][fMats] -= CRATE_MATS;
+			Faction_SaveMats(f);
+			Crate_Give(playerid, 2, -1);
+			SendClientMessage(playerid, COLOR_WHITE, "Ты взял ящик (%d материалов). Встань сзади грузовика или фургона и положи: ALT.", CRATE_MATS);
+			format(msg, sizeof msg, "%s взял со склада ящик (%d материалов, осталось %d).", GetRPName(playerid), CRATE_MATS, Faction[f][fMats]);
+			Faction_Log(f, msg);
+		}
+		case DIALOG_FSTOREPT_PUT:
+		{
+			if (!response) return 1;
+			if (!Faction_IsValid(f) || !FStore_At(playerid, f, 5.0)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от склада."); return 1; }
+			if (!IsNumeric(inputtext) || strval(inputtext) < 1) { SendClientMessage(playerid, COLOR_GREY, "Введи число больше нуля."); return 1; }
+			new n = strval(inputtext);
+			new cap = Faction_IsArmy(f) ? ARMY_MATS_MAX : FACTION_MATS_MAX;
+			if (n > Inv_Count(playerid, INV_MATS)) n = Inv_Count(playerid, INV_MATS);
+			if (n > cap - Faction[f][fMats]) n = cap - Faction[f][fMats];
+			if (n <= 0 || !Inv_Remove(playerid, INV_MATS, n)) { SendClientMessage(playerid, COLOR_GREY, "Положить нечего или склад полон."); return 1; }
+			Faction[f][fMats] += n;
+			Faction_SaveMats(f);
+			SendClientMessage(playerid, COLOR_GREEN, "Положено на склад: %d. На складе материалов: %d, в сумке: %d.", n, Faction[f][fMats], Inv_Count(playerid, INV_MATS));
+			format(msg, sizeof msg, "%s положил на склад %d материалов (на складе %d).", GetRPName(playerid), n, Faction[f][fMats]);
+			Faction_Log(f, msg);
+		}
+		case DIALOG_FMANAGE:
+		{
+			if (!response) return 1;
+			new i = gFcSel[playerid];
+			if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed] || Factory[i][fcClosed] || Factory[i][fcOwner] != f || Player[playerid][pRank] < MAX_RANK - 1) return 1;
+			if (Factory[i][fcKind] == FKIND_MILITARY) return 1;
+			if (listitem == 1)
+			{
+				ShowPlayerDialog(playerid, DIALOG_FCLOSE, DIALOG_STYLE_MSGBOX, "Закрыть завод",
+					"{FFFFFF}Закрыть завод «%s» и уничтожить оборудование?\n\nЭто больше не будет заводом: точки пропадут, работать и захватывать его будет нельзя.\nОставшиеся ящики можно вывезти со склада. Вернуть завод может только администратор.",
+					"Закрыть", "Отмена", Factory[i][fcName]);
+				return 1;
+			}
+			new body[1800], line[48], n = 0;
+			for (new t = 1; t < MAX_FACTIONS; t++)
+			{
+				if (t == f || !Faction_IsValid(t)) continue;
+				format(line, sizeof line, "{%06x}%s\n", Faction_GetColor(t) >>> 8, Faction_GetName(t));
+				strcat(body, line);
+				gFcList[playerid][n++] = t;
+			}
+			for (new k = n; k < MAX_FACTIONS; k++) gFcList[playerid][k] = 0;
+			if (n == 0) { SendClientMessage(playerid, COLOR_GREY, "Передавать некому."); return 1; }
+			ShowPlayerDialog(playerid, DIALOG_FTRANSFER, DIALOG_STYLE_LIST, "Кому передать завод", "%s", "Передать", "Отмена", body);
+		}
+		case DIALOG_FTRANSFER:
+		{
+			if (!response || listitem < 0 || listitem >= MAX_FACTIONS) return 1;
+			new i = gFcSel[playerid], t = gFcList[playerid][listitem];
+			if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed] || Factory[i][fcClosed] || Factory[i][fcOwner] != f || Player[playerid][pRank] < MAX_RANK - 1) return 1;
+			if (Factory[i][fcKind] == FKIND_MILITARY || t == f || !Faction_IsValid(t)) return 1;
+			if (!Factory_At(playerid, i, FP_OWNER, 6.0)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от маркера завода."); return 1; }
+			if (Factory[i][fcCapBy] != INVALID_PLAYER_ID) { SendClientMessage(playerid, COLOR_GREY, "Завод сейчас захватывают. Сначала отбейте его."); return 1; }
+			Factory[i][fcOwner] = t;
+			Factory_Save(i);
+			for (new p = 0; p < MAX_FPOINTS; p++) Factory_Label(i, p);
+			format(msg, sizeof msg, "[Фракция] %s передал завод «%s»: %s.", GetRPName(playerid), Factory[i][fcName], Faction_GetName(t));
+			Faction_Message(f, Faction_GetColor(f), msg);
+			Faction_Log(f, msg[10]);
+			format(msg, sizeof msg, "[Фракция] Организации передан завод «%s» (от: %s). Материалов на складе: %d.", Factory[i][fcName], Faction_GetName(f), Factory[i][fcStock]);
+			Faction_Message(t, Faction_GetColor(t), msg);
+			Faction_Log(t, msg[10]);
+		}
+		case DIALOG_FCLOSE:
+		{
+			if (!response) return 1;
+			new i = gFcSel[playerid];
+			if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed] || Factory[i][fcOwner] != f || Player[playerid][pRank] < MAX_RANK - 1) return 1;
+			if (Factory[i][fcKind] == FKIND_MILITARY) return 1;     // военный завод не закрывают
+			if (!Factory_At(playerid, i, FP_OWNER, 6.0)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от маркера завода."); return 1; }
+			Factory[i][fcClosed] = true;
+			Factory_Save(i);
+			if (Factory[i][fcCapBy] != INVALID_PLAYER_ID) Capture_Stop(Factory[i][fcCapBy]);
+			for (new p = 0; p < MAX_FPOINTS; p++) Factory_BuildPoint(i, p);    // точки завода пропадают
+			format(msg, sizeof msg, "[Фракция] %s закрыл завод «%s»: оборудование уничтожено.", GetRPName(playerid), Factory[i][fcName]);
+			Faction_Message(f, Faction_GetColor(f), msg);
+			Faction_Log(f, msg[10]);
+		}
+	}
+	return 1;
+}
+
+// ---------------------------------------------------------------------
+//  Админ-команды заводов
+// ---------------------------------------------------------------------
+stock bool:Cmd_AddFactory(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, kind, name[32];
+	if (!NextIntParam(params, pos, kind) || kind < FKIND_MILITARY || kind > FKIND_COMMON || !RestParam(params, pos, name))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Использование: /addfactory [вид] [название] — маркер завода там, где стоишь.");
+		SendClientMessage(playerid, COLOR_GREY, "Виды: 1 — военный (владеет армия, захватить нельзя), 2 — обычный (можно захватывать).");
+		return true;
+	}
+	if (!Faction_IsGoodName(name, 2, 31)) return SendClientMessage(playerid, COLOR_GREY, "Название: от 2 до 31 символа, без фигурных скобок и знака процента.");
+	new i = -1;
+	for (new k = 0; k < MAX_FACTORIES; k++)
+	{
+		if (!Factory[k][fcUsed]) { i = k; break; }
+	}
+	if (i == -1) return SendClientMessage(playerid, COLOR_GREY, "Достигнут лимит заводов (%d).", MAX_FACTORIES);
+
+	new owner = (kind == FKIND_MILITARY) ? FACTION_ARMY : FACTION_NONE;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO factories (name, kind, owner, closed, stock) VALUES ('%q', %d, %d, 0, 0)", name, kind, owner));
+	Factory[i][fcUsed] = true;
+	Factory[i][fcDbId] = DB_LastInsertId();
+	Factory[i][fcName][0] = '\0';
+	strcat(Factory[i][fcName], name, 32);
+	Factory[i][fcKind] = kind;
+	Factory[i][fcOwner] = owner;
+	Factory[i][fcClosed] = false;
+	Factory[i][fcStock] = 0;
+	Factory[i][fcLastCap] = 0;
+	Factory[i][fcCapBy] = INVALID_PLAYER_ID;
+	for (new p = 0; p < MAX_FPOINTS; p++)
+	{
+		gFcSet[i][p] = false;
+		gFcMk[i][p] = -1;
+	}
+	GetPlayerPos(playerid, gFcX[i][FP_OWNER], gFcY[i][FP_OWNER], gFcZ[i][FP_OWNER]);
+	gFcW[i][FP_OWNER] = GetPlayerVirtualWorld(playerid);
+	gFcI[i][FP_OWNER] = GetPlayerInterior(playerid);
+	gFcSet[i][FP_OWNER] = true;
+	Factory_SavePoint(i, FP_OWNER);
+	Factory_BuildPoint(i, FP_OWNER);
+
+	new n = Factory[i][fcDbId];
+	SendClientMessage(playerid, COLOR_ADMIN, "Завод №%d «%s» создан, его маркер стоит здесь.", n, name);
+	SendClientMessage(playerid, COLOR_ADMIN, "Расставь точки: /setfpoint %d raw (сырьё), /setfpoint %d bench (станок), /setfpoint %d store (склад ящиков).", n, n, n);
+	if (kind == FKIND_COMMON) SendClientMessage(playerid, COLOR_ADMIN, "Владельца пока нет: /setfowner %d [фракция] или пусть завод захватят.", n);
+	return true;
+}
+
+stock bool:Cmd_SetFPoint(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, n, word[16], p = -1;
+	if (NextIntParam(params, pos, n) && NextParam(params, pos, word))
+	{
+		if (!strcmp(word, "raw", true)) p = FP_RAW;
+		else if (!strcmp(word, "bench", true)) p = FP_BENCH;
+		else if (!strcmp(word, "store", true)) p = FP_STORE;
+		else if (!strcmp(word, "owner", true)) p = FP_OWNER;
+	}
+	new i = (p == -1) ? -1 : Factory_Find(n);
+	if (i == -1)
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setfpoint [№ завода] [raw|bench|store|owner] — сырьё, станок, склад ящиков, маркер завода. Список: /factories");
+	GetPlayerPos(playerid, gFcX[i][p], gFcY[i][p], gFcZ[i][p]);
+	gFcW[i][p] = GetPlayerVirtualWorld(playerid);
+	gFcI[i][p] = GetPlayerInterior(playerid);
+	gFcSet[i][p] = true;
+	Factory_SavePoint(i, p);
+	if (gFcMk[i][p] != -1) { Marker_Destroy(gFcMk[i][p], true); gFcMk[i][p] = -1; }
+	Factory_BuildPoint(i, p);
+	SendClientMessage(playerid, COLOR_ADMIN, "Завод №%d «%s»: точка «%s» теперь здесь.", n, Factory[i][fcName], word);
+	return true;
+}
+
+stock bool:Cmd_SetFOwner(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, n, f;
+	if (!NextIntParam(params, pos, n) || !NextIntParam(params, pos, f) || Factory_Find(n) == -1 || (f != FACTION_NONE && !Faction_IsValid(f)))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setfowner [№ завода] [фракция, 0 — ничей]. Заводы: /factories, фракции: /flist");
+	new i = Factory_Find(n);
+	Factory[i][fcOwner] = f;
+	Factory[i][fcClosed] = false;
+	Factory_Save(i);
+	for (new p = 0; p < MAX_FPOINTS; p++) Factory_BuildPoint(i, p);    // закрытый завод снова становится заводом
+	if (f == FACTION_NONE) SendClientMessage(playerid, COLOR_ADMIN, "Завод №%d «%s» теперь без владельца.", n, Factory[i][fcName]);
+	else SendClientMessage(playerid, COLOR_ADMIN, "Завод №%d «%s» теперь у фракции «%s» и работает.", n, Factory[i][fcName], Faction_GetName(f));
+	return true;
+}
+
+stock bool:Cmd_DelFactory(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, n;
+	if (!NextIntParam(params, pos, n) || Factory_Find(n) == -1)
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /delfactory [№ завода]. Список: /factories");
+	new i = Factory_Find(n);
+	for (new p = 0; p < MAX_FPOINTS; p++)
+	{
+		if (gFcMk[i][p] != -1) { Marker_Destroy(gFcMk[i][p], true); gFcMk[i][p] = -1; }
+		gFcSet[i][p] = false;
+	}
+	if (Factory[i][fcCapBy] != INVALID_PLAYER_ID) Capture_Stop(Factory[i][fcCapBy]);
+	Factory[i][fcUsed] = false;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM factories WHERE id = %d", n));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM factory_points WHERE factory = %d", n));
+	SendClientMessage(playerid, COLOR_ADMIN, "Завод №%d удалён.", n);
+	return true;
+}
+
+stock bool:Cmd_Factories(playerid)
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new count = 0;
+	SendClientMessage(playerid, COLOR_ADMIN, "Заводы (№ — название, вид, владелец, материалов на складе):");
+	for (new i = 0; i < MAX_FACTORIES; i++)
+	{
+		if (!Factory[i][fcUsed]) continue;
+		count++;
+		SendClientMessage(playerid, COLOR_WHITE, " %d — %s, вид %d, %s, материалов %d, закрыт: %d, точек задано: %d из 4", Factory[i][fcDbId], Factory[i][fcName],
+			Factory[i][fcKind], Faction_GetName(Factory[i][fcOwner]), Factory[i][fcStock], Factory[i][fcClosed] ? 1 : 0,
+			(gFcSet[i][0] ? 1 : 0) + (gFcSet[i][1] ? 1 : 0) + (gFcSet[i][2] ? 1 : 0) + (gFcSet[i][3] ? 1 : 0));
+	}
+	if (count == 0) SendClientMessage(playerid, COLOR_GREY, " Заводов пока нет. Создать: /addfactory [вид] [название]");
+	return true;
+}
+
+// ---------------------------------------------------------------------
+//  Чёрный рынок
+// ---------------------------------------------------------------------
+stock bool:Cmd_BM(playerid)
+{
+	if (!Supply_AtPoint(playerid, SP_BM, BM_RANGE)) return SendClientMessage(playerid, COLOR_GREY, "Здесь нет торговца. Чёрный рынок ещё надо найти.");
+	if (Faction_IsState(Player[playerid][pFaction]) && Player[playerid][pDuty])
+		return SendClientMessage(playerid, COLOR_GREY, "Торговец не разговаривает с людьми в форме.");
+	new body[900], line[96];
+	strcat(body, "Товар\tЦена\n");
+	for (new it = 0; it < MAX_FITEMS; it++)
+	{
+		if (gBMPrice[it] > 0) format(line, sizeof line, "%s\t{33AA33}$%d\n", gFItemName[it], gBMPrice[it]);
+		else format(line, sizeof line, "{AFAFAF}%s\t{AFAFAF}нет в продаже\n", gFItemName[it]);
+		strcat(body, line);
+	}
+	format(line, sizeof line, "{FFFF00}Продать материалы из сумки (%d шт.)\t$%d за 1 шт.", Inv_Count(playerid, INV_MATS), gBMMatPrice);
+	strcat(body, line);
+	ShowPlayerDialog(playerid, DIALOG_BM, DIALOG_STYLE_TABLIST_HEADERS, "Чёрный рынок", "%s", "Выбрать", "Уйти", body);
+	return true;
+}
+
+// Окно /bm. Вызывается из OnDialogResponse (rp.pwn). 1 — окно наше.
+stock BM_OnDialog(playerid, dialogid, response, listitem)
+{
+	if (dialogid != DIALOG_BM) return 0;
+	if (!response) return 1;
+	if (!Supply_AtPoint(playerid, SP_BM, BM_RANGE + 2.0)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от торговца."); return 1; }
+	if (Faction_IsState(Player[playerid][pFaction]) && Player[playerid][pDuty]) return 1;
+
+	if (listitem >= 0 && listitem < MAX_FITEMS)
+	{
+		new price = gBMPrice[listitem];
+		if (price <= 0) { SendClientMessage(playerid, COLOR_GREY, "Этого сейчас нет в продаже."); return 1; }
+		if (GetMoney(playerid) < price) { SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", price); return 1; }
+		GiveMoney(playerid, -price, "чёрный рынок");
+		switch (listitem)
+		{
+			case FITEM_ARMOUR: SetPlayerArmour(playerid, 100.0);
+			case FITEM_MEDKIT: SetPlayerHealth(playerid, 100.0);
+			default: GivePlayerWeapon(playerid, gFItemWeapon[listitem], gFItemAmmo[listitem]);
+		}
+		SendClientMessage(playerid, COLOR_GREEN, "Куплено: %s за $%d.", gFItemName[listitem], price);
+		Cmd_BM(playerid);
+		return 1;
+	}
+
+	// последняя строка — продать материалы из сумки
+	new n = Inv_Count(playerid, INV_MATS);
+	if (n <= 0) { SendClientMessage(playerid, COLOR_GREY, "В сумке нет материалов."); return 1; }
+	if (gBMMatPrice <= 0) { SendClientMessage(playerid, COLOR_GREY, "Торговец сейчас не берёт материалы."); return 1; }
+	if (!Inv_Remove(playerid, INV_MATS, n)) return 1;
+	GiveMoney(playerid, n * gBMMatPrice, "продажа материалов на чёрном рынке");
+	SendClientMessage(playerid, COLOR_GREEN, "Продано материалов: %d за $%d.", n, n * gBMMatPrice);
+	return 1;
+}
+
+// /bmprice — цены чёрного рынка (админ 4+)
+stock bool:Cmd_BMPrice(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, item, price;
+	if (!NextIntParam(params, pos, item) || !NextIntParam(params, pos, price) || item < 0 || item > MAX_FITEMS || price < 0 || price > 10000000)
+	{
+		SendClientMessage(playerid, COLOR_ADMIN, "Цены чёрного рынка. Изменить: /bmprice [№] [цена], цена 0 — снять с продажи.");
+		SendClientMessage(playerid, COLOR_WHITE, " 0 — скупка материалов: $%d за 1 шт.", gBMMatPrice);
+		for (new it = 0; it < MAX_FITEMS; it++)
+			SendClientMessage(playerid, COLOR_WHITE, " %d — %s: $%d", it + 1, gFItemName[it], gBMPrice[it]);
+		return true;
+	}
+	if (item == 0)
+	{
+		gBMMatPrice = price;
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO bm_prices (item, price) VALUES (-1, %d)", price));
+		SendClientMessage(playerid, COLOR_ADMIN, "Торговец теперь платит $%d за 1 материал.", price);
+		return true;
+	}
+	gBMPrice[item - 1] = price;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO bm_prices (item, price) VALUES (%d, %d)", item - 1, price));
+	SendClientMessage(playerid, COLOR_ADMIN, "Чёрный рынок: %s теперь $%d.", gFItemName[item - 1], price);
+	return true;
+}
+
+// ---------------------------------------------------------------------
+//  Общие чаты: /d — госструктуры, /gd — банды
+// ---------------------------------------------------------------------
+stock bool:Cmd_DeptChat(playerid, const params[])
+{
+	new f = Player[playerid][pFaction];
+	if (!Faction_IsState(f)) return SendClientMessage(playerid, COLOR_GREY, "Этот чат только для госструктур.");
+	new text[90], msg[160];
+	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /d [текст] — общий чат госструктур");
+	format(msg, sizeof msg, "[Департамент] %s | %s: %s", Faction_GetName(f), GetRPName(playerid), text);
+	msg[143] = '\0';
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && Player[i][pLogged] && Faction_IsState(Player[i][pFaction])) SendClientMessage(i, 0xFF9E7AFF, "%s", msg);
+	}
+	return true;
+}
+
+stock bool:Cmd_GangChat(playerid, const params[])
+{
+	new f = Player[playerid][pFaction];
+	if (!Faction_IsGang(f)) return SendClientMessage(playerid, COLOR_GREY, "Этот чат только для банд.");
+	new text[90], msg[160];
+	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /gd [текст] — общий чат банд");
+	format(msg, sizeof msg, "[Улицы] %s | %s: %s", Faction_GetName(f), GetRPName(playerid), text);
+	msg[143] = '\0';
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && Player[i][pLogged] && Faction_IsGang(Player[i][pFaction])) SendClientMessage(i, 0xC0A060FF, "%s", msg);
+	}
+	return true;
+}
+
+
+// =====================================================================
+//  Цвет фракции: /fcolor [фракция] — палитра или свой код RRGGBB (админ 4+)
+// =====================================================================
+static const gFColorVal[16] =
+{
+	0x3A6EFFFF, 0x00C8F0FF, 0x6C8CD5FF, 0x10A010FF, 0x6B8E23FF, 0x33CC99FF, 0xFFD700FF, 0xFF8C00FF,
+	0xE0A030FF, 0xFF4040FF, 0xFF8080FF, 0xFF66CCFF, 0xB040FFFF, 0x8B5A2BFF, 0xC8C8C8FF, 0xFFFFFFFF
+};
+static const gFColorName[16][20] =
+{
+	"Синий", "Голубой", "Серо-синий", "Зелёный", "Оливковый", "Бирюзовый", "Жёлтый", "Оранжевый",
+	"Песочный", "Красный", "Розовый", "Малиновый", "Фиолетовый", "Коричневый", "Серый", "Белый"
+};
+
+stock FColor_Show(playerid)
+{
+	new f = gFColorSel[playerid];
+	if (!Faction_IsValid(f)) return;
+	new body[900], line[48], title[64];
+	for (new i = 0; i < sizeof gFColorVal; i++)
+	{
+		format(line, sizeof line, "{%06x}%s\n", gFColorVal[i] >>> 8, gFColorName[i]);
+		strcat(body, line);
+	}
+	strcat(body, "{FFFFFF}Свой цвет (ввести код RRGGBB)");
+	format(title, sizeof title, "Цвет: %s", Faction_GetName(f));
+	ShowPlayerDialog(playerid, DIALOG_FCOLOR, DIALOG_STYLE_LIST, title, "%s", "Выбрать", "Закрыть", body);
+}
+
+stock bool:Cmd_FColor(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, f;
+	if (!NextIntParam(params, pos, f) || !Faction_IsValid(f))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /fcolor [фракция] — выбрать цвет из палитры. Номера фракций: /flist");
+	gFColorSel[playerid] = f;
+	FColor_Show(playerid);
+	return true;
+}
+
+// Поставить фракции цвет и обновить всё, где он виден
+stock FColor_Apply(playerid, f, color)
+{
+	Faction[f][fColor] = color;
+	Faction_SaveInfo(f);
+	Faction_CreateMarker(f);
+	Turfs_Recolor();
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && Player[i][pLogged] && Player[i][pFaction] == f) Faction_UpdateColor(i);
+	}
+	new msg[144];
+	format(msg, sizeof msg, "Администратор %s сменил цвет фракции на %06x.", GetRPName(playerid), color >>> 8);
+	Faction_Log(f, msg);
+	SendClientMessage(playerid, color, "Цвет фракции «%s» теперь такой.", Faction_GetName(f));
+}
+
+// Окна /fcolor. Вызывается из OnDialogResponse (rp.pwn). 1 — окно наше.
+stock FColor_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
+{
+	if (dialogid != DIALOG_FCOLOR && dialogid != DIALOG_FCOLOR_HEX) return 0;
+	if (Player[playerid][pAdmin] < 4) return 1;
+	new f = gFColorSel[playerid];
+	if (!Faction_IsValid(f)) return 1;
+
+	if (dialogid == DIALOG_FCOLOR)
+	{
+		if (!response) return 1;
+		if (listitem >= 0 && listitem < sizeof gFColorVal)
+		{
+			FColor_Apply(playerid, f, gFColorVal[listitem]);
+			return 1;
+		}
+		ShowPlayerDialog(playerid, DIALOG_FCOLOR_HEX, DIALOG_STYLE_INPUT, "Свой цвет",
+			"Введи код цвета: 6 знаков RRGGBB, например 3A6EFF.", "Сохранить", "Назад");
+		return 1;
+	}
+
+	if (!response) { FColor_Show(playerid); return 1; }
+	new rgb = 0, bool:ok = (strlen(inputtext) == 6);
+	for (new i = 0; ok && i < 6; i++)
+	{
+		new c = inputtext[i], d = 0;
+		if (c >= '0' && c <= '9') d = c - '0';
+		else if (c >= 'a' && c <= 'f') d = c - 'a' + 10;
+		else if (c >= 'A' && c <= 'F') d = c - 'A' + 10;
+		else ok = false;
+		rgb = (rgb << 4) | d;
+	}
+	if (!ok)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Цвет — 6 знаков RRGGBB, например 3A6EFF.");
+		ShowPlayerDialog(playerid, DIALOG_FCOLOR_HEX, DIALOG_STYLE_INPUT, "Свой цвет",
+			"Введи код цвета: 6 знаков RRGGBB, например 3A6EFF.", "Сохранить", "Назад");
+		return 1;
+	}
+	FColor_Apply(playerid, f, (rgb << 8) | 0xFF);
+	return 1;
 }

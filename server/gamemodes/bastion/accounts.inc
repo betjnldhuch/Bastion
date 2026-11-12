@@ -219,6 +219,7 @@ stock Account_FinishLogin(playerid)
 	Admin_OnLogin(playerid);            // мут, варны, деморган (admin.inc)
 	Families_OnLogin(playerid);         // семь€ игрока (families.inc)
 	Debts_OnLogin(playerid);            // долги по налогам и штрафам (debts.inc)
+	Spawns_LoadPlayer(playerid);        // выбор из /setspawn (spawns.inc)
 
 	Account_SetNormalSpawn(playerid);
 	TogglePlayerSpectating(playerid, false);  // выход из режима наблюдени€ = спавн
@@ -228,7 +229,19 @@ stock Account_FinishLogin(playerid)
 stock Account_SetNormalSpawn(playerid)
 {
 	new Float:x = SPAWN_X, Float:y = SPAWN_Y, Float:z = SPAWN_Z, Float:a = SPAWN_A;
-	Factions_GetSpawn(playerid, x, y, z, a); // factions.inc Ч база фракции
-	Houses_GetSpawn(playerid, x, y, z, a);   // houses.inc Ч мен€ет координаты, если есть дом
+	// ¬ыбор игрока из /setspawn (spawns.inc). ≈сли выбранного места больше нет Ч обычный пор€док.
+	new chosen = 0;
+	switch (Spawns_GetMode(playerid))
+	{
+		case SPAWN_STATION: chosen = Spawns_GetChosen(playerid, x, y, z, a);
+		case SPAWN_HOUSE:   chosen = Houses_GetSpawn(playerid, x, y, z, a);
+		case SPAWN_FACTION: chosen = Factions_GetSpawn(playerid, x, y, z, a);
+	}
+	if (!chosen)
+	{
+		Spawns_Get(x, y, z, a);                  // spawns.inc Ч вокзалы, расставленные админом (случайный)
+		Factions_GetSpawn(playerid, x, y, z, a); // factions.inc Ч база фракции
+		Houses_GetSpawn(playerid, x, y, z, a);   // houses.inc Ч мен€ет координаты, если есть дом
+	}
 	SetSpawnInfo(playerid, NO_TEAM, Player[playerid][pSkin], x, y, z, a);
 }

@@ -130,5 +130,24 @@ enum
 
 	// --- Помощь (help.inc)
 	DIALOG_HELP_TOPICS,
-	DIALOG_HELP_TOPIC
+	DIALOG_HELP_TOPIC,
+
+	// --- Выбор места появления (spawns.inc)
+	DIALOG_SETSPAWN,
+
+	// --- Цвет фракции (/fcolor, factions.inc)
+	DIALOG_FCOLOR,
+	DIALOG_FCOLOR_HEX,
+
+	// --- Чёрный рынок (/bm, factions.inc)
+	DIALOG_BM,
+
+	// --- Заводы, материалы, крафт (factions.inc)
+	DIALOG_CRAFT,
+	DIALOG_CRAFT_QTY,
+	DIALOG_FSTOREPT,
+	DIALOG_FSTOREPT_PUT,
+	DIALOG_FCLOSE,
+	DIALOG_FMANAGE,
+	DIALOG_FTRANSFER
 }
