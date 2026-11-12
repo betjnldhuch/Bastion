@@ -15,7 +15,7 @@ enum
 }
 
 // ‘ракции (подробности Ч в factions.inc)
-#define MAX_FACTIONS        21          // 0 = нет фракции, 1..7 Ч посто€нные, 8..20 Ч созданные в игре (/createfaction)
+#define MAX_FACTIONS        51          // 0 = нет фракции, 1..7 Ч посто€нные, 8..50 Ч созданные в игре (/createfaction)
 #define FACTION_BUILTIN     8           // с этого номера идут фракции, созданные в игре
 #define MAX_RANK            10          // 10 = лидер, 9 = заместитель
 enum

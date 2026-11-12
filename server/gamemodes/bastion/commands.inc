@@ -260,7 +260,15 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/delfaction", true))  { Cmd_DelFaction(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/flist", true))       { Cmd_FList(playerid); return 1; }
 	if (!strcmp(cmd, "/fcolor", true))      { Cmd_FColor(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/setsupply", true))   { Cmd_SetSupply(playerid); return 1; }
+	if (!strcmp(cmd, "/setfactory", true) || !strcmp(cmd, "/setsupply", true)) { Cmd_SetSPoint(playerid, SP_FACTORY); return 1; }
+	if (!strcmp(cmd, "/setarmystore", true)) { Cmd_SetSPoint(playerid, SP_ARMY); return 1; }
+	if (!strcmp(cmd, "/setbm", true))       { Cmd_SetSPoint(playerid, SP_BM); return 1; }
+	if (!strcmp(cmd, "/bmprice", true))     { Cmd_BMPrice(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/bm", true))          { Cmd_BM(playerid); return 1; }
+	if (!strcmp(cmd, "/steal", true))       { Cmd_Steal(playerid); return 1; }
+	if (!strcmp(cmd, "/mats", true))        { Cmd_Mats(playerid); return 1; }
+	if (!strcmp(cmd, "/d", true))           { Cmd_DeptChat(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/gd", true))          { Cmd_GangChat(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/supply", true))      { Cmd_Supply(playerid); return 1; }
 	if (!strcmp(cmd, "/addfcar", true))     { Cmd_AddFCar(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delfcar", true))     { Cmd_DelFCar(playerid); return 1; }

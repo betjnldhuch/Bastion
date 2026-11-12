@@ -188,6 +188,7 @@ public OnPlayerDisconnect(playerid, reason)
 {
 	Law_OnDisconnect(playerid, reason); // метка задержания: вышел из игры — деморган (law.inc)
 	Platform_OnDisconnect(playerid);
+	Supply_ResetPlayer(playerid);
 	Admin_OnDisconnect(playerid);
 	Job_Stop(playerid);
 	Jobs_OnDisconnect(playerid);
@@ -381,6 +382,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Wound_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Markers_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (FColor_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (BM_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Factions_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	return 0;
 }

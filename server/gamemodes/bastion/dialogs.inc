@@ -137,5 +137,8 @@ enum
 
 	// --- Цвет фракции (/fcolor, factions.inc)
 	DIALOG_FCOLOR,
-	DIALOG_FCOLOR_HEX
+	DIALOG_FCOLOR_HEX,
+
+	// --- Чёрный рынок (/bm, factions.inc)
+	DIALOG_BM
 }
