@@ -26,8 +26,10 @@ jobs:
         shell: pwsh
         working-directory: launcher/source
         env:
-          BASTION_GAME_URL: ${{ secrets.BASTION_GAME_URL }}
-          BASTION_GAME_MD5: ${{ secrets.BASTION_GAME_MD5 }}
+          # Архив игры для ПК отдельный от мобильного: BASTION_PC_GAME_URL / _MD5,
+          # без них — общий BASTION_GAME_URL / _MD5
+          BASTION_GAME_URL: ${{ secrets.BASTION_PC_GAME_URL || secrets.BASTION_GAME_URL }}
+          BASTION_GAME_MD5: ${{ secrets.BASTION_PC_GAME_URL && secrets.BASTION_PC_GAME_MD5 || secrets.BASTION_GAME_MD5 }}
           BASTION_DOWNLOAD_KEY: ${{ secrets.BASTION_DOWNLOAD_KEY }}
           BASTION_B2_KEY_ID: ${{ secrets.BASTION_B2_KEY_ID }}
           BASTION_B2_KEY: ${{ secrets.BASTION_B2_KEY }}

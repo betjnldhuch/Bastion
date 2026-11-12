@@ -25,8 +25,10 @@ B2 → **Application Keys** → **Add a New Application Key**:
 
 | Имя | Значение |
 |---|---|
-| `BASTION_GAME_URL` | `b2://ИМЯ_БАКЕТА/game.zip` (имя бакета и путь к файлу в нём) |
-| `BASTION_GAME_MD5` | MD5 архива (`Get-FileHash game.zip -Algorithm MD5`) |
+| `BASTION_GAME_URL` | архив для **телефона**: `b2://ИМЯ_БАКЕТА/путь/к/архиву.zip` |
+| `BASTION_GAME_MD5` | MD5 архива для телефона (`Get-FileHash архив.zip -Algorithm MD5`) |
+| `BASTION_PC_GAME_URL` | архив для **ПК** (внутри `gta_sa.exe` и `samp.exe`): `b2://ИМЯ_БАКЕТА/путь/к/архиву.zip` |
+| `BASTION_PC_GAME_MD5` | MD5 архива для ПК |
 | `BASTION_B2_KEY_ID` | keyID ключа только на чтение |
 | `BASTION_B2_KEY` | applicationKey этого ключа |
 
