@@ -75,18 +75,9 @@ enum
 #define SUPPLY_TRUCK_CAP        1000    // сколько материалов входит в одну машину армии
 #define SUPPLY_PAY_HAUL         30      // водителю за каждые 100 материалов, привезённых с завода на склад армии
 #define SUPPLY_PAY_DELIVER      50      // водителю за каждые 100 материалов, доставленных другой фракции
-// Завод делает материалы сам. Расчёт: смена бойца (бронежилет + Desert Eagle + MP5) = 110 материалов;
-// 10 активных бойцов, по два комплекта в час = около 2200 в час. Завод даёт 50 в минуту = 3000 в час,
-// то есть хватает с запасом, но без армии склады пустеют. Запас завода — на два часа (6 рейсов).
-// Заработок армии ограничен заводом: 3000 в час = 3 рейса с завода ($900) и 3 развоза ($1500) на всех.
-#define FACTORY_RATE            50      // сколько материалов завод делает в минуту
-#define FACTORY_CAP             6000    // больше завод не копит
-#define FACTORY_START           3000    // запас завода при первом запуске
-// Кражи (банды): из машины армии с грузом или со склада армии, командой /steal
-#define STEAL_BAG_MAX           250     // сколько материалов уносит один человек
-#define STEAL_TIME_TRUCK        20      // секунд у машины
-#define STEAL_TIME_STORE        40      // секунд у склада
-#define STEAL_COOLDOWN          600     // пауза между кражами одного игрока, секунд
+// Расчёт: смена бойца (бронежилет + Desert Eagle + MP5) = 110 материалов; 10 активных бойцов по два
+// комплекта в час тратят около 2200. Один рабочий делает ящик (50) примерно за 40 секунд, то есть
+// около 4500 в час: одного-двух рабочих хватает на все госструктуры. Цифры завода — в конце файла.
 #define STEAL_MIN_ARMY          2       // склад грабят, только когда в сети столько военных
 #define BM_RANGE                4.0     // как близко подойти к торговцу чёрного рынка
 #define BM_SKIN                 28      // скин торговца
@@ -94,7 +85,7 @@ enum
 // Точки снабжения: их ставит админ (/setfactory, /setarmystore, /setbm) или двигает в /markers
 enum
 {
-	SP_FACTORY,         // завод: здесь армия грузит материалы
+	SP_FACTORY,         // больше не используется: заводы ставятся через /addfactory
 	SP_ARMY,            // склад армии
 	SP_BM,              // торговец чёрного рынка
 	MAX_SPOINTS
@@ -302,12 +293,15 @@ new gSpMk[MAX_SPOINTS] = { -1, ... };
 new gBMActor = INVALID_ACTOR_ID;    // торговец чёрного рынка
 new gBMPrice[MAX_FITEMS];           // цены чёрного рынка (0 — не продаётся)
 new gBMMatPrice = BM_MAT_PRICE;     // сколько торговец платит за 1 припас
-new gFactoryMats;                   // готовые материалы на заводе
-new gBagMats[MAX_PLAYERS];          // краденые материалы в сумке игрока (не сохраняются)
-new gStealKind[MAX_PLAYERS];        // 0 — не крадёт, 1 — из машины, 2 — со склада армии
-new gStealVeh[MAX_PLAYERS];
-new gStealLeft[MAX_PLAYERS];
-new gStealLast[MAX_PLAYERS];
+new bool:gStealing[MAX_PLAYERS];    // стоит на складе армии и крадёт материалы
+new gStealTotal[MAX_PLAYERS];       // сколько украл за этот заход
+new gCrate[MAX_PLAYERS];            // ящик в руках: 0 — нет, 1 — только что сделан на заводе, 2 — взят со склада
+new gCrateFc[MAX_PLAYERS];          // на каком заводе сделан ящик
+new gWorkStage[MAX_PLAYERS];        // работа на заводе: 0 — нет, 1 — несёт сырьё, 2 — стоит у станка
+new gWorkFc[MAX_PLAYERS];
+new gCapFc[MAX_PLAYERS] = { -1, ... };  // какой завод захватывает
+new gCapLeft[MAX_PLAYERS];
+new gCraftSel[MAX_PLAYERS];
 new gFColorSel[MAX_PLAYERS];        // какой фракции админ выбирает цвет (/fcolor)
 
 // =====================================================================
@@ -672,7 +666,12 @@ stock Faction_CreateMarker(f)
 // Админ перенёс маркер раздевалки (/markers)
 stock Faction_OnMarkerMoved(f, Float:x, Float:y, Float:z)
 {
-	if (f >= SUPPLY_REF && f < SUPPLY_REF + MAX_SPOINTS)    // завод, склад армии, чёрный рынок
+	if (f >= 300)   // склады организаций и точки заводов
+	{
+		Factory_OnMarkerMoved(f, x, y, z);
+		return;
+	}
+	if (f >= SUPPLY_REF && f < SUPPLY_REF + MAX_SPOINTS)    // склад армии, чёрный рынок
 	{
 		new i = f - SUPPLY_REF;
 		gSpX[i] = x;
@@ -1081,6 +1080,12 @@ stock Factions_OnBecomeDriver(playerid)
 		SendClientMessage(playerid, Faction_GetColor(f), "Машина фракции «%s». Двигатель: 2, шлагбаум: H", Faction_GetName(f));
 		return 1;
 	}
+	// Машину с ящиками может угнать член другой организации (перехват груза)
+	if (gVehCargo[v] > 0 && Faction_IsValid(Player[playerid][pFaction]))
+	{
+		SendClientMessage(playerid, COLOR_YELLOW, "Чужая машина с грузом (%d материалов). Довези до склада своей организации и разгрузи: H.", gVehCargo[v]);
+		return 1;
+	}
 	RemovePlayerFromVehicle(playerid);
 	SendClientMessage(playerid, COLOR_GREY, "Это машина фракции «%s». Водить её могут только её члены.", Faction_GetName(f));
 	return 1;
@@ -1089,8 +1094,6 @@ stock Factions_OnBecomeDriver(playerid)
 // Раз в минуту (из OnMinuteTimer): тюремный срок
 stock Factions_OnMinute()
 {
-	Supply_OnMinute();      // завод делает материалы
-
 	// Начало PayDay (в :00) — сначала бюджет в общаки, потом зарплаты из них
 	new hour, minute;
 	gettime(hour, minute);
@@ -2286,7 +2289,7 @@ stock Factions_OnCommand(playerid, const cmd[], const params[])
 // =====================================================================
 stock bool:Cmd_FHelp(playerid)
 {
-	new text[3600];
+	new text[4000];
 	strcat(text, "{FFFF00}Все фракции\n");
 	strcat(text, "{FFFFFF}/f — рация   /members — кто онлайн   /duty — смена (в раздевалке)   /fleave — уйти\n");
 	strcat(text, "/accept — принять приглашение или лечение\n");
@@ -2305,14 +2308,14 @@ stock bool:Cmd_FHelp(playerid)
 	strcat(text, "{FFFFFF}/heal [id] — предложить лечение\n\n");
 	strcat(text, "{10A010}Банды\n");
 	strcat(text, "{FFFFFF}/duty на базе — форма банды. /turfs /capture — войны за районы, районы пополняют общак.\n");
-	strcat(text, "/steal — украсть материалы из машины армии или со склада армии, /mats — сдать их на свой склад.\n");
-	strcat(text, "Лидер делает из них оружие в /fstorage. /bm — чёрный рынок. /gd — общий чат банд.\n\n");
+	strcat(text, "ALT на маркере склада армии — красть материалы в сумку. Оружие из них: сумка, «использовать».\n");
+	strcat(text, "Заводы можно захватывать: ALT на маркере завода (ранг 7+). Торговец чёрного рынка — ALT. /gd — чат банд.\n\n");
 	strcat(text, "{FFFF00}Госструктуры\n{FFFFFF}/d — общий чат госструктур (департамент)\n\n");
 	strcat(text, "{6B8E23}Армия\n");
-	strcat(text, "{FFFFFF}/supply за рулём машины армии: на заводе — загрузить материалы, на складе армии — сдать их\n");
-	strcat(text, "или загрузить для развоза, у базы другой госструктуры — выгрузить. Без материалов им не закупить оружие.\n\n");
+	strcat(text, "{FFFFFF}На заводе: ALT у сырья, у станка, потом ящик на склад завода. Со склада ящик кладут в грузовик сзади (ALT).\n");
+	strcat(text, "За рулём на складе организации — H или /unload. Без материалов госструктурам не закупить оружие.\n\n");
 	strcat(text, "{FF66FF}Админам (4+)\n");
-	strcat(text, "{FFFFFF}/makeleader /setfaction /setfspawn /setfduty /setfint /delfint /fintlock /addfcar /delfcar /fedit\n/createfaction /delfaction /flist /fcolor /setfactory /setarmystore /setbm /bmprice   (2+) /jail /unjail");
+	strcat(text, "{FFFFFF}/makeleader /setfaction /setfspawn /setfduty /setfint /delfint /fintlock /addfcar /delfcar /fedit\n/createfaction /delfaction /flist /fcolor /setarmystore /setfstore /setbm /bmprice\n/addfactory /setfpoint /setfowner /delfactory /factories   (2+) /jail /unjail");
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Фракции", "%s", "Закрыть", "", text);
 	return true;
 }
@@ -2819,6 +2822,8 @@ stock bool:Cmd_DelFaction(playerid, const params[])
 	}
 	// 3. районы, вход в здание, значок раздевалки
 	Turfs_FreeFaction(f);
+	Factories_FreeFaction(f);   // её заводы остаются без владельца
+	FStore_Remove(f);
 	gFDoor[f][feOut] = false;
 	gFDoor[f][feIn] = false;
 	gFDoor[f][feClosed] = false;
@@ -2854,39 +2859,104 @@ stock bool:Cmd_FList(playerid)
 }
 
 // =====================================================================
-//  Материалы: завод, армия, кражи, чёрный рынок, общие чаты
+//  Материалы: заводы, ящики, склады организаций, кража, захват, чёрный рынок, чаты
 //
-//  Завод сам делает материалы (FACTORY_RATE в минуту, не больше FACTORY_CAP).
-//  Армия на смене, за рулём машины своей фракции (/addfcar 7), командой /supply:
-//    - на заводе              — грузит готовые материалы (до SUPPLY_TRUCK_CAP);
-//    - на складе армии        — сдаёт привезённое, а с пустым кузовом грузит для развоза;
-//    - у базы госструктуры    — выгружает материалы на её склад.
-//  Склад госструктуры — её раздевалка. Если раздевалка внутри здания, машину ставят
-//  у входа фракции (/setfint), а если входа нет — у спавна фракции на улице.
-//  Госструктуры тратят материалы и деньги общака, когда лидер закупает снаряжение в /fstorage.
+//  Заводы ставит админ: /addfactory [вид] [название], точки — /setfpoint [№] raw|bench|store|owner.
+//    вид 1 — военный (на военной части): работает и берёт ящики только владелец, захватить нельзя;
+//    вид 2 — обычный: его захватывают. Если владелец — госструктура, работать может любой
+//            (кроме банд); если банда — только её члены.
+//  Работа (всё по ALT): взять сырьё -> станок (анимация, в руках появляется ящик) -> отнести
+//  ящик на склад завода. За ящик платят FACTORY_PAY, на склад завода падает CRATE_MATS материалов.
 //
-//  Банды: /steal у машины армии с грузом или у склада армии — материалы в сумку,
-//  /mats на своей базе — сдать на склад банды. Лидер банды делает из них оружие
-//  в /fstorage (без денег). Сумка не сохраняется: смерть или выход — краденое пропало.
+//  Перевозка: на складе завода владелец (а у госзавода ещё и армия) берёт ящик, встаёт сзади
+//  грузовика или фургона и кладёт (ALT). За рулём на складе организации — H или /unload.
+//  Разгружать можно на складе своей организации; армия — ещё и на складах госструктур (ей платят).
+//  Машину с ящиками может угнать член другой организации и разгрузить у себя — это перехват.
 //
-//  Чёрный рынок: торговец (/setbm), команда /bm рядом с ним. Продаёт оружие за наличные
-//  всем, кроме госслужащих на смене, и скупает краденые материалы. Цены: /bmprice.
+//  Склад организации ставит админ: /setfstore [фракция] (у армии это /setarmystore).
+//  ALT на нём пешком: положить материалы из сумки, взять ящик для перевозки.
+//  Банды на складе армии: ALT — и пока стоишь на маркере, в сумку идёт 1-5 материалов в секунду.
 //
-//  Точки ставит админ: /setfactory, /setarmystore, /setbm — или двигает в /markers.
+//  Материалы лежат в сумке (INV_MATS, needs.inc). «Использовать» — сделать оружие: это может любой.
+//
+//  Захват (вид 2): когда рядом нет живых членов организации-владельца, ранг FACTORY_CAPTURE_RANK+
+//  жмёт ALT на маркере завода и стоит FACTORY_CAPTURE_TIME секунд. Завод переходит его организации
+//  и снова работает, материалы на складе остаются. Ранг 9+ своей организации может закрыть завод
+//  (оборудование уничтожено): работать нельзя, пока завод не захватит кто-то другой.
+//
+//  Чёрный рынок: торговец (/setbm), ALT или /bm рядом. Цены: /bmprice.
 //  /d — общий чат госструктур, /gd — общий чат банд.
 // =====================================================================
 forward Supply_OnSecond();
+forward Factory_OnBenchDone(playerid);
+forward bool:Cmd_BM(playerid);
 forward bool:Wound_IsWounded(playerid);    // wounded.inc
 
+#define CRATE_MATS              50      // материалов в одном ящике
+#define CRATE_MODEL             1271
+#define CRATE_SLOT              8       // слот прикреплённого объекта (9 занят работами)
+#define CARGO_TRUCK             1000    // материалов в грузовик (20 ящиков)
+#define CARGO_VAN               300     // материалов в фургон или пикап (6 ящиков)
+#define FACTORY_PAY             15      // рабочему за ящик (один круг — около 40 секунд)
+#define FACTORY_BENCH_TIME      8       // секунд у станка
+#define FACTORY_STOCK_MAX       20000   // сколько материалов вмещает склад завода
+#define FACTORY_POINT_RANGE     2.5
+#define FACTORY_CLEAR_RANGE     60.0    // в этом радиусе от маркера не должно быть живых защитников
+#define FACTORY_CAPTURE_TIME    60      // секунд стоять на маркере
+#define FACTORY_CAPTURE_RANK    7
+#define FACTORY_CAPTURE_PAUSE   1800    // пауза между захватами одного завода, секунд
+#define MAX_FACTORIES           30
+#define FKIND_MILITARY          1
+#define FKIND_COMMON            2
+#define STORE_REF               300     // ref маркера склада организации: 300 + фракция
+#define FACTORY_REF             400     // ref маркеров завода: 400 + номер завода * 4 + точка
+
+enum
+{
+	FP_OWNER,           // маркер завода: владелец, захват
+	FP_RAW,             // сырьё
+	FP_BENCH,           // станок
+	FP_STORE,           // склад ящиков
+	MAX_FPOINTS
+}
+enum E_FACTORY
+{
+	bool:fcUsed,
+	fcDbId,
+	fcName[32],
+	fcKind,
+	fcOwner,            // фракция-владелец (0 — нет)
+	bool:fcClosed,      // оборудование уничтожено
+	fcStock,            // материалов на складе завода
+	fcLastCap,          // когда захватывали в последний раз
+	fcCapBy             // кто сейчас захватывает
+}
+new Factory[MAX_FACTORIES][E_FACTORY];
+new bool:gFcSet[MAX_FACTORIES][MAX_FPOINTS];
+new Float:gFcX[MAX_FACTORIES][MAX_FPOINTS];
+new Float:gFcY[MAX_FACTORIES][MAX_FPOINTS];
+new Float:gFcZ[MAX_FACTORIES][MAX_FPOINTS];
+new gFcW[MAX_FACTORIES][MAX_FPOINTS];
+new gFcI[MAX_FACTORIES][MAX_FPOINTS];
+new gFcMk[MAX_FACTORIES][MAX_FPOINTS];
+new gFcSel[MAX_PLAYERS];
+
+// Склады организаций (/setfstore). Не задан — складом считается раздевалка.
+new bool:gFsSet[MAX_FACTIONS];
+new Float:gFsX[MAX_FACTIONS];
+new Float:gFsY[MAX_FACTIONS];
+new Float:gFsZ[MAX_FACTIONS];
+new gFsW[MAX_FACTIONS];
+new gFsI[MAX_FACTIONS];
+new gFsMk[MAX_FACTIONS];
+
+// ---------------------------------------------------------------------
+//  Точки снабжения: склад армии и торговец чёрного рынка
+// ---------------------------------------------------------------------
 stock SPoint_Save(i)
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO supply_points (id, x, y, z, a, world, interior) VALUES (%d, %f, %f, %f, %f, %d, %d)",
 		i, gSpX[i], gSpY[i], gSpZ[i], gSpA[i], gSpWorld[i], gSpInt[i]));
-}
-
-stock Supply_SaveFactory()
-{
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO supply_state (k, v) VALUES ('factory', %d)", gFactoryMats));
 }
 
 // Торговец чёрного рынка стоит на своей точке
@@ -2902,24 +2972,17 @@ stock BM_PlaceActor()
 // Поставить маркер точки (заново)
 stock SPoint_Build(i)
 {
+	if (i == SP_FACTORY) return;    // заводы теперь ставятся через /addfactory
 	if (gSpMk[i] != -1) Marker_Destroy(gSpMk[i]);
-	switch (i)
+	if (i == SP_ARMY)
 	{
-		case SP_FACTORY:
-		{
-			gSpMk[i] = Marker_Create(MK_FACTION, SUPPLY_REF + i, "Завод материалов", 1210, gSpX[i], gSpY[i], gSpZ[i], gSpWorld[i], gSpInt[i], GPS_FACTIONS, gSpA[i]);
-			Marker_SetLabel(gSpMk[i], "Завод материалов\n{FFFFFF}Армия: /supply за рулём своей машины", 0x6B8E23FF);
-		}
-		case SP_ARMY:
-		{
-			gSpMk[i] = Marker_Create(MK_FACTION, SUPPLY_REF + i, "Склад армии", 1242, gSpX[i], gSpY[i], gSpZ[i], gSpWorld[i], gSpInt[i], GPS_FACTIONS, gSpA[i]);
-			Marker_SetLabel(gSpMk[i], "Склад армии\n{FFFFFF}Армия: /supply за рулём своей машины", 0x6B8E23FF);
-		}
-		default:
-		{
-			gSpMk[i] = Marker_Create(MK_FACTION, SUPPLY_REF + i, "Чёрный рынок", 0, gSpX[i], gSpY[i], gSpZ[i], gSpWorld[i], gSpInt[i], GPS_NONE, gSpA[i]);
-			Marker_SetLabel(gSpMk[i], "Торговец\n{FFFFFF}/bm — посмотреть товар", 0xC0A060FF, 10.0, 1.2);
-		}
+		gSpMk[i] = Marker_Create(MK_FACTION, SUPPLY_REF + i, "Склад армии", 1242, gSpX[i], gSpY[i], gSpZ[i], gSpWorld[i], gSpInt[i], GPS_FACTIONS, gSpA[i]);
+		Marker_SetLabel(gSpMk[i], "Склад армии\n{FFFFFF}ALT — материалы и ящики\nЗа рулём с грузом: H — разгрузить", 0x6B8E23FF);
+	}
+	else
+	{
+		gSpMk[i] = Marker_Create(MK_FACTION, SUPPLY_REF + i, "Чёрный рынок", 0, gSpX[i], gSpY[i], gSpZ[i], gSpWorld[i], gSpInt[i], GPS_NONE, gSpA[i]);
+		Marker_SetLabel(gSpMk[i], "Торговец\n{FFFFFF}ALT — посмотреть товар", 0xC0A060FF, 10.0, 1.2);
 	}
 	// маркер мог быть сдвинут в /markers: берём то, что получилось
 	gSpA[i] = Marker_GetAngle(gSpMk[i]);
@@ -2928,11 +2991,303 @@ stock SPoint_Build(i)
 	if (i == SP_BM) BM_PlaceActor();
 }
 
+// Стоит ли игрок у точки снабжения
+stock Supply_AtPoint(playerid, i, Float:range)
+{
+	if (GetPlayerVirtualWorld(playerid) != gSpWorld[i] || GetPlayerInterior(playerid) != gSpInt[i]) return 0;
+	return IsPlayerInRangeOfPoint(playerid, range, gSpX[i], gSpY[i], gSpZ[i]) ? 1 : 0;
+}
+
+// /setarmystore, /setbm — перенести точку туда, где стоит админ
+stock bool:Cmd_SetSPoint(playerid, i)
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	if (i <= SP_FACTORY || i >= MAX_SPOINTS) return true;
+	GetPlayerPos(playerid, gSpX[i], gSpY[i], gSpZ[i]);
+	GetPlayerFacingAngle(playerid, gSpA[i]);
+	gSpWorld[i] = GetPlayerVirtualWorld(playerid);
+	gSpInt[i] = GetPlayerInterior(playerid);
+	SPoint_Save(i);
+	if (gSpMk[i] != -1)
+	{
+		Marker_Destroy(gSpMk[i], true);     // прежние правки из /markers больше не нужны
+		gSpMk[i] = -1;
+	}
+	SPoint_Build(i);
+	if (i == SP_ARMY) SendClientMessage(playerid, COLOR_ADMIN, "Склад армии перенесён сюда. Чтобы сюда заезжали грузовики, ставь его на улице.");
+	else SendClientMessage(playerid, COLOR_ADMIN, "Торговец чёрного рынка теперь стоит здесь. Цены: /bmprice");
+	return true;
+}
+
+// ---------------------------------------------------------------------
+//  Склады организаций
+// ---------------------------------------------------------------------
+stock FStore_Get(f, &Float:x, &Float:y, &Float:z, &world, &interior)
+{
+	if (Faction_IsArmy(f))
+	{
+		x = gSpX[SP_ARMY]; y = gSpY[SP_ARMY]; z = gSpZ[SP_ARMY];
+		world = gSpWorld[SP_ARMY]; interior = gSpInt[SP_ARMY];
+	}
+	else if (gFsSet[f])
+	{
+		x = gFsX[f]; y = gFsY[f]; z = gFsZ[f];
+		world = gFsW[f]; interior = gFsI[f];
+	}
+	else
+	{
+		x = Faction[f][fDutyX]; y = Faction[f][fDutyY]; z = Faction[f][fDutyZ];
+		world = Faction[f][fDutyWorld]; interior = Faction[f][fDutyInt];
+	}
+}
+
+stock FStore_At(playerid, f, Float:range)
+{
+	new Float:x, Float:y, Float:z, world, interior;
+	FStore_Get(f, x, y, z, world, interior);
+	if (GetPlayerVirtualWorld(playerid) != world || GetPlayerInterior(playerid) != interior) return 0;
+	return IsPlayerInRangeOfPoint(playerid, range, x, y, z) ? 1 : 0;
+}
+
+stock FStore_Build(f)
+{
+	if (gFsMk[f] != -1) { Marker_Destroy(gFsMk[f]); gFsMk[f] = -1; }
+	if (!gFsSet[f] || !Faction_IsValid(f)) return;
+	new text[MK_TEXT_LEN], name[32];
+	strcat(name, "Склад: ");
+	strcat(name, Faction_GetName(f), 32);
+	gFsMk[f] = Marker_Create(MK_FACTION, STORE_REF + f, name, 1242, gFsX[f], gFsY[f], gFsZ[f], gFsW[f], gFsI[f], GPS_NONE);
+	format(text, sizeof text, "Склад: %s\n{FFFFFF}ALT — материалы и ящики\nЗа рулём с грузом: H — разгрузить", Faction_GetName(f));
+	Marker_SetLabel(gFsMk[f], text, Faction_GetColor(f));
+}
+
+stock FStore_Save(f)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO faction_stores (faction, x, y, z, world, interior) VALUES (%d, %f, %f, %f, %d, %d)",
+		f, gFsX[f], gFsY[f], gFsZ[f], gFsW[f], gFsI[f]));
+}
+
+// Фракцию удалили
+stock FStore_Remove(f)
+{
+	if (gFsMk[f] != -1) { Marker_Destroy(gFsMk[f], true); gFsMk[f] = -1; }
+	gFsSet[f] = false;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM faction_stores WHERE faction = %d", f));
+}
+
+stock bool:Cmd_SetFStore(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, f;
+	if (!NextIntParam(params, pos, f) || !Faction_IsValid(f))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setfstore [фракция] — склад организации здесь: сюда разгружают машины и кладут материалы. Номера: /flist");
+	if (Faction_IsArmy(f)) return Cmd_SetSPoint(playerid, SP_ARMY);
+	GetPlayerPos(playerid, gFsX[f], gFsY[f], gFsZ[f]);
+	gFsW[f] = GetPlayerVirtualWorld(playerid);
+	gFsI[f] = GetPlayerInterior(playerid);
+	gFsSet[f] = true;
+	FStore_Save(f);
+	if (gFsMk[f] != -1) { Marker_Destroy(gFsMk[f], true); gFsMk[f] = -1; }
+	FStore_Build(f);
+	SendClientMessage(playerid, COLOR_ADMIN, "Склад фракции «%s» теперь здесь. Чтобы сюда заезжали грузовики, ставь его на улице.", Faction_GetName(f));
+	return true;
+}
+
+// ---------------------------------------------------------------------
+//  Заводы: данные
+// ---------------------------------------------------------------------
+stock Factory_Find(dbid)
+{
+	for (new i = 0; i < MAX_FACTORIES; i++)
+	{
+		if (Factory[i][fcUsed] && Factory[i][fcDbId] == dbid) return i;
+	}
+	return -1;
+}
+
+stock Factory_Save(i)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE factories SET name = '%q', kind = %d, owner = %d, closed = %d, stock = %d WHERE id = %d",
+		Factory[i][fcName], Factory[i][fcKind], Factory[i][fcOwner], Factory[i][fcClosed] ? 1 : 0, Factory[i][fcStock], Factory[i][fcDbId]));
+}
+
+stock Factory_SavePoint(i, p)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO factory_points (factory, point, x, y, z, world, interior) VALUES (%d, %d, %f, %f, %f, %d, %d)",
+		Factory[i][fcDbId], p, gFcX[i][p], gFcY[i][p], gFcZ[i][p], gFcW[i][p], gFcI[i][p]));
+}
+
+// Подпись точки завода
+stock Factory_Label(i, p)
+{
+	if (gFcMk[i][p] == -1) return;
+	new text[MK_TEXT_LEN];
+	switch (p)
+	{
+		case FP_OWNER:
+		{
+			if (Factory[i][fcOwner] != FACTION_NONE) format(text, sizeof text, "%s\n{FFFFFF}Владелец: %s", Factory[i][fcName], Faction_GetName(Factory[i][fcOwner]));
+			else format(text, sizeof text, "%s\n{FFFFFF}Владельца нет", Factory[i][fcName]);
+			if (Factory[i][fcClosed]) strcat(text, "\n{FF6347}Закрыт: оборудование уничтожено");
+			if (Factory[i][fcKind] == FKIND_MILITARY) strcat(text, "\n{AFAFAF}Военный завод");
+			else strcat(text, "\n{AFAFAF}ALT — захват (ранг 7+)");
+		}
+		case FP_RAW: strcat(text, "Сырьё\n{FFFFFF}ALT — взять");
+		case FP_BENCH: strcat(text, "Станок\n{FFFFFF}ALT — сделать ящик");
+		default: format(text, sizeof text, "Склад завода\n{FFFFFF}Ящиков: %d\nALT — сдать или взять ящик", Factory[i][fcStock] / CRATE_MATS);
+	}
+	Marker_SetLabel(gFcMk[i][p], text, 0xE0A030FF);
+}
+
+stock Factory_BuildPoint(i, p)
+{
+	if (gFcMk[i][p] != -1) { Marker_Destroy(gFcMk[i][p]); gFcMk[i][p] = -1; }
+	if (!Factory[i][fcUsed] || !gFcSet[i][p]) return;
+	new model = 1239, gps = GPS_NONE;
+	if (p == FP_OWNER) { model = 1247; gps = GPS_FACTIONS; }
+	gFcMk[i][p] = Marker_Create(MK_FACTION, FACTORY_REF + Factory[i][fcDbId] * 4 + p, Factory[i][fcName], model,
+		gFcX[i][p], gFcY[i][p], gFcZ[i][p], gFcW[i][p], gFcI[i][p], gps);
+	Factory_Label(i, p);
+}
+
+stock Factory_At(playerid, i, p, Float:range)
+{
+	if (!gFcSet[i][p]) return 0;
+	if (GetPlayerVirtualWorld(playerid) != gFcW[i][p] || GetPlayerInterior(playerid) != gFcI[i][p]) return 0;
+	return IsPlayerInRangeOfPoint(playerid, range, gFcX[i][p], gFcY[i][p], gFcZ[i][p]) ? 1 : 0;
+}
+
+// Админ сдвинул маркер в /markers (из Faction_OnMarkerMoved)
+stock Factory_OnMarkerMoved(ref, Float:x, Float:y, Float:z)
+{
+	if (ref >= FACTORY_REF)
+	{
+		new k = ref - FACTORY_REF;
+		new i = Factory_Find(k / 4), p = k % 4;
+		if (i == -1) return;
+		gFcX[i][p] = x;
+		gFcY[i][p] = y;
+		gFcZ[i][p] = z;
+		Factory_SavePoint(i, p);
+		return;
+	}
+	new f = ref - STORE_REF;
+	if (f < 1 || f >= MAX_FACTIONS || !gFsSet[f]) return;
+	gFsX[f] = x;
+	gFsY[f] = y;
+	gFsZ[f] = z;
+	FStore_Save(f);
+}
+
+stock Factories_Load()
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS factories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, kind INTEGER DEFAULT 2, owner INTEGER DEFAULT 0, closed INTEGER DEFAULT 0, stock INTEGER DEFAULT 0)"));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS factory_points (factory INTEGER NOT NULL, point INTEGER NOT NULL, x REAL DEFAULT 0, y REAL DEFAULT 0, z REAL DEFAULT 0, world INTEGER DEFAULT 0, interior INTEGER DEFAULT 0, PRIMARY KEY (factory, point))"));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_stores (faction INTEGER PRIMARY KEY, x REAL DEFAULT 0, y REAL DEFAULT 0, z REAL DEFAULT 0, world INTEGER DEFAULT 0, interior INTEGER DEFAULT 0)"));
+
+	for (new i = 0; i < MAX_FACTORIES; i++)
+	{
+		Factory[i][fcUsed] = false;
+		Factory[i][fcCapBy] = INVALID_PLAYER_ID;
+		for (new p = 0; p < MAX_FPOINTS; p++)
+		{
+			gFcSet[i][p] = false;
+			gFcMk[i][p] = -1;
+		}
+	}
+	for (new f = 0; f < MAX_FACTIONS; f++)
+	{
+		gFsSet[f] = false;
+		gFsMk[f] = -1;
+	}
+
+	new n = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, name, kind, owner, closed, stock FROM factories");
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new k = 0; k < rows && n < MAX_FACTORIES; k++)
+		{
+			Factory[n][fcUsed] = true;
+			Factory[n][fcDbId] = DB_GetFieldInt(r, 0);
+			DB_GetFieldString(r, 1, Factory[n][fcName], 32);
+			Factory[n][fcKind] = DB_GetFieldInt(r, 2);
+			Factory[n][fcOwner] = DB_GetFieldInt(r, 3);
+			if (!Faction_IsValid(Factory[n][fcOwner])) Factory[n][fcOwner] = FACTION_NONE;
+			Factory[n][fcClosed] = DB_GetFieldInt(r, 4) != 0;
+			Factory[n][fcStock] = DB_GetFieldInt(r, 5);
+			Factory[n][fcLastCap] = 0;
+			n++;
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	r = DB_ExecuteQuery(gDB, "SELECT factory, point, x, y, z, world, interior FROM factory_points");
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new k = 0; k < rows; k++)
+		{
+			new i = Factory_Find(DB_GetFieldInt(r, 0)), p = DB_GetFieldInt(r, 1);
+			if (i != -1 && p >= 0 && p < MAX_FPOINTS)
+			{
+				gFcSet[i][p] = true;
+				gFcX[i][p] = DB_GetFieldFloat(r, 2);
+				gFcY[i][p] = DB_GetFieldFloat(r, 3);
+				gFcZ[i][p] = DB_GetFieldFloat(r, 4);
+				gFcW[i][p] = DB_GetFieldInt(r, 5);
+				gFcI[i][p] = DB_GetFieldInt(r, 6);
+			}
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	for (new i = 0; i < MAX_FACTORIES; i++)
+	{
+		if (!Factory[i][fcUsed]) continue;
+		for (new p = 0; p < MAX_FPOINTS; p++) Factory_BuildPoint(i, p);
+	}
+
+	r = DB_ExecuteQuery(gDB, "SELECT faction, x, y, z, world, interior FROM faction_stores");
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new k = 0; k < rows; k++)
+		{
+			new f = DB_GetFieldInt(r, 0);
+			if (Faction_IsValid(f))
+			{
+				gFsSet[f] = true;
+				gFsX[f] = DB_GetFieldFloat(r, 1);
+				gFsY[f] = DB_GetFieldFloat(r, 2);
+				gFsZ[f] = DB_GetFieldFloat(r, 3);
+				gFsW[f] = DB_GetFieldInt(r, 4);
+				gFsI[f] = DB_GetFieldInt(r, 5);
+				FStore_Build(f);
+			}
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	printf("[Factions] %d factories.", n);
+}
+
+// Фракцию удалили: её заводы остаются без владельца
+stock Factories_FreeFaction(f)
+{
+	for (new i = 0; i < MAX_FACTORIES; i++)
+	{
+		if (!Factory[i][fcUsed] || Factory[i][fcOwner] != f) continue;
+		Factory[i][fcOwner] = FACTION_NONE;
+		Factory_Save(i);
+		Factory_Label(i, FP_OWNER);
+	}
+}
+
 stock Supply_Init()
 {
 	static bool:started = false;
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS supply_points (id INTEGER PRIMARY KEY, x REAL DEFAULT 0, y REAL DEFAULT 0, z REAL DEFAULT 0, a REAL DEFAULT 0, world INTEGER DEFAULT 0, interior INTEGER DEFAULT 0)"));
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS supply_state (k TEXT PRIMARY KEY, v INTEGER DEFAULT 0)"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS bm_prices (item INTEGER PRIMARY KEY, price INTEGER DEFAULT 0)"));
 
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, x, y, z, a, world, interior FROM supply_points");
@@ -2956,14 +3311,6 @@ stock Supply_Init()
 		DB_FreeResultSet(r);
 	}
 
-	gFactoryMats = FACTORY_START;
-	r = DB_ExecuteQuery(gDB, "SELECT v FROM supply_state WHERE k = 'factory'");
-	if (r != DBResult:0)
-	{
-		if (DB_GetRowCount(r) > 0) gFactoryMats = DB_GetFieldInt(r, 0);
-		DB_FreeResultSet(r);
-	}
-
 	// Цены чёрного рынка по умолчанию — втрое дороже закупки для фракций
 	for (new it = 0; it < MAX_FITEMS; it++) gBMPrice[it] = gFItemPrice[it] * 3;
 	gBMMatPrice = BM_MAT_PRICE;
@@ -2983,6 +3330,7 @@ stock Supply_Init()
 	}
 
 	for (new i = 0; i < MAX_SPOINTS; i++) SPoint_Build(i);
+	Factories_Load();
 	if (!started)
 	{
 		started = true;
@@ -2990,202 +3338,260 @@ stock Supply_Init()
 	}
 }
 
-// Раз в минуту (из Factions_OnMinute): завод делает материалы
-stock Supply_OnMinute()
+// ---------------------------------------------------------------------
+//  Ящик в руках
+// ---------------------------------------------------------------------
+stock Crate_Give(playerid, kind, fc)
 {
-	if (gFactoryMats >= FACTORY_CAP) return;
-	gFactoryMats += FACTORY_RATE;
-	if (gFactoryMats > FACTORY_CAP) gFactoryMats = FACTORY_CAP;
-	Supply_SaveFactory();
+	gCrate[playerid] = kind;
+	gCrateFc[playerid] = fc;
+	SetPlayerAttachedObject(playerid, CRATE_SLOT, CRATE_MODEL, 1, 0.11, 0.36, 0.0, 0.0, 90.0, 0.0, 0.6, 0.6, 0.6);
+	SetPlayerSpecialAction(playerid, SPECIAL_ACTION_CARRY);
 }
 
-// Стоит ли игрок у точки снабжения
-stock Supply_AtPoint(playerid, i, Float:range)
+stock Crate_Drop(playerid)
 {
-	if (GetPlayerVirtualWorld(playerid) != gSpWorld[i] || GetPlayerInterior(playerid) != gSpInt[i]) return 0;
-	return IsPlayerInRangeOfPoint(playerid, range, gSpX[i], gSpY[i], gSpZ[i]) ? 1 : 0;
+	if (gCrate[playerid] == 0) return;
+	gCrate[playerid] = 0;
+	if (!IsPlayerConnected(playerid)) return;
+	RemovePlayerAttachedObject(playerid, CRATE_SLOT);
+	if (GetPlayerSpecialAction(playerid) == SPECIAL_ACTION_CARRY) SetPlayerSpecialAction(playerid, SPECIAL_ACTION_NONE);
 }
 
-// Куда подъезжать с материалами для фракции f. 0 — подъехать некуда.
-stock Supply_GetPoint(f, &Float:x, &Float:y, &Float:z)
+stock bool:Cmd_DropCrate(playerid)
 {
-	if (Faction_IsArmy(f))
+	if (gCrate[playerid] == 0) return SendClientMessage(playerid, COLOR_GREY, "У тебя в руках нет ящика.");
+	Crate_Drop(playerid);
+	SendClientMessage(playerid, COLOR_GREY, "Ты бросил ящик. Он пропал.");
+	return true;
+}
+
+// Сколько материалов входит в машину этой модели (0 — ящики в неё не кладут)
+stock Cargo_Cap(model)
+{
+	switch (model)
 	{
-		if (gSpWorld[SP_ARMY] != 0 || gSpInt[SP_ARMY] != 0) return 0;
-		x = gSpX[SP_ARMY];
-		y = gSpY[SP_ARMY];
-		z = gSpZ[SP_ARMY];
-		return 1;
-	}
-	if (Faction[f][fDutyInt] == 0 && Faction[f][fDutyWorld] == 0)
-	{
-		x = Faction[f][fDutyX];
-		y = Faction[f][fDutyY];
-		z = Faction[f][fDutyZ];
-		return 1;
-	}
-	if (gFDoor[f][feOut] && gFDoor[f][feOInt] == 0 && gFDoor[f][feOWorld] == 0)
-	{
-		x = gFDoor[f][feOX];
-		y = gFDoor[f][feOY];
-		z = gFDoor[f][feOZ];
-		return 1;
-	}
-	if (Faction[f][fSpawnInt] == 0 && Faction[f][fSpawnWorld] == 0)
-	{
-		x = Faction[f][fSpawnX];
-		y = Faction[f][fSpawnY];
-		z = Faction[f][fSpawnZ];
-		return 1;
+		case 414, 455, 456, 433, 578, 498, 499, 609, 427, 428: return CARGO_TRUCK;
+		case 413, 440, 482, 459, 418, 422, 478, 543, 554, 582: return CARGO_VAN;
 	}
 	return 0;
 }
 
-stock bool:Cmd_Supply(playerid)
+// Ближайший грузовик или фургон (0 — нет рядом)
+stock Cargo_NearVehicle(playerid)
 {
-	new f = Player[playerid][pFaction];
-	if (!Faction_IsArmy(f)) return SendClientMessage(playerid, COLOR_GREY, "Эта команда только для армии.");
-	if (!Player[playerid][pDuty]) return SendClientMessage(playerid, COLOR_GREY, "Сначала заступи на смену: /duty в раздевалке фракции.");
-	new v = GetPlayerVehicleID(playerid);
-	if (v == 0 || GetPlayerState(playerid) != PLAYER_STATE_DRIVER || gVehFaction[v] != f)
-		return SendClientMessage(playerid, COLOR_GREY, "Сядь за руль машины армии.");
-	if (GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0)
-		return SendClientMessage(playerid, COLOR_GREY, "Материалы грузят и выгружают на улице.");
-
-	new Float:x, Float:y, Float:z, msg[144], n, room, pay;
-
-	// 1. Завод: загрузка готовых материалов
-	if (Supply_AtPoint(playerid, SP_FACTORY, SUPPLY_RANGE))
+	new Float:x, Float:y, Float:z, best = 0, Float:bestDist = 7.0;
+	GetPlayerPos(playerid, x, y, z);
+	new world = GetPlayerVirtualWorld(playerid);
+	for (new v = 1; v < MAX_VEHICLES; v++)
 	{
-		if (gVehCargo[v] > 0 && gVehCargoSrc[v] != SUPPLY_SRC_BASE)
-			return SendClientMessage(playerid, COLOR_GREY, "В кузове груз со склада армии (%d). Сначала развези его.", gVehCargo[v]);
-		room = SUPPLY_TRUCK_CAP - gVehCargo[v];
-		if (room <= 0) return SendClientMessage(playerid, COLOR_GREY, "Кузов уже полон. Вези материалы на склад армии.");
-		n = gFactoryMats;
-		if (n <= 0) return SendClientMessage(playerid, COLOR_GREY, "На заводе пока нет готовых материалов. Он делает %d в минуту.", FACTORY_RATE);
-		if (n > room) n = room;
-		gFactoryMats -= n;
-		Supply_SaveFactory();
-		gVehCargo[v] += n;
-		gVehCargoSrc[v] = SUPPLY_SRC_BASE;
-		SendClientMessage(playerid, COLOR_GREEN, "Загружено: %d (в кузове %d, на заводе осталось %d). Вези на склад армии и там снова /supply.", n, gVehCargo[v], gFactoryMats);
-		return true;
+		if (!IsValidVehicle(v) || GetVehicleVirtualWorld(v) != world) continue;
+		if (Cargo_Cap(GetVehicleModel(v)) == 0) continue;
+		new Float:d = GetVehicleDistanceFromPoint(v, x, y, z);
+		if (d < bestDist) { bestDist = d; best = v; }
 	}
-
-	// 2. Склад армии: сдать груз или загрузить для развоза
-	if (Supply_GetPoint(f, x, y, z) && IsPlayerInRangeOfPoint(playerid, SUPPLY_RANGE, x, y, z))
-	{
-		if (gVehCargo[v] > 0)
-		{
-			n = gVehCargo[v];
-			room = ARMY_MATS_MAX - Faction[f][fMats];
-			if (room <= 0) return SendClientMessage(playerid, COLOR_GREY, "Склад армии полон.");
-			if (n > room) n = room;
-			Faction[f][fMats] += n;
-			Faction_SaveMats(f);
-			gVehCargo[v] -= n;
-			if (gVehCargoSrc[v] == SUPPLY_SRC_BASE)
-			{
-				pay = (n / 100) * SUPPLY_PAY_HAUL;
-				if (pay > 0) GiveMoney(playerid, pay, "доставка материалов на склад армии");
-			}
-			if (gVehCargo[v] <= 0) gVehCargoSrc[v] = 0;
-			SendClientMessage(playerid, COLOR_GREEN, "Сдано на склад армии: %d. На складе: %d. Оплата: $%d.", n, Faction[f][fMats], pay);
-			format(msg, sizeof msg, "%s привёз на склад %d материалов (на складе %d).", GetRPName(playerid), n, Faction[f][fMats]);
-			Faction_Log(f, msg);
-			return true;
-		}
-		if (Player[playerid][pRank] < Faction[f][fStoreRank])
-			return SendClientMessage(playerid, COLOR_GREY, "Брать со склада можно с ранга %d.", Faction[f][fStoreRank]);
-		n = Faction[f][fMats];
-		if (n <= 0) return SendClientMessage(playerid, COLOR_GREY, "На складе армии нет материалов. Привези их с завода (GPS, раздел фракций).");
-		if (n > SUPPLY_TRUCK_CAP) n = SUPPLY_TRUCK_CAP;
-		Faction[f][fMats] -= n;
-		Faction_SaveMats(f);
-		gVehCargo[v] = n;
-		gVehCargoSrc[v] = SUPPLY_SRC_ARMY;
-		SendClientMessage(playerid, COLOR_GREEN, "Загружено со склада армии: %d. Вези к базе госструктуры и там /supply. Кому нужно: /supply вдали от складов.", n);
-		format(msg, sizeof msg, "%s взял со склада %d материалов для развоза (осталось %d).", GetRPName(playerid), n, Faction[f][fMats]);
-		Faction_Log(f, msg);
-		return true;
-	}
-
-	// 3. База другой госструктуры: выгрузка
-	for (new t = 1; t < MAX_FACTIONS; t++)
-	{
-		if (t == f || !Faction_IsState(t)) continue;
-		if (!Supply_GetPoint(t, x, y, z) || !IsPlayerInRangeOfPoint(playerid, SUPPLY_RANGE, x, y, z)) continue;
-		if (gVehCargo[v] <= 0) return SendClientMessage(playerid, COLOR_GREY, "Кузов пуст. Загрузи материалы на складе армии.");
-		if (gVehCargoSrc[v] != SUPPLY_SRC_ARMY) return SendClientMessage(playerid, COLOR_GREY, "Этот груз с завода: сначала сдай его на склад армии.");
-		room = FACTION_MATS_MAX - Faction[t][fMats];
-		if (room <= 0) return SendClientMessage(playerid, COLOR_GREY, "Склад «%s» полон.", Faction_GetName(t));
-		n = gVehCargo[v];
-		if (n > room) n = room;
-		Faction[t][fMats] += n;
-		Faction_SaveMats(t);
-		gVehCargo[v] -= n;
-		if (gVehCargo[v] <= 0) gVehCargoSrc[v] = 0;
-		pay = (n / 100) * SUPPLY_PAY_DELIVER;
-		if (pay > 0) GiveMoney(playerid, pay, "доставка материалов фракции");
-		SendClientMessage(playerid, COLOR_GREEN, "Выгружено для «%s»: %d. В кузове осталось: %d. Оплата: $%d.", Faction_GetName(t), n, gVehCargo[v], pay);
-		format(msg, sizeof msg, "%s доставил %d материалов: %s.", GetRPName(playerid), n, Faction_GetName(t));
-		Faction_Log(f, msg);
-		format(msg, sizeof msg, "Армия привезла %d материалов (на складе %d).", n, Faction[t][fMats]);
-		Faction_Log(t, msg);
-		format(msg, sizeof msg, "[Фракция] Армия привезла %d материалов. На складе: %d.", n, Faction[t][fMats]);
-		Faction_Message(t, Faction_GetColor(t), msg);
-		return true;
-	}
-
-	// Вдали от складов: что в кузове и кому нужны материалы
-	SendClientMessage(playerid, COLOR_WHITE, "В кузове: %d из %d. На заводе готово: %d. На складе армии: %d.", gVehCargo[v], SUPPLY_TRUCK_CAP, gFactoryMats, Faction[f][fMats]);
-	for (new t = 1; t < MAX_FACTIONS; t++)
-	{
-		if (t == f || !Faction_IsState(t)) continue;
-		SendClientMessage(playerid, Faction_GetColor(t), " %s: материалов %d из %d", Faction_GetName(t), Faction[t][fMats], FACTION_MATS_MAX);
-	}
-	SendClientMessage(playerid, COLOR_GREY, "Загрузка: завод. Потом склад армии, оттуда — к базам госструктур (всё есть в GPS).");
-	return true;
+	return best;
 }
 
-// /setfactory, /setarmystore, /setbm — перенести точку туда, где стоит админ
-stock bool:Cmd_SetSPoint(playerid, i)
+// Стоит ли игрок сзади машины
+stock Cargo_IsBehind(playerid, v)
 {
-	if (!Admin_Check(playerid, 4)) return true;
-	if (i < 0 || i >= MAX_SPOINTS) return true;
-	if (i != SP_BM && (GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0))
-		return SendClientMessage(playerid, COLOR_GREY, "Эта точка ставится на улице: туда заезжают грузовики.");
-	GetPlayerPos(playerid, gSpX[i], gSpY[i], gSpZ[i]);
-	GetPlayerFacingAngle(playerid, gSpA[i]);
-	gSpWorld[i] = GetPlayerVirtualWorld(playerid);
-	gSpInt[i] = GetPlayerInterior(playerid);
-	SPoint_Save(i);
-	if (gSpMk[i] != -1)
-	{
-		Marker_Destroy(gSpMk[i], true);     // прежние правки из /markers больше не нужны
-		gSpMk[i] = -1;
-	}
-	SPoint_Build(i);
-	switch (i)
-	{
-		case SP_FACTORY: SendClientMessage(playerid, COLOR_ADMIN, "Завод материалов перенесён сюда.");
-		case SP_ARMY:    SendClientMessage(playerid, COLOR_ADMIN, "Склад армии перенесён сюда.");
-		default:         SendClientMessage(playerid, COLOR_ADMIN, "Торговец чёрного рынка теперь стоит здесь. Цены: /bmprice");
-	}
-	return true;
+	new Float:x, Float:y, Float:z, Float:vx, Float:vy, Float:vz, Float:a;
+	GetPlayerPos(playerid, x, y, z);
+	GetVehiclePos(v, vx, vy, vz);
+	GetVehicleZAngle(v, a);
+	// вперёд машина смотрит по (sin(-a), cos(-a)); сзади — значит против этого направления
+	return ((x - vx) * floatsin(-a, degrees) + (y - vy) * floatcos(-a, degrees) < 0.0) ? 1 : 0;
 }
 
 // ---------------------------------------------------------------------
-//  Кражи материалов (банды)
+//  Работа на заводе
 // ---------------------------------------------------------------------
-stock Supply_ResetPlayer(playerid)
+stock Factory_CanWork(playerid, i)
 {
-	gBagMats[playerid] = 0;
-	gStealKind[playerid] = 0;
-	gStealVeh[playerid] = 0;
-	gStealLeft[playerid] = 0;
+	new owner = Factory[i][fcOwner], f = Player[playerid][pFaction];
+	if (Factory[i][fcClosed]) { SendClientMessage(playerid, COLOR_GREY, "Завод закрыт: оборудование уничтожено."); return 0; }
+	if (!Faction_IsValid(owner)) { SendClientMessage(playerid, COLOR_GREY, "У завода нет владельца, он не работает."); return 0; }
+	if (Factory[i][fcKind] == FKIND_MILITARY || !Faction_IsState(owner))
+	{
+		if (f != owner) { SendClientMessage(playerid, COLOR_GREY, "Здесь работают только свои: %s.", Faction_GetName(owner)); return 0; }
+		return 1;
+	}
+	// обычный завод у госструктуры: работают простые люди
+	if (Faction_IsGang(f)) { SendClientMessage(playerid, COLOR_GREY, "Этот завод держит государство. Бандам тут работы нет."); return 0; }
+	return 1;
 }
 
+stock Factory_TakeRaw(playerid, i)
+{
+	if (!Factory_CanWork(playerid, i)) return;
+	if (gWorkStage[playerid] == 2) { SendClientMessage(playerid, COLOR_GREY, "Ты уже у станка."); return; }
+	if (Factory[i][fcStock] + CRATE_MATS > FACTORY_STOCK_MAX) { SendClientMessage(playerid, COLOR_GREY, "Склад завода забит. Пусть сначала вывезут ящики."); return; }
+	gWorkStage[playerid] = 1;
+	gWorkFc[playerid] = i;
+	ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
+	SendClientMessage(playerid, COLOR_WHITE, "Ты взял сырьё. Отнеси его к станку (ALT).");
+}
+
+stock Factory_UseBench(playerid, i)
+{
+	if (!Factory_CanWork(playerid, i)) return;
+	if (gWorkStage[playerid] == 2) { SendClientMessage(playerid, COLOR_GREY, "Ты уже работаешь. Подожди."); return; }
+	if (gWorkStage[playerid] != 1 || gWorkFc[playerid] != i) { SendClientMessage(playerid, COLOR_GREY, "Сначала возьми сырьё."); return; }
+	gWorkStage[playerid] = 2;
+	ApplyAnimation(playerid, "BOMBER", "BOM_Plant_Loop", 4.1, true, false, false, false, 0);
+	GameTextForPlayer(playerid, "~y~Working...", FACTORY_BENCH_TIME * 1000, 3);
+	SetTimerEx("Factory_OnBenchDone", FACTORY_BENCH_TIME * 1000, false, "i", playerid);
+}
+
+public Factory_OnBenchDone(playerid)
+{
+	if (!IsPlayerConnected(playerid) || gWorkStage[playerid] != 2) return 1;
+	new i = gWorkFc[playerid];
+	gWorkStage[playerid] = 0;
+	ClearAnimations(playerid);
+	if (!Factory[i][fcUsed] || !Factory_At(playerid, i, FP_BENCH, 5.0) || GetPlayerState(playerid) != PLAYER_STATE_ONFOOT || Wound_IsWounded(playerid))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от станка. Сырьё испорчено.");
+		return 1;
+	}
+	Crate_Give(playerid, 1, i);
+	SendClientMessage(playerid, COLOR_WHITE, "Ящик готов. Отнеси его на склад завода (ALT).");
+	return 1;
+}
+
+stock Factory_TakeCrate(playerid, i)
+{
+	new owner = Factory[i][fcOwner], f = Player[playerid][pFaction];
+	if (!Faction_IsValid(f) || (f != owner && !(Faction_IsState(owner) && Faction_IsArmy(f))))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Ящики отсюда берёт владелец завода, а с госзавода ещё и армия. Сюда их сдают рабочие.");
+		return;
+	}
+	if (Factory[i][fcStock] < CRATE_MATS) { SendClientMessage(playerid, COLOR_GREY, "На складе завода нет готовых ящиков."); return; }
+	Factory[i][fcStock] -= CRATE_MATS;
+	Factory_Save(i);
+	Factory_Label(i, FP_STORE);
+	Crate_Give(playerid, 2, i);
+	SendClientMessage(playerid, COLOR_WHITE, "Ты взял ящик (%d материалов). Встань сзади грузовика или фургона и положи: ALT.", CRATE_MATS);
+}
+
+// ---------------------------------------------------------------------
+//  Захват завода
+// ---------------------------------------------------------------------
+stock Factory_Defenders(i)
+{
+	new owner = Factory[i][fcOwner], n = 0;
+	if (!Faction_IsValid(owner)) return 0;
+	for (new p = 0; p < MAX_PLAYERS; p++)
+	{
+		if (!IsPlayerConnected(p) || !Player[p][pLogged] || Player[p][pFaction] != owner) continue;
+		if (Wound_IsWounded(p) || GetPlayerState(p) == PLAYER_STATE_WASTED || GetPlayerState(p) == PLAYER_STATE_SPECTATING) continue;
+		if (Factory_At(p, i, FP_OWNER, FACTORY_CLEAR_RANGE)) n++;
+	}
+	return n;
+}
+
+stock Capture_Stop(playerid)
+{
+	new i = gCapFc[playerid];
+	gCapFc[playerid] = -1;
+	if (i >= 0 && i < MAX_FACTORIES && Factory[i][fcCapBy] == playerid) Factory[i][fcCapBy] = INVALID_PLAYER_ID;
+}
+
+// ALT на маркере завода
+stock Factory_OwnerAlt(playerid, i)
+{
+	new owner = Factory[i][fcOwner], f = Player[playerid][pFaction], msg[144];
+	SendClientMessage(playerid, COLOR_WHITE, "Завод «%s». На складе материалов: %d (ящиков: %d).", Factory[i][fcName], Factory[i][fcStock], Factory[i][fcStock] / CRATE_MATS);
+	if (!Faction_IsValid(f)) return;
+	if (f == owner)
+	{
+		if (Factory[i][fcClosed]) { SendClientMessage(playerid, COLOR_GREY, "Завод закрыт. Материалы со склада можно вывезти."); return; }
+		if (Player[playerid][pRank] < MAX_RANK - 1) return;
+		gFcSel[playerid] = i;
+		ShowPlayerDialog(playerid, DIALOG_FCLOSE, DIALOG_STYLE_MSGBOX, "Закрыть завод",
+			"{FFFFFF}Закрыть завод «%s» и уничтожить оборудование?\n\nРаботать на нём будет нельзя, пока его не захватит другая организация.\nМатериалы на складе останутся, их можно вывезти.",
+			"Закрыть", "Отмена", Factory[i][fcName]);
+		return;
+	}
+	if (Factory[i][fcKind] == FKIND_MILITARY) { SendClientMessage(playerid, COLOR_GREY, "Это завод на военной части. Его не захватить."); return; }
+	if (!Faction_IsGang(f) && !Faction_IsLaw(f) && !Faction_IsArmy(f)) { SendClientMessage(playerid, COLOR_GREY, "Захватывать заводы могут силовики, армия и банды."); return; }
+	if (Faction_IsState(f) && Faction_IsState(owner)) { SendClientMessage(playerid, COLOR_GREY, "Завод уже у государства."); return; }
+	if (Player[playerid][pRank] < FACTORY_CAPTURE_RANK) { SendClientMessage(playerid, COLOR_GREY, "Захватить завод может ранг %d и выше.", FACTORY_CAPTURE_RANK); return; }
+	if (Faction_IsState(f) && !Player[playerid][pDuty]) { SendClientMessage(playerid, COLOR_GREY, "Сначала заступи на смену: /duty."); return; }
+	if (gCapFc[playerid] != -1) { SendClientMessage(playerid, COLOR_GREY, "Ты уже захватываешь. Стой на маркере."); return; }
+	if (Factory[i][fcCapBy] != INVALID_PLAYER_ID) { SendClientMessage(playerid, COLOR_GREY, "Этот завод уже захватывают."); return; }
+	new now = gettime();
+	if (now - Factory[i][fcLastCap] < FACTORY_CAPTURE_PAUSE)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Завод недавно захватывали. Подожди ещё %d мин.", (FACTORY_CAPTURE_PAUSE - (now - Factory[i][fcLastCap])) / 60 + 1);
+		return;
+	}
+	new n = Factory_Defenders(i);
+	if (n > 0) { SendClientMessage(playerid, COLOR_GREY, "Завод ещё не зачищен: рядом защитников — %d.", n); return; }
+
+	gCapFc[playerid] = i;
+	gCapLeft[playerid] = FACTORY_CAPTURE_TIME;
+	Factory[i][fcCapBy] = playerid;
+	SendClientMessage(playerid, COLOR_YELLOW, "Захват начат. Стой на маркере %d сек. Вернутся защитники — захват сорвётся.", FACTORY_CAPTURE_TIME);
+	if (Faction_IsValid(owner))
+	{
+		format(msg, sizeof msg, "[Тревога] Завод «%s» захватывают: %s! Осталось %d сек.", Factory[i][fcName], Faction_GetName(f), FACTORY_CAPTURE_TIME);
+		Faction_Message(owner, COLOR_RED, msg);
+	}
+}
+
+stock Capture_Tick(playerid)
+{
+	new i = gCapFc[playerid], f = Player[playerid][pFaction], msg[144], buf[48];
+	if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed] || !Faction_IsValid(f)) { Capture_Stop(playerid); return; }
+	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT || Wound_IsWounded(playerid) || !Factory_At(playerid, i, FP_OWNER, 6.0))
+	{
+		Capture_Stop(playerid);
+		SendClientMessage(playerid, COLOR_RED, "Захват сорван: ты ушёл с маркера.");
+		return;
+	}
+	if (Factory_Defenders(i) > 0)
+	{
+		Capture_Stop(playerid);
+		SendClientMessage(playerid, COLOR_RED, "Захват сорван: вернулись защитники.");
+		return;
+	}
+	gCapLeft[playerid]--;
+	if (gCapLeft[playerid] > 0)
+	{
+		format(buf, sizeof buf, "~r~Capture~n~~w~%d s", gCapLeft[playerid]);
+		GameTextForPlayer(playerid, buf, 1100, 3);
+		return;
+	}
+
+	new old = Factory[i][fcOwner];
+	Capture_Stop(playerid);
+	Factory[i][fcOwner] = f;
+	Factory[i][fcClosed] = false;       // новый владелец ставит оборудование заново
+	Factory[i][fcLastCap] = gettime();
+	Factory_Save(i);
+	for (new p = 0; p < MAX_FPOINTS; p++) Factory_Label(i, p);
+	GameTextForPlayer(playerid, "~g~Captured", 2500, 3);
+	format(msg, sizeof msg, "[Фракция] %s захватил завод «%s». На складе материалов: %d.", GetRPName(playerid), Factory[i][fcName], Factory[i][fcStock]);
+	Faction_Message(f, Faction_GetColor(f), msg);
+	Faction_Log(f, msg[10]);
+	if (Faction_IsValid(old))
+	{
+		format(msg, sizeof msg, "[Фракция] Завод «%s» потерян: его захватили %s.", Factory[i][fcName], Faction_GetName(f));
+		Faction_Message(old, COLOR_RED, msg);
+		Faction_Log(old, msg[10]);
+	}
+	if (Player[playerid][pRank] >= MAX_RANK - 1)
+		SendClientMessage(playerid, COLOR_WHITE, "Завод ваш и работает. Чтобы закрыть его и уничтожить оборудование, нажми ALT на маркере ещё раз.");
+	else
+		SendClientMessage(playerid, COLOR_WHITE, "Завод ваш и работает. Закрыть его может ранг %d и выше: ALT на маркере.", MAX_RANK - 1);
+}
+
+// ---------------------------------------------------------------------
+//  Кража материалов со склада армии (банды)
+// ---------------------------------------------------------------------
 stock Supply_ArmyOnline()
 {
 	new n = 0;
@@ -3206,144 +3612,489 @@ stock Supply_Alarm(const message[])
 	}
 }
 
-stock bool:Cmd_Steal(playerid)
+stock Steal_Stop(playerid, const why[])
 {
-	new f = Player[playerid][pFaction];
-	if (!Faction_IsGang(f)) return SendClientMessage(playerid, COLOR_GREY, "Красть материалы армии могут только банды.");
-	if (gStealKind[playerid] != 0) return SendClientMessage(playerid, COLOR_GREY, "Ты уже этим занят. Не отходи.");
-	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return SendClientMessage(playerid, COLOR_GREY, "Выйди из машины.");
-	if (Player[playerid][pCuffed] || Player[playerid][pJail] > 0) return SendClientMessage(playerid, COLOR_GREY, "Сейчас нельзя.");
-	if (gBagMats[playerid] >= STEAL_BAG_MAX) return SendClientMessage(playerid, COLOR_GREY, "Сумка полная (%d). Отнеси на базу (/mats) или продай на чёрном рынке (/bm).", gBagMats[playerid]);
-	new now = gettime();
-	if (now - gStealLast[playerid] < STEAL_COOLDOWN)
-		return SendClientMessage(playerid, COLOR_GREY, "Ты недавно крал. Подожди ещё %d мин.", (STEAL_COOLDOWN - (now - gStealLast[playerid])) / 60 + 1);
+	if (!gStealing[playerid]) return;
+	gStealing[playerid] = false;
+	Faction_SaveMats(FACTION_ARMY);
+	if (!IsPlayerConnected(playerid)) return;
+	SendClientMessage(playerid, COLOR_YELLOW, "%s Украдено за этот раз: %d. В сумке материалов: %d.", why, gStealTotal[playerid], Inv_Count(playerid, INV_MATS));
+	if (gStealTotal[playerid] > 0)
+	{
+		new msg[144];
+		format(msg, sizeof msg, "Со склада украли %d материалов (осталось %d).", gStealTotal[playerid], Faction[FACTION_ARMY][fMats]);
+		Faction_Log(FACTION_ARMY, msg);
+	}
+}
 
+// ALT на маркере склада армии
+stock Steal_Toggle(playerid)
+{
+	if (gStealing[playerid]) { Steal_Stop(playerid, "Ты перестал красть."); return; }
+	if (Player[playerid][pJail] > 0) return;
+	if (Faction[FACTION_ARMY][fMats] <= 0) { SendClientMessage(playerid, COLOR_GREY, "Склад армии пуст."); return; }
+	if (Supply_ArmyOnline() < STEAL_MIN_ARMY) { SendClientMessage(playerid, COLOR_GREY, "Склад грабят, только когда в сети хотя бы %d военных.", STEAL_MIN_ARMY); return; }
+	if (Inv_Count(playerid, INV_MATS) >= Inv_GetMax(INV_MATS)) { SendClientMessage(playerid, COLOR_GREY, "Сумка полная: больше %d материалов не унести.", Inv_GetMax(INV_MATS)); return; }
+	gStealing[playerid] = true;
+	gStealTotal[playerid] = 0;
+	SendClientMessage(playerid, COLOR_YELLOW, "Ты крадёшь материалы. Стой на маркере: в сумку идёт 1-5 в секунду. ALT ещё раз — перестать.");
 	new msg[144];
-	// 1. Машина армии с грузом рядом
-	if (GetPlayerInterior(playerid) == 0 && GetPlayerVirtualWorld(playerid) == 0)
-	{
-		new Float:x, Float:y, Float:z;
-		GetPlayerPos(playerid, x, y, z);
-		for (new v = 1; v < MAX_VEHICLES; v++)
-		{
-			if (gVehCargo[v] <= 0 || !Faction_IsArmy(gVehFaction[v]) || !IsValidVehicle(v)) continue;
-			if (GetVehicleDistanceFromPoint(v, x, y, z) > 7.0) continue;
-			gStealKind[playerid] = 1;
-			gStealVeh[playerid] = v;
-			gStealLeft[playerid] = STEAL_TIME_TRUCK;
-			gStealLast[playerid] = now;
-			SendClientMessage(playerid, COLOR_YELLOW, "Ты вскрываешь кузов. Держись рядом с машиной %d сек.", STEAL_TIME_TRUCK);
-			format(msg, sizeof msg, "%s вскрывает кузов армейской машины.", GetRPName(playerid));
-			SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
-			format(msg, sizeof msg, "[Тревога] Грабят машину армии с материалами! Грабитель: %s [%d].", GetRPName(playerid), playerid);
-			Supply_Alarm(msg);
-			return true;
-		}
-	}
-	// 2. Склад армии
-	if (Supply_AtPoint(playerid, SP_ARMY, 10.0))
-	{
-		if (Faction[FACTION_ARMY][fMats] <= 0) return SendClientMessage(playerid, COLOR_GREY, "Склад армии пуст.");
-		if (Supply_ArmyOnline() < STEAL_MIN_ARMY)
-			return SendClientMessage(playerid, COLOR_GREY, "Склад грабят, только когда в сети хотя бы %d военных.", STEAL_MIN_ARMY);
-		gStealKind[playerid] = 2;
-		gStealVeh[playerid] = 0;
-		gStealLeft[playerid] = STEAL_TIME_STORE;
-		gStealLast[playerid] = now;
-		SendClientMessage(playerid, COLOR_YELLOW, "Ты взламываешь склад армии. Не отходи %d сек.", STEAL_TIME_STORE);
-		format(msg, sizeof msg, "%s взламывает склад армии.", GetRPName(playerid));
-		SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
-		format(msg, sizeof msg, "[Тревога] Грабят склад армии! Грабитель: %s [%d].", GetRPName(playerid), playerid);
-		Supply_Alarm(msg);
-		return true;
-	}
-	return SendClientMessage(playerid, COLOR_GREY, "Подойди к машине армии с грузом или к складу армии.");
+	format(msg, sizeof msg, "[Тревога] Грабят склад армии! Грабитель: %s [%d].", GetRPName(playerid), playerid);
+	Supply_Alarm(msg);
 }
 
-stock Supply_StealFail(playerid, const why[])
+stock Steal_Tick(playerid)
 {
-	gStealKind[playerid] = 0;
-	SendClientMessage(playerid, COLOR_RED, "Кража сорвалась: %s.", why);
+	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT || Wound_IsWounded(playerid) || Player[playerid][pCuffed]) { Steal_Stop(playerid, "Кража сорвалась."); return; }
+	if (!Supply_AtPoint(playerid, SP_ARMY, 3.0)) { Steal_Stop(playerid, "Ты сошёл с маркера."); return; }
+	new n = 1 + random(5);
+	new room = Inv_GetMax(INV_MATS) - Inv_Count(playerid, INV_MATS);
+	if (n > room) n = room;
+	if (n > Faction[FACTION_ARMY][fMats]) n = Faction[FACTION_ARMY][fMats];
+	if (n <= 0)
+	{
+		if (room <= 0) Steal_Stop(playerid, "Сумка полная.");
+		else Steal_Stop(playerid, "Склад армии пуст.");
+		return;
+	}
+	if (!Inv_Add(playerid, INV_MATS, n)) { Steal_Stop(playerid, "Сумка полная."); return; }
+	Faction[FACTION_ARMY][fMats] -= n;
+	gStealTotal[playerid] += n;
+	if (gStealTotal[playerid] % 20 < n) Faction_SaveMats(FACTION_ARMY);   // в базу — не каждую секунду
+	new buf[32];
+	format(buf, sizeof buf, "~r~+%d", n);
+	GameTextForPlayer(playerid, buf, 1100, 3);
 }
 
-// Раз в секунду: кто крадёт — тот стоит на месте, пока не выйдет время
+// Смерть или выход: всё, чем был занят, обрывается
+stock Supply_ResetPlayer(playerid)
+{
+	if (gStealing[playerid]) Steal_Stop(playerid, "Кража сорвалась.");
+	if (gCapFc[playerid] != -1) Capture_Stop(playerid);
+	Crate_Drop(playerid);
+	gWorkStage[playerid] = 0;
+}
+
+// Раз в секунду: ящик в руках, кража, захват
 public Supply_OnSecond()
 {
-	new buf[48], msg[144], Float:x, Float:y, Float:z;
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
-		new kind = gStealKind[i];
-		if (kind == 0) continue;
-		if (!IsPlayerConnected(i)) { gStealKind[i] = 0; continue; }
-		if (Wound_IsWounded(i) || GetPlayerState(i) != PLAYER_STATE_ONFOOT) { Supply_StealFail(i, "ты не на ногах"); continue; }
-		if (Player[i][pCuffed]) { Supply_StealFail(i, "тебя задержали"); continue; }
-		new v = gStealVeh[i];
-		if (kind == 1)
+		if (!IsPlayerConnected(i))
 		{
-			GetPlayerPos(i, x, y, z);
-			if (!IsValidVehicle(v) || gVehCargo[v] <= 0 || GetVehicleDistanceFromPoint(v, x, y, z) > 10.0)
-			{
-				Supply_StealFail(i, "машина ушла или уже пуста");
-				continue;
-			}
-		}
-		else if (!Supply_AtPoint(i, SP_ARMY, 12.0) || Faction[FACTION_ARMY][fMats] <= 0)
-		{
-			Supply_StealFail(i, "ты отошёл от склада");
+			if (gStealing[i] || gCapFc[i] != -1 || gCrate[i] != 0) Supply_ResetPlayer(i);
 			continue;
 		}
-
-		gStealLeft[i]--;
-		if (gStealLeft[i] > 0)
+		if (gCrate[i] != 0 && (GetPlayerState(i) != PLAYER_STATE_ONFOOT || Wound_IsWounded(i)))
 		{
-			format(buf, sizeof buf, "~r~Stealing~n~~w~%d s", gStealLeft[i]);
-			GameTextForPlayer(i, buf, 1100, 3);
-			continue;
+			Crate_Drop(i);
+			SendClientMessage(i, COLOR_GREY, "Ты уронил ящик. Он пропал.");
 		}
-
-		gStealKind[i] = 0;
-		new n = STEAL_BAG_MAX - gBagMats[i];
-		if (kind == 1)
-		{
-			if (n > gVehCargo[v]) n = gVehCargo[v];
-			gVehCargo[v] -= n;
-			if (gVehCargo[v] <= 0) gVehCargoSrc[v] = 0;
-		}
-		else
-		{
-			if (n > Faction[FACTION_ARMY][fMats]) n = Faction[FACTION_ARMY][fMats];
-			Faction[FACTION_ARMY][fMats] -= n;
-			Faction_SaveMats(FACTION_ARMY);
-			format(msg, sizeof msg, "Со склада украли %d материалов (осталось %d).", n, Faction[FACTION_ARMY][fMats]);
-			Faction_Log(FACTION_ARMY, msg);
-		}
-		if (n < 0) n = 0;
-		gBagMats[i] += n;
-		GameTextForPlayer(i, "~g~Done", 2500, 3);
-		SendClientMessage(i, COLOR_GREEN, "Украдено материалов: %d. В сумке: %d. Неси на базу (/mats) или на чёрный рынок (/bm). Умрёшь — потеряешь.", n, gBagMats[i]);
-		format(msg, sizeof msg, "[Тревога] Украдено %d материалов армии. Грабитель: %s [%d].", n, GetRPName(i), i);
-		Supply_Alarm(msg);
+		if (gStealing[i]) Steal_Tick(i);
+		if (gCapFc[i] != -1) Capture_Tick(i);
 	}
 	return 1;
 }
 
-// /mats — сумка; на базе своей банды — сдать материалы на склад
+// ---------------------------------------------------------------------
+//  ALT пешком (из Keys_Interact). 1 — сработало.
+// ---------------------------------------------------------------------
+stock FStore_Menu(playerid)
+{
+	new f = Player[playerid][pFaction], title[64];
+	format(title, sizeof title, "Склад: материалов %d", Faction[f][fMats]);
+	ShowPlayerDialog(playerid, DIALOG_FSTOREPT, DIALOG_STYLE_LIST, title,
+		"Положить материалы из сумки {AFAFAF}(в сумке %d)\nВзять ящик для перевозки {AFAFAF}(%d материалов, с ранга %d)",
+		"Выбрать", "Закрыть", Inv_Count(playerid, INV_MATS), CRATE_MATS, Faction[f][fStoreRank]);
+}
+
+stock Factory_TryAlt(playerid)
+{
+	new f = Player[playerid][pFaction], msg[144];
+
+	// 1. В руках ящик: на склад завода, на склад своей организации или в кузов
+	if (gCrate[playerid] != 0)
+	{
+		for (new i = 0; i < MAX_FACTORIES; i++)
+		{
+			if (!Factory[i][fcUsed] || !Factory_At(playerid, i, FP_STORE, FACTORY_POINT_RANGE)) continue;
+			if (Factory[i][fcStock] + CRATE_MATS > FACTORY_STOCK_MAX) { SendClientMessage(playerid, COLOR_GREY, "Склад завода забит."); return 1; }
+			Factory[i][fcStock] += CRATE_MATS;
+			Factory_Save(i);
+			Factory_Label(i, FP_STORE);
+			if (gCrate[playerid] == 1 && gCrateFc[playerid] == i)
+			{
+				GiveMoney(playerid, FACTORY_PAY, "работа на заводе");
+				SendClientMessage(playerid, COLOR_GREEN, "Ящик сдан на склад завода: +$%d. Ящиков на складе: %d.", FACTORY_PAY, Factory[i][fcStock] / CRATE_MATS);
+			}
+			else SendClientMessage(playerid, COLOR_WHITE, "Ящик вернулся на склад завода. Ящиков: %d.", Factory[i][fcStock] / CRATE_MATS);
+			Crate_Drop(playerid);
+			return 1;
+		}
+		if (Faction_IsValid(f) && FStore_At(playerid, f, 3.0))
+		{
+			new cap = Faction_IsArmy(f) ? ARMY_MATS_MAX : FACTION_MATS_MAX;
+			if (Faction[f][fMats] + CRATE_MATS > cap) { SendClientMessage(playerid, COLOR_GREY, "Склад организации полон."); return 1; }
+			Faction[f][fMats] += CRATE_MATS;
+			Faction_SaveMats(f);
+			Crate_Drop(playerid);
+			SendClientMessage(playerid, COLOR_GREEN, "Ящик сдан на склад организации. Материалов на складе: %d.", Faction[f][fMats]);
+			format(msg, sizeof msg, "%s принёс на склад ящик (%d материалов, на складе %d).", GetRPName(playerid), CRATE_MATS, Faction[f][fMats]);
+			Faction_Log(f, msg);
+			return 1;
+		}
+		new v = Cargo_NearVehicle(playerid);
+		if (v != 0)
+		{
+			new cap = Cargo_Cap(GetVehicleModel(v));
+			if (!Cargo_IsBehind(playerid, v)) { SendClientMessage(playerid, COLOR_GREY, "Встань сзади машины."); return 1; }
+			if (gVehCargo[v] + CRATE_MATS > cap) { SendClientMessage(playerid, COLOR_GREY, "Кузов полон (%d из %d).", gVehCargo[v], cap); return 1; }
+			gVehCargo[v] += CRATE_MATS;
+			Crate_Drop(playerid);
+			ApplyAnimation(playerid, "CARRY", "putdwn", 4.1, false, false, false, false, 0);
+			SendClientMessage(playerid, COLOR_GREEN, "Ящик в кузове: %d из %d материалов.", gVehCargo[v], cap);
+			return 1;
+		}
+		SendClientMessage(playerid, COLOR_GREY, "Ящик кладут в грузовик или фургон (сзади), на склад завода или своей организации. Бросить: /dropcrate");
+		return 1;
+	}
+
+	// 2. Точки заводов
+	for (new i = 0; i < MAX_FACTORIES; i++)
+	{
+		if (!Factory[i][fcUsed]) continue;
+		if (Factory_At(playerid, i, FP_RAW, FACTORY_POINT_RANGE))   { Factory_TakeRaw(playerid, i); return 1; }
+		if (Factory_At(playerid, i, FP_BENCH, FACTORY_POINT_RANGE)) { Factory_UseBench(playerid, i); return 1; }
+		if (Factory_At(playerid, i, FP_STORE, FACTORY_POINT_RANGE)) { Factory_TakeCrate(playerid, i); return 1; }
+		if (Factory_At(playerid, i, FP_OWNER, FACTORY_POINT_RANGE)) { Factory_OwnerAlt(playerid, i); return 1; }
+	}
+
+	// 3. Склад армии для банд — кража; склад своей организации — меню
+	if (Faction_IsGang(f) && Supply_AtPoint(playerid, SP_ARMY, 3.0)) { Steal_Toggle(playerid); return 1; }
+	if (Faction_IsValid(f) && (gFsSet[f] || Faction_IsArmy(f)) && FStore_At(playerid, f, 3.0)) { FStore_Menu(playerid); return 1; }
+
+	// 4. Торговец чёрного рынка
+	if (Supply_AtPoint(playerid, SP_BM, BM_RANGE)) { Cmd_BM(playerid); return 1; }
+	return 0;
+}
+
+// ---------------------------------------------------------------------
+//  Разгрузка: за рулём на складе организации (H или /unload). 1 — сработало.
+// ---------------------------------------------------------------------
+stock Factory_TryUnload(playerid, bool:verbose)
+{
+	new v = GetPlayerVehicleID(playerid), f = Player[playerid][pFaction];
+	if (v == 0 || GetPlayerState(playerid) != PLAYER_STATE_DRIVER)
+	{
+		if (verbose) SendClientMessage(playerid, COLOR_GREY, "Разгружают за рулём, на складе организации.");
+		return 0;
+	}
+	if (gVehCargo[v] <= 0)
+	{
+		if (verbose) SendClientMessage(playerid, COLOR_GREY, "В машине нет ящиков.");
+		return 0;
+	}
+	if (!Faction_IsValid(f))
+	{
+		if (verbose) SendClientMessage(playerid, COLOR_GREY, "Разгружать можно только на складе своей организации.");
+		return 0;
+	}
+	new t = 0, bool:denied = false;
+	for (new k = 1; k < MAX_FACTIONS; k++)
+	{
+		if (!Faction_IsValid(k) || !FStore_At(playerid, k, SUPPLY_RANGE)) continue;
+		if (k == f || (Faction_IsArmy(f) && Faction_IsState(k))) { t = k; break; }
+		denied = true;
+	}
+	if (t == 0)
+	{
+		if (denied) { SendClientMessage(playerid, COLOR_GREY, "Это чужой склад. Разгружать можно на складе своей организации."); return 1; }
+		if (verbose) SendClientMessage(playerid, COLOR_GREY, "Рядом нет склада организации. В кузове материалов: %d.", gVehCargo[v]);
+		return 0;
+	}
+
+	new cap = Faction_IsArmy(t) ? ARMY_MATS_MAX : FACTION_MATS_MAX;
+	new room = cap - Faction[t][fMats], n = gVehCargo[v], pay = 0, msg[144];
+	if (room <= 0) { SendClientMessage(playerid, COLOR_GREY, "Склад «%s» полон.", Faction_GetName(t)); return 1; }
+	if (n > room) n = room;
+	Faction[t][fMats] += n;
+	Faction_SaveMats(t);
+	gVehCargo[v] -= n;
+	if (Faction_IsArmy(f) && Player[playerid][pDuty])
+	{
+		if (t == f) pay = (n / 100) * SUPPLY_PAY_HAUL;
+		else pay = (n / 100) * SUPPLY_PAY_DELIVER;
+		if (pay > 0) GiveMoney(playerid, pay, "доставка материалов");
+	}
+	SendClientMessage(playerid, COLOR_GREEN, "Разгружено на склад «%s»: %d. В кузове осталось: %d. Оплата: $%d.", Faction_GetName(t), n, gVehCargo[v], pay);
+	format(msg, sizeof msg, "%s привёз на склад %d материалов (на складе %d).", GetRPName(playerid), n, Faction[t][fMats]);
+	Faction_Log(t, msg);
+	format(msg, sizeof msg, "[Фракция] На склад привезли %d материалов. На складе: %d.", n, Faction[t][fMats]);
+	Faction_Message(t, Faction_GetColor(t), msg);
+	return 1;
+}
+
+// /unload, /supply
+stock bool:Cmd_Supply(playerid)
+{
+	Factory_TryUnload(playerid, true);
+	return true;
+}
+
+stock bool:Cmd_Steal(playerid)
+{
+	return SendClientMessage(playerid, COLOR_GREY, "Красть можно только со склада армии: встань на его маркер и нажми ALT.");
+}
+
 stock bool:Cmd_Mats(playerid)
 {
-	new f = Player[playerid][pFaction];
-	if (gBagMats[playerid] <= 0) return SendClientMessage(playerid, COLOR_GREY, "В сумке нет материалов.");
-	if (!Faction_IsGang(f) || !Faction_AtBase(playerid))
-		return SendClientMessage(playerid, COLOR_WHITE, "В сумке материалов: %d. Сдать: на базе своей банды (/mats) или торговцу (/bm).", gBagMats[playerid]);
-	new n = gBagMats[playerid], room = FACTION_MATS_MAX - Faction[f][fMats];
-	if (room <= 0) return SendClientMessage(playerid, COLOR_GREY, "Склад банды полон.");
-	if (n > room) n = room;
-	gBagMats[playerid] -= n;
-	Faction[f][fMats] += n;
-	Faction_SaveMats(f);
+	return SendClientMessage(playerid, COLOR_WHITE, "В сумке материалов: %d из %d. Сделать оружие: сумка (Y), «использовать». Сдать: ALT на складе организации.",
+		Inv_Count(playerid, INV_MATS), Inv_GetMax(INV_MATS));
+}
+
+// ---------------------------------------------------------------------
+//  Оружие из материалов (сумка -> «использовать»)
+// ---------------------------------------------------------------------
+stock Craft_Show(playerid)
+{
+	new body[700], line[64], title[64];
+	strcat(body, "Что сделать\tМатериалов\n");
+	for (new it = 0; it < MAX_FITEMS; it++)
+	{
+		format(line, sizeof line, "%s\t%d\n", gFItemName[it], gFItemMats[it]);
+		strcat(body, line);
+	}
+	format(title, sizeof title, "Материалов в сумке: %d", Inv_Count(playerid, INV_MATS));
+	ShowPlayerDialog(playerid, DIALOG_CRAFT, DIALOG_STYLE_TABLIST_HEADERS, title, "%s", "Выбрать", "Закрыть", body);
+}
+
+stock Craft_Make(playerid, it, qty)
+{
+	new need = gFItemMats[it] * qty;
+	if (!Inv_Remove(playerid, INV_MATS, need))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Не хватает материалов: нужно %d, в сумке %d.", need, Inv_Count(playerid, INV_MATS));
+		return;
+	}
+	switch (it)
+	{
+		case FITEM_ARMOUR: SetPlayerArmour(playerid, 100.0);
+		case FITEM_MEDKIT: SetPlayerHealth(playerid, 100.0);
+		default: GivePlayerWeapon(playerid, gFItemWeapon[it], gFItemAmmo[it] * qty);
+	}
 	new msg[144];
-	SendClientMessage(playerid, COLOR_GREEN, "Сдано на склад банды: %d. На складе материалов: %d. Лидер делает из них оружие в /fstorage.", n, Faction[f][fMats]);
-	format(msg, sizeof msg, "%s принёс на склад %d материалов (на складе %d).", GetRPName(playerid), n, Faction[f][fMats]);
-	Faction_Log(f, msg);
+	format(msg, sizeof msg, "%s что-то мастерит из деталей.", GetRPName(playerid));
+	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
+	SendClientMessage(playerid, COLOR_GREEN, "Сделано: %s x%d. Потрачено материалов: %d, осталось %d.", gFItemName[it], qty, need, Inv_Count(playerid, INV_MATS));
+}
+
+// Окна заводов, складов и крафта. Вызывается из OnDialogResponse (rp.pwn). 1 — окно наше.
+stock Factory_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
+{
+	if (dialogid < DIALOG_CRAFT || dialogid > DIALOG_FCLOSE) return 0;
+	new f = Player[playerid][pFaction], msg[144];
+	switch (dialogid)
+	{
+		case DIALOG_CRAFT:
+		{
+			if (!response || listitem < 0 || listitem >= MAX_FITEMS) return 1;
+			if (Wound_IsWounded(playerid) || Player[playerid][pCuffed] || Player[playerid][pJail] > 0) return 1;
+			gCraftSel[playerid] = listitem;
+			if (listitem == FITEM_ARMOUR || listitem == FITEM_MEDKIT) { Craft_Make(playerid, listitem, 1); return 1; }
+			ShowPlayerDialog(playerid, DIALOG_CRAFT_QTY, DIALOG_STYLE_INPUT, "Сколько сделать",
+				"%s: %d материалов за штуку, в каждой %d патронов.\nСколько сделать? (1-10)\nВ сумке материалов: %d", "Сделать", "Назад",
+				gFItemName[listitem], gFItemMats[listitem], gFItemAmmo[listitem], Inv_Count(playerid, INV_MATS));
+		}
+		case DIALOG_CRAFT_QTY:
+		{
+			if (!response) { Craft_Show(playerid); return 1; }
+			new it = gCraftSel[playerid];
+			if (it < 0 || it >= MAX_FITEMS) return 1;
+			if (Wound_IsWounded(playerid) || Player[playerid][pCuffed] || Player[playerid][pJail] > 0) return 1;
+			if (!IsNumeric(inputtext) || strval(inputtext) < 1 || strval(inputtext) > 10) { SendClientMessage(playerid, COLOR_GREY, "Количество от 1 до 10."); return 1; }
+			Craft_Make(playerid, it, strval(inputtext));
+		}
+		case DIALOG_FSTOREPT:
+		{
+			if (!response) return 1;
+			if (!Faction_IsValid(f) || !FStore_At(playerid, f, 5.0)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от склада."); return 1; }
+			if (listitem == 0)
+			{
+				if (Inv_Count(playerid, INV_MATS) <= 0) { SendClientMessage(playerid, COLOR_GREY, "В сумке нет материалов."); return 1; }
+				ShowPlayerDialog(playerid, DIALOG_FSTOREPT_PUT, DIALOG_STYLE_INPUT, "Положить материалы",
+					"Сколько материалов положить на склад организации?\nВ сумке: %d", "Положить", "Отмена", Inv_Count(playerid, INV_MATS));
+				return 1;
+			}
+			if (Player[playerid][pRank] < Faction[f][fStoreRank]) { SendClientMessage(playerid, COLOR_GREY, "Брать со склада можно с ранга %d.", Faction[f][fStoreRank]); return 1; }
+			if (gCrate[playerid] != 0) { SendClientMessage(playerid, COLOR_GREY, "У тебя уже ящик в руках."); return 1; }
+			if (Faction[f][fMats] < CRATE_MATS) { SendClientMessage(playerid, COLOR_GREY, "На складе не хватает материалов на ящик."); return 1; }
+			Faction[f][fMats] -= CRATE_MATS;
+			Faction_SaveMats(f);
+			Crate_Give(playerid, 2, -1);
+			SendClientMessage(playerid, COLOR_WHITE, "Ты взял ящик (%d материалов). Встань сзади грузовика или фургона и положи: ALT.", CRATE_MATS);
+			format(msg, sizeof msg, "%s взял со склада ящик (%d материалов, осталось %d).", GetRPName(playerid), CRATE_MATS, Faction[f][fMats]);
+			Faction_Log(f, msg);
+		}
+		case DIALOG_FSTOREPT_PUT:
+		{
+			if (!response) return 1;
+			if (!Faction_IsValid(f) || !FStore_At(playerid, f, 5.0)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от склада."); return 1; }
+			if (!IsNumeric(inputtext) || strval(inputtext) < 1) { SendClientMessage(playerid, COLOR_GREY, "Введи число больше нуля."); return 1; }
+			new n = strval(inputtext);
+			new cap = Faction_IsArmy(f) ? ARMY_MATS_MAX : FACTION_MATS_MAX;
+			if (n > Inv_Count(playerid, INV_MATS)) n = Inv_Count(playerid, INV_MATS);
+			if (n > cap - Faction[f][fMats]) n = cap - Faction[f][fMats];
+			if (n <= 0 || !Inv_Remove(playerid, INV_MATS, n)) { SendClientMessage(playerid, COLOR_GREY, "Положить нечего или склад полон."); return 1; }
+			Faction[f][fMats] += n;
+			Faction_SaveMats(f);
+			SendClientMessage(playerid, COLOR_GREEN, "Положено на склад: %d. На складе материалов: %d, в сумке: %d.", n, Faction[f][fMats], Inv_Count(playerid, INV_MATS));
+			format(msg, sizeof msg, "%s положил на склад %d материалов (на складе %d).", GetRPName(playerid), n, Faction[f][fMats]);
+			Faction_Log(f, msg);
+		}
+		case DIALOG_FCLOSE:
+		{
+			if (!response) return 1;
+			new i = gFcSel[playerid];
+			if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed] || Factory[i][fcOwner] != f || Player[playerid][pRank] < MAX_RANK - 1) return 1;
+			if (!Factory_At(playerid, i, FP_OWNER, 6.0)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от маркера завода."); return 1; }
+			Factory[i][fcClosed] = true;
+			Factory_Save(i);
+			Factory_Label(i, FP_OWNER);
+			format(msg, sizeof msg, "[Фракция] %s закрыл завод «%s»: оборудование уничтожено.", GetRPName(playerid), Factory[i][fcName]);
+			Faction_Message(f, Faction_GetColor(f), msg);
+			Faction_Log(f, msg[10]);
+		}
+	}
+	return 1;
+}
+
+// ---------------------------------------------------------------------
+//  Админ-команды заводов
+// ---------------------------------------------------------------------
+stock bool:Cmd_AddFactory(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, kind, name[32];
+	if (!NextIntParam(params, pos, kind) || kind < FKIND_MILITARY || kind > FKIND_COMMON || !RestParam(params, pos, name))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Использование: /addfactory [вид] [название] — маркер завода там, где стоишь.");
+		SendClientMessage(playerid, COLOR_GREY, "Виды: 1 — военный (владеет армия, захватить нельзя), 2 — обычный (можно захватывать).");
+		return true;
+	}
+	if (!Faction_IsGoodName(name, 2, 31)) return SendClientMessage(playerid, COLOR_GREY, "Название: от 2 до 31 символа, без фигурных скобок и знака процента.");
+	new i = -1;
+	for (new k = 0; k < MAX_FACTORIES; k++)
+	{
+		if (!Factory[k][fcUsed]) { i = k; break; }
+	}
+	if (i == -1) return SendClientMessage(playerid, COLOR_GREY, "Достигнут лимит заводов (%d).", MAX_FACTORIES);
+
+	new owner = (kind == FKIND_MILITARY) ? FACTION_ARMY : FACTION_NONE;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO factories (name, kind, owner, closed, stock) VALUES ('%q', %d, %d, 0, 0)", name, kind, owner));
+	Factory[i][fcUsed] = true;
+	Factory[i][fcDbId] = DB_LastInsertId();
+	Factory[i][fcName][0] = '\0';
+	strcat(Factory[i][fcName], name, 32);
+	Factory[i][fcKind] = kind;
+	Factory[i][fcOwner] = owner;
+	Factory[i][fcClosed] = false;
+	Factory[i][fcStock] = 0;
+	Factory[i][fcLastCap] = 0;
+	Factory[i][fcCapBy] = INVALID_PLAYER_ID;
+	for (new p = 0; p < MAX_FPOINTS; p++)
+	{
+		gFcSet[i][p] = false;
+		gFcMk[i][p] = -1;
+	}
+	GetPlayerPos(playerid, gFcX[i][FP_OWNER], gFcY[i][FP_OWNER], gFcZ[i][FP_OWNER]);
+	gFcW[i][FP_OWNER] = GetPlayerVirtualWorld(playerid);
+	gFcI[i][FP_OWNER] = GetPlayerInterior(playerid);
+	gFcSet[i][FP_OWNER] = true;
+	Factory_SavePoint(i, FP_OWNER);
+	Factory_BuildPoint(i, FP_OWNER);
+
+	new n = Factory[i][fcDbId];
+	SendClientMessage(playerid, COLOR_ADMIN, "Завод №%d «%s» создан, его маркер стоит здесь.", n, name);
+	SendClientMessage(playerid, COLOR_ADMIN, "Расставь точки: /setfpoint %d raw (сырьё), /setfpoint %d bench (станок), /setfpoint %d store (склад ящиков).", n, n, n);
+	if (kind == FKIND_COMMON) SendClientMessage(playerid, COLOR_ADMIN, "Владельца пока нет: /setfowner %d [фракция] или пусть завод захватят.", n);
+	return true;
+}
+
+stock bool:Cmd_SetFPoint(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, n, word[16], p = -1;
+	if (NextIntParam(params, pos, n) && NextParam(params, pos, word))
+	{
+		if (!strcmp(word, "raw", true)) p = FP_RAW;
+		else if (!strcmp(word, "bench", true)) p = FP_BENCH;
+		else if (!strcmp(word, "store", true)) p = FP_STORE;
+		else if (!strcmp(word, "owner", true)) p = FP_OWNER;
+	}
+	new i = (p == -1) ? -1 : Factory_Find(n);
+	if (i == -1)
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setfpoint [№ завода] [raw|bench|store|owner] — сырьё, станок, склад ящиков, маркер завода. Список: /factories");
+	GetPlayerPos(playerid, gFcX[i][p], gFcY[i][p], gFcZ[i][p]);
+	gFcW[i][p] = GetPlayerVirtualWorld(playerid);
+	gFcI[i][p] = GetPlayerInterior(playerid);
+	gFcSet[i][p] = true;
+	Factory_SavePoint(i, p);
+	if (gFcMk[i][p] != -1) { Marker_Destroy(gFcMk[i][p], true); gFcMk[i][p] = -1; }
+	Factory_BuildPoint(i, p);
+	SendClientMessage(playerid, COLOR_ADMIN, "Завод №%d «%s»: точка «%s» теперь здесь.", n, Factory[i][fcName], word);
+	return true;
+}
+
+stock bool:Cmd_SetFOwner(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, n, f;
+	if (!NextIntParam(params, pos, n) || !NextIntParam(params, pos, f) || Factory_Find(n) == -1 || (f != FACTION_NONE && !Faction_IsValid(f)))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setfowner [№ завода] [фракция, 0 — ничей]. Заводы: /factories, фракции: /flist");
+	new i = Factory_Find(n);
+	Factory[i][fcOwner] = f;
+	Factory[i][fcClosed] = false;
+	Factory_Save(i);
+	for (new p = 0; p < MAX_FPOINTS; p++) Factory_Label(i, p);
+	if (f == FACTION_NONE) SendClientMessage(playerid, COLOR_ADMIN, "Завод №%d «%s» теперь без владельца.", n, Factory[i][fcName]);
+	else SendClientMessage(playerid, COLOR_ADMIN, "Завод №%d «%s» теперь у фракции «%s» и работает.", n, Factory[i][fcName], Faction_GetName(f));
+	return true;
+}
+
+stock bool:Cmd_DelFactory(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, n;
+	if (!NextIntParam(params, pos, n) || Factory_Find(n) == -1)
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /delfactory [№ завода]. Список: /factories");
+	new i = Factory_Find(n);
+	for (new p = 0; p < MAX_FPOINTS; p++)
+	{
+		if (gFcMk[i][p] != -1) { Marker_Destroy(gFcMk[i][p], true); gFcMk[i][p] = -1; }
+		gFcSet[i][p] = false;
+	}
+	if (Factory[i][fcCapBy] != INVALID_PLAYER_ID) Capture_Stop(Factory[i][fcCapBy]);
+	Factory[i][fcUsed] = false;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM factories WHERE id = %d", n));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM factory_points WHERE factory = %d", n));
+	SendClientMessage(playerid, COLOR_ADMIN, "Завод №%d удалён.", n);
+	return true;
+}
+
+stock bool:Cmd_Factories(playerid)
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new count = 0;
+	SendClientMessage(playerid, COLOR_ADMIN, "Заводы (№ — название, вид, владелец, материалов на складе):");
+	for (new i = 0; i < MAX_FACTORIES; i++)
+	{
+		if (!Factory[i][fcUsed]) continue;
+		count++;
+		SendClientMessage(playerid, COLOR_WHITE, " %d — %s, вид %d, %s, материалов %d, закрыт: %d, точек задано: %d из 4", Factory[i][fcDbId], Factory[i][fcName],
+			Factory[i][fcKind], Faction_GetName(Factory[i][fcOwner]), Factory[i][fcStock], Factory[i][fcClosed] ? 1 : 0,
+			(gFcSet[i][0] ? 1 : 0) + (gFcSet[i][1] ? 1 : 0) + (gFcSet[i][2] ? 1 : 0) + (gFcSet[i][3] ? 1 : 0));
+	}
+	if (count == 0) SendClientMessage(playerid, COLOR_GREY, " Заводов пока нет. Создать: /addfactory [вид] [название]");
 	return true;
 }
 
@@ -3363,7 +4114,7 @@ stock bool:Cmd_BM(playerid)
 		else format(line, sizeof line, "{AFAFAF}%s\t{AFAFAF}нет в продаже\n", gFItemName[it]);
 		strcat(body, line);
 	}
-	format(line, sizeof line, "{FFFF00}Продать материалы из сумки (%d шт.)\t$%d за 1 шт.", gBagMats[playerid], gBMMatPrice);
+	format(line, sizeof line, "{FFFF00}Продать материалы из сумки (%d шт.)\t$%d за 1 шт.", Inv_Count(playerid, INV_MATS), gBMMatPrice);
 	strcat(body, line);
 	ShowPlayerDialog(playerid, DIALOG_BM, DIALOG_STYLE_TABLIST_HEADERS, "Чёрный рынок", "%s", "Выбрать", "Уйти", body);
 	return true;
@@ -3394,11 +4145,11 @@ stock BM_OnDialog(playerid, dialogid, response, listitem)
 		return 1;
 	}
 
-	// последняя строка — продать краденые материалы
-	new n = gBagMats[playerid];
+	// последняя строка — продать материалы из сумки
+	new n = Inv_Count(playerid, INV_MATS);
 	if (n <= 0) { SendClientMessage(playerid, COLOR_GREY, "В сумке нет материалов."); return 1; }
 	if (gBMMatPrice <= 0) { SendClientMessage(playerid, COLOR_GREY, "Торговец сейчас не берёт материалы."); return 1; }
-	gBagMats[playerid] = 0;
+	if (!Inv_Remove(playerid, INV_MATS, n)) return 1;
 	GiveMoney(playerid, n * gBMMatPrice, "продажа материалов на чёрном рынке");
 	SendClientMessage(playerid, COLOR_GREEN, "Продано материалов: %d за $%d.", n, n * gBMMatPrice);
 	return 1;
@@ -3462,6 +4213,7 @@ stock bool:Cmd_GangChat(playerid, const params[])
 	}
 	return true;
 }
+
 
 // =====================================================================
 //  Цвет фракции: /fcolor [фракция] — палитра или свой код RRGGBB (админ 4+)

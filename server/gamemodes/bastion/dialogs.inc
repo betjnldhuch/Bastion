@@ -140,5 +140,12 @@ enum
 	DIALOG_FCOLOR_HEX,
 
 	// --- Чёрный рынок (/bm, factions.inc)
-	DIALOG_BM
+	DIALOG_BM,
+
+	// --- Заводы, материалы, крафт (factions.inc)
+	DIALOG_CRAFT,
+	DIALOG_CRAFT_QTY,
+	DIALOG_FSTOREPT,
+	DIALOG_FSTOREPT_PUT,
+	DIALOG_FCLOSE
 }

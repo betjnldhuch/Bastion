@@ -260,7 +260,14 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/delfaction", true))  { Cmd_DelFaction(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/flist", true))       { Cmd_FList(playerid); return 1; }
 	if (!strcmp(cmd, "/fcolor", true))      { Cmd_FColor(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/setfactory", true) || !strcmp(cmd, "/setsupply", true)) { Cmd_SetSPoint(playerid, SP_FACTORY); return 1; }
+	if (!strcmp(cmd, "/addfactory", true))  { Cmd_AddFactory(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/setfpoint", true))   { Cmd_SetFPoint(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/setfowner", true))   { Cmd_SetFOwner(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/delfactory", true))  { Cmd_DelFactory(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/factories", true))   { Cmd_Factories(playerid); return 1; }
+	if (!strcmp(cmd, "/setfstore", true))   { Cmd_SetFStore(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/dropcrate", true))   { Cmd_DropCrate(playerid); return 1; }
+	if (!strcmp(cmd, "/unload", true))      { Cmd_Supply(playerid); return 1; }
 	if (!strcmp(cmd, "/setarmystore", true)) { Cmd_SetSPoint(playerid, SP_ARMY); return 1; }
 	if (!strcmp(cmd, "/setbm", true))       { Cmd_SetSPoint(playerid, SP_BM); return 1; }
 	if (!strcmp(cmd, "/bmprice", true))     { Cmd_BMPrice(playerid, cmdtext[pos]); return 1; }

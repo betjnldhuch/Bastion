@@ -383,6 +383,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Markers_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (FColor_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (BM_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Factory_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Factions_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	return 0;
 }

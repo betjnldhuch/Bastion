@@ -44,13 +44,14 @@ enum
 	INV_FLOWERS,
 	INV_DICE,
 	INV_MASK,
+	INV_MATS,           // материалы: из них делают оружие (factions.inc)
 	INV_TYPES
 }
 // Номера вещей (для /giveitem): 1 бургер, 2 хот-дог, 3 аптечка, 4 ремкомплект, 5 пицца, 6 вода,
-// 7 пиво, 8 сигареты, 9 бинт, 10 цветы, 11 кости, 12 маска
-static const gInvNames[INV_TYPES][] = { "", "Бургер", "Хот-дог", "Аптечка", "Ремкомплект", "Пицца", "Вода", "Пиво", "Сигареты", "Бинт", "Цветы", "Игральные кости", "Маска" };
-static const gInvHints[INV_TYPES][] = { "", "+40% сытости", "+25% сытости", "+50 HP", "чинит машину рядом", "+60% сытости", "+10% сытости, +5 HP", "+5 HP, пьянит", "покурить", "+20 HP", "букет в руки", "бросить кости (RP)", "прячет ник" };
-static const gInvMax[INV_TYPES] = { 0, 5, 5, 3, 3, 3, 5, 5, 20, 5, 3, 1, 1 };
+// 7 пиво, 8 сигареты, 9 бинт, 10 цветы, 11 кости, 12 маска, 13 материалы
+static const gInvNames[INV_TYPES][] = { "", "Бургер", "Хот-дог", "Аптечка", "Ремкомплект", "Пицца", "Вода", "Пиво", "Сигареты", "Бинт", "Цветы", "Игральные кости", "Маска", "Материалы" };
+static const gInvHints[INV_TYPES][] = { "", "+40% сытости", "+25% сытости", "+50 HP", "чинит машину рядом", "+60% сытости", "+10% сытости, +5 HP", "+5 HP, пьянит", "покурить", "+20 HP", "букет в руки", "бросить кости (RP)", "прячет ник", "сделать оружие" };
+static const gInvMax[INV_TYPES] = { 0, 5, 5, 3, 3, 3, 5, 5, 20, 5, 3, 1, 1, 500 };
 
 enum E_DROP
 {
@@ -238,6 +239,14 @@ static Inv_Take(playerid, item, amount)
 	gInv[playerid][item] -= amount;
 	if (gInv[playerid][item] < 0) gInv[playerid][item] = 0;
 	Inv_Save(playerid, item);
+}
+
+// Забрать несколько штук (для материалов). false — столько нет
+stock bool:Inv_Remove(playerid, item, amount)
+{
+	if (item <= INV_NONE || item >= INV_TYPES || amount < 1 || gInv[playerid][item] < amount) return false;
+	Inv_Take(playerid, item, amount);
+	return true;
 }
 
 // Забрать одну вещь из сумки. false — такой вещи нет
@@ -462,6 +471,11 @@ static Inv_Use(playerid, item)
 			Inv_SetMask(playerid, !gMasked[playerid]);
 			if (gMasked[playerid]) format(msg, sizeof msg, "%s надевает маску.", GetRPName(playerid));
 			else format(msg, sizeof msg, "%s снимает маску.", GetRPName(playerid));
+		}
+		case INV_MATS:
+		{
+			Craft_Show(playerid);   // выбор, что и сколько сделать (factions.inc)
+			return;
 		}
 		default: return;
 	}
@@ -807,7 +821,7 @@ stock bool:Cmd_GiveItem(playerid, const params[])
 	new pos = 0, item, amount = 1;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !Player[target][pLogged] || !NextIntParam(params, pos, item) || item <= INV_NONE || item >= INV_TYPES)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /giveitem [id] [вещь 1-12] [кол-во]. 1 бургер 2 хот-дог 3 аптечка 4 ремкомплект 5 пицца 6 вода 7 пиво 8 сигареты 9 бинт 10 цветы 11 кости 12 маска");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /giveitem [id] [вещь 1-13] [кол-во]. 1 бургер 2 хот-дог 3 аптечка 4 ремкомплект 5 пицца 6 вода 7 пиво 8 сигареты 9 бинт 10 цветы 11 кости 12 маска 13 материалы");
 	NextIntParam(params, pos, amount);
 	if (amount < 1) amount = 1;
 	if (!Inv_Add(target, item, amount)) return SendClientMessage(playerid, COLOR_GREY, "Не помещается (максимум %d штук).", gInvMax[item]);
@@ -849,9 +863,9 @@ stock bool:Cmd_GiveItem(playerid, const params[])
 #define INV_UI_COL_LABEL    0x9AA4B2FF
 
 // Модели вещей для окна (по INV_*)
-static const gInvModels[INV_TYPES] = { 0, 2703, 19346, 11738, 19921, 2702, 19570, 1544, 19896, 11747, 325, 1851, 19801 };
-static const gInvNamesEn[INV_TYPES][] = { "", "Burger", "Hot dog", "Medkit", "Repair kit", "Pizza", "Water", "Beer", "Cigarettes", "Bandage", "Flowers", "Dice", "Mask" };
-static const gInvHintsEn[INV_TYPES][] = { "", "+40% food", "+25% food", "+50 HP", "Repairs a car nearby", "+60% food", "+10% food, +5 HP", "+5 HP, makes you drunk", "Have a smoke", "+20 HP", "Bouquet in your hands", "Roll the dice (RP)", "Hides your nickname" };
+static const gInvModels[INV_TYPES] = { 0, 2703, 19346, 11738, 19921, 2702, 19570, 1544, 19896, 11747, 325, 1851, 19801, 1271 };
+static const gInvNamesEn[INV_TYPES][] = { "", "Burger", "Hot dog", "Medkit", "Repair kit", "Pizza", "Water", "Beer", "Cigarettes", "Bandage", "Flowers", "Dice", "Mask", "Materials" };
+static const gInvHintsEn[INV_TYPES][] = { "", "+40% food", "+25% food", "+50 HP", "Repairs a car nearby", "+60% food", "+10% food, +5 HP", "+5 HP, makes you drunk", "Have a smoke", "+20 HP", "Bouquet in your hands", "Roll the dice (RP)", "Hides your nickname", "Craft a weapon" };
 
 // Постоянные текстдравы окна
 enum
