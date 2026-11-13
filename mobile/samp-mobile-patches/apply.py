@@ -116,6 +116,22 @@ replace_exact(cpp / "settings.cpp", 'sprintf(buff, "/storage/emulated/0/GTA/SAMP
 replace_exact(cpp / "game/hooks.cpp", f"g_pszStorage = {UPSTREAM_STORAGE};",
               "g_pszStorage = (char*)BastionStoragePath();", count=2)
 
+# A server pickup whose model has no collision in this client (e.g. SA-MP 0.3.7
+# objects 19197/19605 that the mobile cache lacks) crashes the game in
+# CPickups::GenerateNewOne -> CWorld::Add -> CEntity::GetBoundCentre (SIGSEGV
+# at 0x18, seen on device). Upstream only checks for a missing model info and
+# then falls back to 18631, which can have the same problem. Use the standard
+# "i" pickup (1239, generic collision, always loaded) instead.
+replace_exact(cpp / "game/game.cpp",
+              "    if(dwModelArray[iModel] == nullptr)\n        iModel = 18631;",
+              "    // Bastion: no model info or no collision -> standard \"i\" pickup, not a crash.\n"
+              "    if (iModel < 0 || iModel >= CModelInfo::NUM_MODEL_INFOS || dwModelArray[iModel] == nullptr\n"
+              "        || dwModelArray[iModel]->GetColModel() == nullptr)\n"
+              "    {\n"
+              "        Log(\"[Bastion] pickup model %d has no collision in this client, using 1239\", iModel);\n"
+              "        iModel = 1239;\n"
+              "    }\n    // upstream fallback was 18631:")
+
 # A missing game file makes the engine call OS_FileRead(NULL, ...) and crash
 # with SIGSEGV at 0x10 (seen on device). Record every file NvFOpen could not
 # find, so the launcher can name it in the crash report.

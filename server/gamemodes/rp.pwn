@@ -377,6 +377,7 @@ public OnPlayerText(playerid, text[])
 
 public OnPlayerCommandText(playerid, cmdtext[])
 {
+	if (!strcmp(cmdtext, "/__bui")) return UI_OnPcHello(playerid);   // ПК-плагин HTML-окон (ui.inc)
 	return Commands_Process(playerid, cmdtext);
 }
 

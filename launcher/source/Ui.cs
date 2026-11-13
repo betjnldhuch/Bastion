@@ -514,13 +514,21 @@ namespace BastionLauncher
             setBtn.Click += delegate { ToggleSettings(); };
             Controls.Add(setBtn);
 
-            if (cfg.Site.Length > 0)
+            // кнопки-ссылки (ФОРУМ, ДОНАТ, …) справа налево от «Настройки»
+            List<string[]> links = new List<string[]>(cfg.Links);
+            if (links.Count == 0 && cfg.Site.Length > 0) links.Add(new string[] { "САЙТ", cfg.Site });
+            int lx = W - 200;
+            for (int li = links.Count - 1; li >= 0; li--)
             {
-                FlatBtn site = new FlatBtn(); site.Ghost = true; site.Text = "САЙТ";
-                site.Font = Theme.F(8.5f, FontStyle.Bold);
-                site.Bounds = new Rectangle(W - 270, 0, 70, 36);
-                site.Click += delegate { try { Process.Start(cfg.Site); } catch (Exception) { } };
-                Controls.Add(site);
+                string url = links[li][1];
+                FlatBtn lb = new FlatBtn(); lb.Ghost = true; lb.Text = links[li][0];
+                lb.Font = Theme.F(8.5f, FontStyle.Bold);
+                int lw;
+                using (Graphics mg = CreateGraphics()) lw = (int)mg.MeasureString(lb.Text, lb.Font).Width + 28;
+                lx -= lw;
+                lb.Bounds = new Rectangle(lx, 0, lw, 36);
+                lb.Click += delegate { try { Process.Start(url); } catch (Exception) { } };
+                Controls.Add(lb);
             }
 
             // --- карточки серверов ---
@@ -988,9 +996,20 @@ namespace BastionLauncher
             settings.Controls.Add(tClose);
 
             FlatBtn mods = new FlatBtn(); mods.Text = "ПРОВЕРИТЬ МОДЫ";
-            mods.Bounds = new Rectangle(22, 388, 180, 36);
+            mods.Bounds = new Rectangle(22, 388, 170, 36);
             mods.Click += delegate { CheckMods(true); };
             settings.Controls.Add(mods);
+
+            FlatBtn verify = new FlatBtn(); verify.Text = "ПРОВЕРИТЬ ФАЙЛЫ";
+            verify.Bounds = new Rectangle(200, 388, 130, 36);
+            verify.Font = Theme.F(8f, FontStyle.Bold);
+            verify.Click += delegate
+            {
+                if (!GameFound()) { Warn("Сначала укажи папку игры."); return; }
+                ToggleSettings();
+                SyncPack(gtaPath.Text.Trim(), true, false);
+            };
+            settings.Controls.Add(verify);
 
             FlatBtn done = new FlatBtn(); done.Text = "СОХРАНИТЬ"; done.Primary = true;
             done.Font = Theme.Hv(11f);
@@ -1206,6 +1225,12 @@ namespace BastionLauncher
                 return;
             }
 
+            if (!packChecked && cfg.EffectiveClientPackUrl.Length > 0)
+            {
+                SyncPack(gta, false, true);
+                return;
+            }
+
             if (tMods.Checked && !CheckMods(false)) return;
             SaveSettings(false);
             if (!ApplyFps(gta)) return;
@@ -1324,6 +1349,69 @@ namespace BastionLauncher
                             Warn("Не получилось установить игру: " + error);
                         }
                         UpdatePlayLabel();
+                    }));
+                }
+                catch (Exception) { }
+            });
+            th.IsBackground = true;
+            th.Start();
+        }
+
+        // ---------------- клиентский пакет (ClientPack.cs) ----------------
+        bool packChecked;
+
+        // Проверить файлы игры и скачать изменившиеся. full — пересчитать всё заново.
+        // thenPlay — после проверки продолжить запуск игры.
+        void SyncPack(string gta, bool full, bool thenPlay)
+        {
+            string url = cfg.EffectiveClientPackUrl;
+            if (installing) return;
+            if (url.Length == 0) { if (full) SetStatus("Пакет файлов Bastion не настроен."); return; }
+            installing = true;
+            string label = play.Text;
+            play.Text = "ПРОВЕРКА…"; play.Enabled = false; play.Invalidate();
+            Thread th = new Thread(delegate ()
+            {
+                string error = null, info = null;
+                bool offline = false;
+                try
+                {
+                    PackManifest m;
+                    try { m = ClientPack.Fetch(url); }
+                    catch (System.Net.WebException) { offline = true; m = null; }
+                    if (m != null)
+                    {
+                        int n = ClientPack.Sync(gta, m, full, delegate (string msg)
+                        {
+                            try { BeginInvoke(new MethodInvoker(delegate { SetStatus(msg); })); } catch (Exception) { }
+                        });
+                        info = n > 0 ? "Файлы игры обновлены (" + n + "), версия пакета " + m.Version + "."
+                                     : "Файлы игры в порядке, версия пакета " + m.Version + ".";
+                    }
+                }
+                catch (Exception ex) { error = ex.Message; }
+                try
+                {
+                    BeginInvoke(new MethodInvoker(delegate
+                    {
+                        installing = false;
+                        play.Enabled = true;
+                        play.Text = label; play.Invalidate();
+                        UpdatePlayLabel();
+                        if (offline) SetStatus("Нет связи с сервером обновлений, файлы не проверены.");
+                        else if (error == null) SetStatus(info);
+                        if (error != null)
+                        {
+                            SetStatus("Файлы игры не обновились.");
+                            string q = "Не получилось обновить файлы игры: " + error +
+                                       "\r\nЕсли игра в Program Files — запусти лаунчер от имени администратора.";
+                            if (!thenPlay) { Warn(q); return; }
+                            DialogResult r = MessageBox.Show(this, q + "\r\n\r\nЗапустить игру без обновления?",
+                                cfg.Title, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                            if (r != DialogResult.Yes) return;
+                        }
+                        packChecked = true;
+                        if (thenPlay) Play();
                     }));
                 }
                 catch (Exception) { }
