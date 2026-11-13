@@ -1,33 +1,33 @@
 // =====================================================================
-//  economy.inc — казна штата, налоги и журнал денег.
+//  economy.inc вЂ” РєР°Р·РЅР° С€С‚Р°С‚Р°, РЅР°Р»РѕРіРё Рё Р¶СѓСЂРЅР°Р» РґРµРЅРµРі.
 //
-//  Журнал денег (таблица money_log): каждое изменение наличных через
-//  GiveMoney с причиной или на сумму от ECON_LOG_MIN, а также банковские
-//  переводы. Хранится ECON_LOG_DAYS дней. Админ (3+): /moneylog [id] [N].
+//  Р–СѓСЂРЅР°Р» РґРµРЅРµРі (С‚Р°Р±Р»РёС†Р° money_log): РєР°Р¶РґРѕРµ РёР·РјРµРЅРµРЅРёРµ РЅР°Р»РёС‡РЅС‹С… С‡РµСЂРµР·
+//  GiveMoney СЃ РїСЂРёС‡РёРЅРѕР№ РёР»Рё РЅР° СЃСѓРјРјСѓ РѕС‚ ECON_LOG_MIN, Р° С‚Р°РєР¶Рµ Р±Р°РЅРєРѕРІСЃРєРёРµ
+//  РїРµСЂРµРІРѕРґС‹. РҐСЂР°РЅРёС‚СЃСЏ ECON_LOG_DAYS РґРЅРµР№. РђРґРјРёРЅ (3+): /moneylog [id] [N].
 //
-//  Казна (таблица econ, ключ treasury): сюда идут налоги и штрафы.
-//    * подоходный налог — tax_income% с зарплаты на PayDay;
-//    * налог на машину — tax_car промилле (‰) от цены модели каждый PayDay,
-//      пока владелец в игре (сначала со счёта в банке, потом наличными);
-//    * налог на дома (houses.inc), штрафы штрафстоянки (garage.inc),
-//      счёт больницы, сборы за экзамены (licenses.inc).
-//  /taxes — ставки и казна для всех. Гл. админ (5): /settax [income|car] [значение].
+//  РљР°Р·РЅР° (С‚Р°Р±Р»РёС†Р° econ, РєР»СЋС‡ treasury): СЃСЋРґР° РёРґСѓС‚ РЅР°Р»РѕРіРё Рё С€С‚СЂР°С„С‹.
+//    * РїРѕРґРѕС…РѕРґРЅС‹Р№ РЅР°Р»РѕРі вЂ” tax_income% СЃ Р·Р°СЂРїР»Р°С‚С‹ РЅР° PayDay;
+//    * РЅР°Р»РѕРі РЅР° РјР°С€РёРЅСѓ вЂ” tax_car РїСЂРѕРјРёР»Р»Рµ (вЂ°) РѕС‚ С†РµРЅС‹ РјРѕРґРµР»Рё РєР°Р¶РґС‹Р№ PayDay,
+//      РїРѕРєР° РІР»Р°РґРµР»РµС† РІ РёРіСЂРµ (СЃРЅР°С‡Р°Р»Р° СЃРѕ СЃС‡С‘С‚Р° РІ Р±Р°РЅРєРµ, РїРѕС‚РѕРј РЅР°Р»РёС‡РЅС‹РјРё);
+//    * РЅР°Р»РѕРі РЅР° РґРѕРјР° (houses.inc), С€С‚СЂР°С„С‹ С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРё (garage.inc),
+//      СЃС‡С‘С‚ Р±РѕР»СЊРЅРёС†С‹, СЃР±РѕСЂС‹ Р·Р° СЌРєР·Р°РјРµРЅС‹ (licenses.inc).
+//  /taxes вЂ” СЃС‚Р°РІРєРё Рё РєР°Р·РЅР° РґР»СЏ РІСЃРµС…. Р“Р». Р°РґРјРёРЅ (5): /settax [income|car] [Р·РЅР°С‡РµРЅРёРµ].
 // =====================================================================
 
-#define ECON_LOG_MIN        500     // писать в журнал суммы от $500 (с причиной — любые)
+#define ECON_LOG_MIN        500     // РїРёСЃР°С‚СЊ РІ Р¶СѓСЂРЅР°Р» СЃСѓРјРјС‹ РѕС‚ $500 (СЃ РїСЂРёС‡РёРЅРѕР№ вЂ” Р»СЋР±С‹Рµ)
 #define ECON_LOG_DAYS       30
 #define TAX_INCOME_DEFAULT  10      // %
-#define TAX_CAR_DEFAULT     2       // ‰ от цены машины в час
+#define TAX_CAR_DEFAULT     2       // вЂ° РѕС‚ С†РµРЅС‹ РјР°С€РёРЅС‹ РІ С‡Р°СЃ
 #define TAX_INCOME_MAX      50
 #define TAX_CAR_MAX         20
-#define TAX_CAR_MIN_SUM     10      // налог на машину не меньше $10 в час
+#define TAX_CAR_MIN_SUM     10      // РЅР°Р»РѕРі РЅР° РјР°С€РёРЅСѓ РЅРµ РјРµРЅСЊС€Рµ $10 РІ С‡Р°СЃ
 
 static gTreasury = 0;
 static gTaxIncome = TAX_INCOME_DEFAULT;
 static gTaxCar = TAX_CAR_DEFAULT;
 
 // ---------------------------------------------------------------------
-//  Запуск
+//  Р—Р°РїСѓСЃРє
 // ---------------------------------------------------------------------
 stock Econ_Init()
 {
@@ -60,9 +60,9 @@ static Econ_SaveValue(const key[], value)
 }
 
 // ---------------------------------------------------------------------
-//  Журнал денег
+//  Р–СѓСЂРЅР°Р» РґРµРЅРµРі
 // ---------------------------------------------------------------------
-// Из GiveMoney (base.inc): записать изменение наличных
+// РР· GiveMoney (base.inc): Р·Р°РїРёСЃР°С‚СЊ РёР·РјРµРЅРµРЅРёРµ РЅР°Р»РёС‡РЅС‹С…
 stock Econ_LogMoney(playerid, amount, const reason[])
 {
 	if (Player[playerid][pDbId] == 0 || amount == 0) return;
@@ -72,9 +72,9 @@ stock Econ_LogMoney(playerid, amount, const reason[])
 }
 
 // ---------------------------------------------------------------------
-//  Казна
+//  РљР°Р·РЅР°
 // ---------------------------------------------------------------------
-// Деньги в казну (налоги, штрафы, сборы)
+// Р”РµРЅСЊРіРё РІ РєР°Р·РЅСѓ (РЅР°Р»РѕРіРё, С€С‚СЂР°С„С‹, СЃР±РѕСЂС‹)
 stock Econ_ToTreasury(amount)
 {
 	if (amount <= 0) return;
@@ -84,7 +84,7 @@ stock Econ_ToTreasury(amount)
 
 stock Econ_GetTreasury() { return gTreasury; }
 
-// Взять из казны (премии, выплаты). false — в казне не хватает
+// Р’Р·СЏС‚СЊ РёР· РєР°Р·РЅС‹ (РїСЂРµРјРёРё, РІС‹РїР»Р°С‚С‹). false вЂ” РІ РєР°Р·РЅРµ РЅРµ С…РІР°С‚Р°РµС‚
 stock bool:Econ_FromTreasury(amount)
 {
 	if (amount <= 0 || gTreasury < amount) return false;
@@ -93,13 +93,13 @@ stock bool:Econ_FromTreasury(amount)
 	return true;
 }
 
-// Взять с игрока сумму: сначала со счёта в банке, потом наличными. true — получилось
+// Р’Р·СЏС‚СЊ СЃ РёРіСЂРѕРєР° СЃСѓРјРјСѓ: СЃРЅР°С‡Р°Р»Р° СЃРѕ СЃС‡С‘С‚Р° РІ Р±Р°РЅРєРµ, РїРѕС‚РѕРј РЅР°Р»РёС‡РЅС‹РјРё. true вЂ” РїРѕР»СѓС‡РёР»РѕСЃСЊ
 static bool:Econ_Charge(playerid, sum, const reason[])
 {
 	if (Player[playerid][pBank] >= sum)
 	{
 		Player[playerid][pBank] -= sum;
-		new DBResult:r = DB_ExecuteQuery(gDB, "INSERT INTO money_log (time, account, amount, cash, reason) VALUES (%d, %d, %d, %d, 'банк: %q')",
+		new DBResult:r = DB_ExecuteQuery(gDB, "INSERT INTO money_log (time, account, amount, cash, reason) VALUES (%d, %d, %d, %d, 'Р±Р°РЅРє: %q')",
 			gettime(), Player[playerid][pDbId], -sum, Player[playerid][pMoney], reason);
 		DB_FreeResultSet(r);
 		return true;
@@ -112,7 +112,7 @@ static bool:Econ_Charge(playerid, sum, const reason[])
 	return false;
 }
 
-// Налог на машину в час (0 — нет машины)
+// РќР°Р»РѕРі РЅР° РјР°С€РёРЅСѓ РІ С‡Р°СЃ (0 вЂ” РЅРµС‚ РјР°С€РёРЅС‹)
 stock Econ_GetCarTax(playerid)
 {
 	new v = gPlayerVeh[playerid];
@@ -122,48 +122,48 @@ stock Econ_GetCarTax(playerid)
 	return tax;
 }
 
-// На PayDay (из rp.pwn) после зарплаты: подоходный налог и налог на машину
+// РќР° PayDay (РёР· rp.pwn) РїРѕСЃР»Рµ Р·Р°СЂРїР»Р°С‚С‹: РїРѕРґРѕС…РѕРґРЅС‹Р№ РЅР°Р»РѕРі Рё РЅР°Р»РѕРі РЅР° РјР°С€РёРЅСѓ
 stock Econ_PayDay(playerid, salary)
 {
 	new itax = salary * gTaxIncome / 100;
 	if (itax > 0)
 	{
 #if PAYDAY_TO_BANK
-		// зарплата пришла на счёт (bank.inc) — налог тоже со счёта
-		if (!Econ_Charge(playerid, itax, "подоходный налог")) GiveMoney(playerid, -itax, "подоходный налог");
+		// Р·Р°СЂРїР»Р°С‚Р° РїСЂРёС€Р»Р° РЅР° СЃС‡С‘С‚ (bank.inc) вЂ” РЅР°Р»РѕРі С‚РѕР¶Рµ СЃРѕ СЃС‡С‘С‚Р°
+		if (!Econ_Charge(playerid, itax, "РїРѕРґРѕС…РѕРґРЅС‹Р№ РЅР°Р»РѕРі")) GiveMoney(playerid, -itax, "РїРѕРґРѕС…РѕРґРЅС‹Р№ РЅР°Р»РѕРі");
 #else
-		GiveMoney(playerid, -itax, "подоходный налог");
+		GiveMoney(playerid, -itax, "РїРѕРґРѕС…РѕРґРЅС‹Р№ РЅР°Р»РѕРі");
 #endif
 		Econ_ToTreasury(itax);
-		SendClientMessage(playerid, COLOR_WHITE, "Подоходный налог %d%%: -$%d.", gTaxIncome, itax);
+		SendClientMessage(playerid, COLOR_WHITE, "РџРѕРґРѕС…РѕРґРЅС‹Р№ РЅР°Р»РѕРі %d%%: -$%d.", gTaxIncome, itax);
 	}
 
 	new ctax = Econ_GetCarTax(playerid);
 	if (ctax > 0)
 	{
-		// не списывается сам: копится на налоговом счёте, игрок платит в банкомате (debts.inc)
+		// РЅРµ СЃРїРёСЃС‹РІР°РµС‚СЃСЏ СЃР°Рј: РєРѕРїРёС‚СЃСЏ РЅР° РЅР°Р»РѕРіРѕРІРѕРј СЃС‡С‘С‚Рµ, РёРіСЂРѕРє РїР»Р°С‚РёС‚ РІ Р±Р°РЅРєРѕРјР°С‚Рµ (debts.inc)
 		Debts_Add(playerid, DEBT_TAX, ctax);
-		SendClientMessage(playerid, COLOR_WHITE, "Налог на машину: $%d начислен на налоговый счёт.", ctax);
+		SendClientMessage(playerid, COLOR_WHITE, "РќР°Р»РѕРі РЅР° РјР°С€РёРЅСѓ: $%d РЅР°С‡РёСЃР»РµРЅ РЅР° РЅР°Р»РѕРіРѕРІС‹Р№ СЃС‡С‘С‚.", ctax);
 	}
 }
 
 // ---------------------------------------------------------------------
-//  Команды
+//  РљРѕРјР°РЅРґС‹
 // ---------------------------------------------------------------------
 stock bool:Cmd_Taxes(playerid)
 {
 	new text[700];
 	format(text, sizeof text,
-		"{FFFFFF}Казна штата: {33AA33}$%d\n\n{FFFF00}Налоги\n{FFFFFF}С зарплаты: %d%%\nНа машину: %d‰ от цены в час (не меньше $%d)\nНа дом: 0.1%% цены в час (не меньше $%d), со счёта дома\nНалог на машину копится на налоговом счёте: /debts\n\nТвой налог на машину: $%d в час",
+		"{FFFFFF}РљР°Р·РЅР° С€С‚Р°С‚Р°: {33AA33}$%d\n\n{FFFF00}РќР°Р»РѕРіРё\n{FFFFFF}РЎ Р·Р°СЂРїР»Р°С‚С‹: %d%%\nРќР° РјР°С€РёРЅСѓ: %dвЂ° РѕС‚ С†РµРЅС‹ РІ С‡Р°СЃ (РЅРµ РјРµРЅСЊС€Рµ $%d)\nРќР° РґРѕРј: 0.1%% С†РµРЅС‹ РІ С‡Р°СЃ (РЅРµ РјРµРЅСЊС€Рµ $%d), СЃРѕ СЃС‡С‘С‚Р° РґРѕРјР°\nРќР°Р»РѕРі РЅР° РјР°С€РёРЅСѓ РєРѕРїРёС‚СЃСЏ РЅР° РЅР°Р»РѕРіРѕРІРѕРј СЃС‡С‘С‚Рµ: /debts\n\nРўРІРѕР№ РЅР°Р»РѕРі РЅР° РјР°С€РёРЅСѓ: $%d РІ С‡Р°СЃ",
 		gTreasury, gTaxIncome, gTaxCar, TAX_CAR_MIN_SUM, HOUSE_TAX_MIN, Econ_GetCarTax(playerid));
 	new h = House_GetOwned(playerid);
 	if (h != -1)
 	{
 		new line[96];
-		format(line, sizeof line, "\nТвой налог на дом: $%d в час, на счёте дома $%d", House_GetTax(h), House[h][hBalance]);
+		format(line, sizeof line, "\nРўРІРѕР№ РЅР°Р»РѕРі РЅР° РґРѕРј: $%d РІ С‡Р°СЃ, РЅР° СЃС‡С‘С‚Рµ РґРѕРјР° $%d", House_GetTax(h), House[h][hBalance]);
 		strcat(text, line);
 	}
-	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Налоги", "%s", "Закрыть", "", text);
+	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "РќР°Р»РѕРіРё", "%s", "Р—Р°РєСЂС‹С‚СЊ", "", text);
 	return true;
 }
 
@@ -172,25 +172,25 @@ stock bool:Cmd_SetTax(playerid, const params[])
 	if (!Admin_Check(playerid, ADMIN_MAX_LEVEL)) return true;
 	new pos = 0, kind[16], value;
 	if (!NextParam(params, pos, kind) || !NextIntParam(params, pos, value))
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /settax income [0-%d %%] или /settax car [0-%d ‰]", TAX_INCOME_MAX, TAX_CAR_MAX);
+		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /settax income [0-%d %%] РёР»Рё /settax car [0-%d вЂ°]", TAX_INCOME_MAX, TAX_CAR_MAX);
 
 	if (!strcmp(kind, "income", true))
 	{
-		if (value < 0 || value > TAX_INCOME_MAX) return SendClientMessage(playerid, COLOR_GREY, "Подоходный налог от 0 до %d%%.", TAX_INCOME_MAX);
+		if (value < 0 || value > TAX_INCOME_MAX) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕС…РѕРґРЅС‹Р№ РЅР°Р»РѕРі РѕС‚ 0 РґРѕ %d%%.", TAX_INCOME_MAX);
 		gTaxIncome = value;
 		Econ_SaveValue("tax_income", value);
 		Admin_Log(playerid, "settax income", INVALID_PLAYER_ID, "", value);
-		SendClientMessageToAll(COLOR_YELLOW, "[Правительство] Подоходный налог теперь %d%%.", value);
+		SendClientMessageToAll(COLOR_YELLOW, "[РџСЂР°РІРёС‚РµР»СЊСЃС‚РІРѕ] РџРѕРґРѕС…РѕРґРЅС‹Р№ РЅР°Р»РѕРі С‚РµРїРµСЂСЊ %d%%.", value);
 	}
 	else if (!strcmp(kind, "car", true))
 	{
-		if (value < 0 || value > TAX_CAR_MAX) return SendClientMessage(playerid, COLOR_GREY, "Налог на машину от 0 до %d‰.", TAX_CAR_MAX);
+		if (value < 0 || value > TAX_CAR_MAX) return SendClientMessage(playerid, COLOR_GREY, "РќР°Р»РѕРі РЅР° РјР°С€РёРЅСѓ РѕС‚ 0 РґРѕ %dвЂ°.", TAX_CAR_MAX);
 		gTaxCar = value;
 		Econ_SaveValue("tax_car", value);
 		Admin_Log(playerid, "settax car", INVALID_PLAYER_ID, "", value);
-		SendClientMessageToAll(COLOR_YELLOW, "[Правительство] Налог на машину теперь %d‰ от цены в час.", value);
+		SendClientMessageToAll(COLOR_YELLOW, "[РџСЂР°РІРёС‚РµР»СЊСЃС‚РІРѕ] РќР°Р»РѕРі РЅР° РјР°С€РёРЅСѓ С‚РµРїРµСЂСЊ %dвЂ° РѕС‚ С†РµРЅС‹ РІ С‡Р°СЃ.", value);
 	}
-	else return SendClientMessage(playerid, COLOR_GREY, "Вид налога: income (с зарплаты) или car (на машину).");
+	else return SendClientMessage(playerid, COLOR_GREY, "Р’РёРґ РЅР°Р»РѕРіР°: income (СЃ Р·Р°СЂРїР»Р°С‚С‹) РёР»Рё car (РЅР° РјР°С€РёРЅСѓ).");
 	return true;
 }
 
@@ -199,8 +199,8 @@ stock bool:Cmd_MoneyLog(playerid, const params[])
 	if (!Admin_Check(playerid, 3)) return true;
 	new pos = 0, count = 15;
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /moneylog [id] [сколько записей, до 40]");
-	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
+	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /moneylog [id] [СЃРєРѕР»СЊРєРѕ Р·Р°РїРёСЃРµР№, РґРѕ 40]");
+	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє РµС‰С‘ РЅРµ РІРѕС€С‘Р» РІ Р°РєРєР°СѓРЅС‚.");
 	NextIntParam(params, pos, count);
 	if (count < 1) count = 1;
 	if (count > 40) count = 40;
@@ -211,8 +211,8 @@ stock bool:Cmd_MoneyLog(playerid, const params[])
 	if (r == DBResult:0) return true;
 	new rows = DB_GetRowCount(r);
 	new text[3600], line[160], when[16], reason[64];
-	format(text, sizeof text, "{FFFFFF}Наличные сейчас: $%d, в банке $%d\n\n", GetMoney(target), Player[target][pBank]);
-	if (rows == 0) strcat(text, "Записей нет.");
+	format(text, sizeof text, "{FFFFFF}РќР°Р»РёС‡РЅС‹Рµ СЃРµР№С‡Р°СЃ: $%d, РІ Р±Р°РЅРєРµ $%d\n\n", GetMoney(target), Player[target][pBank]);
+	if (rows == 0) strcat(text, "Р—Р°РїРёСЃРµР№ РЅРµС‚.");
 	for (new i = 0; i < rows; i++)
 	{
 		DB_GetFieldString(r, 0, when, sizeof when);
@@ -220,15 +220,15 @@ stock bool:Cmd_MoneyLog(playerid, const params[])
 		new amount = DB_GetFieldInt(r, 1);
 		if (reason[0] == '\0') strcat(reason, "-");
 		if (amount >= 0)
-			format(line, sizeof line, "%s  {33AA33}+$%d{FFFFFF}  (стало $%d)  %s\n", when, amount, DB_GetFieldInt(r, 2), reason);
+			format(line, sizeof line, "%s  {33AA33}+$%d{FFFFFF}  (СЃС‚Р°Р»Рѕ $%d)  %s\n", when, amount, DB_GetFieldInt(r, 2), reason);
 		else
-			format(line, sizeof line, "%s  {FF6347}-$%d{FFFFFF}  (стало $%d)  %s\n", when, -amount, DB_GetFieldInt(r, 2), reason);
+			format(line, sizeof line, "%s  {FF6347}-$%d{FFFFFF}  (СЃС‚Р°Р»Рѕ $%d)  %s\n", when, -amount, DB_GetFieldInt(r, 2), reason);
 		strcat(text, line);
 		DB_SelectNextRow(r);
 	}
 	DB_FreeResultSet(r);
 	new title[64];
-	format(title, sizeof title, "Деньги: %s", GetRPName(target));
+	format(title, sizeof title, "Р”РµРЅСЊРіРё: %s", GetRPName(target));
 	Admin_ShowInfo(playerid, title, text);
 	return true;
 }

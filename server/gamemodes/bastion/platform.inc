@@ -1,22 +1,22 @@
 // =====================================================================
-//  platform.inc — определение платформы игрока: ПК или телефон.
+//  platform.inc вЂ” РѕРїСЂРµРґРµР»РµРЅРёРµ РїР»Р°С‚С„РѕСЂРјС‹ РёРіСЂРѕРєР°: РџРљ РёР»Рё С‚РµР»РµС„РѕРЅ.
 //
-//  Основано на platform_detect.pwn владельца сервера. Как работает:
-//  при входе сервер шлёт клиенту проверку SendClientCheck. ПК-клиент
-//  SA-MP на неё отвечает, мобильный обычно молчит. Нет ответа за 3 с —
-//  считаем игрока мобильным.
+//  РћСЃРЅРѕРІР°РЅРѕ РЅР° platform_detect.pwn РІР»Р°РґРµР»СЊС†Р° СЃРµСЂРІРµСЂР°. РљР°Рє СЂР°Р±РѕС‚Р°РµС‚:
+//  РїСЂРё РІС…РѕРґРµ СЃРµСЂРІРµСЂ С€Р»С‘С‚ РєР»РёРµРЅС‚Сѓ РїСЂРѕРІРµСЂРєСѓ SendClientCheck. РџРљ-РєР»РёРµРЅС‚
+//  SA-MP РЅР° РЅРµС‘ РѕС‚РІРµС‡Р°РµС‚, РјРѕР±РёР»СЊРЅС‹Р№ РѕР±С‹С‡РЅРѕ РјРѕР»С‡РёС‚. РќРµС‚ РѕС‚РІРµС‚Р° Р·Р° 3 СЃ вЂ”
+//  СЃС‡РёС‚Р°РµРј РёРіСЂРѕРєР° РјРѕР±РёР»СЊРЅС‹Рј.
 //
-//  В любом месте мода:  if (IsPlayerMobile[playerid]) { ... }
+//  Р’ Р»СЋР±РѕРј РјРµСЃС‚Рµ РјРѕРґР°:  if (IsPlayerMobile[playerid]) { ... }
 //                       GetPlayerPlatform(playerid) -> PLATFORM_*
 //
-//  ВАЖНО: это эвристика, модифицированный клиент может её обмануть.
-//  Используй только для удобства (упрощённые меню, пороги), не для банов.
+//  Р’РђР–РќРћ: СЌС‚Рѕ СЌРІСЂРёСЃС‚РёРєР°, РјРѕРґРёС„РёС†РёСЂРѕРІР°РЅРЅС‹Р№ РєР»РёРµРЅС‚ РјРѕР¶РµС‚ РµС‘ РѕР±РјР°РЅСѓС‚СЊ.
+//  РСЃРїРѕР»СЊР·СѓР№ С‚РѕР»СЊРєРѕ РґР»СЏ СѓРґРѕР±СЃС‚РІР° (СѓРїСЂРѕС‰С‘РЅРЅС‹Рµ РјРµРЅСЋ, РїРѕСЂРѕРіРё), РЅРµ РґР»СЏ Р±Р°РЅРѕРІ.
 //
-//  Античит скорости из platform_detect.pwn сюда пока НЕ перенесён:
-//  мод телепортирует игроков обычным SetPlayerPos (дома, /goto, спавн),
-//  и такой античит кикал бы честных игроков. Его место — ветка
-//  feature/server-accounts-admin, вместе с переводом телепортов на
-//  безопасную функцию.
+//  РђРЅС‚РёС‡РёС‚ СЃРєРѕСЂРѕСЃС‚Рё РёР· platform_detect.pwn СЃСЋРґР° РїРѕРєР° РќР• РїРµСЂРµРЅРµСЃС‘РЅ:
+//  РјРѕРґ С‚РµР»РµРїРѕСЂС‚РёСЂСѓРµС‚ РёРіСЂРѕРєРѕРІ РѕР±С‹С‡РЅС‹Рј SetPlayerPos (РґРѕРјР°, /goto, СЃРїР°РІРЅ),
+//  Рё С‚Р°РєРѕР№ Р°РЅС‚РёС‡РёС‚ РєРёРєР°Р» Р±С‹ С‡РµСЃС‚РЅС‹С… РёРіСЂРѕРєРѕРІ. Р•РіРѕ РјРµСЃС‚Рѕ вЂ” РІРµС‚РєР°
+//  feature/server-accounts-admin, РІРјРµСЃС‚Рµ СЃ РїРµСЂРµРІРѕРґРѕРј С‚РµР»РµРїРѕСЂС‚РѕРІ РЅР°
+//  Р±РµР·РѕРїР°СЃРЅСѓСЋ С„СѓРЅРєС†РёСЋ.
 // =====================================================================
 
 #define PLATFORM_UNKNOWN        (0)
@@ -24,7 +24,7 @@
 #define PLATFORM_MOBILE         (2)
 
 #define PLATFORM_CHECK_TYPE     (0x48)
-#define PLATFORM_CHECK_TIMEOUT  (3000)   // мс ожидания ответа клиента
+#define PLATFORM_CHECK_TIMEOUT  (3000)   // РјСЃ РѕР¶РёРґР°РЅРёСЏ РѕС‚РІРµС‚Р° РєР»РёРµРЅС‚Р°
 
 new bool:IsPlayerMobile[MAX_PLAYERS];
 static gPlatform[MAX_PLAYERS];
@@ -47,7 +47,7 @@ static Platform_Set(playerid, platform)
 	printf("[platform] id=%d %s", playerid, (platform == PLATFORM_MOBILE) ? ("mobile") : ("pc"));
 }
 
-// Вызывается из OnPlayerConnect (rp.pwn)
+// Р’С‹Р·С‹РІР°РµС‚СЃСЏ РёР· OnPlayerConnect (rp.pwn)
 stock Platform_OnConnect(playerid)
 {
 	gPlatform[playerid] = PLATFORM_UNKNOWN;
@@ -62,7 +62,7 @@ stock Platform_OnConnect(playerid)
 	gPlatformTimer[playerid] = SetTimerEx("OnPlatformCheckTimeout", PLATFORM_CHECK_TIMEOUT, false, "i", playerid);
 }
 
-// Вызывается из OnPlayerDisconnect (rp.pwn)
+// Р’С‹Р·С‹РІР°РµС‚СЃСЏ РёР· OnPlayerDisconnect (rp.pwn)
 stock Platform_OnDisconnect(playerid)
 {
 	if (gPlatformPending[playerid]) KillTimer(gPlatformTimer[playerid]);

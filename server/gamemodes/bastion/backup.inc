@@ -1,23 +1,23 @@
 // =====================================================================
-//  backup.inc — резервные копии базы.
+//  backup.inc вЂ” СЂРµР·РµСЂРІРЅС‹Рµ РєРѕРїРёРё Р±Р°Р·С‹.
 //
-//  Раз в сутки (и при запуске, если сегодняшней копии ещё нет) сервер
-//  сохраняет полную копию rp.db в ту же папку scriptfiles под именем
-//  rp_backup_ГГГГ-ММ-ДД.db и держит BACKUP_KEEP последних, старые удаляет.
+//  Р Р°Р· РІ СЃСѓС‚РєРё (Рё РїСЂРё Р·Р°РїСѓСЃРєРµ, РµСЃР»Рё СЃРµРіРѕРґРЅСЏС€РЅРµР№ РєРѕРїРёРё РµС‰С‘ РЅРµС‚) СЃРµСЂРІРµСЂ
+//  СЃРѕС…СЂР°РЅСЏРµС‚ РїРѕР»РЅСѓСЋ РєРѕРїРёСЋ rp.db РІ С‚Сѓ Р¶Рµ РїР°РїРєСѓ scriptfiles РїРѕРґ РёРјРµРЅРµРј
+//  rp_backup_Р“Р“Р“Р“-РњРњ-Р”Р”.db Рё РґРµСЂР¶РёС‚ BACKUP_KEEP РїРѕСЃР»РµРґРЅРёС…, СЃС‚Р°СЂС‹Рµ СѓРґР°Р»СЏРµС‚.
 //
-//  Копии лежат на том же диске, что и база. Чтобы пережить поломку диска,
-//  запускай по расписанию backup_copy.bat (лежит в server/tools): он
-//  складывает копии на другой диск или в папку облака.
+//  РљРѕРїРёРё Р»РµР¶Р°С‚ РЅР° С‚РѕРј Р¶Рµ РґРёСЃРєРµ, С‡С‚Рѕ Рё Р±Р°Р·Р°. Р§С‚РѕР±С‹ РїРµСЂРµР¶РёС‚СЊ РїРѕР»РѕРјРєСѓ РґРёСЃРєР°,
+//  Р·Р°РїСѓСЃРєР°Р№ РїРѕ СЂР°СЃРїРёСЃР°РЅРёСЋ backup_copy.bat (Р»РµР¶РёС‚ РІ server/tools): РѕРЅ
+//  СЃРєР»Р°РґС‹РІР°РµС‚ РєРѕРїРёРё РЅР° РґСЂСѓРіРѕР№ РґРёСЃРє РёР»Рё РІ РїР°РїРєСѓ РѕР±Р»Р°РєР°.
 //
-//  Вернуть базу из копии: останови сервер, переименуй нужный файл
-//  rp_backup_....db в rp.db, запусти сервер.
+//  Р’РµСЂРЅСѓС‚СЊ Р±Р°Р·Сѓ РёР· РєРѕРїРёРё: РѕСЃС‚Р°РЅРѕРІРё СЃРµСЂРІРµСЂ, РїРµСЂРµРёРјРµРЅСѓР№ РЅСѓР¶РЅС‹Р№ С„Р°Р№Р»
+//  rp_backup_....db РІ rp.db, Р·Р°РїСѓСЃС‚Рё СЃРµСЂРІРµСЂ.
 //
-//  /backup — сделать копию прямо сейчас (главный администратор).
+//  /backup вЂ” СЃРґРµР»Р°С‚СЊ РєРѕРїРёСЋ РїСЂСЏРјРѕ СЃРµР№С‡Р°СЃ (РіР»Р°РІРЅС‹Р№ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ).
 // =====================================================================
 
-#define BACKUP_KEEP         14          // сколько копий хранить
+#define BACKUP_KEEP         14          // СЃРєРѕР»СЊРєРѕ РєРѕРїРёР№ С…СЂР°РЅРёС‚СЊ
 
-static gBackupDay = -1;                 // число месяца, за которое копия уже проверена
+static gBackupDay = -1;                 // С‡РёСЃР»Рѕ РјРµСЃСЏС†Р°, Р·Р° РєРѕС‚РѕСЂРѕРµ РєРѕРїРёСЏ СѓР¶Рµ РїСЂРѕРІРµСЂРµРЅР°
 
 stock Backup_Init()
 {
@@ -25,14 +25,14 @@ stock Backup_Init()
 	Backup_Daily();
 }
 
-// Сделать копию. Возвращает true, если файл появился.
+// РЎРґРµР»Р°С‚СЊ РєРѕРїРёСЋ. Р’РѕР·РІСЂР°С‰Р°РµС‚ true, РµСЃР»Рё С„Р°Р№Р» РїРѕСЏРІРёР»СЃСЏ.
 stock bool:Backup_Run()
 {
 	new y, m, d, file[40];
 	getdate(y, m, d);
 	format(file, sizeof file, "rp_backup_%04d-%02d-%02d.db", y, m, d);
 
-	if (fexist(file)) fremove(file);    // сегодняшнюю копию заменяем свежей
+	if (fexist(file)) fremove(file);    // СЃРµРіРѕРґРЅСЏС€РЅСЋСЋ РєРѕРїРёСЋ Р·Р°РјРµРЅСЏРµРј СЃРІРµР¶РµР№
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO backups (file, date) VALUES ('%q', %d)", file, gettime()));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "VACUUM INTO 'scriptfiles/%q'", file));
 
@@ -40,12 +40,12 @@ stock bool:Backup_Run()
 	{
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM backups WHERE file = '%q'", file));
 		printf("[backup] ERROR: copy %s was not created", file);
-		SendAdminMessage(COLOR_RED, "[Копия базы] Не удалось сохранить копию базы. Сообщи разработчику.");
+		SendAdminMessage(COLOR_RED, "[РљРѕРїРёСЏ Р±Р°Р·С‹] РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РєРѕРїРёСЋ Р±Р°Р·С‹. РЎРѕРѕР±С‰Рё СЂР°Р·СЂР°Р±РѕС‚С‡РёРєСѓ.");
 		return false;
 	}
 	printf("[backup] saved scriptfiles/%s", file);
 
-	// Удалить копии старше BACKUP_KEEP последних
+	// РЈРґР°Р»РёС‚СЊ РєРѕРїРёРё СЃС‚Р°СЂС€Рµ BACKUP_KEEP РїРѕСЃР»РµРґРЅРёС…
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT file FROM backups ORDER BY date DESC, id DESC LIMIT -1 OFFSET %d", BACKUP_KEEP);
 	if (r != DBResult:0)
 	{
@@ -62,7 +62,7 @@ stock bool:Backup_Run()
 	return true;
 }
 
-// Раз в минуту из rp.pwn (вне транзакции): наступил новый день — делаем копию
+// Р Р°Р· РІ РјРёРЅСѓС‚Сѓ РёР· rp.pwn (РІРЅРµ С‚СЂР°РЅР·Р°РєС†РёРё): РЅР°СЃС‚СѓРїРёР» РЅРѕРІС‹Р№ РґРµРЅСЊ вЂ” РґРµР»Р°РµРј РєРѕРїРёСЋ
 stock Backup_Daily()
 {
 	new y, m, d, file[40];
@@ -76,8 +76,8 @@ stock Backup_Daily()
 stock bool:Cmd_Backup(playerid)
 {
 	if (!Admin_Check(playerid, ADMIN_MAX_LEVEL)) return true;
-	if (Backup_Run()) SendClientMessage(playerid, COLOR_ADMIN, "Копия базы сохранена в scriptfiles (rp_backup_сегодняшняя дата.db).");
-	else SendClientMessage(playerid, COLOR_RED, "Копию сохранить не удалось, подробности в консоли сервера.");
+	if (Backup_Run()) SendClientMessage(playerid, COLOR_ADMIN, "РљРѕРїРёСЏ Р±Р°Р·С‹ СЃРѕС…СЂР°РЅРµРЅР° РІ scriptfiles (rp_backup_СЃРµРіРѕРґРЅСЏС€РЅСЏСЏ РґР°С‚Р°.db).");
+	else SendClientMessage(playerid, COLOR_RED, "РљРѕРїРёСЋ СЃРѕС…СЂР°РЅРёС‚СЊ РЅРµ СѓРґР°Р»РѕСЃСЊ, РїРѕРґСЂРѕР±РЅРѕСЃС‚Рё РІ РєРѕРЅСЃРѕР»Рё СЃРµСЂРІРµСЂР°.");
 	Admin_Log(playerid, "backup", INVALID_PLAYER_ID);
 	return true;
 }

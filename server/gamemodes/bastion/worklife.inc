@@ -1,64 +1,64 @@
 // =====================================================================
-//  worklife.inc — новые работы: рыбак, фермер, инкассатор, мусорщик.
+//  worklife.inc вЂ” РЅРѕРІС‹Рµ СЂР°Р±РѕС‚С‹: СЂС‹Р±Р°Рє, С„РµСЂРјРµСЂ, РёРЅРєР°СЃСЃР°С‚РѕСЂ, РјСѓСЃРѕСЂС‰РёРє.
 //
-//  Устроиться — как везде: значок работы (оранжевая футболка), ALT или /getjob.
-//  Значки работ двигаются в /markers, точки заданий и машины админ ставит сам (places.inc):
-//    рыбак      — /place fish (места на пирсе). Смена: /work у значка, у точки /fish.
-//                 Улов в сумке, сдать — ALT у значка работы.
-//    фермер     — /place field (грядки), /place barn (амбар). Смена: /work у значка,
-//                 собрать урожай на грядке, отнести ящик в амбар.
-//    инкассатор — банкоматы (/addatm) и /place vault (хранилище). Машина: /place car collector
-//                 (сесть в Securicar). Смена: /work в машине, объехать банкоматы (у каждого
-//                 выйти и забрать кассету), отвезти деньги в хранилище.
-//                 Пока инкассатор вне машины, её можно ограбить: /robvan у задних дверей.
-//    мусорщик   — /place bin (баки), /place dump (свалка), машина: /place car garbage (Trashmaster).
-//                 Смена: /work в мусоровозе, объехать баки, разгрузиться на свалке.
+//  РЈСЃС‚СЂРѕРёС‚СЊСЃСЏ вЂ” РєР°Рє РІРµР·РґРµ: Р·РЅР°С‡РѕРє СЂР°Р±РѕС‚С‹ (РѕСЂР°РЅР¶РµРІР°СЏ С„СѓС‚Р±РѕР»РєР°), ALT РёР»Рё /getjob.
+//  Р—РЅР°С‡РєРё СЂР°Р±РѕС‚ РґРІРёРіР°СЋС‚СЃСЏ РІ /markers, С‚РѕС‡РєРё Р·Р°РґР°РЅРёР№ Рё РјР°С€РёРЅС‹ Р°РґРјРёРЅ СЃС‚Р°РІРёС‚ СЃР°Рј (places.inc):
+//    СЂС‹Р±Р°Рє      вЂ” /place fish (РјРµСЃС‚Р° РЅР° РїРёСЂСЃРµ). РЎРјРµРЅР°: /work Сѓ Р·РЅР°С‡РєР°, Сѓ С‚РѕС‡РєРё /fish.
+//                 РЈР»РѕРІ РІ СЃСѓРјРєРµ, СЃРґР°С‚СЊ вЂ” ALT Сѓ Р·РЅР°С‡РєР° СЂР°Р±РѕС‚С‹.
+//    С„РµСЂРјРµСЂ     вЂ” /place field (РіСЂСЏРґРєРё), /place barn (Р°РјР±Р°СЂ). РЎРјРµРЅР°: /work Сѓ Р·РЅР°С‡РєР°,
+//                 СЃРѕР±СЂР°С‚СЊ СѓСЂРѕР¶Р°Р№ РЅР° РіСЂСЏРґРєРµ, РѕС‚РЅРµСЃС‚Рё СЏС‰РёРє РІ Р°РјР±Р°СЂ.
+//    РёРЅРєР°СЃСЃР°С‚РѕСЂ вЂ” Р±Р°РЅРєРѕРјР°С‚С‹ (/addatm) Рё /place vault (С…СЂР°РЅРёР»РёС‰Рµ). РњР°С€РёРЅР°: /place car collector
+//                 (СЃРµСЃС‚СЊ РІ Securicar). РЎРјРµРЅР°: /work РІ РјР°С€РёРЅРµ, РѕР±СЉРµС…Р°С‚СЊ Р±Р°РЅРєРѕРјР°С‚С‹ (Сѓ РєР°Р¶РґРѕРіРѕ
+//                 РІС‹Р№С‚Рё Рё Р·Р°Р±СЂР°С‚СЊ РєР°СЃСЃРµС‚Сѓ), РѕС‚РІРµР·С‚Рё РґРµРЅСЊРіРё РІ С…СЂР°РЅРёР»РёС‰Рµ.
+//                 РџРѕРєР° РёРЅРєР°СЃСЃР°С‚РѕСЂ РІРЅРµ РјР°С€РёРЅС‹, РµС‘ РјРѕР¶РЅРѕ РѕРіСЂР°Р±РёС‚СЊ: /robvan Сѓ Р·Р°РґРЅРёС… РґРІРµСЂРµР№.
+//    РјСѓСЃРѕСЂС‰РёРє   вЂ” /place bin (Р±Р°РєРё), /place dump (СЃРІР°Р»РєР°), РјР°С€РёРЅР°: /place car garbage (Trashmaster).
+//                 РЎРјРµРЅР°: /work РІ РјСѓСЃРѕСЂРѕРІРѕР·Рµ, РѕР±СЉРµС…Р°С‚СЊ Р±Р°РєРё, СЂР°Р·РіСЂСѓР·РёС‚СЊСЃСЏ РЅР° СЃРІР°Р»РєРµ.
 // =====================================================================
 
-#define FISH_PRICE              45      // за одну рыбу (с надбавкой за стаж)
-#define FISH_TIME               9       // секунд на заброс
+#define FISH_PRICE              45      // Р·Р° РѕРґРЅСѓ СЂС‹Р±Сѓ (СЃ РЅР°РґР±Р°РІРєРѕР№ Р·Р° СЃС‚Р°Р¶)
+#define FISH_TIME               9       // СЃРµРєСѓРЅРґ РЅР° Р·Р°Р±СЂРѕСЃ
 #define FISH_SPOT_RANGE         4.0
-#define FARM_PAY                90      // за ящик в амбар
+#define FARM_PAY                90      // Р·Р° СЏС‰РёРє РІ Р°РјР±Р°СЂ
 #define FARM_HARVEST_SEC        5
-#define COLLECT_ATMS            5       // банкоматов за рейс
-#define COLLECT_CASH_ATM        2500    // денег в машине с одного банкомата (это добыча грабителя)
-#define COLLECT_PAY_ATM         140     // инкассатору за банкомат, получает в хранилище
+#define COLLECT_ATMS            5       // Р±Р°РЅРєРѕРјР°С‚РѕРІ Р·Р° СЂРµР№СЃ
+#define COLLECT_CASH_ATM        2500    // РґРµРЅРµРі РІ РјР°С€РёРЅРµ СЃ РѕРґРЅРѕРіРѕ Р±Р°РЅРєРѕРјР°С‚Р° (СЌС‚Рѕ РґРѕР±С‹С‡Р° РіСЂР°Р±РёС‚РµР»СЏ)
+#define COLLECT_PAY_ATM         140     // РёРЅРєР°СЃСЃР°С‚РѕСЂСѓ Р·Р° Р±Р°РЅРєРѕРјР°С‚, РїРѕР»СѓС‡Р°РµС‚ РІ С…СЂР°РЅРёР»РёС‰Рµ
 #define COLLECT_PAY_BONUS       200
-#define ROBVAN_TIME             25      // секунд вскрывать машину
-#define ROBVAN_SHARE            60      // % денег из машины достаётся грабителю
+#define ROBVAN_TIME             25      // СЃРµРєСѓРЅРґ РІСЃРєСЂС‹РІР°С‚СЊ РјР°С€РёРЅСѓ
+#define ROBVAN_SHARE            60      // % РґРµРЅРµРі РёР· РјР°С€РёРЅС‹ РґРѕСЃС‚Р°С‘С‚СЃСЏ РіСЂР°Р±РёС‚РµР»СЋ
 #define ROBVAN_WANTED           4
 #define GARBAGE_BINS            6
 #define GARBAGE_PAY_BIN         70
 #define GARBAGE_PAY_DUMP        250
-#define WORKLIFE_HQ_RANGE       40.0    // как далеко от значка можно начать пешую смену
+#define WORKLIFE_HQ_RANGE       40.0    // РєР°Рє РґР°Р»РµРєРѕ РѕС‚ Р·РЅР°С‡РєР° РјРѕР¶РЅРѕ РЅР°С‡Р°С‚СЊ РїРµС€СѓСЋ СЃРјРµРЅСѓ
 
-// Шаги смены (pWorkStep)
+// РЁР°РіРё СЃРјРµРЅС‹ (pWorkStep)
 enum
 {
 	WL_NONE = 100,
-	WL_FISH_GO,         // идёт к месту рыбалки
-	WL_FARM_FIELD,      // идёт к грядке
-	WL_FARM_BARN,       // несёт ящик в амбар
-	WL_COL_ATM,         // едет к банкомату (забрать кассету — пешком)
-	WL_COL_VAULT,       // везёт деньги в хранилище
-	WL_GARB_BIN,        // едет к баку
-	WL_GARB_DUMP        // едет на свалку
+	WL_FISH_GO,         // РёРґС‘С‚ Рє РјРµСЃС‚Сѓ СЂС‹Р±Р°Р»РєРё
+	WL_FARM_FIELD,      // РёРґС‘С‚ Рє РіСЂСЏРґРєРµ
+	WL_FARM_BARN,       // РЅРµСЃС‘С‚ СЏС‰РёРє РІ Р°РјР±Р°СЂ
+	WL_COL_ATM,         // РµРґРµС‚ Рє Р±Р°РЅРєРѕРјР°С‚Сѓ (Р·Р°Р±СЂР°С‚СЊ РєР°СЃСЃРµС‚Сѓ вЂ” РїРµС€РєРѕРј)
+	WL_COL_VAULT,       // РІРµР·С‘С‚ РґРµРЅСЊРіРё РІ С…СЂР°РЅРёР»РёС‰Рµ
+	WL_GARB_BIN,        // РµРґРµС‚ Рє Р±Р°РєСѓ
+	WL_GARB_DUMP        // РµРґРµС‚ РЅР° СЃРІР°Р»РєСѓ
 }
 
 static const Float:gWlHQ[4][3] =
 {
-	{ 836.0, -1999.0, 12.87 },          // рыбак: начало пирса Санта-Марии
-	{ -1065.0, -1190.0, 129.2 },        // фермер: ферма EasterBoard
-	{ 1457.0, -1010.0, 26.84 },         // инкассатор: банк в Market
-	{ 2195.0, -1975.0, 13.55 }          // мусорщик: Willowfield
+	{ 836.0, -1999.0, 12.87 },          // СЂС‹Р±Р°Рє: РЅР°С‡Р°Р»Рѕ РїРёСЂСЃР° РЎР°РЅС‚Р°-РњР°СЂРёРё
+	{ -1065.0, -1190.0, 129.2 },        // С„РµСЂРјРµСЂ: С„РµСЂРјР° EasterBoard
+	{ 1457.0, -1010.0, 26.84 },         // РёРЅРєР°СЃСЃР°С‚РѕСЂ: Р±Р°РЅРє РІ Market
+	{ 2195.0, -1975.0, 13.55 }          // РјСѓСЃРѕСЂС‰РёРє: Willowfield
 };
 static gWlMk[4] = { -1, ... };
 static gPlaceVeh[MAX_PLACES] = { INVALID_VEHICLE_ID, ... };
 static gVanCash[MAX_VEHICLES];
 
-static gWlTarget[MAX_PLAYERS];          // точка задания (places / банкомат)
-static gWlCount[MAX_PLAYERS];           // сколько сделано в рейсе
-static gWlBusy[MAX_PLAYERS];            // секунд до конца действия (рыбалка, сбор)
+static gWlTarget[MAX_PLAYERS];          // С‚РѕС‡РєР° Р·Р°РґР°РЅРёСЏ (places / Р±Р°РЅРєРѕРјР°С‚)
+static gWlCount[MAX_PLAYERS];           // СЃРєРѕР»СЊРєРѕ СЃРґРµР»Р°РЅРѕ РІ СЂРµР№СЃРµ
+static gWlBusy[MAX_PLAYERS];            // СЃРµРєСѓРЅРґ РґРѕ РєРѕРЅС†Р° РґРµР№СЃС‚РІРёСЏ (СЂС‹Р±Р°Р»РєР°, СЃР±РѕСЂ)
 static gRobVan[MAX_PLAYERS] = { INVALID_VEHICLE_ID, ... };
 static gRobVanLeft[MAX_PLAYERS];
 
@@ -91,16 +91,16 @@ stock WorkLife_JobName(job)
 	new s[32];
 	switch (job)
 	{
-		case JOB_FISHER: strcat(s, "Рыбак");
-		case JOB_FARMER: strcat(s, "Фермер");
-		case JOB_COLLECTOR: strcat(s, "Инкассатор");
-		case JOB_GARBAGE: strcat(s, "Мусорщик");
-		default: strcat(s, "Безработный");
+		case JOB_FISHER: strcat(s, "Р С‹Р±Р°Рє");
+		case JOB_FARMER: strcat(s, "Р¤РµСЂРјРµСЂ");
+		case JOB_COLLECTOR: strcat(s, "РРЅРєР°СЃСЃР°С‚РѕСЂ");
+		case JOB_GARBAGE: strcat(s, "РњСѓСЃРѕСЂС‰РёРє");
+		default: strcat(s, "Р‘РµР·СЂР°Р±РѕС‚РЅС‹Р№");
 	}
 	return s;
 }
 
-// Нужны ли права на авто
+// РќСѓР¶РЅС‹ Р»Рё РїСЂР°РІР° РЅР° Р°РІС‚Рѕ
 stock bool:WorkLife_NeedsLicense(job)
 {
 	return (job == JOB_COLLECTOR || job == JOB_GARBAGE);
@@ -111,18 +111,18 @@ static WorkLife_AddHQ(job, const hint[])
 	new k = job - JOB_FISHER;
 	new Float:x = gWlHQ[k][0], Float:y = gWlHQ[k][1], Float:z = gWlHQ[k][2];
 	new text[MK_TEXT_LEN], name[32];
-	format(name, sizeof name, "Работа: %s", WorkLife_JobName(job));
-	format(text, sizeof text, "{FF9900}Работа: %s\n{FFFFFF}ALT — устроиться\n%s", WorkLife_JobName(job), hint);
+	format(name, sizeof name, "Р Р°Р±РѕС‚Р°: %s", WorkLife_JobName(job));
+	format(text, sizeof text, "{FF9900}Р Р°Р±РѕС‚Р°: %s\n{FFFFFF}ALT вЂ” СѓСЃС‚СЂРѕРёС‚СЊСЃСЏ\n%s", WorkLife_JobName(job), hint);
 	gWlMk[k] = Marker_Create(MK_JOB, job, name, 1275, x, y, z, 0, 0, GPS_JOBS);
 	Marker_SetLabel(gWlMk[k], text);
 }
 
 stock WorkLife_Init()
 {
-	WorkLife_AddHQ(JOB_FISHER, "/work — смена, /fish — закинуть удочку\nALT — сдать улов");
-	WorkLife_AddHQ(JOB_FARMER, "/work — начать смену");
-	WorkLife_AddHQ(JOB_COLLECTOR, "Сядь в инкассаторскую машину и введи /work");
-	WorkLife_AddHQ(JOB_GARBAGE, "Сядь в мусоровоз и введи /work");
+	WorkLife_AddHQ(JOB_FISHER, "/work вЂ” СЃРјРµРЅР°, /fish вЂ” Р·Р°РєРёРЅСѓС‚СЊ СѓРґРѕС‡РєСѓ\nALT вЂ” СЃРґР°С‚СЊ СѓР»РѕРІ");
+	WorkLife_AddHQ(JOB_FARMER, "/work вЂ” РЅР°С‡Р°С‚СЊ СЃРјРµРЅСѓ");
+	WorkLife_AddHQ(JOB_COLLECTOR, "РЎСЏРґСЊ РІ РёРЅРєР°СЃСЃР°С‚РѕСЂСЃРєСѓСЋ РјР°С€РёРЅСѓ Рё РІРІРµРґРё /work");
+	WorkLife_AddHQ(JOB_GARBAGE, "РЎСЏРґСЊ РІ РјСѓСЃРѕСЂРѕРІРѕР· Рё РІРІРµРґРё /work");
 	for (new i = 0; i < MAX_PLACES; i++)
 		if (gPlace[i][plUsed] && gPlace[i][plKind] == PL_CAR) WorkLife_SpawnCar(i);
 	SetTimer("WorkLife_OnSecond", 1000, true);
@@ -136,7 +136,7 @@ stock WorkLife_GetNearbyHQ(playerid)
 }
 
 // ---------------------------------------------------------------------
-//  Машины работ (точки PL_CAR: arg = работа * 1000 + модель)
+//  РњР°С€РёРЅС‹ СЂР°Р±РѕС‚ (С‚РѕС‡РєРё PL_CAR: arg = СЂР°Р±РѕС‚Р° * 1000 + РјРѕРґРµР»СЊ)
 // ---------------------------------------------------------------------
 stock WorkLife_SpawnCar(i)
 {
@@ -164,14 +164,14 @@ stock WorkLife_PlaceOfCar(v)
 	return -1;
 }
 
-// Машина вернулась на место — денег в ней больше нет
+// РњР°С€РёРЅР° РІРµСЂРЅСѓР»Р°СЃСЊ РЅР° РјРµСЃС‚Рѕ вЂ” РґРµРЅРµРі РІ РЅРµР№ Р±РѕР»СЊС€Рµ РЅРµС‚
 stock WorkLife_OnVehicleSpawn(v)
 {
 	if (v > 0 && v < MAX_VEHICLES) gVanCash[v] = 0;
 }
 
 // ---------------------------------------------------------------------
-//  Начало смены (из Cmd_Work, jobs.inc). true — работа наша
+//  РќР°С‡Р°Р»Рѕ СЃРјРµРЅС‹ (РёР· Cmd_Work, jobs.inc). true вЂ” СЂР°Р±РѕС‚Р° РЅР°С€Р°
 // ---------------------------------------------------------------------
 static WorkLife_Target(playerid, i, Float:size)
 {
@@ -200,13 +200,13 @@ stock bool:WorkLife_StartWork(playerid)
 	{
 		case JOB_FISHER, JOB_FARMER:
 		{
-			if (!Marker_InRange(playerid, gWlMk[k], WORKLIFE_HQ_RANGE)) { SendClientMessage(playerid, COLOR_GREY, "Смену начинают у значка работы."); return true; }
-			if (IsPlayerInAnyVehicle(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Выйди из транспорта."); return true; }
+			if (!Marker_InRange(playerid, gWlMk[k], WORKLIFE_HQ_RANGE)) { SendClientMessage(playerid, COLOR_GREY, "РЎРјРµРЅСѓ РЅР°С‡РёРЅР°СЋС‚ Сѓ Р·РЅР°С‡РєР° СЂР°Р±РѕС‚С‹."); return true; }
+			if (IsPlayerInAnyVehicle(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Р’С‹Р№РґРё РёР· С‚СЂР°РЅСЃРїРѕСЂС‚Р°."); return true; }
 			new kind = (job == JOB_FISHER) ? PL_FISH : PL_FIELD;
 			new i = Place_Random(kind);
 			if (i == -1 || (job == JOB_FARMER && Place_First(PL_BARN) == -1))
 			{
-				SendClientMessage(playerid, COLOR_GREY, "Точки работы не расставлены. Попроси админа: /place %s%s", (job == JOB_FISHER) ? "fish" : "field", (job == JOB_FARMER) ? " и /place barn" : "");
+				SendClientMessage(playerid, COLOR_GREY, "РўРѕС‡РєРё СЂР°Р±РѕС‚С‹ РЅРµ СЂР°СЃСЃС‚Р°РІР»РµРЅС‹. РџРѕРїСЂРѕСЃРё Р°РґРјРёРЅР°: /place %s%s", (job == JOB_FISHER) ? "fish" : "field", (job == JOB_FARMER) ? " Рё /place barn" : "");
 				return true;
 			}
 			Player[playerid][pWorking] = 1;
@@ -217,31 +217,31 @@ stock bool:WorkLife_StartWork(playerid)
 				Player[playerid][pWorkStep] = WL_FISH_GO;
 				SetPlayerAttachedObject(playerid, JOB_OBJECT_SLOT, 18632, 6, 0.08, 0.02, 0.0, 180.0, 0.0, 0.0);
 				WorkLife_Target(playerid, i, 2.0);
-				SendClientMessage(playerid, COLOR_GREEN, "Смена рыбака началась. Иди к месту (красный маркер) и введи /fish. Улов сдают у значка работы (ALT).");
+				SendClientMessage(playerid, COLOR_GREEN, "РЎРјРµРЅР° СЂС‹Р±Р°РєР° РЅР°С‡Р°Р»Р°СЃСЊ. РРґРё Рє РјРµСЃС‚Сѓ (РєСЂР°СЃРЅС‹Р№ РјР°СЂРєРµСЂ) Рё РІРІРµРґРё /fish. РЈР»РѕРІ СЃРґР°СЋС‚ Сѓ Р·РЅР°С‡РєР° СЂР°Р±РѕС‚С‹ (ALT).");
 			}
 			else
 			{
 				Player[playerid][pWorkStep] = WL_FARM_FIELD;
 				WorkLife_Target(playerid, i, 2.0);
-				SendClientMessage(playerid, COLOR_GREEN, "Смена фермера началась. Иди к грядке (красный маркер), собери урожай и отнеси в амбар. Закончить: /work");
+				SendClientMessage(playerid, COLOR_GREEN, "РЎРјРµРЅР° С„РµСЂРјРµСЂР° РЅР°С‡Р°Р»Р°СЃСЊ. РРґРё Рє РіСЂСЏРґРєРµ (РєСЂР°СЃРЅС‹Р№ РјР°СЂРєРµСЂ), СЃРѕР±РµСЂРё СѓСЂРѕР¶Р°Р№ Рё РѕС‚РЅРµСЃРё РІ Р°РјР±Р°СЂ. Р—Р°РєРѕРЅС‡РёС‚СЊ: /work");
 			}
 		}
 		case JOB_COLLECTOR, JOB_GARBAGE:
 		{
 			if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER || Jobs_GetVehicleJob(GetPlayerVehicleID(playerid)) != job)
 			{
-				SendClientMessage(playerid, COLOR_GREY, "Сядь за руль рабочей машины. Если машин нет — попроси админа: /place car %s", WorkLife_JobKey(job));
+				SendClientMessage(playerid, COLOR_GREY, "РЎСЏРґСЊ Р·Р° СЂСѓР»СЊ СЂР°Р±РѕС‡РµР№ РјР°С€РёРЅС‹. Р•СЃР»Рё РјР°С€РёРЅ РЅРµС‚ вЂ” РїРѕРїСЂРѕСЃРё Р°РґРјРёРЅР°: /place car %s", WorkLife_JobKey(job));
 				return true;
 			}
-			if (!Licenses_Has(playerid, LIC_CAR)) { SendClientMessage(playerid, COLOR_GREY, "Нужны права на авто."); return true; }
+			if (!Licenses_Has(playerid, LIC_CAR)) { SendClientMessage(playerid, COLOR_GREY, "РќСѓР¶РЅС‹ РїСЂР°РІР° РЅР° Р°РІС‚Рѕ."); return true; }
 			if (job == JOB_COLLECTOR && (gAtmCount <= 0 || Place_First(PL_VAULT) == -1))
 			{
-				SendClientMessage(playerid, COLOR_GREY, "Нет банкоматов или хранилища. Попроси админа: /addatm и /place vault");
+				SendClientMessage(playerid, COLOR_GREY, "РќРµС‚ Р±Р°РЅРєРѕРјР°С‚РѕРІ РёР»Рё С…СЂР°РЅРёР»РёС‰Р°. РџРѕРїСЂРѕСЃРё Р°РґРјРёРЅР°: /addatm Рё /place vault");
 				return true;
 			}
 			if (job == JOB_GARBAGE && (Place_First(PL_BIN) == -1 || Place_First(PL_DUMP) == -1))
 			{
-				SendClientMessage(playerid, COLOR_GREY, "Баки или свалка не расставлены. Попроси админа: /place bin и /place dump");
+				SendClientMessage(playerid, COLOR_GREY, "Р‘Р°РєРё РёР»Рё СЃРІР°Р»РєР° РЅРµ СЂР°СЃСЃС‚Р°РІР»РµРЅС‹. РџРѕРїСЂРѕСЃРё Р°РґРјРёРЅР°: /place bin Рё /place dump");
 				return true;
 			}
 			Player[playerid][pWorking] = 1;
@@ -253,13 +253,13 @@ stock bool:WorkLife_StartWork(playerid)
 				gVanCash[Player[playerid][pWorkVehicle]] = 0;
 				Player[playerid][pWorkStep] = WL_COL_ATM;
 				WorkLife_NextAtm(playerid);
-				SendClientMessage(playerid, COLOR_GREEN, "Рейс инкассатора: %d банкоматов. У каждого выйди и подойди к банкомату за кассетой. Не оставляй машину надолго: её могут вскрыть.", COLLECT_ATMS);
+				SendClientMessage(playerid, COLOR_GREEN, "Р РµР№СЃ РёРЅРєР°СЃСЃР°С‚РѕСЂР°: %d Р±Р°РЅРєРѕРјР°С‚РѕРІ. РЈ РєР°Р¶РґРѕРіРѕ РІС‹Р№РґРё Рё РїРѕРґРѕР№РґРё Рє Р±Р°РЅРєРѕРјР°С‚Сѓ Р·Р° РєР°СЃСЃРµС‚РѕР№. РќРµ РѕСЃС‚Р°РІР»СЏР№ РјР°С€РёРЅСѓ РЅР°РґРѕР»РіРѕ: РµС‘ РјРѕРіСѓС‚ РІСЃРєСЂС‹С‚СЊ.", COLLECT_ATMS);
 			}
 			else
 			{
 				Player[playerid][pWorkStep] = WL_GARB_BIN;
 				WorkLife_Target(playerid, Place_Random(PL_BIN), 5.0);
-				SendClientMessage(playerid, COLOR_GREEN, "Рейс мусорщика: %d баков, потом свалка. $%d за бак. Закончить: /work", GARBAGE_BINS, GARBAGE_PAY_BIN);
+				SendClientMessage(playerid, COLOR_GREEN, "Р РµР№СЃ РјСѓСЃРѕСЂС‰РёРєР°: %d Р±Р°РєРѕРІ, РїРѕС‚РѕРј СЃРІР°Р»РєР°. $%d Р·Р° Р±Р°Рє. Р—Р°РєРѕРЅС‡РёС‚СЊ: /work", GARBAGE_BINS, GARBAGE_PAY_BIN);
 			}
 		}
 	}
@@ -267,7 +267,7 @@ stock bool:WorkLife_StartWork(playerid)
 }
 
 // ---------------------------------------------------------------------
-//  Точки заданий (из Jobs_OnEnterCheckpoint)
+//  РўРѕС‡РєРё Р·Р°РґР°РЅРёР№ (РёР· Jobs_OnEnterCheckpoint)
 // ---------------------------------------------------------------------
 stock WorkLife_OnCheckpoint(playerid)
 {
@@ -277,7 +277,7 @@ stock WorkLife_OnCheckpoint(playerid)
 		case WL_FISH_GO:
 		{
 			DisablePlayerCheckpoint(playerid);
-			SendClientMessage(playerid, COLOR_WHITE, "Ты на месте. Закинуть удочку: /fish");
+			SendClientMessage(playerid, COLOR_WHITE, "РўС‹ РЅР° РјРµСЃС‚Рµ. Р—Р°РєРёРЅСѓС‚СЊ СѓРґРѕС‡РєСѓ: /fish");
 		}
 		case WL_FARM_FIELD:
 		{
@@ -297,19 +297,19 @@ stock WorkLife_OnCheckpoint(playerid)
 			gWlCount[playerid]++;
 			Player[playerid][pWorkStep] = WL_FARM_FIELD;
 			WorkLife_Target(playerid, Place_Random(PL_FIELD, gWlTarget[playerid]), 2.0);
-			SendClientMessage(playerid, COLOR_GREEN, "Урожай сдан: +$%d. Следующая грядка отмечена.", pay);
+			SendClientMessage(playerid, COLOR_GREEN, "РЈСЂРѕР¶Р°Р№ СЃРґР°РЅ: +$%d. РЎР»РµРґСѓСЋС‰Р°СЏ РіСЂСЏРґРєР° РѕС‚РјРµС‡РµРЅР°.", pay);
 		}
 		case WL_COL_ATM:
 		{
 			if (IsPlayerInAnyVehicle(playerid))
 			{
-				SendClientMessage(playerid, COLOR_GREY, "Выйди из машины и подойди к банкомату за кассетой.");
+				SendClientMessage(playerid, COLOR_GREY, "Р’С‹Р№РґРё РёР· РјР°С€РёРЅС‹ Рё РїРѕРґРѕР№РґРё Рє Р±Р°РЅРєРѕРјР°С‚Сѓ Р·Р° РєР°СЃСЃРµС‚РѕР№.");
 				return;
 			}
 			new v = Player[playerid][pWorkVehicle];
 			new Float:vx, Float:vy, Float:vz;
 			GetVehiclePos(v, vx, vy, vz);
-			if (!IsPlayerInRangeOfPoint(playerid, 40.0, vx, vy, vz)) { SendClientMessage(playerid, COLOR_GREY, "Твоя машина слишком далеко."); return; }
+			if (!IsPlayerInRangeOfPoint(playerid, 40.0, vx, vy, vz)) { SendClientMessage(playerid, COLOR_GREY, "РўРІРѕСЏ РјР°С€РёРЅР° СЃР»РёС€РєРѕРј РґР°Р»РµРєРѕ."); return; }
 			ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
 			gVanCash[v] += COLLECT_CASH_ATM;
 			gWlCount[playerid]++;
@@ -317,79 +317,79 @@ stock WorkLife_OnCheckpoint(playerid)
 			{
 				Player[playerid][pWorkStep] = WL_COL_VAULT;
 				WorkLife_Target(playerid, Place_First(PL_VAULT), 6.0);
-				SendClientMessage(playerid, COLOR_GREEN, "Кассета загружена (%d/%d). Вези деньги в хранилище банка (маркер).", gWlCount[playerid], COLLECT_ATMS);
+				SendClientMessage(playerid, COLOR_GREEN, "РљР°СЃСЃРµС‚Р° Р·Р°РіСЂСѓР¶РµРЅР° (%d/%d). Р’РµР·Рё РґРµРЅСЊРіРё РІ С…СЂР°РЅРёР»РёС‰Рµ Р±Р°РЅРєР° (РјР°СЂРєРµСЂ).", gWlCount[playerid], COLLECT_ATMS);
 			}
 			else
 			{
 				WorkLife_NextAtm(playerid);
-				SendClientMessage(playerid, COLOR_GREEN, "Кассета загружена (%d/%d). В машине $%d. Следующий банкомат отмечен.", gWlCount[playerid], COLLECT_ATMS, gVanCash[v]);
+				SendClientMessage(playerid, COLOR_GREEN, "РљР°СЃСЃРµС‚Р° Р·Р°РіСЂСѓР¶РµРЅР° (%d/%d). Р’ РјР°С€РёРЅРµ $%d. РЎР»РµРґСѓСЋС‰РёР№ Р±Р°РЅРєРѕРјР°С‚ РѕС‚РјРµС‡РµРЅ.", gWlCount[playerid], COLLECT_ATMS, gVanCash[v]);
 			}
 		}
 		case WL_COL_VAULT:
 		{
-			if (GetPlayerVehicleID(playerid) != Player[playerid][pWorkVehicle]) { SendClientMessage(playerid, COLOR_GREY, "Приезжай на своей инкассаторской машине."); return; }
+			if (GetPlayerVehicleID(playerid) != Player[playerid][pWorkVehicle]) { SendClientMessage(playerid, COLOR_GREY, "РџСЂРёРµР·Р¶Р°Р№ РЅР° СЃРІРѕРµР№ РёРЅРєР°СЃСЃР°С‚РѕСЂСЃРєРѕР№ РјР°С€РёРЅРµ."); return; }
 			new v = Player[playerid][pWorkVehicle];
 			if (gVanCash[v] <= 0)
 			{
-				SendClientMessage(playerid, COLOR_RED, "Машина пустая: деньги украли. Рейс не оплачен.");
+				SendClientMessage(playerid, COLOR_RED, "РњР°С€РёРЅР° РїСѓСЃС‚Р°СЏ: РґРµРЅСЊРіРё СѓРєСЂР°Р»Рё. Р РµР№СЃ РЅРµ РѕРїР»Р°С‡РµРЅ.");
 			}
 			else
 			{
 				new pay = Job_Pay(playerid, COLLECT_PAY_ATM * gWlCount[playerid] + COLLECT_PAY_BONUS);
-				SendClientMessage(playerid, COLOR_GREEN, "Деньги сданы в хранилище ($%d). Оплата рейса: +$%d.", gVanCash[v], pay);
+				SendClientMessage(playerid, COLOR_GREEN, "Р”РµРЅСЊРіРё СЃРґР°РЅС‹ РІ С…СЂР°РЅРёР»РёС‰Рµ ($%d). РћРїР»Р°С‚Р° СЂРµР№СЃР°: +$%d.", gVanCash[v], pay);
 			}
 			gVanCash[v] = 0;
 			gWlCount[playerid] = 0;
 			Player[playerid][pWorkStep] = WL_COL_ATM;
 			WorkLife_NextAtm(playerid);
-			SendClientMessage(playerid, COLOR_WHITE, "Новый рейс: первый банкомат отмечен. Закончить: /work");
+			SendClientMessage(playerid, COLOR_WHITE, "РќРѕРІС‹Р№ СЂРµР№СЃ: РїРµСЂРІС‹Р№ Р±Р°РЅРєРѕРјР°С‚ РѕС‚РјРµС‡РµРЅ. Р—Р°РєРѕРЅС‡РёС‚СЊ: /work");
 		}
 		case WL_GARB_BIN:
 		{
-			if (GetPlayerVehicleID(playerid) != Player[playerid][pWorkVehicle]) { SendClientMessage(playerid, COLOR_GREY, "Приезжай на мусоровозе."); return; }
+			if (GetPlayerVehicleID(playerid) != Player[playerid][pWorkVehicle]) { SendClientMessage(playerid, COLOR_GREY, "РџСЂРёРµР·Р¶Р°Р№ РЅР° РјСѓСЃРѕСЂРѕРІРѕР·Рµ."); return; }
 			new pay = Job_Pay(playerid, GARBAGE_PAY_BIN);
 			gWlCount[playerid]++;
 			if (gWlCount[playerid] >= GARBAGE_BINS)
 			{
 				Player[playerid][pWorkStep] = WL_GARB_DUMP;
 				WorkLife_Target(playerid, Place_Random(PL_DUMP), 8.0);
-				SendClientMessage(playerid, COLOR_GREEN, "Бак пуст: +$%d. Кузов полный, вези на свалку.", pay);
+				SendClientMessage(playerid, COLOR_GREEN, "Р‘Р°Рє РїСѓСЃС‚: +$%d. РљСѓР·РѕРІ РїРѕР»РЅС‹Р№, РІРµР·Рё РЅР° СЃРІР°Р»РєСѓ.", pay);
 			}
 			else
 			{
 				WorkLife_Target(playerid, Place_Random(PL_BIN, gWlTarget[playerid]), 5.0);
-				SendClientMessage(playerid, COLOR_GREEN, "Бак пуст: +$%d (%d/%d). Следующий отмечен.", pay, gWlCount[playerid], GARBAGE_BINS);
+				SendClientMessage(playerid, COLOR_GREEN, "Р‘Р°Рє РїСѓСЃС‚: +$%d (%d/%d). РЎР»РµРґСѓСЋС‰РёР№ РѕС‚РјРµС‡РµРЅ.", pay, gWlCount[playerid], GARBAGE_BINS);
 			}
 		}
 		case WL_GARB_DUMP:
 		{
-			if (GetPlayerVehicleID(playerid) != Player[playerid][pWorkVehicle]) { SendClientMessage(playerid, COLOR_GREY, "Приезжай на мусоровозе."); return; }
+			if (GetPlayerVehicleID(playerid) != Player[playerid][pWorkVehicle]) { SendClientMessage(playerid, COLOR_GREY, "РџСЂРёРµР·Р¶Р°Р№ РЅР° РјСѓСЃРѕСЂРѕРІРѕР·Рµ."); return; }
 			new pay = Job_Pay(playerid, GARBAGE_PAY_DUMP);
 			gWlCount[playerid] = 0;
 			Player[playerid][pWorkStep] = WL_GARB_BIN;
 			WorkLife_Target(playerid, Place_Random(PL_BIN), 5.0);
-			SendClientMessage(playerid, COLOR_GREEN, "Мусор выгружен: +$%d. Новый рейс, первый бак отмечен.", pay);
+			SendClientMessage(playerid, COLOR_GREEN, "РњСѓСЃРѕСЂ РІС‹РіСЂСѓР¶РµРЅ: +$%d. РќРѕРІС‹Р№ СЂРµР№СЃ, РїРµСЂРІС‹Р№ Р±Р°Рє РѕС‚РјРµС‡РµРЅ.", pay);
 		}
 	}
 }
 
 // ---------------------------------------------------------------------
-//  Рыбалка: /fish
+//  Р С‹Р±Р°Р»РєР°: /fish
 // ---------------------------------------------------------------------
 stock bool:Cmd_Fish(playerid)
 {
-	if (Player[playerid][pJob] != JOB_FISHER || !Player[playerid][pWorking]) return SendClientMessage(playerid, COLOR_GREY, "Рыбачат на смене рыбака (/getjob у значка, потом /work).");
-	if (gWlBusy[playerid] > 0) return SendClientMessage(playerid, COLOR_GREY, "Удочка уже заброшена.");
-	if (IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Выйди из транспорта.");
-	if (Place_Nearby(playerid, PL_FISH, FISH_SPOT_RANGE) == -1) return SendClientMessage(playerid, COLOR_GREY, "Здесь не клюёт. Иди к месту рыбалки (маркер на карте).");
-	if (Inv_Count(playerid, INV_FISH) >= Inv_GetMax(INV_FISH)) return SendClientMessage(playerid, COLOR_GREY, "Сумка полная: сдай улов у значка работы.");
+	if (Player[playerid][pJob] != JOB_FISHER || !Player[playerid][pWorking]) return SendClientMessage(playerid, COLOR_GREY, "Р С‹Р±Р°С‡Р°С‚ РЅР° СЃРјРµРЅРµ СЂС‹Р±Р°РєР° (/getjob Сѓ Р·РЅР°С‡РєР°, РїРѕС‚РѕРј /work).");
+	if (gWlBusy[playerid] > 0) return SendClientMessage(playerid, COLOR_GREY, "РЈРґРѕС‡РєР° СѓР¶Рµ Р·Р°Р±СЂРѕС€РµРЅР°.");
+	if (IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Р’С‹Р№РґРё РёР· С‚СЂР°РЅСЃРїРѕСЂС‚Р°.");
+	if (Place_Nearby(playerid, PL_FISH, FISH_SPOT_RANGE) == -1) return SendClientMessage(playerid, COLOR_GREY, "Р—РґРµСЃСЊ РЅРµ РєР»СЋС‘С‚. РРґРё Рє РјРµСЃС‚Сѓ СЂС‹Р±Р°Р»РєРё (РјР°СЂРєРµСЂ РЅР° РєР°СЂС‚Рµ).");
+	if (Inv_Count(playerid, INV_FISH) >= Inv_GetMax(INV_FISH)) return SendClientMessage(playerid, COLOR_GREY, "РЎСѓРјРєР° РїРѕР»РЅР°СЏ: СЃРґР°Р№ СѓР»РѕРІ Сѓ Р·РЅР°С‡РєР° СЂР°Р±РѕС‚С‹.");
 	DisablePlayerCheckpoint(playerid);
 	gWlBusy[playerid] = FISH_TIME + random(5);
 	TogglePlayerControllable(playerid, false);
 	ApplyAnimation(playerid, "SWORD", "sword_block", 4.1, false, false, false, true, 0);
 	GameTextForPlayer(playerid, "~b~fishing...", gWlBusy[playerid] * 1000, 4);
 	new msg[96];
-	format(msg, sizeof msg, "%s закидывает удочку.", GetRPName(playerid));
+	format(msg, sizeof msg, "%s Р·Р°РєРёРґС‹РІР°РµС‚ СѓРґРѕС‡РєСѓ.", GetRPName(playerid));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	return true;
 }
@@ -399,36 +399,36 @@ static WorkLife_FishDone(playerid)
 	TogglePlayerControllable(playerid, true);
 	ClearAnimations(playerid);
 	new roll = random(100);
-	if (roll < 25) { SendClientMessage(playerid, COLOR_GREY, "Сорвалась... Попробуй ещё: /fish"); return; }
-	if (roll < 35) { SendClientMessage(playerid, COLOR_GREY, "Вытащил старый ботинок. Выбросил. /fish"); return; }
+	if (roll < 25) { SendClientMessage(playerid, COLOR_GREY, "РЎРѕСЂРІР°Р»Р°СЃСЊ... РџРѕРїСЂРѕР±СѓР№ РµС‰С‘: /fish"); return; }
+	if (roll < 35) { SendClientMessage(playerid, COLOR_GREY, "Р’С‹С‚Р°С‰РёР» СЃС‚Р°СЂС‹Р№ Р±РѕС‚РёРЅРѕРє. Р’С‹Р±СЂРѕСЃРёР». /fish"); return; }
 	new n = (roll >= 90) ? 2 : 1;
 	if (Inv_GetMax(INV_FISH) - Inv_Count(playerid, INV_FISH) < n) n = 1;
 	Inv_Add(playerid, INV_FISH, n);
-	SendClientMessage(playerid, COLOR_GREEN, "Поймал%s! Рыбы в сумке: %d. Ещё: /fish, сдать — ALT у значка работы.", (n == 2) ? " сразу две" : "", Inv_Count(playerid, INV_FISH));
-	// каждые 5 рыб место меняется — рыба уходит
+	SendClientMessage(playerid, COLOR_GREEN, "РџРѕР№РјР°Р»%s! Р С‹Р±С‹ РІ СЃСѓРјРєРµ: %d. Р•С‰С‘: /fish, СЃРґР°С‚СЊ вЂ” ALT Сѓ Р·РЅР°С‡РєР° СЂР°Р±РѕС‚С‹.", (n == 2) ? " СЃСЂР°Р·Сѓ РґРІРµ" : "", Inv_Count(playerid, INV_FISH));
+	// РєР°Р¶РґС‹Рµ 5 СЂС‹Р± РјРµСЃС‚Рѕ РјРµРЅСЏРµС‚СЃСЏ вЂ” СЂС‹Р±Р° СѓС…РѕРґРёС‚
 	if (++gWlCount[playerid] % 5 == 0)
 	{
 		Player[playerid][pWorkStep] = WL_FISH_GO;
 		WorkLife_Target(playerid, Place_Random(PL_FISH, Place_Nearby(playerid, PL_FISH, FISH_SPOT_RANGE)), 2.0);
-		SendClientMessage(playerid, COLOR_WHITE, "Здесь клевать перестало. Новое место отмечено на карте.");
+		SendClientMessage(playerid, COLOR_WHITE, "Р—РґРµСЃСЊ РєР»РµРІР°С‚СЊ РїРµСЂРµСЃС‚Р°Р»Рѕ. РќРѕРІРѕРµ РјРµСЃС‚Рѕ РѕС‚РјРµС‡РµРЅРѕ РЅР° РєР°СЂС‚Рµ.");
 	}
 }
 
-// ALT у значка своей работы (из Cmd_GetJob). true — обработано
+// ALT Сѓ Р·РЅР°С‡РєР° СЃРІРѕРµР№ СЂР°Р±РѕС‚С‹ (РёР· Cmd_GetJob). true вЂ” РѕР±СЂР°Р±РѕС‚Р°РЅРѕ
 stock bool:WorkLife_OnHQAlt(playerid, job)
 {
 	if (job != JOB_FISHER) return false;
 	new n = Inv_Count(playerid, INV_FISH);
-	if (n <= 0) { SendClientMessage(playerid, COLOR_GREY, "Рыбы в сумке нет. Смена: /work, у места рыбалки — /fish."); return true; }
+	if (n <= 0) { SendClientMessage(playerid, COLOR_GREY, "Р С‹Р±С‹ РІ СЃСѓРјРєРµ РЅРµС‚. РЎРјРµРЅР°: /work, Сѓ РјРµСЃС‚Р° СЂС‹Р±Р°Р»РєРё вЂ” /fish."); return true; }
 	Inv_Remove(playerid, INV_FISH, n);
 	new pay = Job_Pay(playerid, FISH_PRICE * n);
 	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_GREEN, "Улов сдан: %d рыб, +$%d.", n, pay);
+	SendClientMessage(playerid, COLOR_GREEN, "РЈР»РѕРІ СЃРґР°РЅ: %d СЂС‹Р±, +$%d.", n, pay);
 	return true;
 }
 
 // ---------------------------------------------------------------------
-//  Ограбление инкассаторской машины: /robvan
+//  РћРіСЂР°Р±Р»РµРЅРёРµ РёРЅРєР°СЃСЃР°С‚РѕСЂСЃРєРѕР№ РјР°С€РёРЅС‹: /robvan
 // ---------------------------------------------------------------------
 static WorkLife_VanDriver(v)
 {
@@ -439,10 +439,10 @@ static WorkLife_VanDriver(v)
 
 stock bool:Cmd_RobVan(playerid)
 {
-	if (gRobVan[playerid] != INVALID_VEHICLE_ID) return SendClientMessage(playerid, COLOR_GREY, "Ты уже вскрываешь машину.");
-	if (IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Выйди из машины.");
-	if (Player[playerid][pLevel] < ROB_MIN_LEVEL) return SendClientMessage(playerid, COLOR_GREY, "Грабить можно с %d уровня.", ROB_MIN_LEVEL);
-	if (Faction_IsLaw(Player[playerid][pFaction]) && Player[playerid][pDuty]) return SendClientMessage(playerid, COLOR_GREY, "Не на службе.");
+	if (gRobVan[playerid] != INVALID_VEHICLE_ID) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ СѓР¶Рµ РІСЃРєСЂС‹РІР°РµС€СЊ РјР°С€РёРЅСѓ.");
+	if (IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Р’С‹Р№РґРё РёР· РјР°С€РёРЅС‹.");
+	if (Player[playerid][pLevel] < ROB_MIN_LEVEL) return SendClientMessage(playerid, COLOR_GREY, "Р“СЂР°Р±РёС‚СЊ РјРѕР¶РЅРѕ СЃ %d СѓСЂРѕРІРЅСЏ.", ROB_MIN_LEVEL);
+	if (Faction_IsLaw(Player[playerid][pFaction]) && Player[playerid][pDuty]) return SendClientMessage(playerid, COLOR_GREY, "РќРµ РЅР° СЃР»СѓР¶Р±Рµ.");
 	new Float:px, Float:py, Float:pz, v = INVALID_VEHICLE_ID;
 	GetPlayerPos(playerid, px, py, pz);
 	for (new i = 1; i < MAX_VEHICLES; i++)
@@ -450,10 +450,10 @@ stock bool:Cmd_RobVan(playerid)
 		if (!IsValidVehicle(i) || gVanCash[i] <= 0) continue;
 		if (GetVehicleDistanceFromPoint(i, px, py, pz) < 5.0) { v = i; break; }
 	}
-	if (v == INVALID_VEHICLE_ID) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет инкассаторской машины с деньгами.");
+	if (v == INVALID_VEHICLE_ID) return SendClientMessage(playerid, COLOR_GREY, "Р СЏРґРѕРј РЅРµС‚ РёРЅРєР°СЃСЃР°С‚РѕСЂСЃРєРѕР№ РјР°С€РёРЅС‹ СЃ РґРµРЅСЊРіР°РјРё.");
 	for (new i = 0; i < MAX_PLAYERS; i++)
-		if (IsPlayerConnected(i) && GetPlayerVehicleID(i) == v) return SendClientMessage(playerid, COLOR_GREY, "В машине кто-то сидит.");
-	if (GetPlayerWeapon(playerid) < WEAPON_COLT45 || GetPlayerWeapon(playerid) > WEAPON_SNIPER) return SendClientMessage(playerid, COLOR_GREY, "Нужно оружие в руках.");
+		if (IsPlayerConnected(i) && GetPlayerVehicleID(i) == v) return SendClientMessage(playerid, COLOR_GREY, "Р’ РјР°С€РёРЅРµ РєС‚Рѕ-С‚Рѕ СЃРёРґРёС‚.");
+	if (GetPlayerWeapon(playerid) < WEAPON_COLT45 || GetPlayerWeapon(playerid) > WEAPON_SNIPER) return SendClientMessage(playerid, COLOR_GREY, "РќСѓР¶РЅРѕ РѕСЂСѓР¶РёРµ РІ СЂСѓРєР°С….");
 
 	gRobVan[playerid] = v;
 	gRobVanLeft[playerid] = ROBVAN_TIME;
@@ -463,12 +463,12 @@ stock bool:Cmd_RobVan(playerid)
 	SetPlayerWantedLevel(playerid, stars);
 	Account_Save(playerid);
 	ApplyAnimation(playerid, "BOMBER", "BOM_Plant_Loop", 4.1, true, false, false, false, 0);
-	SendClientMessage(playerid, COLOR_RED, "Ты вскрываешь инкассаторскую машину! Держись рядом %d сек. Розыск: %d зв.", ROBVAN_TIME, stars);
+	SendClientMessage(playerid, COLOR_RED, "РўС‹ РІСЃРєСЂС‹РІР°РµС€СЊ РёРЅРєР°СЃСЃР°С‚РѕСЂСЃРєСѓСЋ РјР°С€РёРЅСѓ! Р”РµСЂР¶РёСЃСЊ СЂСЏРґРѕРј %d СЃРµРє. Р РѕР·С‹СЃРє: %d Р·РІ.", ROBVAN_TIME, stars);
 	new msg[144];
-	format(msg, sizeof msg, "[Диспетчер] Нападение на инкассаторскую машину! Подозреваемый: %s [%d].", GetRPName(playerid), playerid);
+	format(msg, sizeof msg, "[Р”РёСЃРїРµС‚С‡РµСЂ] РќР°РїР°РґРµРЅРёРµ РЅР° РёРЅРєР°СЃСЃР°С‚РѕСЂСЃРєСѓСЋ РјР°С€РёРЅСѓ! РџРѕРґРѕР·СЂРµРІР°РµРјС‹Р№: %s [%d].", GetRPName(playerid), playerid);
 	Faction_MessageLaw(msg);
 	new d = WorkLife_VanDriver(v);
-	if (d != INVALID_PLAYER_ID) SendClientMessage(d, COLOR_RED, "Твою машину вскрывают! Возвращайся.");
+	if (d != INVALID_PLAYER_ID) SendClientMessage(d, COLOR_RED, "РўРІРѕСЋ РјР°С€РёРЅСѓ РІСЃРєСЂС‹РІР°СЋС‚! Р’РѕР·РІСЂР°С‰Р°Р№СЃСЏ.");
 	return true;
 }
 
@@ -481,7 +481,7 @@ static WorkLife_RobVanTick(playerid)
 	{
 		gRobVan[playerid] = INVALID_VEHICLE_ID;
 		ClearAnimations(playerid);
-		SendClientMessage(playerid, COLOR_GREY, "Ограбление сорвано.");
+		SendClientMessage(playerid, COLOR_GREY, "РћРіСЂР°Р±Р»РµРЅРёРµ СЃРѕСЂРІР°РЅРѕ.");
 		return;
 	}
 	if (--gRobVanLeft[playerid] > 0) return;
@@ -489,14 +489,14 @@ static WorkLife_RobVanTick(playerid)
 	ClearAnimations(playerid);
 	new loot = gVanCash[v] * ROBVAN_SHARE / 100;
 	gVanCash[v] = 0;
-	GiveMoney(playerid, loot, "ограбление инкассаторов");
+	GiveMoney(playerid, loot, "РѕРіСЂР°Р±Р»РµРЅРёРµ РёРЅРєР°СЃСЃР°С‚РѕСЂРѕРІ");
 	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_GREEN, "Ты вскрыл машину и забрал $%d. Уходи, тебя ищут!", loot);
+	SendClientMessage(playerid, COLOR_GREEN, "РўС‹ РІСЃРєСЂС‹Р» РјР°С€РёРЅСѓ Рё Р·Р°Р±СЂР°Р» $%d. РЈС…РѕРґРё, С‚РµР±СЏ РёС‰СѓС‚!", loot);
 	new msg[144];
-	format(msg, sizeof msg, "[Диспетчер] Инкассаторская машина ограблена. Подозреваемый: %s [%d].", GetRPName(playerid), playerid);
+	format(msg, sizeof msg, "[Р”РёСЃРїРµС‚С‡РµСЂ] РРЅРєР°СЃСЃР°С‚РѕСЂСЃРєР°СЏ РјР°С€РёРЅР° РѕРіСЂР°Р±Р»РµРЅР°. РџРѕРґРѕР·СЂРµРІР°РµРјС‹Р№: %s [%d].", GetRPName(playerid), playerid);
 	Faction_MessageLaw(msg);
 	new d = WorkLife_VanDriver(v);
-	if (d != INVALID_PLAYER_ID) SendClientMessage(d, COLOR_RED, "Машину ограбили. Рейс сорван: доедь до хранилища, чтобы начать новый.");
+	if (d != INVALID_PLAYER_ID) SendClientMessage(d, COLOR_RED, "РњР°С€РёРЅСѓ РѕРіСЂР°Р±РёР»Рё. Р РµР№СЃ СЃРѕСЂРІР°РЅ: РґРѕРµРґСЊ РґРѕ С…СЂР°РЅРёР»РёС‰Р°, С‡С‚РѕР±С‹ РЅР°С‡Р°С‚СЊ РЅРѕРІС‹Р№.");
 }
 
 // ---------------------------------------------------------------------
@@ -519,12 +519,12 @@ public WorkLife_OnSecond()
 			SetPlayerAttachedObject(i, JOB_OBJECT_SLOT, 2969, 1, 0.11, 0.36, 0.0, 0.0, 90.0, 0.0, 0.8, 0.8, 0.8);
 			Player[i][pWorkStep] = WL_FARM_BARN;
 			WorkLife_Target(i, Place_Random(PL_BARN), 2.5);
-			SendClientMessage(i, COLOR_WHITE, "Ящик с урожаем в руках. Неси в амбар (маркер).");
+			SendClientMessage(i, COLOR_WHITE, "РЇС‰РёРє СЃ СѓСЂРѕР¶Р°РµРј РІ СЂСѓРєР°С…. РќРµСЃРё РІ Р°РјР±Р°СЂ (РјР°СЂРєРµСЂ).");
 		}
 	}
 }
 
-// Из Job_Stop (jobs.inc)
+// РР· Job_Stop (jobs.inc)
 stock WorkLife_OnStop(playerid)
 {
 	if (gWlBusy[playerid] > 0 && IsPlayerConnected(playerid)) TogglePlayerControllable(playerid, true);

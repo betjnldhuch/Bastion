@@ -1,14 +1,14 @@
 // =====================================================================
-//  commands.inc — список всех команд и общие команды игрока.
+//  commands.inc вЂ” СЃРїРёСЃРѕРє РІСЃРµС… РєРѕРјР°РЅРґ Рё РѕР±С‰РёРµ РєРѕРјР°РЅРґС‹ РёРіСЂРѕРєР°.
 //
-//  Как добавить свою команду:
-//  1. Напиши функцию:   stock bool:Cmd_Hello(playerid) { SendClientMessage(playerid, -1, "Привет!"); return true; }
-//  2. Добавь строку в Commands_Process ниже:
+//  РљР°Рє РґРѕР±Р°РІРёС‚СЊ СЃРІРѕСЋ РєРѕРјР°РЅРґСѓ:
+//  1. РќР°РїРёС€Рё С„СѓРЅРєС†РёСЋ:   stock bool:Cmd_Hello(playerid) { SendClientMessage(playerid, -1, "РџСЂРёРІРµС‚!"); return true; }
+//  2. Р”РѕР±Р°РІСЊ СЃС‚СЂРѕРєСѓ РІ Commands_Process РЅРёР¶Рµ:
 //         if (!strcmp(cmd, "/hello", true)) { Cmd_Hello(playerid); return 1; }
-//  3. Скомпилируй (F5) и перезапусти сервер.
+//  3. РЎРєРѕРјРїРёР»РёСЂСѓР№ (F5) Рё РїРµСЂРµР·Р°РїСѓСЃС‚Рё СЃРµСЂРІРµСЂ.
 // =====================================================================
 
-// Справка: разделы со всеми командами (help.inc)
+// РЎРїСЂР°РІРєР°: СЂР°Р·РґРµР»С‹ СЃРѕ РІСЃРµРјРё РєРѕРјР°РЅРґР°РјРё (help.inc)
 stock bool:Cmd_Help(playerid)
 {
 	return Help_Show(playerid);
@@ -17,18 +17,18 @@ stock bool:Cmd_Help(playerid)
 stock bool:Cmd_Stats(playerid)
 {
 	new house[32], car[32], phone[16];
-	if (Player[playerid][pPhone] == 0) strcat(phone, "нет");
+	if (Player[playerid][pPhone] == 0) strcat(phone, "РЅРµС‚");
 	else format(phone, sizeof phone, "%d", Player[playerid][pPhone]);
 	new h = House_GetOwned(playerid);
-	if (h != -1) format(house, sizeof house, "№%d", House[h][hDbId]);
-	else if (House_GetRented(playerid) != -1) format(house, sizeof house, "снимает комнату в №%d", House[House_GetRented(playerid)][hDbId]);
-	else strcat(house, "нет");
-	if (gPlayerVeh[playerid] == INVALID_VEHICLE_ID) strcat(car, "нет");
-	else format(car, sizeof car, "модель %d", GetVehicleModel(gPlayerVeh[playerid]));
+	if (h != -1) format(house, sizeof house, "в„–%d", House[h][hDbId]);
+	else if (House_GetRented(playerid) != -1) format(house, sizeof house, "СЃРЅРёРјР°РµС‚ РєРѕРјРЅР°С‚Сѓ РІ в„–%d", House[House_GetRented(playerid)][hDbId]);
+	else strcat(house, "РЅРµС‚");
+	if (gPlayerVeh[playerid] == INVALID_VEHICLE_ID) strcat(car, "РЅРµС‚");
+	else format(car, sizeof car, "РјРѕРґРµР»СЊ %d", GetVehicleModel(gPlayerVeh[playerid]));
 
-	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Статистика",
-		"{FFFFFF}Имя: {33CCFF}%s\n{FFFFFF}Уровень: %d (опыт %d/%d)\nДеньги: $%d (в банке $%d)\nТелефон: %s\nРабота: %s\nФракция: %s (%s)\nСемья: %s\nРозыск: %d зв.\nДолг штату: $%d\nСытость: %d%%\nДом: %s\nМашина: %s\nАдминка: %d",
-		"Закрыть", "",
+	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "РЎС‚Р°С‚РёСЃС‚РёРєР°",
+		"{FFFFFF}РРјСЏ: {33CCFF}%s\n{FFFFFF}РЈСЂРѕРІРµРЅСЊ: %d (РѕРїС‹С‚ %d/%d)\nР”РµРЅСЊРіРё: $%d (РІ Р±Р°РЅРєРµ $%d)\nРўРµР»РµС„РѕРЅ: %s\nР Р°Р±РѕС‚Р°: %s\nР¤СЂР°РєС†РёСЏ: %s (%s)\nРЎРµРјСЊСЏ: %s\nР РѕР·С‹СЃРє: %d Р·РІ.\nР”РѕР»Рі С€С‚Р°С‚Сѓ: $%d\nРЎС‹С‚РѕСЃС‚СЊ: %d%%\nР”РѕРј: %s\nРњР°С€РёРЅР°: %s\nРђРґРјРёРЅРєР°: %d",
+		"Р—Р°РєСЂС‹С‚СЊ", "",
 		GetRPName(playerid), Player[playerid][pLevel], Player[playerid][pExp], Player[playerid][pLevel] * EXP_PER_LEVEL,
 		GetMoney(playerid), Player[playerid][pBank], phone, Job_GetName(Player[playerid][pJob]),
 		Faction_GetName(Player[playerid][pFaction]), Faction_GetRankName(Player[playerid][pFaction], Player[playerid][pRank]),
@@ -40,7 +40,7 @@ stock bool:Cmd_Time(playerid)
 {
 	new hour, minute;
 	gettime(hour, minute);
-	SendClientMessage(playerid, COLOR_WHITE, "Сейчас %02d:%02d. Зарплата (PayDay) — каждый час в :00.", hour, minute);
+	SendClientMessage(playerid, COLOR_WHITE, "РЎРµР№С‡Р°СЃ %02d:%02d. Р—Р°СЂРїР»Р°С‚Р° (PayDay) вЂ” РєР°Р¶РґС‹Р№ С‡Р°СЃ РІ :00.", hour, minute);
 	return true;
 }
 
@@ -49,15 +49,15 @@ stock bool:Cmd_Pay(playerid, const params[])
 	new pos = 0, amount;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, amount))
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /pay [id] [сумма]");
-	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Нельзя передать деньги самому себе.");
-	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
-	if (amount < 1 || amount > 100000) return SendClientMessage(playerid, COLOR_GREY, "Сумма от $1 до $100000.");
-	if (GetMoney(playerid) < amount) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет столько денег.");
+		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /pay [id] [СЃСѓРјРјР°]");
+	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "РќРµР»СЊР·СЏ РїРµСЂРµРґР°С‚СЊ РґРµРЅСЊРіРё СЃР°РјРѕРјСѓ СЃРµР±Рµ.");
+	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє РµС‰С‘ РЅРµ РІРѕС€С‘Р» РІ Р°РєРєР°СѓРЅС‚.");
+	if (amount < 1 || amount > 100000) return SendClientMessage(playerid, COLOR_GREY, "РЎСѓРјРјР° РѕС‚ $1 РґРѕ $100000.");
+	if (GetMoney(playerid) < amount) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ СЃС‚РѕР»СЊРєРѕ РґРµРЅРµРі.");
 
 	new Float:x, Float:y, Float:z;
 	GetPlayerPos(target, x, y, z);
-	if (!IsPlayerInRangeOfPoint(playerid, 5.0, x, y, z)) return SendClientMessage(playerid, COLOR_GREY, "Игрок слишком далеко.");
+	if (!IsPlayerInRangeOfPoint(playerid, 5.0, x, y, z)) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє СЃР»РёС€РєРѕРј РґР°Р»РµРєРѕ.");
 
 	new reason[64];
 	format(reason, sizeof reason, "/pay -> %s", GetRPName(target));
@@ -68,20 +68,20 @@ stock bool:Cmd_Pay(playerid, const params[])
 	Account_Save(target);
 
 	new msg[144];
-	format(msg, sizeof msg, "%s передаёт деньги %s.", GetRPName(playerid), GetRPName(target));
+	format(msg, sizeof msg, "%s РїРµСЂРµРґР°С‘С‚ РґРµРЅСЊРіРё %s.", GetRPName(playerid), GetRPName(target));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
-	SendClientMessage(target, COLOR_GREEN, "Ты получил $%d от %s.", amount, GetRPName(playerid));
+	SendClientMessage(target, COLOR_GREEN, "РўС‹ РїРѕР»СѓС‡РёР» $%d РѕС‚ %s.", amount, GetRPName(playerid));
 	return true;
 }
 
-// Для меню взаимодействия (keys.inc): та же /pay
+// Р”Р»СЏ РјРµРЅСЋ РІР·Р°РёРјРѕРґРµР№СЃС‚РІРёСЏ (keys.inc): С‚Р° Р¶Рµ /pay
 stock Commands_Pay(playerid, const params[])
 {
 	Cmd_Pay(playerid, params);
 }
 
-// Команды-действия: раненый и задержанный в наручниках выполнить их не могут
-// (иначе из-под ареста уходят через /enter у своего дома, а лёжа торгуют и работают)
+// РљРѕРјР°РЅРґС‹-РґРµР№СЃС‚РІРёСЏ: СЂР°РЅРµРЅС‹Р№ Рё Р·Р°РґРµСЂР¶Р°РЅРЅС‹Р№ РІ РЅР°СЂСѓС‡РЅРёРєР°С… РІС‹РїРѕР»РЅРёС‚СЊ РёС… РЅРµ РјРѕРіСѓС‚
+// (РёРЅР°С‡Рµ РёР·-РїРѕРґ Р°СЂРµСЃС‚Р° СѓС…РѕРґСЏС‚ С‡РµСЂРµР· /enter Сѓ СЃРІРѕРµРіРѕ РґРѕРјР°, Р° Р»С‘Р¶Р° С‚РѕСЂРіСѓСЋС‚ Рё СЂР°Р±РѕС‚Р°СЋС‚)
 static bool:Commands_IsAction(const cmd[])
 {
 	static const list[][12] =
@@ -102,38 +102,38 @@ static bool:Commands_IsAction(const cmd[])
 }
 
 // ---------------------------------------------------------------------
-//  Главный разбор команд. Вызывается из OnPlayerCommandText.
-//  Возвращает 1 — команда найдена, 0 — неизвестная команда.
+//  Р“Р»Р°РІРЅС‹Р№ СЂР°Р·Р±РѕСЂ РєРѕРјР°РЅРґ. Р’С‹Р·С‹РІР°РµС‚СЃСЏ РёР· OnPlayerCommandText.
+//  Р’РѕР·РІСЂР°С‰Р°РµС‚ 1 вЂ” РєРѕРјР°РЅРґР° РЅР°Р№РґРµРЅР°, 0 вЂ” РЅРµРёР·РІРµСЃС‚РЅР°СЏ РєРѕРјР°РЅРґР°.
 // ---------------------------------------------------------------------
 stock Commands_Process(playerid, const input[])
 {
 	if (!Player[playerid][pLogged])
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Сначала войди в аккаунт.");
+		SendClientMessage(playerid, COLOR_GREY, "РЎРЅР°С‡Р°Р»Р° РІРѕР№РґРё РІ Р°РєРєР°СѓРЅС‚.");
 		return 1;
 	}
 
-	// Копия строки: у игроков вырезаем цветовые коды {RRGGBB}, чтобы в /me, /do и т.п.
-	// нельзя было подделать сообщение сервера или админа
+	// РљРѕРїРёСЏ СЃС‚СЂРѕРєРё: Сѓ РёРіСЂРѕРєРѕРІ РІС‹СЂРµР·Р°РµРј С†РІРµС‚РѕРІС‹Рµ РєРѕРґС‹ {RRGGBB}, С‡С‚РѕР±С‹ РІ /me, /do Рё С‚.Рї.
+	// РЅРµР»СЊР·СЏ Р±С‹Р»Рѕ РїРѕРґРґРµР»Р°С‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ СЃРµСЂРІРµСЂР° РёР»Рё Р°РґРјРёРЅР°
 	new cmdtext[145];
 	strcat(cmdtext, input);
 	if (Player[playerid][pAdmin] < 1) StripColorCodes(cmdtext);
 
 	new cmd[32], pos = 0;
 	NextParam(cmdtext, pos, cmd);
-	// cmd = "/команда", а cmdtext[pos] — всё, что после неё (параметры)
+	// cmd = "/РєРѕРјР°РЅРґР°", Р° cmdtext[pos] вЂ” РІСЃС‘, С‡С‚Рѕ РїРѕСЃР»Рµ РЅРµС‘ (РїР°СЂР°РјРµС‚СЂС‹)
 
-	// --- администрация (admin.inc): мут, /report, все админ-команды ---
+	// --- Р°РґРјРёРЅРёСЃС‚СЂР°С†РёСЏ (admin.inc): РјСѓС‚, /report, РІСЃРµ Р°РґРјРёРЅ-РєРѕРјР°РЅРґС‹ ---
 	if (Admin_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
 
 	if ((Player[playerid][pCuffed] || Wound_IsWounded(playerid)) && Commands_IsAction(cmd))
 	{
-		if (Player[playerid][pCuffed]) SendClientMessage(playerid, COLOR_GREY, "Ты в наручниках и не можешь этого сделать.");
-		else SendClientMessage(playerid, COLOR_GREY, "Ты ранен и не можешь этого сделать.");
+		if (Player[playerid][pCuffed]) SendClientMessage(playerid, COLOR_GREY, "РўС‹ РІ РЅР°СЂСѓС‡РЅРёРєР°С… Рё РЅРµ РјРѕР¶РµС€СЊ СЌС‚РѕРіРѕ СЃРґРµР»Р°С‚СЊ.");
+		else SendClientMessage(playerid, COLOR_GREY, "РўС‹ СЂР°РЅРµРЅ Рё РЅРµ РјРѕР¶РµС€СЊ СЌС‚РѕРіРѕ СЃРґРµР»Р°С‚СЊ.");
 		return 1;
 	}
 
-	// --- общее ---
+	// --- РѕР±С‰РµРµ ---
 	if (!strcmp(cmd, "/help", true))        { Cmd_Help(playerid); return 1; }
 	if (!strcmp(cmd, "/stats", true))       { Cmd_Stats(playerid); return 1; }
 	if (!strcmp(cmd, "/time", true))        { Cmd_Time(playerid); return 1; }
@@ -145,7 +145,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/fps", true))         { Cmd_Fps(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fpslist", true))     { Cmd_FpsList(playerid); return 1; }
 
-	// --- разработка в игре (dev.inc) ---
+	// --- СЂР°Р·СЂР°Р±РѕС‚РєР° РІ РёРіСЂРµ (dev.inc) ---
 	if (!strcmp(cmd, "/pos", true))         { Cmd_Pos(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/points", true))      { Cmd_Points(playerid); return 1; }
 	if (!strcmp(cmd, "/delpoint", true))    { Cmd_DelPoint(playerid, cmdtext[pos]); return 1; }
@@ -155,7 +155,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/markers", true) || !strcmp(cmd, "/mk", true)) { Cmd_Markers(playerid); return 1; }
 	if (!strcmp(cmd, "/gps", true))         { Cmd_Gps(playerid); return 1; }
 
-	// --- чат (chat.inc) ---
+	// --- С‡Р°С‚ (chat.inc) ---
 	if (!strcmp(cmd, "/me", true))          { Cmd_Me(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/do", true))          { Cmd_Do(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/try", true))         { Cmd_Try(playerid, cmdtext[pos]); return 1; }
@@ -163,7 +163,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/b", true))           { Cmd_OOC(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/pm", true))          { Cmd_PM(playerid, cmdtext[pos]); return 1; }
 
-	// --- новые системы: точки, наркотики, работы, казино, тюрьма, больница, свадьбы ---
+	// --- РЅРѕРІС‹Рµ СЃРёСЃС‚РµРјС‹: С‚РѕС‡РєРё, РЅР°СЂРєРѕС‚РёРєРё, СЂР°Р±РѕС‚С‹, РєР°Р·РёРЅРѕ, С‚СЋСЂСЊРјР°, Р±РѕР»СЊРЅРёС†Р°, СЃРІР°РґСЊР±С‹ ---
 	if (!strcmp(cmd, "/place", true))       { Cmd_Place(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/places", true))      { Cmd_Places(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/unplace", true))     { Cmd_Unplace(playerid); return 1; }
@@ -176,7 +176,7 @@ stock Commands_Process(playerid, const input[])
 	if (Marriage_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
 	if (Donate_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
 
-	// --- работа (jobs.inc) ---
+	// --- СЂР°Р±РѕС‚Р° (jobs.inc) ---
 	if (!strcmp(cmd, "/getjob", true))      { Cmd_GetJob(playerid); return 1; }
 	if (!strcmp(cmd, "/quitjob", true))     { Cmd_QuitJob(playerid); return 1; }
 	if (!strcmp(cmd, "/taxi", true))        { Cmd_Taxi(playerid); return 1; }
@@ -189,7 +189,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/refill", true))      { Cmd_Refill(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/work", true))        { Cmd_Work(playerid); return 1; }
 
-	// --- транспорт (vehicles.inc) ---
+	// --- С‚СЂР°РЅСЃРїРѕСЂС‚ (vehicles.inc) ---
 	if (!strcmp(cmd, "/engine", true))      { Cmd_Engine(playerid); return 1; }
 	if (!strcmp(cmd, "/buycar", true))      { Cmd_BuyCar(playerid); return 1; }
 	if (!strcmp(cmd, "/park", true))        { Cmd_Park(playerid); return 1; }
@@ -205,7 +205,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/checklic", true))    { Cmd_CheckLic(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/takelic", true))     { Cmd_TakeLic(playerid, cmdtext[pos]); return 1; }
 
-	// --- дома (houses.inc) ---
+	// --- РґРѕРјР° (houses.inc) ---
 	if (!strcmp(cmd, "/setspawn", true))    { Cmd_SetSpawn(playerid); return 1; }
 	if (!strcmp(cmd, "/buyhouse", true))    { Cmd_BuyHouse(playerid); return 1; }
 	if (!strcmp(cmd, "/sellhouse", true))   { Cmd_SellHouse(playerid); return 1; }
@@ -229,14 +229,14 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/evict", true))       { Cmd_Evict(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/evictall", true))    { Cmd_EvictAll(playerid); return 1; }
 
-	// --- СТО и штрафстоянка (garage.inc) ---
+	// --- РЎРўРћ Рё С€С‚СЂР°С„СЃС‚РѕСЏРЅРєР° (garage.inc) ---
 	if (!strcmp(cmd, "/tune", true))        { Cmd_Tune(playerid); return 1; }
 	if (!strcmp(cmd, "/impound", true))     { Cmd_Impound(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/unimpound", true))   { Cmd_Unimpound(playerid); return 1; }
 	if (!strcmp(cmd, "/addgarage", true))   { Cmd_AddGarage(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delgarage", true))   { Cmd_DelGarage(playerid); return 1; }
 
-	// --- фракции (factions.inc) ---
+	// --- С„СЂР°РєС†РёРё (factions.inc) ---
 	if (Factions_OnCommand(playerid, cmd, cmdtext[pos])) return 1;   // /lmenu /fbank /fstorage /fedit
 	if (Families_OnCommand(playerid, cmd, cmdtext[pos])) return 1;   // /fam... /fc (families.inc)
 	if (!strcmp(cmd, "/mark", true))        { Cmd_Mark(playerid, cmdtext[pos]); return 1; }
@@ -309,14 +309,14 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/jail", true))        { Cmd_Jail(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/unjail", true))      { Cmd_Unjail(playerid, cmdtext[pos]); return 1; }
 
-	// --- районы банд (turfs.inc) ---
+	// --- СЂР°Р№РѕРЅС‹ Р±Р°РЅРґ (turfs.inc) ---
 	if (!strcmp(cmd, "/turfs", true))       { Cmd_Turfs(playerid); return 1; }
 	if (!strcmp(cmd, "/capture", true))     { Cmd_Capture(playerid); return 1; }
 	if (!strcmp(cmd, "/addturf", true))     { Cmd_AddTurf(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/setturf", true))     { Cmd_SetTurf(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delturf", true))     { Cmd_DelTurf(playerid); return 1; }
 
-	// --- банк (bank.inc) ---
+	// --- Р±Р°РЅРє (bank.inc) ---
 	if (!strcmp(cmd, "/bank", true) || !strcmp(cmd, "/atm", true)) { Cmd_Bank(playerid); return 1; }
 	if (!strcmp(cmd, "/addatm", true))      { Cmd_AddAtm(playerid); return 1; }
 	if (!strcmp(cmd, "/addfuel", true))     { Cmd_AddFuel(playerid, cmdtext[pos]); return 1; }
@@ -329,7 +329,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/clearexam", true))   { Cmd_ClearExam(playerid); return 1; }
 	if (!strcmp(cmd, "/delatm", true))      { Cmd_DelAtm(playerid); return 1; }
 
-	// --- телефон (phone.inc) ---
+	// --- С‚РµР»РµС„РѕРЅ (phone.inc) ---
 	if (!strcmp(cmd, "/number", true))      { Cmd_Number(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/call", true))        { Cmd_Call(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/p", true))           { Cmd_PickUp(playerid); return 1; }
@@ -337,7 +337,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/sms", true))         { Cmd_Sms(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/911", true))         { Cmd_911(playerid, cmdtext[pos]); return 1; }
 
-	// --- бизнесы (business.inc) ---
+	// --- Р±РёР·РЅРµСЃС‹ (business.inc) ---
 	if (!strcmp(cmd, "/buy", true))         { Cmd_Buy(playerid); return 1; }
 	if (!strcmp(cmd, "/rob", true))         { Cmd_Rob(playerid); return 1; }
 	if (!strcmp(cmd, "/buybiz", true))      { Cmd_BuyBiz(playerid); return 1; }
@@ -352,13 +352,13 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/delbiz", true))      { Cmd_DelBiz(playerid); return 1; }
 	if (!strcmp(cmd, "/setbizint", true))   { Cmd_SetBizInt(playerid, cmdtext[pos]); return 1; }
 
-	// --- кнопки и шлагбаумы (keys.inc, gates.inc) ---
+	// --- РєРЅРѕРїРєРё Рё С€Р»Р°РіР±Р°СѓРјС‹ (keys.inc, gates.inc) ---
 	if (!strcmp(cmd, "/deny", true))        { Cmd_Deny(playerid); return 1; }
 	if (!strcmp(cmd, "/frisk", true))       { Cmd_Frisk(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/addgate", true))     { Cmd_AddGate(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delgate", true))     { Cmd_DelGate(playerid); return 1; }
 
-	// --- админы (admin.inc): остальные команды — в Admin_OnCommand ---
+	// --- Р°РґРјРёРЅС‹ (admin.inc): РѕСЃС‚Р°Р»СЊРЅС‹Рµ РєРѕРјР°РЅРґС‹ вЂ” РІ Admin_OnCommand ---
 	if (!strcmp(cmd, "/createhouse", true))
 	{
 		if (Admin_Check(playerid, 4)) Cmd_CreateHouse(playerid, cmdtext[pos]);
@@ -384,6 +384,6 @@ stock Commands_Process(playerid, const input[])
 		return 1;
 	}
 
-	SendClientMessage(playerid, COLOR_GREY, "Неизвестная команда. Список команд: /help");
+	SendClientMessage(playerid, COLOR_GREY, "РќРµРёР·РІРµСЃС‚РЅР°СЏ РєРѕРјР°РЅРґР°. РЎРїРёСЃРѕРє РєРѕРјР°РЅРґ: /help");
 	return 1;
 }

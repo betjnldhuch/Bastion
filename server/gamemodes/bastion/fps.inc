@@ -1,21 +1,21 @@
 // =====================================================================
-//  fps.inc — FPS игроков.
+//  fps.inc вЂ” FPS РёРіСЂРѕРєРѕРІ.
 //
-//  Сервер не может «включить» игроку 120 или 165 FPS: это делает
-//  лаунчер (пакет FPS, см. launcher/fps/README.txt). Здесь сервер:
-//   • узнаёт настоящий FPS каждого игрока (через уровень опьянения:
-//     клиент уменьшает его на 1 каждый кадр);
-//   • показывает его: /fps — свой, /fps [id] — чужой, /fpslist — админам;
-//   • по желанию ограничивает максимум (FPS_MAX_ALLOWED в config.inc).
+//  РЎРµСЂРІРµСЂ РЅРµ РјРѕР¶РµС‚ В«РІРєР»СЋС‡РёС‚СЊВ» РёРіСЂРѕРєСѓ 120 РёР»Рё 165 FPS: СЌС‚Рѕ РґРµР»Р°РµС‚
+//  Р»Р°СѓРЅС‡РµСЂ (РїР°РєРµС‚ FPS, СЃРј. launcher/fps/README.txt). Р—РґРµСЃСЊ СЃРµСЂРІРµСЂ:
+//   вЂў СѓР·РЅР°С‘С‚ РЅР°СЃС‚РѕСЏС‰РёР№ FPS РєР°Р¶РґРѕРіРѕ РёРіСЂРѕРєР° (С‡РµСЂРµР· СѓСЂРѕРІРµРЅСЊ РѕРїСЊСЏРЅРµРЅРёСЏ:
+//     РєР»РёРµРЅС‚ СѓРјРµРЅСЊС€Р°РµС‚ РµРіРѕ РЅР° 1 РєР°Р¶РґС‹Р№ РєР°РґСЂ);
+//   вЂў РїРѕРєР°Р·С‹РІР°РµС‚ РµРіРѕ: /fps вЂ” СЃРІРѕР№, /fps [id] вЂ” С‡СѓР¶РѕР№, /fpslist вЂ” Р°РґРјРёРЅР°Рј;
+//   вЂў РїРѕ Р¶РµР»Р°РЅРёСЋ РѕРіСЂР°РЅРёС‡РёРІР°РµС‚ РјР°РєСЃРёРјСѓРј (FPS_MAX_ALLOWED РІ config.inc).
 // =====================================================================
 
-#define FPS_DRUNK_START     2000   // с этого уровня считаем (2000 — ещё без эффекта опьянения)
-#define FPS_DRUNK_RESET     100    // опустился ниже — снова ставим FPS_DRUNK_START
+#define FPS_DRUNK_START     2000   // СЃ СЌС‚РѕРіРѕ СѓСЂРѕРІРЅСЏ СЃС‡РёС‚Р°РµРј (2000 вЂ” РµС‰С‘ Р±РµР· СЌС„С„РµРєС‚Р° РѕРїСЊСЏРЅРµРЅРёСЏ)
+#define FPS_DRUNK_RESET     100    // РѕРїСѓСЃС‚РёР»СЃСЏ РЅРёР¶Рµ вЂ” СЃРЅРѕРІР° СЃС‚Р°РІРёРј FPS_DRUNK_START
 
 new gFpsDrunkLast[MAX_PLAYERS];
 new gFps[MAX_PLAYERS];
 #if FPS_MAX_ALLOWED > 0
-new gFpsOver[MAX_PLAYERS];      // сколько секунд подряд FPS выше разрешённого
+new gFpsOver[MAX_PLAYERS];      // СЃРєРѕР»СЊРєРѕ СЃРµРєСѓРЅРґ РїРѕРґСЂСЏРґ FPS РІС‹С€Рµ СЂР°Р·СЂРµС€С‘РЅРЅРѕРіРѕ
 #endif
 
 stock Fps_Init()
@@ -37,7 +37,7 @@ stock Fps_Get(playerid)
 	return gFps[playerid];
 }
 
-// Вызывается из OnPlayerUpdate (много раз в секунду)
+// Р’С‹Р·С‹РІР°РµС‚СЃСЏ РёР· OnPlayerUpdate (РјРЅРѕРіРѕ СЂР°Р· РІ СЃРµРєСѓРЅРґСѓ)
 stock Fps_OnUpdate(playerid)
 {
 	new drunk = GetPlayerDrunkLevel(playerid);
@@ -50,13 +50,13 @@ stock Fps_OnUpdate(playerid)
 	if (drunk != gFpsDrunkLast[playerid])
 	{
 		new frames = gFpsDrunkLast[playerid] - drunk;
-		// клиент присылает уровень раз в секунду, так что разница = кадров за секунду
+		// РєР»РёРµРЅС‚ РїСЂРёСЃС‹Р»Р°РµС‚ СѓСЂРѕРІРµРЅСЊ СЂР°Р· РІ СЃРµРєСѓРЅРґСѓ, С‚Р°Рє С‡С‚Рѕ СЂР°Р·РЅРёС†Р° = РєР°РґСЂРѕРІ Р·Р° СЃРµРєСѓРЅРґСѓ
 		if (frames > 0 && frames < 1000) gFps[playerid] = frames;
 		gFpsDrunkLast[playerid] = drunk;
 	}
 }
 
-// Раз в секунду: проверка лимита (если он включён)
+// Р Р°Р· РІ СЃРµРєСѓРЅРґСѓ: РїСЂРѕРІРµСЂРєР° Р»РёРјРёС‚Р° (РµСЃР»Рё РѕРЅ РІРєР»СЋС‡С‘РЅ)
 forward Fps_Check();
 public Fps_Check()
 {
@@ -64,16 +64,16 @@ public Fps_Check()
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!IsPlayerConnected(i) || !Player[i][pLogged]) continue;
-		// небольшой запас: FPS меряется неточно и «скачет» на пару кадров
+		// РЅРµР±РѕР»СЊС€РѕР№ Р·Р°РїР°СЃ: FPS РјРµСЂСЏРµС‚СЃСЏ РЅРµС‚РѕС‡РЅРѕ Рё В«СЃРєР°С‡РµС‚В» РЅР° РїР°СЂСѓ РєР°РґСЂРѕРІ
 		if (gFps[i] > FPS_MAX_ALLOWED + 10)
 		{
 			gFpsOver[i]++;
 			if (gFpsOver[i] == 10)
-				SendClientMessage(i, COLOR_RED, "У тебя %d FPS, а на сервере можно не больше %d. Поменяй лимит в лаунчере (Настройки), иначе через 20 секунд кикнет.",
+				SendClientMessage(i, COLOR_RED, "РЈ С‚РµР±СЏ %d FPS, Р° РЅР° СЃРµСЂРІРµСЂРµ РјРѕР¶РЅРѕ РЅРµ Р±РѕР»СЊС€Рµ %d. РџРѕРјРµРЅСЏР№ Р»РёРјРёС‚ РІ Р»Р°СѓРЅС‡РµСЂРµ (РќР°СЃС‚СЂРѕР№РєРё), РёРЅР°С‡Рµ С‡РµСЂРµР· 20 СЃРµРєСѓРЅРґ РєРёРєРЅРµС‚.",
 					gFps[i], FPS_MAX_ALLOWED);
 			else if (gFpsOver[i] >= 30)
 			{
-				SendClientMessage(i, COLOR_RED, "Кик: FPS выше %d. Поставь лимит в лаунчере и заходи снова.", FPS_MAX_ALLOWED);
+				SendClientMessage(i, COLOR_RED, "РљРёРє: FPS РІС‹С€Рµ %d. РџРѕСЃС‚Р°РІСЊ Р»РёРјРёС‚ РІ Р»Р°СѓРЅС‡РµСЂРµ Рё Р·Р°С…РѕРґРё СЃРЅРѕРІР°.", FPS_MAX_ALLOWED);
 				KickWithDelay(i);
 				gFpsOver[i] = 0;
 			}
@@ -84,22 +84,22 @@ public Fps_Check()
 	return 1;
 }
 
-// /fps или /fps [id]
+// /fps РёР»Рё /fps [id]
 stock bool:Cmd_Fps(playerid, const params[])
 {
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID) target = playerid;
 	if (gFps[target] == 0)
-		return SendClientMessage(playerid, COLOR_GREY, "FPS ещё не измерен — подожди пару секунд (в паузе не меряется).");
+		return SendClientMessage(playerid, COLOR_GREY, "FPS РµС‰С‘ РЅРµ РёР·РјРµСЂРµРЅ вЂ” РїРѕРґРѕР¶РґРё РїР°СЂСѓ СЃРµРєСѓРЅРґ (РІ РїР°СѓР·Рµ РЅРµ РјРµСЂСЏРµС‚СЃСЏ).");
 	if (target == playerid)
-		SendClientMessage(playerid, COLOR_WHITE, "Твой FPS: %d.", gFps[target]);
+		SendClientMessage(playerid, COLOR_WHITE, "РўРІРѕР№ FPS: %d.", gFps[target]);
 	else
-		SendClientMessage(playerid, COLOR_WHITE, "FPS игрока %s: %d.", GetRPName(target), gFps[target]);
+		SendClientMessage(playerid, COLOR_WHITE, "FPS РёРіСЂРѕРєР° %s: %d.", GetRPName(target), gFps[target]);
 	return true;
 }
 
-// /fpslist — FPS всех игроков (для админов)
+// /fpslist вЂ” FPS РІСЃРµС… РёРіСЂРѕРєРѕРІ (РґР»СЏ Р°РґРјРёРЅРѕРІ)
 stock bool:Cmd_FpsList(playerid)
 {
 	if (!Admin_Check(playerid, 1)) return true;
@@ -107,12 +107,12 @@ stock bool:Cmd_FpsList(playerid)
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!IsPlayerConnected(i)) continue;
-		format(line, sizeof line, "%d. %s — %d FPS\n", i, GetRPName(i), gFps[i]);
+		format(line, sizeof line, "%d. %s вЂ” %d FPS\n", i, GetRPName(i), gFps[i]);
 		if (strlen(text) + strlen(line) >= sizeof text) break;
 		strcat(text, line);
 		n++;
 	}
-	if (n == 0) strcat(text, "Никого нет.");
-	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "FPS игроков", "%s", "Закрыть", "", text);
+	if (n == 0) strcat(text, "РќРёРєРѕРіРѕ РЅРµС‚.");
+	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "FPS РёРіСЂРѕРєРѕРІ", "%s", "Р—Р°РєСЂС‹С‚СЊ", "", text);
 	return true;
 }

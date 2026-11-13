@@ -1,20 +1,21 @@
 // =====================================================================
-//  garage.inc — СТО (ремонт, покраска, тюнинг) и штрафстоянка.
+//  garage.inc вЂ” РЎРўРћ (СЂРµРјРѕРЅС‚, РїРѕРєСЂР°СЃРєР°, С‚СЋРЅРёРЅРі) Рё С€С‚СЂР°С„СЃС‚РѕСЏРЅРєР°.
 //
-//  СТО: заехать на точку за рулём и нажать H (или /tune).
-//    Ремонт — любой машине. Покраска, нитро, гидравлика и диски —
-//    только своей личной машине, тюнинг сохраняется в базе.
-//  Штрафстоянка: полицейский на смене эвакуирует личную машину рядом:
-//    /impound [штраф]. Машина пропадает и ждёт хозяина на штрафстоянке:
-//    там ALT (или /unimpound) — заплатить штраф и забрать.
+//  РЎРўРћ: Р·Р°РµС…Р°С‚СЊ РЅР° С‚РѕС‡РєСѓ Р·Р° СЂСѓР»С‘Рј Рё РЅР°Р¶Р°С‚СЊ H (РёР»Рё /tune).
+//    Р РµРјРѕРЅС‚ вЂ” Р»СЋР±РѕР№ РјР°С€РёРЅРµ. РџРѕРєСЂР°СЃРєР°, РЅРёС‚СЂРѕ, РіРёРґСЂР°РІР»РёРєР° Рё РґРёСЃРєРё вЂ”
+//    С‚РѕР»СЊРєРѕ СЃРІРѕРµР№ Р»РёС‡РЅРѕР№ РјР°С€РёРЅРµ, С‚СЋРЅРёРЅРі СЃРѕС…СЂР°РЅСЏРµС‚СЃСЏ РІ Р±Р°Р·Рµ.
+//  РЁС‚СЂР°С„СЃС‚РѕСЏРЅРєР°: РїРѕР»РёС†РµР№СЃРєРёР№ РЅР° СЃРјРµРЅРµ С†РµРїР»СЏРµС‚ Р»РёС‡РЅСѓСЋ РјР°С€РёРЅСѓ СЃР»СѓР¶РµР±РЅС‹Рј СЌРІР°РєСѓР°С‚РѕСЂРѕРј
+//    (H Р·Р° СЂСѓР»С‘Рј Towtruck С„СЂР°РєС†РёРё), РІРµР·С‘С‚ РЅР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєСѓ Рё С‚Р°Рј РІРІРѕРґРёС‚ /impound [С€С‚СЂР°С„].
+//    РњР°С€РёРЅР° РїСЂРѕРїР°РґР°РµС‚ Рё Р¶РґС‘С‚ С…РѕР·СЏРёРЅР° РЅР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРµ:
+//    С‚Р°Рј ALT (РёР»Рё /unimpound) вЂ” Р·Р°РїР»Р°С‚РёС‚СЊ С€С‚СЂР°С„ Рё Р·Р°Р±СЂР°С‚СЊ.
 //
-//  Точки хранятся в таблице garages. Стартовые координаты примерные,
-//  их стоит проверить в игре. Админ (4+): /addgarage [1 — СТО, 2 —
-//  штрафстоянка] там, где стоит, /delgarage — удалить ближайшую.
+//  РўРѕС‡РєРё С…СЂР°РЅСЏС‚СЃСЏ РІ С‚Р°Р±Р»РёС†Рµ garages. РЎС‚Р°СЂС‚РѕРІС‹Рµ РєРѕРѕСЂРґРёРЅР°С‚С‹ РїСЂРёРјРµСЂРЅС‹Рµ,
+//  РёС… СЃС‚РѕРёС‚ РїСЂРѕРІРµСЂРёС‚СЊ РІ РёРіСЂРµ. РђРґРјРёРЅ (4+): /addgarage [1 вЂ” РЎРўРћ, 2 вЂ”
+//  С€С‚СЂР°С„СЃС‚РѕСЏРЅРєР°] С‚Р°Рј, РіРґРµ СЃС‚РѕРёС‚, /delgarage вЂ” СѓРґР°Р»РёС‚СЊ Р±Р»РёР¶Р°Р№С€СѓСЋ.
 // =====================================================================
 
 #define MAX_GARAGES         20
-#define GARAGE_RANGE        6.0     // радиус точки СТО (машина большая)
+#define GARAGE_RANGE        6.0     // СЂР°РґРёСѓСЃ С‚РѕС‡РєРё РЎРўРћ (РјР°С€РёРЅР° Р±РѕР»СЊС€Р°СЏ)
 
 #define GARAGE_TUNE         1
 #define GARAGE_IMPOUND      2
@@ -27,7 +28,7 @@
 
 #define IMPOUND_FINE_MIN    100
 #define IMPOUND_FINE_MAX    5000
-#define IMPOUND_REWARD      100     // премия полицейскому за эвакуацию
+#define IMPOUND_REWARD      100     // РїСЂРµРјРёСЏ РїРѕР»РёС†РµР№СЃРєРѕРјСѓ Р·Р° СЌРІР°РєСѓР°С†РёСЋ
 
 
 enum E_GARAGE
@@ -35,25 +36,25 @@ enum E_GARAGE
 	gaDbId,
 	gaType,
 	Float:gaX, Float:gaY, Float:gaZ,
-	gaMarker                    // маркер (markers.inc)
+	gaMarker                    // РјР°СЂРєРµСЂ (markers.inc)
 }
 static Garage[MAX_GARAGES][E_GARAGE];
 static gGarageCount = 0;
 
-// Тюнинг каждой машины (чтобы вернуть его после респавна)
+// РўСЋРЅРёРЅРі РєР°Р¶РґРѕР№ РјР°С€РёРЅС‹ (С‡С‚РѕР±С‹ РІРµСЂРЅСѓС‚СЊ РµРіРѕ РїРѕСЃР»Рµ СЂРµСЃРїР°РІРЅР°)
 static gModNitro[MAX_VEHICLES];
 static gModHydra[MAX_VEHICLES];
 static gModWheels[MAX_VEHICLES];
 static gModC1[MAX_VEHICLES] = { -1, ... };
 static gModC2[MAX_VEHICLES] = { -1, ... };
 
-static gImpoundFine[MAX_PLAYERS];   // штраф за машину на штрафстоянке (0 = машина не там)
+static gImpoundFine[MAX_PLAYERS];   // С€С‚СЂР°С„ Р·Р° РјР°С€РёРЅСѓ РЅР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРµ (0 = РјР°С€РёРЅР° РЅРµ С‚Р°Рј)
 
 static const gWheelIds[] = { 1025, 1073, 1074, 1075, 1076, 1077, 1078, 1079, 1080, 1081, 1082, 1083, 1084, 1085, 1096, 1097, 1098 };
 static const gWheelNames[][] = { "Offroad", "Shadow", "Mega", "Rimshine", "Wires", "Classic", "Twist", "Cutter", "Switch", "Grove", "Import", "Dollar", "Trance", "Atomic", "Ahab", "Virtual", "Access" };
 
 // ---------------------------------------------------------------------
-//  Запуск
+//  Р—Р°РїСѓСЃРє
 // ---------------------------------------------------------------------
 stock Garage_Init()
 {
@@ -61,9 +62,9 @@ stock Garage_Init()
 	DB_AddColumn("vehicles", "hydra", "INTEGER DEFAULT 0");
 	DB_AddColumn("vehicles", "wheels", "INTEGER DEFAULT 0");
 	DB_AddColumn("vehicles", "impound", "INTEGER DEFAULT 0");
-	DB_AddColumn("vehicles", "imp_by", "TEXT DEFAULT ''");       // кто отправил на штрафстоянку
-	DB_AddColumn("vehicles", "imp_date", "INTEGER DEFAULT 0");   // когда
-	DB_AddColumn("vehicles", "imp_reason", "TEXT DEFAULT ''");   // за что
+	DB_AddColumn("vehicles", "imp_by", "TEXT DEFAULT ''");       // РєС‚Рѕ РѕС‚РїСЂР°РІРёР» РЅР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєСѓ
+	DB_AddColumn("vehicles", "imp_date", "INTEGER DEFAULT 0");   // РєРѕРіРґР°
+	DB_AddColumn("vehicles", "imp_reason", "TEXT DEFAULT ''");   // Р·Р° С‡С‚Рѕ
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS garages (id INTEGER PRIMARY KEY AUTOINCREMENT, type INTEGER, x REAL, y REAL, z REAL)"));
 
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT COUNT(*) FROM garages");
@@ -75,10 +76,10 @@ stock Garage_Init()
 	}
 	if (count == 0)
 	{
-		// Примерные точки — проверить в игре и при необходимости /addgarage /delgarage
-		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO garages (type, x, y, z) VALUES (1, 1041.4, -1030.0, 32.1)"));   // СТО Transfender, Temple
-		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO garages (type, x, y, z) VALUES (1, 2644.8, -2039.0, 13.6)"));   // СТО Loco Low Co, Willowfield
-		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO garages (type, x, y, z) VALUES (2, 1540.5, -1675.5, 13.6)"));   // штрафстоянка у LSPD
+		// РџСЂРёРјРµСЂРЅС‹Рµ С‚РѕС‡РєРё вЂ” РїСЂРѕРІРµСЂРёС‚СЊ РІ РёРіСЂРµ Рё РїСЂРё РЅРµРѕР±С…РѕРґРёРјРѕСЃС‚Рё /addgarage /delgarage
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO garages (type, x, y, z) VALUES (1, 1041.4, -1030.0, 32.1)"));   // РЎРўРћ Transfender, Temple
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO garages (type, x, y, z) VALUES (1, 2644.8, -2039.0, 13.6)"));   // РЎРўРћ Loco Low Co, Willowfield
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO garages (type, x, y, z) VALUES (2, 1540.5, -1675.5, 13.6)"));   // С€С‚СЂР°С„СЃС‚РѕСЏРЅРєР° Сѓ LSPD
 		print("[Garage] Default garages created.");
 	}
 
@@ -104,19 +105,19 @@ static Garage_CreateMarker(g)
 {
 	if (Garage[g][gaType] == GARAGE_IMPOUND)
 	{
-		Garage[g][gaMarker] = Marker_Create(MK_GARAGE, Garage[g][gaDbId], "Штрафстоянка", 1239,
+		Garage[g][gaMarker] = Marker_Create(MK_GARAGE, Garage[g][gaDbId], "РЁС‚СЂР°С„СЃС‚РѕСЏРЅРєР°", 1239,
 			Garage[g][gaX], Garage[g][gaY], Garage[g][gaZ], 0, 0, GPS_TRANSPORT);
-		Marker_SetLabel(Garage[g][gaMarker], "{FF9900}Штрафстоянка\n{FFFFFF}ALT — забрать машину", COLOR_WHITE, 20.0);
+		Marker_SetLabel(Garage[g][gaMarker], "{FF9900}РЁС‚СЂР°С„СЃС‚РѕСЏРЅРєР°\n{FFFFFF}ALT вЂ” Р·Р°Р±СЂР°С‚СЊ РјР°С€РёРЅСѓ", COLOR_WHITE, 20.0);
 	}
 	else
 	{
-		Garage[g][gaMarker] = Marker_Create(MK_GARAGE, Garage[g][gaDbId], "СТО", 1239,
+		Garage[g][gaMarker] = Marker_Create(MK_GARAGE, Garage[g][gaDbId], "РЎРўРћ", 1239,
 			Garage[g][gaX], Garage[g][gaY], Garage[g][gaZ], 0, 0, GPS_TRANSPORT);
-		Marker_SetLabel(Garage[g][gaMarker], "{33CCFF}СТО\n{FFFFFF}Ремонт, покраска, тюнинг\nЗаедь за рулём и нажми H", COLOR_WHITE, 20.0);
+		Marker_SetLabel(Garage[g][gaMarker], "{33CCFF}РЎРўРћ\n{FFFFFF}Р РµРјРѕРЅС‚, РїРѕРєСЂР°СЃРєР°, С‚СЋРЅРёРЅРі\nР—Р°РµРґСЊ Р·Р° СЂСѓР»С‘Рј Рё РЅР°Р¶РјРё H", COLOR_WHITE, 20.0);
 	}
 }
 
-// Админ перенёс маркер СТО или штрафстоянки (/markers)
+// РђРґРјРёРЅ РїРµСЂРµРЅС‘СЃ РјР°СЂРєРµСЂ РЎРўРћ РёР»Рё С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРё (/markers)
 stock Garage_OnMarkerMoved(dbid, Float:x, Float:y, Float:z)
 {
 	for (new g = 0; g < gGarageCount; g++)
@@ -129,7 +130,7 @@ stock Garage_OnMarkerMoved(dbid, Float:x, Float:y, Float:z)
 	}
 }
 
-// Ближайшая точка нужного типа (-1 = нет)
+// Р‘Р»РёР¶Р°Р№С€Р°СЏ С‚РѕС‡РєР° РЅСѓР¶РЅРѕРіРѕ С‚РёРїР° (-1 = РЅРµС‚)
 static Garage_GetNearby(playerid, type, Float:range)
 {
 	if (GetPlayerVirtualWorld(playerid) != 0) return -1;
@@ -141,9 +142,9 @@ static Garage_GetNearby(playerid, type, Float:range)
 }
 
 // ---------------------------------------------------------------------
-//  Тюнинг личной машины: загрузка и применение
+//  РўСЋРЅРёРЅРі Р»РёС‡РЅРѕР№ РјР°С€РёРЅС‹: Р·Р°РіСЂСѓР·РєР° Рё РїСЂРёРјРµРЅРµРЅРёРµ
 // ---------------------------------------------------------------------
-// Из Vehicle_Clear: новая машина — без тюнинга
+// РР· Vehicle_Clear: РЅРѕРІР°СЏ РјР°С€РёРЅР° вЂ” Р±РµР· С‚СЋРЅРёРЅРіР°
 stock Garage_ResetVehicle(vehicleid)
 {
 	gModNitro[vehicleid] = 0;
@@ -153,7 +154,7 @@ stock Garage_ResetVehicle(vehicleid)
 	gModC2[vehicleid] = -1;
 }
 
-// Повесить тюнинг и цвет на машину (после создания и после респавна)
+// РџРѕРІРµСЃРёС‚СЊ С‚СЋРЅРёРЅРі Рё С†РІРµС‚ РЅР° РјР°С€РёРЅСѓ (РїРѕСЃР»Рµ СЃРѕР·РґР°РЅРёСЏ Рё РїРѕСЃР»Рµ СЂРµСЃРїР°РІРЅР°)
 stock Garage_ApplyMods(vehicleid)
 {
 	if (gModNitro[vehicleid]) AddVehicleComponent(vehicleid, gModNitro[vehicleid]);
@@ -162,7 +163,7 @@ stock Garage_ApplyMods(vehicleid)
 	if (gModC1[vehicleid] != -1) ChangeVehicleColours(vehicleid, gModC1[vehicleid], gModC2[vehicleid]);
 }
 
-// Из Vehicles_SpawnPersonal: тюнинг из базы
+// РР· Vehicles_SpawnPersonal: С‚СЋРЅРёРЅРі РёР· Р±Р°Р·С‹
 stock Garage_LoadMods(playerid, vehicleid)
 {
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT nitro, hydra, wheels, c1, c2 FROM vehicles WHERE owner = %d", Player[playerid][pDbId]);
@@ -186,9 +187,9 @@ static Garage_SaveMods(playerid, vehicleid)
 }
 
 // ---------------------------------------------------------------------
-//  СТО
+//  РЎРўРћ
 // ---------------------------------------------------------------------
-// H за рулём (keys.inc): 1 — игрок на СТО, меню открыто
+// H Р·Р° СЂСѓР»С‘Рј (keys.inc): 1 вЂ” РёРіСЂРѕРє РЅР° РЎРўРћ, РјРµРЅСЋ РѕС‚РєСЂС‹С‚Рѕ
 stock Garage_TryOpen(playerid)
 {
 	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER) return 0;
@@ -199,8 +200,8 @@ stock Garage_TryOpen(playerid)
 
 stock bool:Cmd_Tune(playerid)
 {
-	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER) return SendClientMessage(playerid, COLOR_GREY, "Сядь за руль и заедь на СТО.");
-	if (Garage_GetNearby(playerid, GARAGE_TUNE, GARAGE_RANGE) == -1) return SendClientMessage(playerid, COLOR_GREY, "Ты не на СТО.");
+	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER) return SendClientMessage(playerid, COLOR_GREY, "РЎСЏРґСЊ Р·Р° СЂСѓР»СЊ Рё Р·Р°РµРґСЊ РЅР° РЎРўРћ.");
+	if (Garage_GetNearby(playerid, GARAGE_TUNE, GARAGE_RANGE) == -1) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РЅРµ РЅР° РЎРўРћ.");
 	Garage_ShowTune(playerid);
 	return true;
 }
@@ -212,23 +213,23 @@ static Garage_ShowTune(playerid)
 	GetVehicleHealth(v, hp);
 	if (v == gPlayerVeh[playerid])
 	{
-		ShowPlayerDialog(playerid, DIALOG_TUNE, DIALOG_STYLE_TABLIST_HEADERS, "СТО",
-			"Услуга\tЦена\nРемонт (сейчас %.0f%%)\t$%d\nПокраска\t$%d\nЗакись азота\t$%d\nГидравлика\t$%d\nДиски\t$%d\nСнять весь тюнинг\tбесплатно",
-			"Выбрать", "Уехать", hp / 10.0, TUNE_REPAIR_PRICE, TUNE_PAINT_PRICE, TUNE_NITRO_PRICE, TUNE_HYDRA_PRICE, TUNE_WHEELS_PRICE);
+		ShowPlayerDialog(playerid, DIALOG_TUNE, DIALOG_STYLE_TABLIST_HEADERS, "РЎРўРћ",
+			"РЈСЃР»СѓРіР°\tР¦РµРЅР°\nР РµРјРѕРЅС‚ (СЃРµР№С‡Р°СЃ %.0f%%)\t$%d\nРџРѕРєСЂР°СЃРєР°\t$%d\nР—Р°РєРёСЃСЊ Р°Р·РѕС‚Р°\t$%d\nР“РёРґСЂР°РІР»РёРєР°\t$%d\nР”РёСЃРєРё\t$%d\nРЎРЅСЏС‚СЊ РІРµСЃСЊ С‚СЋРЅРёРЅРі\tР±РµСЃРїР»Р°С‚РЅРѕ",
+			"Р’С‹Р±СЂР°С‚СЊ", "РЈРµС…Р°С‚СЊ", hp / 10.0, TUNE_REPAIR_PRICE, TUNE_PAINT_PRICE, TUNE_NITRO_PRICE, TUNE_HYDRA_PRICE, TUNE_WHEELS_PRICE);
 	}
 	else
 	{
-		ShowPlayerDialog(playerid, DIALOG_TUNE, DIALOG_STYLE_TABLIST_HEADERS, "СТО",
-			"Услуга\tЦена\nРемонт (сейчас %.0f%%)\t$%d\n{AFAFAF}Тюнинг — только своей машине\t",
-			"Выбрать", "Уехать", hp / 10.0, TUNE_REPAIR_PRICE);
+		ShowPlayerDialog(playerid, DIALOG_TUNE, DIALOG_STYLE_TABLIST_HEADERS, "РЎРўРћ",
+			"РЈСЃР»СѓРіР°\tР¦РµРЅР°\nР РµРјРѕРЅС‚ (СЃРµР№С‡Р°СЃ %.0f%%)\t$%d\n{AFAFAF}РўСЋРЅРёРЅРі вЂ” С‚РѕР»СЊРєРѕ СЃРІРѕРµР№ РјР°С€РёРЅРµ\t",
+			"Р’С‹Р±СЂР°С‚СЊ", "РЈРµС…Р°С‚СЊ", hp / 10.0, TUNE_REPAIR_PRICE);
 	}
 }
 
-static bool:Garage_Pay(playerid, price, const reason[] = "СТО")
+static bool:Garage_Pay(playerid, price, const reason[] = "РЎРўРћ")
 {
 	if (GetMoney(playerid) < price)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", price);
+		SendClientMessage(playerid, COLOR_GREY, "РќРµ С…РІР°С‚Р°РµС‚ РґРµРЅРµРі. РќСѓР¶РЅРѕ $%d.", price);
 		return false;
 	}
 	GiveMoney(playerid, -price, reason);
@@ -236,21 +237,21 @@ static bool:Garage_Pay(playerid, price, const reason[] = "СТО")
 	return true;
 }
 
-// Поставить деталь, если она подходит к машине
+// РџРѕСЃС‚Р°РІРёС‚СЊ РґРµС‚Р°Р»СЊ, РµСЃР»Рё РѕРЅР° РїРѕРґС…РѕРґРёС‚ Рє РјР°С€РёРЅРµ
 static Garage_InstallPart(playerid, v, part, price, const name[])
 {
 	if (!VehicleCanHaveComponent(GetVehicleModel(v), part))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "%s не ставится на эту модель.", name);
+		SendClientMessage(playerid, COLOR_GREY, "%s РЅРµ СЃС‚Р°РІРёС‚СЃСЏ РЅР° СЌС‚Сѓ РјРѕРґРµР»СЊ.", name);
 		return 0;
 	}
 	if (!Garage_Pay(playerid, price)) return 0;
 	AddVehicleComponent(v, part);
-	SendClientMessage(playerid, COLOR_GREEN, "%s установлен(а) за $%d.", name, price);
+	SendClientMessage(playerid, COLOR_GREEN, "%s СѓСЃС‚Р°РЅРѕРІР»РµРЅ(Р°) Р·Р° $%d.", name, price);
 	return 1;
 }
 
-// Ответы на окна СТО и штрафстоянки (из OnDialogResponse)
+// РћС‚РІРµС‚С‹ РЅР° РѕРєРЅР° РЎРўРћ Рё С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРё (РёР· OnDialogResponse)
 stock Garage_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
 	if (dialogid < DIALOG_TUNE || dialogid > DIALOG_UNIMPOUND) return 0;
@@ -271,17 +272,17 @@ stock Garage_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		{
 			if (!Garage_Pay(playerid, TUNE_REPAIR_PRICE)) return 1;
 			RepairVehicle(v);
-			SendClientMessage(playerid, COLOR_GREEN, "Машина отремонтирована за $%d.", TUNE_REPAIR_PRICE);
+			SendClientMessage(playerid, COLOR_GREEN, "РњР°С€РёРЅР° РѕС‚СЂРµРјРѕРЅС‚РёСЂРѕРІР°РЅР° Р·Р° $%d.", TUNE_REPAIR_PRICE);
 			return 1;
 		}
 		if (!own) return 1;
 		switch (listitem)
 		{
-			case 1: ShowPlayerDialog(playerid, DIALOG_TUNE_PAINT, DIALOG_STYLE_INPUT, "Покраска",
-				"{FFFFFF}Введи два цвета через пробел (0-255), например: {FFFF00}1 0\n{FFFFFF}0 — чёрный, 1 — белый, 3 — красный, 6 — жёлтый, 79 — синий, 86 — зелёный", "Покрасить", "Назад");
+			case 1: ShowPlayerDialog(playerid, DIALOG_TUNE_PAINT, DIALOG_STYLE_INPUT, "РџРѕРєСЂР°СЃРєР°",
+				"{FFFFFF}Р’РІРµРґРё РґРІР° С†РІРµС‚Р° С‡РµСЂРµР· РїСЂРѕР±РµР» (0-255), РЅР°РїСЂРёРјРµСЂ: {FFFF00}1 0\n{FFFFFF}0 вЂ” С‡С‘СЂРЅС‹Р№, 1 вЂ” Р±РµР»С‹Р№, 3 вЂ” РєСЂР°СЃРЅС‹Р№, 6 вЂ” Р¶С‘Р»С‚С‹Р№, 79 вЂ” СЃРёРЅРёР№, 86 вЂ” Р·РµР»С‘РЅС‹Р№", "РџРѕРєСЂР°СЃРёС‚СЊ", "РќР°Р·Р°Рґ");
 			case 2:
 			{
-				if (Garage_InstallPart(playerid, v, 1010, TUNE_NITRO_PRICE, "Закись азота"))
+				if (Garage_InstallPart(playerid, v, 1010, TUNE_NITRO_PRICE, "Р—Р°РєРёСЃСЊ Р°Р·РѕС‚Р°"))
 				{
 					gModNitro[v] = 1010;
 					Garage_SaveMods(playerid, v);
@@ -289,7 +290,7 @@ stock Garage_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			}
 			case 3:
 			{
-				if (Garage_InstallPart(playerid, v, 1087, TUNE_HYDRA_PRICE, "Гидравлика"))
+				if (Garage_InstallPart(playerid, v, 1087, TUNE_HYDRA_PRICE, "Р“РёРґСЂР°РІР»РёРєР°"))
 				{
 					gModHydra[v] = 1087;
 					Garage_SaveMods(playerid, v);
@@ -303,7 +304,7 @@ stock Garage_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 					format(line, sizeof line, "%s\n", gWheelNames[i]);
 					strcat(list, line);
 				}
-				ShowPlayerDialog(playerid, DIALOG_TUNE_WHEELS, DIALOG_STYLE_LIST, "Диски", "%s", "Поставить", "Назад", list);
+				ShowPlayerDialog(playerid, DIALOG_TUNE_WHEELS, DIALOG_STYLE_LIST, "Р”РёСЃРєРё", "%s", "РџРѕСЃС‚Р°РІРёС‚СЊ", "РќР°Р·Р°Рґ", list);
 			}
 			case 5:
 			{
@@ -314,7 +315,7 @@ stock Garage_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 				gModHydra[v] = 0;
 				gModWheels[v] = 0;
 				Garage_SaveMods(playerid, v);
-				SendClientMessage(playerid, COLOR_WHITE, "Тюнинг снят.");
+				SendClientMessage(playerid, COLOR_WHITE, "РўСЋРЅРёРЅРі СЃРЅСЏС‚.");
 			}
 		}
 		return 1;
@@ -326,7 +327,7 @@ stock Garage_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		new pos = 0, c1, c2;
 		if (!NextIntParam(inputtext, pos, c1) || !NextIntParam(inputtext, pos, c2) || c1 < 0 || c1 > 255 || c2 < 0 || c2 > 255)
 		{
-			SendClientMessage(playerid, COLOR_GREY, "Нужно два числа от 0 до 255, например: 1 0");
+			SendClientMessage(playerid, COLOR_GREY, "РќСѓР¶РЅРѕ РґРІР° С‡РёСЃР»Р° РѕС‚ 0 РґРѕ 255, РЅР°РїСЂРёРјРµСЂ: 1 0");
 			return 1;
 		}
 		if (!Garage_Pay(playerid, TUNE_PAINT_PRICE)) return 1;
@@ -334,13 +335,13 @@ stock Garage_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		gModC2[v] = c2;
 		ChangeVehicleColours(v, c1, c2);
 		Garage_SaveMods(playerid, v);
-		SendClientMessage(playerid, COLOR_GREEN, "Машина перекрашена за $%d.", TUNE_PAINT_PRICE);
+		SendClientMessage(playerid, COLOR_GREEN, "РњР°С€РёРЅР° РїРµСЂРµРєСЂР°С€РµРЅР° Р·Р° $%d.", TUNE_PAINT_PRICE);
 		return 1;
 	}
 	if (dialogid == DIALOG_TUNE_WHEELS)
 	{
 		if (listitem < 0 || listitem >= sizeof (gWheelIds)) return 1;
-		if (Garage_InstallPart(playerid, v, gWheelIds[listitem], TUNE_WHEELS_PRICE, "Диски"))
+		if (Garage_InstallPart(playerid, v, gWheelIds[listitem], TUNE_WHEELS_PRICE, "Р”РёСЃРєРё"))
 		{
 			gModWheels[v] = gWheelIds[listitem];
 			Garage_SaveMods(playerid, v);
@@ -350,9 +351,9 @@ stock Garage_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 }
 
 // ---------------------------------------------------------------------
-//  Штрафстоянка
+//  РЁС‚СЂР°С„СЃС‚РѕСЏРЅРєР°
 // ---------------------------------------------------------------------
-// После входа в аккаунт (из Vehicles_LoadForPlayer)
+// РџРѕСЃР»Рµ РІС…РѕРґР° РІ Р°РєРєР°СѓРЅС‚ (РёР· Vehicles_LoadForPlayer)
 stock Garage_LoadPlayer(playerid)
 {
 	gImpoundFine[playerid] = 0;
@@ -361,7 +362,7 @@ stock Garage_LoadPlayer(playerid)
 	if (DB_GetRowCount(r) > 0) gImpoundFine[playerid] = DB_GetFieldInt(r, 0);
 	DB_FreeResultSet(r);
 	if (gImpoundFine[playerid] > 0)
-		SendClientMessage(playerid, COLOR_ORANGE, "Твоя машина на штрафстоянке (штраф $%d). Забрать: ALT на штрафстоянке у LSPD.", gImpoundFine[playerid]);
+		SendClientMessage(playerid, COLOR_ORANGE, "РўРІРѕСЏ РјР°С€РёРЅР° РЅР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРµ (С€С‚СЂР°С„ $%d). Р—Р°Р±СЂР°С‚СЊ: ALT РЅР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРµ Сѓ LSPD.", gImpoundFine[playerid]);
 }
 
 stock Garage_GetImpound(playerid)
@@ -369,40 +370,96 @@ stock Garage_GetImpound(playerid)
 	return gImpoundFine[playerid];
 }
 
-// Личная машина рядом с игроком (INVALID_VEHICLE_ID = нет), её владелец — в owner
-static Garage_FindPersonalNear(playerid, &owner)
+// ---------------------------------------------------------------------
+//  Р­РІР°РєСѓР°С‚РѕСЂ РїРѕР»РёС†РёРё: H Р·Р° СЂСѓР»С‘Рј СЃР»СѓР¶РµР±РЅРѕРіРѕ Towtruck (525) вЂ” Р·Р°С†РµРїРёС‚СЊ РјР°С€РёРЅСѓ
+//  СЃР·Р°РґРё РёР»Рё РѕС‚С†РµРїРёС‚СЊ. РќР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРµ: /impound [С€С‚СЂР°С„] [РїСЂРёС‡РёРЅР°].
+// ---------------------------------------------------------------------
+#define TOW_MODEL           525
+#define TOW_RANGE           8.0         // РєР°Рє Р±Р»РёР·РєРѕ РґРѕР»Р¶РЅР° СЃС‚РѕСЏС‚СЊ РјР°С€РёРЅР°, С‡С‚РѕР±С‹ Р·Р°С†РµРїРёС‚СЊ
+#define IMPOUND_LOT_RANGE   20.0        // РєР°Рє Р±Р»РёР·РєРѕ Рє С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРµ СЃРґР°РІР°С‚СЊ РјР°С€РёРЅСѓ
+
+static bool:Garage_IsPoliceTow(v)
 {
-	new Float:x, Float:y, Float:z;
+	return v != 0 && GetVehicleModel(v) == TOW_MODEL && Faction_IsLaw(gVehFaction[v]);
+}
+
+// Р§СЊСЏ Р»РёС‡РЅР°СЏ РјР°С€РёРЅР° v (INVALID_PLAYER_ID вЂ” РЅРµ Р»РёС‡РЅР°СЏ)
+static Garage_PersonalOwner(v)
+{
+	for (new i = 0; i < MAX_PLAYERS; i++)
+		if (IsPlayerConnected(i) && gPlayerVeh[i] == v) return i;
+	return INVALID_PLAYER_ID;
+}
+
+// РР· keys.inc (H РІ РјР°С€РёРЅРµ). 1 вЂ” СЃСЂР°Р±РѕС‚Р°Р»Рѕ
+stock Garage_TryTow(playerid)
+{
+	new tow = GetPlayerVehicleID(playerid);
+	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER || !Garage_IsPoliceTow(tow)) return 0;
+	if (!Faction_IsLaw(Player[playerid][pFaction]) || !Player[playerid][pDuty])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Р­РІР°РєСѓР°С‚РѕСЂРѕРј РїРѕР»СЊР·СѓРµС‚СЃСЏ РїРѕР»РёС†РёСЏ РЅР° СЃРјРµРЅРµ.");
+		return 1;
+	}
+	if (IsTrailerAttachedToVehicle(tow))
+	{
+		DetachTrailerFromVehicle(tow);
+		SendClientMessage(playerid, COLOR_WHITE, "РњР°С€РёРЅР° РѕС‚С†РµРїР»РµРЅР°.");
+		return 1;
+	}
+	new Float:tx, Float:ty, Float:tz, Float:ta;
+	GetVehiclePos(tow, tx, ty, tz);
+	GetVehicleZAngle(tow, ta);
+	// С‚РѕС‡РєР° Р·Р° СЌРІР°РєСѓР°С‚РѕСЂРѕРј
+	tx -= 5.0 * floatsin(-ta, degrees);
+	ty -= 5.0 * floatcos(-ta, degrees);
+	new best = INVALID_VEHICLE_ID, Float:bd = TOW_RANGE;
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!IsPlayerConnected(i)) continue;
 		new v = gPlayerVeh[i];
-		if (v == INVALID_VEHICLE_ID) continue;
-		GetVehiclePos(v, x, y, z);
-		if (IsPlayerInRangeOfPoint(playerid, 5.0, x, y, z))
+		if (v == INVALID_VEHICLE_ID || v == tow) continue;
+		new Float:d = GetVehicleDistanceFromPoint(v, tx, ty, tz);
+		if (d < bd) { bd = d; best = v; }
+	}
+	if (best == INVALID_VEHICLE_ID)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "РЎР·Р°РґРё РЅРµС‚ Р»РёС‡РЅРѕР№ РјР°С€РёРЅС‹. РџРѕРґСЉРµРґСЊ Р·Р°РґРѕРј РІРїР»РѕС‚РЅСѓСЋ (РґРѕ %d Рј).", floatround(TOW_RANGE));
+		return 1;
+	}
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && GetPlayerVehicleID(i) == best)
 		{
-			owner = i;
-			return v;
+			SendClientMessage(playerid, COLOR_GREY, "Р’ РјР°С€РёРЅРµ РєС‚Рѕ-С‚Рѕ СЃРёРґРёС‚.");
+			return 1;
 		}
 	}
-	return INVALID_VEHICLE_ID;
+	AttachTrailerToVehicle(best, tow);
+	new owner = Garage_PersonalOwner(best);
+	SendClientMessage(playerid, COLOR_GREEN, "РњР°С€РёРЅР° %s Р·Р°С†РµРїР»РµРЅР°. Р’РµР·Рё РЅР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєСѓ Рё РІРІРµРґРё /impound [С€С‚СЂР°С„] [РїСЂРёС‡РёРЅР°]. РћС‚С†РµРїРёС‚СЊ: H.",
+		(owner != INVALID_PLAYER_ID) ? GetRPName(owner) : "-");
+	return 1;
 }
 
 stock bool:Cmd_Impound(playerid, const params[])
 {
 	if (!Faction_NeedLaw(playerid)) return true;
-	if (IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Выйди из машины и подойди к той, которую эвакуируешь.");
+	new tow = GetPlayerVehicleID(playerid);
+	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER || !Garage_IsPoliceTow(tow))
+		return SendClientMessage(playerid, COLOR_GREY, "РњР°С€РёРЅСѓ СѓРІРѕР·СЏС‚ СЃР»СѓР¶РµР±РЅС‹Рј СЌРІР°РєСѓР°С‚РѕСЂРѕРј: Р·Р°С†РµРїРё РµС‘ (H Р·Р° СЂСѓР»С‘Рј СЌРІР°РєСѓР°С‚РѕСЂР°) Рё РїСЂРёРІРµР·Рё РЅР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєСѓ.");
 	new pos = 0, fine, reason[64];
 	if (!NextIntParam(params, pos, fine) || fine < IMPOUND_FINE_MIN || fine > IMPOUND_FINE_MAX)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /impound [штраф $%d-%d] [причина] (стоя у личной машины)", IMPOUND_FINE_MIN, IMPOUND_FINE_MAX);
-	if (!RestParam(params, pos, reason)) strcat(reason, "не указана");
+		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /impound [С€С‚СЂР°С„ $%d-%d] [РїСЂРёС‡РёРЅР°] (РЅР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРµ, СЃ РјР°С€РёРЅРѕР№ РЅР° РєСЂСЋРєРµ)", IMPOUND_FINE_MIN, IMPOUND_FINE_MAX);
+	if (!RestParam(params, pos, reason)) strcat(reason, "РЅРµ СѓРєР°Р·Р°РЅР°");
+	if (!IsTrailerAttachedToVehicle(tow)) return SendClientMessage(playerid, COLOR_GREY, "РќР° РєСЂСЋРєРµ РЅРµС‚ РјР°С€РёРЅС‹. Р—Р°С†РµРїРёС‚СЊ: H.");
+	if (Garage_GetNearby(playerid, GARAGE_IMPOUND, IMPOUND_LOT_RANGE) == -1) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РЅРµ РЅР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРµ (Сѓ LSPD, /gps).");
+	new v = GetVehicleTrailer(tow);
+	new owner = Garage_PersonalOwner(v);
+	if (owner == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Р­С‚Рѕ РЅРµ Р»РёС‡РЅР°СЏ РјР°С€РёРЅР°.");
+	if (owner == playerid) return SendClientMessage(playerid, COLOR_GREY, "РќРµР»СЊР·СЏ СЌРІР°РєСѓРёСЂРѕРІР°С‚СЊ СЃРІРѕСЋ РјР°С€РёРЅСѓ.");
 
-	new owner = INVALID_PLAYER_ID;
-	new v = Garage_FindPersonalNear(playerid, owner);
-	if (v == INVALID_VEHICLE_ID) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет личной машины.");
-	if (owner == playerid) return SendClientMessage(playerid, COLOR_GREY, "Нельзя эвакуировать свою машину.");
-
-	// всех, кто внутри, высаживаем
+	DetachTrailerFromVehicle(tow);
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (IsPlayerConnected(i) && GetPlayerVehicleID(i) == v) RemovePlayerFromVehicle(i);
@@ -412,24 +469,22 @@ stock bool:Cmd_Impound(playerid, const params[])
 		fine, GetRPName(playerid), gettime(), reason, Player[owner][pDbId]));
 	gImpoundFine[owner] = fine;
 
-	GiveMoney(playerid, IMPOUND_REWARD, "премия за эвакуацию");
+	GiveMoney(playerid, IMPOUND_REWARD, "РїСЂРµРјРёСЏ Р·Р° СЌРІР°РєСѓР°С†РёСЋ");
 	Account_Save(playerid);
 
+	SendClientMessage(owner, COLOR_RED, "РўРІРѕСЋ РјР°С€РёРЅСѓ СЌРІР°РєСѓРёСЂРѕРІР°Р» %s. РџСЂРёС‡РёРЅР°: %s. РЁС‚СЂР°С„ $%d, Р·Р°Р±СЂР°С‚СЊ: С€С‚СЂР°С„СЃС‚РѕСЏРЅРєР° Сѓ LSPD (ALT).", GetRPName(playerid), reason, fine);
+	SendClientMessage(playerid, COLOR_GREEN, "РњР°С€РёРЅР° %s СЃРґР°РЅР° РЅР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєСѓ. РџСЂРµРјРёСЏ $%d.", GetRPName(owner), IMPOUND_REWARD);
 	new msg[144];
-	format(msg, sizeof msg, "%s вызывает эвакуатор.", GetRPName(playerid));
-	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
-	SendClientMessage(owner, COLOR_RED, "Твою машину эвакуировал %s. Причина: %s. Штраф $%d, забрать: штрафстоянка у LSPD (ALT).", GetRPName(playerid), reason, fine);
-	SendClientMessage(playerid, COLOR_GREEN, "Машина %s отправлена на штрафстоянку. Премия $%d.", GetRPName(owner), IMPOUND_REWARD);
-	format(msg, sizeof msg, "[Диспетчер] %s эвакуировал машину %s (штраф $%d).", GetRPName(playerid), GetRPName(owner), fine);
+	format(msg, sizeof msg, "[Р”РёСЃРїРµС‚С‡РµСЂ] %s СЌРІР°РєСѓРёСЂРѕРІР°Р» РјР°С€РёРЅСѓ %s (С€С‚СЂР°С„ $%d).", GetRPName(playerid), GetRPName(owner), fine);
 	Faction_MessageLaw(msg);
 	return true;
 }
 
 stock bool:Cmd_Unimpound(playerid)
 {
-	if (Garage_GetNearby(playerid, GARAGE_IMPOUND, 3.0) == -1) return SendClientMessage(playerid, COLOR_GREY, "Подойди к штрафстоянке.");
-	if (gImpoundFine[playerid] <= 0) return SendClientMessage(playerid, COLOR_GREY, "Твоей машины здесь нет.");
-	// кто, когда и за что отправил машину сюда
+	if (Garage_GetNearby(playerid, GARAGE_IMPOUND, 3.0) == -1) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Рє С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРµ.");
+	if (gImpoundFine[playerid] <= 0) return SendClientMessage(playerid, COLOR_GREY, "РўРІРѕРµР№ РјР°С€РёРЅС‹ Р·РґРµСЃСЊ РЅРµС‚.");
+	// РєС‚Рѕ, РєРѕРіРґР° Рё Р·Р° С‡С‚Рѕ РѕС‚РїСЂР°РІРёР» РјР°С€РёРЅСѓ СЃСЋРґР°
 	new by[MAX_PLAYER_NAME], when[24], reason[64];
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT IFNULL(imp_by, ''), strftime('%q', imp_date, 'unixepoch', 'localtime'), IFNULL(imp_reason, ''), IFNULL(imp_date, 0) FROM vehicles WHERE owner = %d",
 		"%d.%m.%Y %H:%M", Player[playerid][pDbId]);
@@ -443,16 +498,16 @@ stock bool:Cmd_Unimpound(playerid)
 		}
 		DB_FreeResultSet(r);
 	}
-	if (by[0] == '\0') strcat(by, "неизвестно");
-	if (when[0] == '\0') strcat(when, "неизвестно");
-	if (reason[0] == '\0') strcat(reason, "не указана");
-	ShowPlayerDialog(playerid, DIALOG_UNIMPOUND, DIALOG_STYLE_MSGBOX, "Штрафстоянка",
-		"{FFFFFF}Твоя машина на штрафстоянке.\n\nОтправил: {FFFF00}%s\n{FFFFFF}Когда: {FFFF00}%s\n{FFFFFF}Причина: {FFFF00}%s\n{FFFFFF}Штраф: {FFFF00}$%d\n\n{FFFFFF}Оплатить и забрать?",
-		"Оплатить", "Отмена", by, when, reason, gImpoundFine[playerid]);
+	if (by[0] == '\0') strcat(by, "РЅРµРёР·РІРµСЃС‚РЅРѕ");
+	if (when[0] == '\0') strcat(when, "РЅРµРёР·РІРµСЃС‚РЅРѕ");
+	if (reason[0] == '\0') strcat(reason, "РЅРµ СѓРєР°Р·Р°РЅР°");
+	ShowPlayerDialog(playerid, DIALOG_UNIMPOUND, DIALOG_STYLE_MSGBOX, "РЁС‚СЂР°С„СЃС‚РѕСЏРЅРєР°",
+		"{FFFFFF}РўРІРѕСЏ РјР°С€РёРЅР° РЅР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРµ.\n\nРћС‚РїСЂР°РІРёР»: {FFFF00}%s\n{FFFFFF}РљРѕРіРґР°: {FFFF00}%s\n{FFFFFF}РџСЂРёС‡РёРЅР°: {FFFF00}%s\n{FFFFFF}РЁС‚СЂР°С„: {FFFF00}$%d\n\n{FFFFFF}РћРїР»Р°С‚РёС‚СЊ Рё Р·Р°Р±СЂР°С‚СЊ?",
+		"РћРїР»Р°С‚РёС‚СЊ", "РћС‚РјРµРЅР°", by, when, reason, gImpoundFine[playerid]);
 	return true;
 }
 
-// ALT пешком (keys.inc): 1 — игрок на штрафстоянке
+// ALT РїРµС€РєРѕРј (keys.inc): 1 вЂ” РёРіСЂРѕРє РЅР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРµ
 stock Garage_TryImpoundLot(playerid)
 {
 	if (Garage_GetNearby(playerid, GARAGE_IMPOUND, 3.0) == -1) return 0;
@@ -465,7 +520,7 @@ static Garage_Unimpound(playerid)
 	new g = Garage_GetNearby(playerid, GARAGE_IMPOUND, 3.0);
 	new fine = gImpoundFine[playerid];
 	if (g == -1 || fine <= 0) return 0;
-	if (!Garage_Pay(playerid, fine, "штраф штрафстоянки")) return 0;
+	if (!Garage_Pay(playerid, fine, "С€С‚СЂР°С„ С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРё")) return 0;
 	Econ_ToTreasury(fine);
 
 	new Float:x = Garage[g][gaX] + 4.0, Float:y = Garage[g][gaY], Float:z = Garage[g][gaZ] + 0.5;
@@ -475,7 +530,7 @@ static Garage_Unimpound(playerid)
 	new v = Vehicles_SpawnFromDb(playerid);
 	if (v != INVALID_VEHICLE_ID)
 	{
-		// бензин — сколько было при эвакуации
+		// Р±РµРЅР·РёРЅ вЂ” СЃРєРѕР»СЊРєРѕ Р±С‹Р»Рѕ РїСЂРё СЌРІР°РєСѓР°С†РёРё
 		new DBResult:r = DB_ExecuteQuery(gDB, "SELECT fuel FROM vehicles WHERE owner = %d", Player[playerid][pDbId]);
 		if (r != DBResult:0)
 		{
@@ -483,20 +538,20 @@ static Garage_Unimpound(playerid)
 			DB_FreeResultSet(r);
 		}
 	}
-	SendClientMessage(playerid, COLOR_GREEN, "Штраф $%d оплачен. Машина стоит рядом, припаркуй её: /park", fine);
+	SendClientMessage(playerid, COLOR_GREEN, "РЁС‚СЂР°С„ $%d РѕРїР»Р°С‡РµРЅ. РњР°С€РёРЅР° СЃС‚РѕРёС‚ СЂСЏРґРѕРј, РїСЂРёРїР°СЂРєСѓР№ РµС‘: /park", fine);
 	return 1;
 }
 
 // ---------------------------------------------------------------------
-//  Админ-команды
+//  РђРґРјРёРЅ-РєРѕРјР°РЅРґС‹
 // ---------------------------------------------------------------------
 stock bool:Cmd_AddGarage(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, type;
 	if (!NextIntParam(params, pos, type) || type < GARAGE_TUNE || type > GARAGE_IMPOUND)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /addgarage [1 — СТО, 2 — штрафстоянка]");
-	if (gGarageCount >= MAX_GARAGES) return SendClientMessage(playerid, COLOR_GREY, "Достигнут лимит (%d).", MAX_GARAGES);
+		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /addgarage [1 вЂ” РЎРўРћ, 2 вЂ” С€С‚СЂР°С„СЃС‚РѕСЏРЅРєР°]");
+	if (gGarageCount >= MAX_GARAGES) return SendClientMessage(playerid, COLOR_GREY, "Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ (%d).", MAX_GARAGES);
 
 	new Float:x, Float:y, Float:z;
 	GetPlayerPos(playerid, x, y, z);
@@ -509,7 +564,7 @@ stock bool:Cmd_AddGarage(playerid, const params[])
 	Garage[g][gaZ] = z;
 	Garage_CreateMarker(g);
 	Admin_Log(playerid, "addgarage", INVALID_PLAYER_ID, "", type);
-	SendClientMessage(playerid, COLOR_ADMIN, "Точка №%d создана (тип %d).", Garage[g][gaDbId], type);
+	SendClientMessage(playerid, COLOR_ADMIN, "РўРѕС‡РєР° в„–%d СЃРѕР·РґР°РЅР° (С‚РёРї %d).", Garage[g][gaDbId], type);
 	return true;
 }
 
@@ -521,14 +576,14 @@ stock bool:Cmd_DelGarage(playerid)
 	{
 		if (IsPlayerInRangeOfPoint(playerid, GARAGE_RANGE, Garage[i][gaX], Garage[i][gaY], Garage[i][gaZ])) { g = i; break; }
 	}
-	if (g == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет СТО или штрафстоянки.");
+	if (g == -1) return SendClientMessage(playerid, COLOR_GREY, "Р СЏРґРѕРј РЅРµС‚ РЎРўРћ РёР»Рё С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРё.");
 
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM garages WHERE id = %d", Garage[g][gaDbId]));
 	Marker_Destroy(Garage[g][gaMarker], true);
 	Admin_Log(playerid, "delgarage", INVALID_PLAYER_ID, "", Garage[g][gaDbId]);
-	SendClientMessage(playerid, COLOR_ADMIN, "Точка №%d удалена.", Garage[g][gaDbId]);
+	SendClientMessage(playerid, COLOR_ADMIN, "РўРѕС‡РєР° в„–%d СѓРґР°Р»РµРЅР°.", Garage[g][gaDbId]);
 
-	// последний элемент на место удалённого
+	// РїРѕСЃР»РµРґРЅРёР№ СЌР»РµРјРµРЅС‚ РЅР° РјРµСЃС‚Рѕ СѓРґР°Р»С‘РЅРЅРѕРіРѕ
 	gGarageCount--;
 	if (g != gGarageCount) Garage[g] = Garage[gGarageCount];
 	return true;

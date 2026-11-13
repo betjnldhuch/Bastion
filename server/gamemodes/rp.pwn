@@ -1,58 +1,58 @@
 // =====================================================================
-//  Bastion Online — мод сервера для open.mp (GTA San Andreas Multiplayer)
+//  Bastion Online вЂ” РјРѕРґ СЃРµСЂРІРµСЂР° РґР»СЏ open.mp (GTA San Andreas Multiplayer)
 //
-//  Это главный файл. Он подключает модули из папки bastion/ и раздаёт им
-//  события сервера (callbacks). Вся логика — в модулях:
+//  Р­С‚Рѕ РіР»Р°РІРЅС‹Р№ С„Р°Р№Р». РћРЅ РїРѕРґРєР»СЋС‡Р°РµС‚ РјРѕРґСѓР»Рё РёР· РїР°РїРєРё bastion/ Рё СЂР°Р·РґР°С‘С‚ РёРј
+//  СЃРѕР±С‹С‚РёСЏ СЃРµСЂРІРµСЂР° (callbacks). Р’СЃСЏ Р»РѕРіРёРєР° вЂ” РІ РјРѕРґСѓР»СЏС…:
 //
-//    bastion/config.inc    — настройки (деньги, координаты, цвета)
-//    bastion/base.inc — данные игрока и функции-помощники
-//    bastion/database.inc  — база SQLite (scriptfiles/rp.db)
-//    bastion/accounts.inc  — регистрация и вход
-//    bastion/vehicles.inc  — транспорт, автосалон
-//    bastion/houses.inc    — дома
-//    bastion/jobs.inc      — работы (грузчик, пицца)
-//    bastion/factions.inc  — фракции (полиция, больница, банды), тюрьма
-//    bastion/turfs.inc     — районы банд и войны за них
-//    bastion/bank.inc      — банк и банкоматы
-//    bastion/phone.inc     — телефон: звонки, SMS, 911
-//    bastion/business.inc  — бизнесы: 24/7, бар, одежда, оружие
-//    bastion/garage.inc    — СТО (ремонт, тюнинг) и штрафстоянка
-//    bastion/economy.inc   — казна, налоги, журнал денег
-//    bastion/gates.inc     — шлагбаумы и ворота фракций
-//    bastion/keys.inc      — управление кнопками: ALT, Y, N, H, 2
-//    bastion/chat.inc      — RP-чат
-//    bastion/admin.inc     — администрация: наказания, логи, репорты
-//    bastion/admin_tools.inc — телепорты (метка на карте, /tp) и инструменты админов
-//    bastion/dev.inc       — разработка в игре: координаты /pos, маппинг /mo
-//    bastion/textures.inc  — перекраска объектов маппинга: текстуры, цвет, надписи /mt
-//    bastion/doors.inc     — входы в здания со стандартными интерьерами (LSPD)
-//    bastion/dialogs.inc   — номера всех окон
-//    bastion/anticheat.inc — античит: оружие, здоровье, скорость, деньги
-//    bastion/backup.inc    — резервные копии базы
-//    bastion/commands.inc  — список команд
+//    bastion/config.inc    вЂ” РЅР°СЃС‚СЂРѕР№РєРё (РґРµРЅСЊРіРё, РєРѕРѕСЂРґРёРЅР°С‚С‹, С†РІРµС‚Р°)
+//    bastion/base.inc вЂ” РґР°РЅРЅС‹Рµ РёРіСЂРѕРєР° Рё С„СѓРЅРєС†РёРё-РїРѕРјРѕС‰РЅРёРєРё
+//    bastion/database.inc  вЂ” Р±Р°Р·Р° SQLite (scriptfiles/rp.db)
+//    bastion/accounts.inc  вЂ” СЂРµРіРёСЃС‚СЂР°С†РёСЏ Рё РІС…РѕРґ
+//    bastion/vehicles.inc  вЂ” С‚СЂР°РЅСЃРїРѕСЂС‚, Р°РІС‚РѕСЃР°Р»РѕРЅ
+//    bastion/houses.inc    вЂ” РґРѕРјР°
+//    bastion/jobs.inc      вЂ” СЂР°Р±РѕС‚С‹ (РіСЂСѓР·С‡РёРє, РїРёС†С†Р°)
+//    bastion/factions.inc  вЂ” С„СЂР°РєС†РёРё (РїРѕР»РёС†РёСЏ, Р±РѕР»СЊРЅРёС†Р°, Р±Р°РЅРґС‹), С‚СЋСЂСЊРјР°
+//    bastion/turfs.inc     вЂ” СЂР°Р№РѕРЅС‹ Р±Р°РЅРґ Рё РІРѕР№РЅС‹ Р·Р° РЅРёС…
+//    bastion/bank.inc      вЂ” Р±Р°РЅРє Рё Р±Р°РЅРєРѕРјР°С‚С‹
+//    bastion/phone.inc     вЂ” С‚РµР»РµС„РѕРЅ: Р·РІРѕРЅРєРё, SMS, 911
+//    bastion/business.inc  вЂ” Р±РёР·РЅРµСЃС‹: 24/7, Р±Р°СЂ, РѕРґРµР¶РґР°, РѕСЂСѓР¶РёРµ
+//    bastion/garage.inc    вЂ” РЎРўРћ (СЂРµРјРѕРЅС‚, С‚СЋРЅРёРЅРі) Рё С€С‚СЂР°С„СЃС‚РѕСЏРЅРєР°
+//    bastion/economy.inc   вЂ” РєР°Р·РЅР°, РЅР°Р»РѕРіРё, Р¶СѓСЂРЅР°Р» РґРµРЅРµРі
+//    bastion/gates.inc     вЂ” С€Р»Р°РіР±Р°СѓРјС‹ Рё РІРѕСЂРѕС‚Р° С„СЂР°РєС†РёР№
+//    bastion/keys.inc      вЂ” СѓРїСЂР°РІР»РµРЅРёРµ РєРЅРѕРїРєР°РјРё: ALT, Y, N, H, 2
+//    bastion/chat.inc      вЂ” RP-С‡Р°С‚
+//    bastion/admin.inc     вЂ” Р°РґРјРёРЅРёСЃС‚СЂР°С†РёСЏ: РЅР°РєР°Р·Р°РЅРёСЏ, Р»РѕРіРё, СЂРµРїРѕСЂС‚С‹
+//    bastion/admin_tools.inc вЂ” С‚РµР»РµРїРѕСЂС‚С‹ (РјРµС‚РєР° РЅР° РєР°СЂС‚Рµ, /tp) Рё РёРЅСЃС‚СЂСѓРјРµРЅС‚С‹ Р°РґРјРёРЅРѕРІ
+//    bastion/dev.inc       вЂ” СЂР°Р·СЂР°Р±РѕС‚РєР° РІ РёРіСЂРµ: РєРѕРѕСЂРґРёРЅР°С‚С‹ /pos, РјР°РїРїРёРЅРі /mo
+//    bastion/textures.inc  вЂ” РїРµСЂРµРєСЂР°СЃРєР° РѕР±СЉРµРєС‚РѕРІ РјР°РїРїРёРЅРіР°: С‚РµРєСЃС‚СѓСЂС‹, С†РІРµС‚, РЅР°РґРїРёСЃРё /mt
+//    bastion/doors.inc     вЂ” РІС…РѕРґС‹ РІ Р·РґР°РЅРёСЏ СЃРѕ СЃС‚Р°РЅРґР°СЂС‚РЅС‹РјРё РёРЅС‚РµСЂСЊРµСЂР°РјРё (LSPD)
+//    bastion/dialogs.inc   вЂ” РЅРѕРјРµСЂР° РІСЃРµС… РѕРєРѕРЅ
+//    bastion/anticheat.inc вЂ” Р°РЅС‚РёС‡РёС‚: РѕСЂСѓР¶РёРµ, Р·РґРѕСЂРѕРІСЊРµ, СЃРєРѕСЂРѕСЃС‚СЊ, РґРµРЅСЊРіРё
+//    bastion/backup.inc    вЂ” СЂРµР·РµСЂРІРЅС‹Рµ РєРѕРїРёРё Р±Р°Р·С‹
+//    bastion/commands.inc  вЂ” СЃРїРёСЃРѕРє РєРѕРјР°РЅРґ
 //
-//  Компиляция: открой этот файл в Qawno и нажми F5.
-//  ВАЖНО: файлы сохранены в кодировке Windows-1251, иначе русский текст
-//  в игре превратится в "кракозябры".
+//  РљРѕРјРїРёР»СЏС†РёСЏ: РѕС‚РєСЂРѕР№ СЌС‚РѕС‚ С„Р°Р№Р» РІ Qawno Рё РЅР°Р¶РјРё F5.
+//  Р’РђР–РќРћ: С„Р°Р№Р»С‹ СЃРѕС…СЂР°РЅРµРЅС‹ РІ РєРѕРґРёСЂРѕРІРєРµ Windows-1251, РёРЅР°С‡Рµ СЂСѓСЃСЃРєРёР№ С‚РµРєСЃС‚
+//  РІ РёРіСЂРµ РїСЂРµРІСЂР°С‚РёС‚СЃСЏ РІ "РєСЂР°РєРѕР·СЏР±СЂС‹".
 // =====================================================================
 
-#define MAX_PLAYERS 100          // слотов на сервере (должно совпадать с max_players в config.json или быть больше)
+#define MAX_PLAYERS 100          // СЃР»РѕС‚РѕРІ РЅР° СЃРµСЂРІРµСЂРµ (РґРѕР»Р¶РЅРѕ СЃРѕРІРїР°РґР°С‚СЊ СЃ max_players РІ config.json РёР»Рё Р±С‹С‚СЊ Р±РѕР»СЊС€Рµ)
 
-// Память под локальные переменные (в ячейках по 4 байта). Стандартных 16 КБ мало: окна
-// /amenu, /reports, /moneylog и списки фракций собирают текст по 3-4 тысячи символов
-// и без этой строки обрываются с ошибкой "stack/heap collision".
+// РџР°РјСЏС‚СЊ РїРѕРґ Р»РѕРєР°Р»СЊРЅС‹Рµ РїРµСЂРµРјРµРЅРЅС‹Рµ (РІ СЏС‡РµР№РєР°С… РїРѕ 4 Р±Р°Р№С‚Р°). РЎС‚Р°РЅРґР°СЂС‚РЅС‹С… 16 РљР‘ РјР°Р»Рѕ: РѕРєРЅР°
+// /amenu, /reports, /moneylog Рё СЃРїРёСЃРєРё С„СЂР°РєС†РёР№ СЃРѕР±РёСЂР°СЋС‚ С‚РµРєСЃС‚ РїРѕ 3-4 С‚С‹СЃСЏС‡Рё СЃРёРјРІРѕР»РѕРІ
+// Рё Р±РµР· СЌС‚РѕР№ СЃС‚СЂРѕРєРё РѕР±СЂС‹РІР°СЋС‚СЃСЏ СЃ РѕС€РёР±РєРѕР№ "stack/heap collision".
 #pragma dynamic 65536
 
 #include <open.mp>
 
 #include "bastion/config.inc"
-#include "bastion/dialogs.inc"    // номера всех окон в одном месте
+#include "bastion/dialogs.inc"    // РЅРѕРјРµСЂР° РІСЃРµС… РѕРєРѕРЅ РІ РѕРґРЅРѕРј РјРµСЃС‚Рµ
 #include "bastion/base.inc"
-#include "bastion/platform.inc"   // ПК или телефон: IsPlayerMobile[playerid]
-#include "bastion/anticheat.inc"  // античит; подменяет SetPlayerPos, GivePlayerWeapon и др., поэтому стоит до модулей
+#include "bastion/platform.inc"   // РџРљ РёР»Рё С‚РµР»РµС„РѕРЅ: IsPlayerMobile[playerid]
+#include "bastion/anticheat.inc"  // Р°РЅС‚РёС‡РёС‚; РїРѕРґРјРµРЅСЏРµС‚ SetPlayerPos, GivePlayerWeapon Рё РґСЂ., РїРѕСЌС‚РѕРјСѓ СЃС‚РѕРёС‚ РґРѕ РјРѕРґСѓР»РµР№
 #include "bastion/database.inc"
-#include "bastion/markers.inc"    // все маркеры (значки и надписи) в одном месте
-#include "bastion/spawns.inc"     // точки появления игроков (вокзалы): /addspawn
+#include "bastion/markers.inc"    // РІСЃРµ РјР°СЂРєРµСЂС‹ (Р·РЅР°С‡РєРё Рё РЅР°РґРїРёСЃРё) РІ РѕРґРЅРѕРј РјРµСЃС‚Рµ
+#include "bastion/spawns.inc"     // С‚РѕС‡РєРё РїРѕСЏРІР»РµРЅРёСЏ РёРіСЂРѕРєРѕРІ (РІРѕРєР·Р°Р»С‹): /addspawn
 #include "bastion/accounts.inc"
 #include "bastion/vehicles.inc"
 #include "bastion/fuel.inc"
@@ -63,37 +63,37 @@
 #include "bastion/chat.inc"
 #include "bastion/admin.inc"
 #include "bastion/admin_tools.inc"
-#include "bastion/backup.inc"      // копии базы раз в сутки, /backup
-#include "bastion/dev.inc"         // разработка в игре: /pos, /dev, маппинг /mo
-#include "bastion/textures.inc"    // перекраска объектов маппинга: /mt
-#include "bastion/doors.inc"       // входы в здания: LSPD
-#include "bastion/factions.inc"   // после admin.inc: использует Admin_Check
-#include "bastion/law.inc"        // метка задержания, дверь участка, взятка
+#include "bastion/backup.inc"      // РєРѕРїРёРё Р±Р°Р·С‹ СЂР°Р· РІ СЃСѓС‚РєРё, /backup
+#include "bastion/dev.inc"         // СЂР°Р·СЂР°Р±РѕС‚РєР° РІ РёРіСЂРµ: /pos, /dev, РјР°РїРїРёРЅРі /mo
+#include "bastion/textures.inc"    // РїРµСЂРµРєСЂР°СЃРєР° РѕР±СЉРµРєС‚РѕРІ РјР°РїРїРёРЅРіР°: /mt
+#include "bastion/doors.inc"       // РІС…РѕРґС‹ РІ Р·РґР°РЅРёСЏ: LSPD
+#include "bastion/places.inc"     // С‚РѕС‡РєРё РЅРѕРІС‹С… СЃРёСЃС‚РµРј, РєРѕС‚РѕСЂС‹Рµ СЃС‚Р°РІРёС‚ Р°РґРјРёРЅ: /place
+#include "bastion/factions.inc"   // РїРѕСЃР»Рµ admin.inc: РёСЃРїРѕР»СЊР·СѓРµС‚ Admin_Check
+#include "bastion/law.inc"        // РјРµС‚РєР° Р·Р°РґРµСЂР¶Р°РЅРёСЏ, РґРІРµСЂСЊ СѓС‡Р°СЃС‚РєР°, РІР·СЏС‚РєР°
 #include "bastion/turfs.inc"
 #include "bastion/bank.inc"
 #include "bastion/phone.inc"
-#include "bastion/fbi.inc"        // ФБР: маскировка, прослушка, слежка, досье
+#include "bastion/fbi.inc"        // Р¤Р‘Р : РјР°СЃРєРёСЂРѕРІРєР°, РїСЂРѕСЃР»СѓС€РєР°, СЃР»РµР¶РєР°, РґРѕСЃСЊРµ
 #include "bastion/business.inc"
 #include "bastion/garage.inc"
-#include "bastion/gps.inc"        // /markers — правка маркеров в игре, /gps
-#include "bastion/debts.inc"      // долги штату: налоги и штрафы отдельными счетами
+#include "bastion/gps.inc"        // /markers вЂ” РїСЂР°РІРєР° РјР°СЂРєРµСЂРѕРІ РІ РёРіСЂРµ, /gps
+#include "bastion/debts.inc"      // РґРѕР»РіРё С€С‚Р°С‚Сѓ: РЅР°Р»РѕРіРё Рё С€С‚СЂР°С„С‹ РѕС‚РґРµР»СЊРЅС‹РјРё СЃС‡РµС‚Р°РјРё
 #include "bastion/economy.inc"
-#include "bastion/families.inc"   // семьи: организации игроков
-#include "bastion/wounded.inc"    // ранение вместо смерти, /revive, /aid
-#include "bastion/robbery.inc"    // /rob — ограбление магазинов
-#include "bastion/places.inc"     // точки новых систем, которые ставит админ: /place
-#include "bastion/drugs.inc"      // наркотики: кусты, торговец, эффекты, ломка
-#include "bastion/worklife.inc"   // работы: рыбак, фермер, инкассатор, мусорщик
-#include "bastion/casino.inc"     // казино и лотерея
-#include "bastion/prison.inc"     // федеральная тюрьма и её охрана
-#include "bastion/hospital.inc"   // больница: лечение, страховка, медкарта
-#include "bastion/marriage.inc"   // свадьба, общий дом и семейный счёт
-#include "bastion/donate.inc"     // донат-меню: монеты, VIP
+#include "bastion/families.inc"   // СЃРµРјСЊРё: РѕСЂРіР°РЅРёР·Р°С†РёРё РёРіСЂРѕРєРѕРІ
+#include "bastion/wounded.inc"    // СЂР°РЅРµРЅРёРµ РІРјРµСЃС‚Рѕ СЃРјРµСЂС‚Рё, /revive, /aid
+#include "bastion/robbery.inc"    // /rob вЂ” РѕРіСЂР°Р±Р»РµРЅРёРµ РјР°РіР°Р·РёРЅРѕРІ
+#include "bastion/drugs.inc"      // РЅР°СЂРєРѕС‚РёРєРё: РєСѓСЃС‚С‹, С‚РѕСЂРіРѕРІРµС†, СЌС„С„РµРєС‚С‹, Р»РѕРјРєР°
+#include "bastion/worklife.inc"   // СЂР°Р±РѕС‚С‹: СЂС‹Р±Р°Рє, С„РµСЂРјРµСЂ, РёРЅРєР°СЃСЃР°С‚РѕСЂ, РјСѓСЃРѕСЂС‰РёРє
+#include "bastion/casino.inc"     // РєР°Р·РёРЅРѕ Рё Р»РѕС‚РµСЂРµСЏ
+#include "bastion/prison.inc"     // С„РµРґРµСЂР°Р»СЊРЅР°СЏ С‚СЋСЂСЊРјР° Рё РµС‘ РѕС…СЂР°РЅР°
+#include "bastion/hospital.inc"   // Р±РѕР»СЊРЅРёС†Р°: Р»РµС‡РµРЅРёРµ, СЃС‚СЂР°С…РѕРІРєР°, РјРµРґРєР°СЂС‚Р°
+#include "bastion/marriage.inc"   // СЃРІР°РґСЊР±Р°, РѕР±С‰РёР№ РґРѕРј Рё СЃРµРјРµР№РЅС‹Р№ СЃС‡С‘С‚
+#include "bastion/donate.inc"     // РґРѕРЅР°С‚-РјРµРЅСЋ: РјРѕРЅРµС‚С‹, VIP
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
 #include "bastion/fps.inc"
-#include "bastion/hud.inc"        // свой HUD: панель статуса и спидометр
-#include "bastion/help.inc"       // /help: разделы со всеми командами
+#include "bastion/hud.inc"        // СЃРІРѕР№ HUD: РїР°РЅРµР»СЊ СЃС‚Р°С‚СѓСЃР° Рё СЃРїРёРґРѕРјРµС‚СЂ
+#include "bastion/help.inc"       // /help: СЂР°Р·РґРµР»С‹ СЃРѕ РІСЃРµРјРё РєРѕРјР°РЅРґР°РјРё
 #include "bastion/commands.inc"
 
 new gLastPayDayHour = -1;
@@ -106,26 +106,26 @@ main()
 }
 
 // =====================================================================
-//  Запуск и остановка сервера
+//  Р—Р°РїСѓСЃРє Рё РѕСЃС‚Р°РЅРѕРІРєР° СЃРµСЂРІРµСЂР°
 // =====================================================================
 public OnGameModeInit()
 {
 	SetGameModeText(MODE_TEXT);
 	DB_Init();
-	Markers_Init();       // таблица markers: правки маркеров из игры
-	Admin_Init();         // таблицы admin_log, reports, сроки банов
+	Markers_Init();       // С‚Р°Р±Р»РёС†Р° markers: РїСЂР°РІРєРё РјР°СЂРєРµСЂРѕРІ РёР· РёРіСЂС‹
+	Admin_Init();         // С‚Р°Р±Р»РёС†С‹ admin_log, reports, СЃСЂРѕРєРё Р±Р°РЅРѕРІ
 
 	ShowPlayerMarkers(PLAYER_MARKERS_MODE_STREAMED);
-	DisableInteriorEnterExits();        // убираем жёлтые маркеры входов из одиночной игры
+	DisableInteriorEnterExits();        // СѓР±РёСЂР°РµРј Р¶С‘Р»С‚С‹Рµ РјР°СЂРєРµСЂС‹ РІС…РѕРґРѕРІ РёР· РѕРґРёРЅРѕС‡РЅРѕР№ РёРіСЂС‹
 	EnableStuntBonusForAll(false);
 	UsePlayerPedAnims();
 
-	// Одна "заглушка"-класс: выбор скина не используется, спавн делаем сами
+	// РћРґРЅР° "Р·Р°РіР»СѓС€РєР°"-РєР»Р°СЃСЃ: РІС‹Р±РѕСЂ СЃРєРёРЅР° РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ, СЃРїР°РІРЅ РґРµР»Р°РµРј СЃР°РјРё
 	AddPlayerClass(SKIN_MALE, SPAWN_X, SPAWN_Y, SPAWN_Z, SPAWN_A);
 
 	Vehicles_Init();
 	Jobs_Init();
-	Spawns_Init();        // точки появления игроков (вокзалы)
+	Spawns_Init();        // С‚РѕС‡РєРё РїРѕСЏРІР»РµРЅРёСЏ РёРіСЂРѕРєРѕРІ (РІРѕРєР·Р°Р»С‹)
 	Houses_Load();
 	Factions_Init();
 	Turfs_Init();
@@ -135,28 +135,28 @@ public OnGameModeInit()
 	Fps_Init();
 	Licenses_Init();
 	Needs_Init();
-	Dev_Init();           // свои объекты карты, убранные здания
-	Doors_Init();         // входы в здания (маркеры LSPD)
-	Econ_Init();          // казна, налоги, журнал денег
-	Debts_Init();         // счета долгов в accounts
-	Law_Init();           // решётка камеры LSPD (law.inc)
-	Families_Init();      // семьи игроков
-	Garage_Init();        // СТО, штрафстоянка, поля тюнинга в vehicles
+	Dev_Init();           // СЃРІРѕРё РѕР±СЉРµРєС‚С‹ РєР°СЂС‚С‹, СѓР±СЂР°РЅРЅС‹Рµ Р·РґР°РЅРёСЏ
+	Doors_Init();         // РІС…РѕРґС‹ РІ Р·РґР°РЅРёСЏ (РјР°СЂРєРµСЂС‹ LSPD)
+	Econ_Init();          // РєР°Р·РЅР°, РЅР°Р»РѕРіРё, Р¶СѓСЂРЅР°Р» РґРµРЅРµРі
+	Debts_Init();         // СЃС‡РµС‚Р° РґРѕР»РіРѕРІ РІ accounts
+	Law_Init();           // СЂРµС€С‘С‚РєР° РєР°РјРµСЂС‹ LSPD (law.inc)
+	Families_Init();      // СЃРµРјСЊРё РёРіСЂРѕРєРѕРІ
+	Garage_Init();        // РЎРўРћ, С€С‚СЂР°С„СЃС‚РѕСЏРЅРєР°, РїРѕР»СЏ С‚СЋРЅРёРЅРіР° РІ vehicles
 	Gps_Init();
-	Hud_Init();           // панель статуса и спидометр (hud.inc)
-	Fuel_Init();          // после всех машин: им выдаётся бензин
+	Hud_Init();           // РїР°РЅРµР»СЊ СЃС‚Р°С‚СѓСЃР° Рё СЃРїРёРґРѕРјРµС‚СЂ (hud.inc)
+	Fuel_Init();          // РїРѕСЃР»Рµ РІСЃРµС… РјР°С€РёРЅ: РёРј РІС‹РґР°С‘С‚СЃСЏ Р±РµРЅР·РёРЅ
 	Wound_Init();
 	Robbery_Init();
-	Places_Init();        // точки новых систем (places.inc)
+	Places_Init();        // С‚РѕС‡РєРё РЅРѕРІС‹С… СЃРёСЃС‚РµРј (places.inc)
 	Drugs_Init();
-	WorkLife_Init();      // после Places_Init: машины работ стоят в точках
+	WorkLife_Init();      // РїРѕСЃР»Рµ Places_Init: РјР°С€РёРЅС‹ СЂР°Р±РѕС‚ СЃС‚РѕСЏС‚ РІ С‚РѕС‡РєР°С…
 	Casino_Init();
 	Prison_Init();
 	Hospital_Init();
 	Marriage_Init();
 	Donate_Init();
-	AC_Init();            // античит (anticheat.inc)
-	Backup_Init();        // копия базы, если сегодняшней ещё нет
+	AC_Init();            // Р°РЅС‚РёС‡РёС‚ (anticheat.inc)
+	Backup_Init();        // РєРѕРїРёСЏ Р±Р°Р·С‹, РµСЃР»Рё СЃРµРіРѕРґРЅСЏС€РЅРµР№ РµС‰С‘ РЅРµС‚
 
 	new hour;
 	gettime(hour);
@@ -178,7 +178,7 @@ public OnGameModeExit()
 }
 
 // =====================================================================
-//  Вход / выход игрока
+//  Р’С…РѕРґ / РІС‹С…РѕРґ РёРіСЂРѕРєР°
 // =====================================================================
 public OnPlayerConnect(playerid)
 {
@@ -189,22 +189,22 @@ public OnPlayerConnect(playerid)
 	Law_OnConnect(playerid);
 	Debts_OnConnect(playerid);
 	Families_OnConnect(playerid);
-	Dev_OnConnect(playerid);            // убранные здания GTA (dev.inc)
+	Dev_OnConnect(playerid);            // СѓР±СЂР°РЅРЅС‹Рµ Р·РґР°РЅРёСЏ GTA (dev.inc)
 	Tex_OnConnect(playerid);
-	Gps_OnConnect(playerid);            // значки на карте, сброс GPS
+	Gps_OnConnect(playerid);            // Р·РЅР°С‡РєРё РЅР° РєР°СЂС‚Рµ, СЃР±СЂРѕСЃ GPS
 	if (!Account_OnConnect(playerid))
 	{
-		Player[playerid][pAuthShown] = true;    // игрока кикают — окно входа не показываем
+		Player[playerid][pAuthShown] = true;    // РёРіСЂРѕРєР° РєРёРєР°СЋС‚ вЂ” РѕРєРЅРѕ РІС…РѕРґР° РЅРµ РїРѕРєР°Р·С‹РІР°РµРј
 		return 1;
 	}
-	SendClientMessage(playerid, COLOR_BLUE, "Добро пожаловать на %s!", SERVER_NAME);
+	SendClientMessage(playerid, COLOR_BLUE, "Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ РЅР° %s!", SERVER_NAME);
 	return 1;
 }
 
 public OnPlayerDisconnect(playerid, reason)
 {
-	Law_OnDisconnect(playerid, reason); // метка задержания: вышел из игры — деморган (law.inc)
-	Prison_OnDisconnect(playerid);      // до сохранения: сорванный побег добавляет срок
+	Law_OnDisconnect(playerid, reason); // РјРµС‚РєР° Р·Р°РґРµСЂР¶Р°РЅРёСЏ: РІС‹С€РµР» РёР· РёРіСЂС‹ вЂ” РґРµРјРѕСЂРіР°РЅ (law.inc)
+	Prison_OnDisconnect(playerid);      // РґРѕ СЃРѕС…СЂР°РЅРµРЅРёСЏ: СЃРѕСЂРІР°РЅРЅС‹Р№ РїРѕР±РµРі РґРѕР±Р°РІР»СЏРµС‚ СЃСЂРѕРє
 	Drugs_OnDisconnect(playerid);
 	WorkLife_OnDisconnect(playerid);
 	Casino_OnDisconnect(playerid);
@@ -223,36 +223,36 @@ public OnPlayerDisconnect(playerid, reason)
 	Hud_OnDisconnect(playerid);
 	Gps_OnDisconnect(playerid);
 	Wound_Reset(playerid);
-	Fbi_OnDisconnect(playerid);         // ФБР: маскировка, прослушка, слежка
+	Fbi_OnDisconnect(playerid);         // Р¤Р‘Р : РјР°СЃРєРёСЂРѕРІРєР°, РїСЂРѕСЃР»СѓС€РєР°, СЃР»РµР¶РєР°
 	Rob_OnDisconnect(playerid);
 	Player[playerid][pLogged] = false;
 	return 1;
 }
 
-// Много раз в секунду: тут только замер FPS (fps.inc)
+// РњРЅРѕРіРѕ СЂР°Р· РІ СЃРµРєСѓРЅРґСѓ: С‚СѓС‚ С‚РѕР»СЊРєРѕ Р·Р°РјРµСЂ FPS (fps.inc)
 public OnPlayerUpdate(playerid)
 {
 	Fps_OnUpdate(playerid);
-	AC_OnUpdate(playerid);              // античит: отметка «клиент на связи»
-	AdminTools_OnUpdate(playerid);      // античит: джетпак
+	AC_OnUpdate(playerid);              // Р°РЅС‚РёС‡РёС‚: РѕС‚РјРµС‚РєР° В«РєР»РёРµРЅС‚ РЅР° СЃРІСЏР·РёВ»
+	AdminTools_OnUpdate(playerid);      // Р°РЅС‚РёС‡РёС‚: РґР¶РµС‚РїР°Рє
 	return 1;
 }
 
-// Метка на карте: админа телепортирует туда (admin_tools.inc)
+// РњРµС‚РєР° РЅР° РєР°СЂС‚Рµ: Р°РґРјРёРЅР° С‚РµР»РµРїРѕСЂС‚РёСЂСѓРµС‚ С‚СѓРґР° (admin_tools.inc)
 public OnPlayerClickMap(playerid, Float:fX, Float:fY, Float:fZ)
 {
 	AdminTools_OnClickMap(playerid, fX, fY, fZ);
 	return 1;
 }
 
-// Игрок появился рядом с другим: если он в маске — ник не показываем (needs.inc)
+// РРіСЂРѕРє РїРѕСЏРІРёР»СЃСЏ СЂСЏРґРѕРј СЃ РґСЂСѓРіРёРј: РµСЃР»Рё РѕРЅ РІ РјР°СЃРєРµ вЂ” РЅРёРє РЅРµ РїРѕРєР°Р·С‹РІР°РµРј (needs.inc)
 public OnPlayerStreamIn(playerid, forplayerid)
 {
 	Inv_OnStreamIn(playerid, forplayerid);
 	return 1;
 }
 
-// Маппинг: объект подвинули мышью / выбрали кликом (dev.inc)
+// РњР°РїРїРёРЅРі: РѕР±СЉРµРєС‚ РїРѕРґРІРёРЅСѓР»Рё РјС‹С€СЊСЋ / РІС‹Р±СЂР°Р»Рё РєР»РёРєРѕРј (dev.inc)
 public OnPlayerEditObject(playerid, playerobject, objectid, EDIT_RESPONSE:response, Float:fX, Float:fY, Float:fZ, Float:fRotX, Float:fRotY, Float:fRotZ)
 {
 	if (!playerobject) Dev_OnEditObject(playerid, objectid, response, fX, fY, fZ, fRotX, fRotY, fRotZ);
@@ -265,7 +265,7 @@ public OnPlayerSelectObject(playerid, SELECT_OBJECT:type, objectid, modelid, Flo
 	return 1;
 }
 
-// Вместо выбора скина показываем окно входа/регистрации
+// Р’РјРµСЃС‚Рѕ РІС‹Р±РѕСЂР° СЃРєРёРЅР° РїРѕРєР°Р·С‹РІР°РµРј РѕРєРЅРѕ РІС…РѕРґР°/СЂРµРіРёСЃС‚СЂР°С†РёРё
 public OnPlayerRequestClass(playerid, classid)
 {
 	if (!Player[playerid][pLogged] && !Player[playerid][pAuthShown])
@@ -280,13 +280,13 @@ public OnPlayerRequestClass(playerid, classid)
 
 public OnPlayerRequestSpawn(playerid)
 {
-	// Без входа в аккаунт спавниться нельзя
+	// Р‘РµР· РІС…РѕРґР° РІ Р°РєРєР°СѓРЅС‚ СЃРїР°РІРЅРёС‚СЊСЃСЏ РЅРµР»СЊР·СЏ
 	if (!Player[playerid][pLogged]) return 0;
 	return 1;
 }
 
 // =====================================================================
-//  Спавн и смерть
+//  РЎРїР°РІРЅ Рё СЃРјРµСЂС‚СЊ
 // =====================================================================
 public OnPlayerSpawn(playerid)
 {
@@ -296,37 +296,37 @@ public OnPlayerSpawn(playerid)
 		return 1;
 	}
 
-	AC_OnSpawn(playerid);               // античит: первым, до выдачи здоровья и оружия
+	AC_OnSpawn(playerid);               // Р°РЅС‚РёС‡РёС‚: РїРµСЂРІС‹Рј, РґРѕ РІС‹РґР°С‡Рё Р·РґРѕСЂРѕРІСЊСЏ Рё РѕСЂСѓР¶РёСЏ
 	SetPlayerSkin(playerid, Player[playerid][pSkin]);
 	SetPlayerInterior(playerid, 0);
 	SetPlayerVirtualWorld(playerid, 0);
 	SetPlayerHealth(playerid, 100.0);
-	SetCameraBehindPlayer(playerid);    // вернуть камеру за спину после окна входа
+	SetCameraBehindPlayer(playerid);    // РІРµСЂРЅСѓС‚СЊ РєР°РјРµСЂСѓ Р·Р° СЃРїРёРЅСѓ РїРѕСЃР»Рµ РѕРєРЅР° РІС…РѕРґР°
 	Player[playerid][pHouseInside] = -1;
 
 	if (Player[playerid][pDied])
 	{
 		Player[playerid][pDied] = false;
-		Needs_OnHospital(playerid);         // в больнице покормили (needs.inc)
-		Hospital_Bill(playerid);            // счёт больницы, со страховкой — бесплатно (hospital.inc)
+		Needs_OnHospital(playerid);         // РІ Р±РѕР»СЊРЅРёС†Рµ РїРѕРєРѕСЂРјРёР»Рё (needs.inc)
+		Hospital_Bill(playerid);            // СЃС‡С‘С‚ Р±РѕР»СЊРЅРёС†С‹, СЃРѕ СЃС‚СЂР°С…РѕРІРєРѕР№ вЂ” Р±РµСЃРїР»Р°С‚РЅРѕ (hospital.inc)
 	}
 
-	Account_SetNormalSpawn(playerid);   // следующий спавн — снова обычный
-	Houses_OnSpawn(playerid);           // дом в общежитии: вернуть интерьер
-	Factions_OnSpawn(playerid);         // цвет ника, розыск, тюрьма
-	Admin_OnSpawn(playerid);            // деморган, возврат после /spec
-	Turfs_ShowForPlayer(playerid);      // районы банд на радаре
-	Wound_OnSpawn(playerid);            // после смерти — лежит раненым на месте
-	Hud_OnSpawn(playerid);              // панель статуса (hud.inc)
+	Account_SetNormalSpawn(playerid);   // СЃР»РµРґСѓСЋС‰РёР№ СЃРїР°РІРЅ вЂ” СЃРЅРѕРІР° РѕР±С‹С‡РЅС‹Р№
+	Houses_OnSpawn(playerid);           // РґРѕРј РІ РѕР±С‰РµР¶РёС‚РёРё: РІРµСЂРЅСѓС‚СЊ РёРЅС‚РµСЂСЊРµСЂ
+	Factions_OnSpawn(playerid);         // С†РІРµС‚ РЅРёРєР°, СЂРѕР·С‹СЃРє, С‚СЋСЂСЊРјР°
+	Admin_OnSpawn(playerid);            // РґРµРјРѕСЂРіР°РЅ, РІРѕР·РІСЂР°С‚ РїРѕСЃР»Рµ /spec
+	Turfs_ShowForPlayer(playerid);      // СЂР°Р№РѕРЅС‹ Р±Р°РЅРґ РЅР° СЂР°РґР°СЂРµ
+	Wound_OnSpawn(playerid);            // РїРѕСЃР»Рµ СЃРјРµСЂС‚Рё вЂ” Р»РµР¶РёС‚ СЂР°РЅРµРЅС‹Рј РЅР° РјРµСЃС‚Рµ
+	Hud_OnSpawn(playerid);              // РїР°РЅРµР»СЊ СЃС‚Р°С‚СѓСЃР° (hud.inc)
 	return 1;
 }
 
-// Урон: при малом здоровье игрок падает раненым (wounded.inc)
+// РЈСЂРѕРЅ: РїСЂРё РјР°Р»РѕРј Р·РґРѕСЂРѕРІСЊРµ РёРіСЂРѕРє РїР°РґР°РµС‚ СЂР°РЅРµРЅС‹Рј (wounded.inc)
 public OnPlayerTakeDamage(playerid, issuerid, Float:amount, WEAPON:weaponid, bodypart)
 {
 	new bool:was = Wound_IsWounded(playerid);
 	Wound_OnDamage(playerid, amount);
-	// Упал раненым от чужой пули — в войне за район это считается убийством (turfs.inc)
+	// РЈРїР°Р» СЂР°РЅРµРЅС‹Рј РѕС‚ С‡СѓР¶РѕР№ РїСѓР»Рё вЂ” РІ РІРѕР№РЅРµ Р·Р° СЂР°Р№РѕРЅ СЌС‚Рѕ СЃС‡РёС‚Р°РµС‚СЃСЏ СѓР±РёР№СЃС‚РІРѕРј (turfs.inc)
 	if (!was && Wound_IsWounded(playerid)) Turfs_OnDeath(playerid, issuerid);
 	return 1;
 }
@@ -338,11 +338,11 @@ public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 	Licenses_Abort(playerid);
 	Factions_OnDeath(playerid);
 	Phone_HangUp(playerid);
-	Inv_ResetMask(playerid);            // маска слетает (needs.inc)
-	Drugs_OnDeath(playerid);            // эффект наркотиков проходит
-	if (!Wound_IsWounded(playerid)) Turfs_OnDeath(playerid, killerid);   // раненого засчитали, когда он упал
+	Inv_ResetMask(playerid);            // РјР°СЃРєР° СЃР»РµС‚Р°РµС‚ (needs.inc)
+	Drugs_OnDeath(playerid);            // СЌС„С„РµРєС‚ РЅР°СЂРєРѕС‚РёРєРѕРІ РїСЂРѕС…РѕРґРёС‚
+	if (!Wound_IsWounded(playerid)) Turfs_OnDeath(playerid, killerid);   // СЂР°РЅРµРЅРѕРіРѕ Р·Р°СЃС‡РёС‚Р°Р»Рё, РєРѕРіРґР° РѕРЅ СѓРїР°Р»
 
-	if (Wound_OnDeath(playerid)) return 1;  // появится раненым на месте (wounded.inc)
+	if (Wound_OnDeath(playerid)) return 1;  // РїРѕСЏРІРёС‚СЃСЏ СЂР°РЅРµРЅС‹Рј РЅР° РјРµСЃС‚Рµ (wounded.inc)
 
 	Player[playerid][pDied] = true;
 	SetSpawnInfo(playerid, NO_TEAM, Player[playerid][pSkin], HOSPITAL_X, HOSPITAL_Y, HOSPITAL_Z, 0.0);
@@ -350,17 +350,17 @@ public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 }
 
 // =====================================================================
-//  Чат, команды, окна
+//  Р§Р°С‚, РєРѕРјР°РЅРґС‹, РѕРєРЅР°
 // =====================================================================
 public OnPlayerText(playerid, text[])
 {
 	if (!Player[playerid][pLogged]) return 0;
 	if (Admin_IsMuted(playerid)) return 0;
-	// Игроки не могут красить текст кодами {RRGGBB}: так подделывают системные сообщения
+	// РРіСЂРѕРєРё РЅРµ РјРѕРіСѓС‚ РєСЂР°СЃРёС‚СЊ С‚РµРєСЃС‚ РєРѕРґР°РјРё {RRGGBB}: С‚Р°Рє РїРѕРґРґРµР»С‹РІР°СЋС‚ СЃРёСЃС‚РµРјРЅС‹Рµ СЃРѕРѕР±С‰РµРЅРёСЏ
 	if (Player[playerid][pAdmin] < 1) StripColorCodes(text);
 	if (text[0] == '\0') return 0;
 	Chat_OnText(playerid, text);
-	return 0;   // 0 = не отправлять стандартный глобальный чат
+	return 0;   // 0 = РЅРµ РѕС‚РїСЂР°РІР»СЏС‚СЊ СЃС‚Р°РЅРґР°СЂС‚РЅС‹Р№ РіР»РѕР±Р°Р»СЊРЅС‹Р№ С‡Р°С‚
 }
 
 public OnPlayerCommandText(playerid, cmdtext[])
@@ -368,14 +368,14 @@ public OnPlayerCommandText(playerid, cmdtext[])
 	return Commands_Process(playerid, cmdtext);
 }
 
-// Клик по текстдраву игрока (окно сумки)
+// РљР»РёРє РїРѕ С‚РµРєСЃС‚РґСЂР°РІСѓ РёРіСЂРѕРєР° (РѕРєРЅРѕ СЃСѓРјРєРё)
 public OnPlayerClickPlayerTextDraw(playerid, PlayerText:playertextid)
 {
 	if (Inv_OnClickPlayerTD(playerid, playertextid)) return 1;
 	return 0;
 }
 
-// Клик по общему текстдраву; INVALID_TEXT_DRAW — игрок нажал ESC
+// РљР»РёРє РїРѕ РѕР±С‰РµРјСѓ С‚РµРєСЃС‚РґСЂР°РІСѓ; INVALID_TEXT_DRAW вЂ” РёРіСЂРѕРє РЅР°Р¶Р°Р» ESC
 public OnPlayerClickTextDraw(playerid, Text:clickedid)
 {
 	if (Inv_OnClickTD(playerid, clickedid)) return 1;
@@ -414,18 +414,18 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 }
 
 // =====================================================================
-//  Прочие события
+//  РџСЂРѕС‡РёРµ СЃРѕР±С‹С‚РёСЏ
 // =====================================================================
 public OnPlayerEnterCheckpoint(playerid)
 {
-	if (Prison_OnEnterCheckpoint(playerid)) return 1;   // работа заключённых (prison.inc)
+	if (Prison_OnEnterCheckpoint(playerid)) return 1;   // СЂР°Р±РѕС‚Р° Р·Р°РєР»СЋС‡С‘РЅРЅС‹С… (prison.inc)
 	Jobs_OnEnterCheckpoint(playerid);
 	return 1;
 }
 
 public OnPlayerEnterRaceCheckpoint(playerid)
 {
-	Licenses_OnEnterRaceCheckpoint(playerid);   // экзамен в автошколе
+	Licenses_OnEnterRaceCheckpoint(playerid);   // СЌРєР·Р°РјРµРЅ РІ Р°РІС‚РѕС€РєРѕР»Рµ
 	return 1;
 }
 
@@ -435,20 +435,20 @@ public OnPlayerStateChange(playerid, PLAYER_STATE:newstate, PLAYER_STATE:oldstat
 	if (newstate == PLAYER_STATE_DRIVER)
 	{
 		if (!Factions_OnBecomeDriver(playerid)) Vehicles_OnBecomeDriver(playerid);
-		Jobs_OnBecomeDriver(playerid);      // рабочие машины — только работникам
-		Licenses_OnBecomeDriver(playerid);  // учебная машина, предупреждение без прав
+		Jobs_OnBecomeDriver(playerid);      // СЂР°Р±РѕС‡РёРµ РјР°С€РёРЅС‹ вЂ” С‚РѕР»СЊРєРѕ СЂР°Р±РѕС‚РЅРёРєР°Рј
+		Licenses_OnBecomeDriver(playerid);  // СѓС‡РµР±РЅР°СЏ РјР°С€РёРЅР°, РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ Р±РµР· РїСЂР°РІ
 	}
 	else if (newstate == PLAYER_STATE_PASSENGER)
 	{
-		Jobs_OnBecomePassenger(playerid);   // оплата такси
+		Jobs_OnBecomePassenger(playerid);   // РѕРїР»Р°С‚Р° С‚Р°РєСЃРё
 	}
 	return 1;
 }
 
-// Нажатия кнопок: ALT, Y, N, H, 2 (keys.inc)
+// РќР°Р¶Р°С‚РёСЏ РєРЅРѕРїРѕРє: ALT, Y, N, H, 2 (keys.inc)
 public OnPlayerKeyStateChange(playerid, KEY:newkeys, KEY:oldkeys)
 {
-	if (Admin_OnKey(playerid, _:newkeys, _:oldkeys)) return 1;   // слежка: ЛКМ/ПКМ — следующий/предыдущий (admin.inc)
+	if (Admin_OnKey(playerid, _:newkeys, _:oldkeys)) return 1;   // СЃР»РµР¶РєР°: Р›РљРњ/РџРљРњ вЂ” СЃР»РµРґСѓСЋС‰РёР№/РїСЂРµРґС‹РґСѓС‰РёР№ (admin.inc)
 	Keys_OnKeyStateChange(playerid, _:newkeys, _:oldkeys);
 	return 1;
 }
@@ -457,12 +457,12 @@ public OnVehicleSpawn(vehicleid)
 {
 	Fuel_OnVehicleSpawn(vehicleid);
 	Vehicles_OnSpawn(vehicleid);
-	WorkLife_OnVehicleSpawn(vehicleid); // инкассаторская машина вернулась — денег в ней нет
+	WorkLife_OnVehicleSpawn(vehicleid); // РёРЅРєР°СЃСЃР°С‚РѕСЂСЃРєР°СЏ РјР°С€РёРЅР° РІРµСЂРЅСѓР»Р°СЃСЊ вЂ” РґРµРЅРµРі РІ РЅРµР№ РЅРµС‚
 	return 1;
 }
 
 // =====================================================================
-//  Таймер раз в минуту: время суток и зарплата (PayDay)
+//  РўР°Р№РјРµСЂ СЂР°Р· РІ РјРёРЅСѓС‚Сѓ: РІСЂРµРјСЏ СЃСѓС‚РѕРє Рё Р·Р°СЂРїР»Р°С‚Р° (PayDay)
 // =====================================================================
 forward OnMinuteTimer();
 public OnMinuteTimer()
@@ -470,14 +470,14 @@ public OnMinuteTimer()
 	new hour, minute;
 	gettime(hour, minute);
 	SetWorldTime(hour);
-	// Все записи этой минуты (автосохранение, PayDay, журналы) идут в базу одной пачкой:
-	// диск трогаем один раз, и сервер не подвисает, когда игроков много
+	// Р’СЃРµ Р·Р°РїРёСЃРё СЌС‚РѕР№ РјРёРЅСѓС‚С‹ (Р°РІС‚РѕСЃРѕС…СЂР°РЅРµРЅРёРµ, PayDay, Р¶СѓСЂРЅР°Р»С‹) РёРґСѓС‚ РІ Р±Р°Р·Сѓ РѕРґРЅРѕР№ РїР°С‡РєРѕР№:
+	// РґРёСЃРє С‚СЂРѕРіР°РµРј РѕРґРёРЅ СЂР°Р·, Рё СЃРµСЂРІРµСЂ РЅРµ РїРѕРґРІРёСЃР°РµС‚, РєРѕРіРґР° РёРіСЂРѕРєРѕРІ РјРЅРѕРіРѕ
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "BEGIN"));
-	Needs_OnMinute();       // голод
-	Factions_OnMinute();    // тюремные сроки
-	Admin_OnMinute();       // деморган и муты
-	Drugs_OnMinute();       // кусты растут, ломка
-	Casino_OnMinute();      // розыгрыш лотереи
+	Needs_OnMinute();       // РіРѕР»РѕРґ
+	Factions_OnMinute();    // С‚СЋСЂРµРјРЅС‹Рµ СЃСЂРѕРєРё
+	Admin_OnMinute();       // РґРµРјРѕСЂРіР°РЅ Рё РјСѓС‚С‹
+	Drugs_OnMinute();       // РєСѓСЃС‚С‹ СЂР°СЃС‚СѓС‚, Р»РѕРјРєР°
+	Casino_OnMinute();      // СЂРѕР·С‹РіСЂС‹С€ Р»РѕС‚РµСЂРµРё
 
 	if (minute == 0 && hour != gLastPayDayHour)
 	{
@@ -486,21 +486,21 @@ public OnMinuteTimer()
 	}
 	else if (minute % 10 == 0)
 	{
-		// автосохранение каждые 10 минут
+		// Р°РІС‚РѕСЃРѕС…СЂР°РЅРµРЅРёРµ РєР°Р¶РґС‹Рµ 10 РјРёРЅСѓС‚
 		for (new i = 0; i < MAX_PLAYERS; i++)
 		{
 			if (IsPlayerConnected(i)) Account_Save(i);
 		}
 	}
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "COMMIT"));
-	Backup_Daily();         // копия базы раз в сутки (после COMMIT: внутри транзакции копию не снять)
+	Backup_Daily();         // РєРѕРїРёСЏ Р±Р°Р·С‹ СЂР°Р· РІ СЃСѓС‚РєРё (РїРѕСЃР»Рµ COMMIT: РІРЅСѓС‚СЂРё С‚СЂР°РЅР·Р°РєС†РёРё РєРѕРїРёСЋ РЅРµ СЃРЅСЏС‚СЊ)
 	return 1;
 }
 
 stock PayDay()
 {
-	Business_PayDay();      // доход в кассы бизнесов
-	Houses_PayDay();        // аренда комнат и налог на дома
+	Business_PayDay();      // РґРѕС…РѕРґ РІ РєР°СЃСЃС‹ Р±РёР·РЅРµСЃРѕРІ
+	Houses_PayDay();        // Р°СЂРµРЅРґР° РєРѕРјРЅР°С‚ Рё РЅР°Р»РѕРі РЅР° РґРѕРјР°
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!IsPlayerConnected(i) || !Player[i][pLogged]) continue;
@@ -508,33 +508,33 @@ stock PayDay()
 		Bank_Salary(i, PAYDAY_SALARY);
 		Player[i][pExp]++;
 		SendClientMessage(i, COLOR_YELLOW, "===== PayDay =====");
-		SendClientMessage(i, COLOR_WHITE, "Зарплата: $%d. Опыт: %d/%d.", PAYDAY_SALARY,
+		SendClientMessage(i, COLOR_WHITE, "Р—Р°СЂРїР»Р°С‚Р°: $%d. РћРїС‹С‚: %d/%d.", PAYDAY_SALARY,
 			Player[i][pExp], Player[i][pLevel] * EXP_PER_LEVEL);
 
 		new fpay = Factions_GetSalary(i);
 		if (fpay > 0)
 		{
 			Bank_Salary(i, fpay);
-			SendClientMessage(i, COLOR_WHITE, "Зарплата во фракции (%s): $%d.", Faction_GetRankName(Player[i][pFaction], Player[i][pRank]), fpay);
+			SendClientMessage(i, COLOR_WHITE, "Р—Р°СЂРїР»Р°С‚Р° РІРѕ С„СЂР°РєС†РёРё (%s): $%d.", Faction_GetRankName(Player[i][pFaction], Player[i][pRank]), fpay);
 		}
 		new tpay = Turfs_GetIncome(i);
 		if (tpay > 0)
 		{
 			Bank_Salary(i, tpay);
-			SendClientMessage(i, COLOR_WHITE, "Доход банды с районов (%d): $%d.", tpay / TURF_INCOME, tpay);
+			SendClientMessage(i, COLOR_WHITE, "Р”РѕС…РѕРґ Р±Р°РЅРґС‹ СЃ СЂР°Р№РѕРЅРѕРІ (%d): $%d.", tpay / TURF_INCOME, tpay);
 		}
 
-		Econ_PayDay(i, PAYDAY_SALARY + fpay);   // налоги (economy.inc)
-		Debts_PayDay(i);                        // напоминание о долгах, розыск должников (debts.inc)
-		Donate_PayDay(i);       // VIP: прибавка и двойной опыт (donate.inc)
-		Bank_PayDay(i);         // проценты по счёту и баланс (bank.inc)
+		Econ_PayDay(i, PAYDAY_SALARY + fpay);   // РЅР°Р»РѕРіРё (economy.inc)
+		Debts_PayDay(i);                        // РЅР°РїРѕРјРёРЅР°РЅРёРµ Рѕ РґРѕР»РіР°С…, СЂРѕР·С‹СЃРє РґРѕР»Р¶РЅРёРєРѕРІ (debts.inc)
+		Donate_PayDay(i);       // VIP: РїСЂРёР±Р°РІРєР° Рё РґРІРѕР№РЅРѕР№ РѕРїС‹С‚ (donate.inc)
+		Bank_PayDay(i);         // РїСЂРѕС†РµРЅС‚С‹ РїРѕ СЃС‡С‘С‚Сѓ Рё Р±Р°Р»Р°РЅСЃ (bank.inc)
 
 		if (Player[i][pExp] >= Player[i][pLevel] * EXP_PER_LEVEL)
 		{
 			Player[i][pExp] = 0;
 			Player[i][pLevel]++;
 			SetPlayerScore(i, Player[i][pLevel]);
-			SendClientMessage(i, COLOR_GREEN, "Поздравляем! Твой уровень повышен до %d.", Player[i][pLevel]);
+			SendClientMessage(i, COLOR_GREEN, "РџРѕР·РґСЂР°РІР»СЏРµРј! РўРІРѕР№ СѓСЂРѕРІРµРЅСЊ РїРѕРІС‹С€РµРЅ РґРѕ %d.", Player[i][pLevel]);
 		}
 		Account_Save(i);
 	}

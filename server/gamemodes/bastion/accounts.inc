@@ -1,14 +1,14 @@
 // =====================================================================
-//  accounts.inc — регистрация, вход, сохранение аккаунта.
+//  accounts.inc вЂ” СЂРµРіРёСЃС‚СЂР°С†РёСЏ, РІС…РѕРґ, СЃРѕС…СЂР°РЅРµРЅРёРµ Р°РєРєР°СѓРЅС‚Р°.
 //
-//  Как это работает:
-//  1. Игрок заходит -> ищем его ник в таблице accounts.
-//  2. Нашли -> окно "Вход", не нашли -> окно "Регистрация".
-//  3. Пароль не хранится открыто: хранится SHA-256(пароль + соль).
-//  4. После входа загружаем деньги/уровень/скин и спавним игрока.
+//  РљР°Рє СЌС‚Рѕ СЂР°Р±РѕС‚Р°РµС‚:
+//  1. РРіСЂРѕРє Р·Р°С…РѕРґРёС‚ -> РёС‰РµРј РµРіРѕ РЅРёРє РІ С‚Р°Р±Р»РёС†Рµ accounts.
+//  2. РќР°С€Р»Рё -> РѕРєРЅРѕ "Р’С…РѕРґ", РЅРµ РЅР°С€Р»Рё -> РѕРєРЅРѕ "Р РµРіРёСЃС‚СЂР°С†РёСЏ".
+//  3. РџР°СЂРѕР»СЊ РЅРµ С…СЂР°РЅРёС‚СЃСЏ РѕС‚РєСЂС‹С‚Рѕ: С…СЂР°РЅРёС‚СЃСЏ SHA-256(РїР°СЂРѕР»СЊ + СЃРѕР»СЊ).
+//  4. РџРѕСЃР»Рµ РІС…РѕРґР° Р·Р°РіСЂСѓР¶Р°РµРј РґРµРЅСЊРіРё/СѓСЂРѕРІРµРЅСЊ/СЃРєРёРЅ Рё СЃРїР°РІРЅРёРј РёРіСЂРѕРєР°.
 // =====================================================================
 
-// Вызывается из OnPlayerConnect
+// Р’С‹Р·С‹РІР°РµС‚СЃСЏ РёР· OnPlayerConnect
 stock Account_OnConnect(playerid)
 {
 	Player_Reset(playerid);
@@ -19,20 +19,20 @@ stock Account_OnConnect(playerid)
 #if REQUIRE_RP_NAME
 	if (!IsRPName(name))
 	{
-		SendClientMessage(playerid, COLOR_RED, "Ник должен быть в формате Имя_Фамилия (например Ivan_Petrov).");
-		SendClientMessage(playerid, COLOR_RED, "Смени ник в клиенте SA-MP и зайди снова.");
+		SendClientMessage(playerid, COLOR_RED, "РќРёРє РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РІ С„РѕСЂРјР°С‚Рµ РРјСЏ_Р¤Р°РјРёР»РёСЏ (РЅР°РїСЂРёРјРµСЂ Ivan_Petrov).");
+		SendClientMessage(playerid, COLOR_RED, "РЎРјРµРЅРё РЅРёРє РІ РєР»РёРµРЅС‚Рµ SA-MP Рё Р·Р°Р№РґРё СЃРЅРѕРІР°.");
 		KickWithDelay(playerid);
 		return 0;
 	}
 #endif
 
 	if (Bans_IsBanned(playerid, name)) return 0;   // admin.inc
-	if (Bans_IsIpBanned(playerid)) return 0;        // бан по IP (/banip)
+	if (Bans_IsIpBanned(playerid)) return 0;        // Р±Р°РЅ РїРѕ IP (/banip)
 
-	new lock = Login_LockLeft(playerid);            // пауза после неверных паролей (admin.inc)
+	new lock = Login_LockLeft(playerid);            // РїР°СѓР·Р° РїРѕСЃР»Рµ РЅРµРІРµСЂРЅС‹С… РїР°СЂРѕР»РµР№ (admin.inc)
 	if (lock > 0)
 	{
-		SendClientMessage(playerid, COLOR_RED, "С твоего адреса слишком много раз ввели неверный пароль. Вход откроется через %d мин.", (lock + 59) / 60);
+		SendClientMessage(playerid, COLOR_RED, "РЎ С‚РІРѕРµРіРѕ Р°РґСЂРµСЃР° СЃР»РёС€РєРѕРј РјРЅРѕРіРѕ СЂР°Р· РІРІРµР»Рё РЅРµРІРµСЂРЅС‹Р№ РїР°СЂРѕР»СЊ. Р’С…РѕРґ РѕС‚РєСЂРѕРµС‚СЃСЏ С‡РµСЂРµР· %d РјРёРЅ.", (lock + 59) / 60);
 		KickWithDelay(playerid);
 		return 0;
 	}
@@ -51,51 +51,51 @@ stock Account_OnConnect(playerid)
 	return 1;
 }
 
-// Показать окно входа или регистрации
+// РџРѕРєР°Р·Р°С‚СЊ РѕРєРЅРѕ РІС…РѕРґР° РёР»Рё СЂРµРіРёСЃС‚СЂР°С†РёРё
 stock Account_ShowAuth(playerid)
 {
 	if (Player[playerid][pDbId] != 0)
 	{
-		ShowPlayerDialog(playerid, DIALOG_LOGIN, DIALOG_STYLE_PASSWORD, "Вход",
-			"{FFFFFF}С возвращением, {33CCFF}%s{FFFFFF}!\n\nВведи пароль от аккаунта:",
-			"Войти", "Выход", GetRPName(playerid));
+		ShowPlayerDialog(playerid, DIALOG_LOGIN, DIALOG_STYLE_PASSWORD, "Р’С…РѕРґ",
+			"{FFFFFF}РЎ РІРѕР·РІСЂР°С‰РµРЅРёРµРј, {33CCFF}%s{FFFFFF}!\n\nР’РІРµРґРё РїР°СЂРѕР»СЊ РѕС‚ Р°РєРєР°СѓРЅС‚Р°:",
+			"Р’РѕР№С‚Рё", "Р’С‹С…РѕРґ", GetRPName(playerid));
 	}
 	else
 	{
-		ShowPlayerDialog(playerid, DIALOG_REGISTER, DIALOG_STYLE_PASSWORD, "Регистрация",
-			"{FFFFFF}Добро пожаловать на сервер, {33CCFF}%s{FFFFFF}!\n\nПридумай пароль (от %d до %d символов):",
-			"Далее", "Выход", GetRPName(playerid), MIN_PASSWORD_LEN, MAX_PASSWORD_LEN);
+		ShowPlayerDialog(playerid, DIALOG_REGISTER, DIALOG_STYLE_PASSWORD, "Р РµРіРёСЃС‚СЂР°С†РёСЏ",
+			"{FFFFFF}Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ РЅР° СЃРµСЂРІРµСЂ, {33CCFF}%s{FFFFFF}!\n\nРџСЂРёРґСѓРјР°Р№ РїР°СЂРѕР»СЊ (РѕС‚ %d РґРѕ %d СЃРёРјРІРѕР»РѕРІ):",
+			"Р”Р°Р»РµРµ", "Р’С‹С…РѕРґ", GetRPName(playerid), MIN_PASSWORD_LEN, MAX_PASSWORD_LEN);
 	}
 }
 
-// Красивый вид города, пока игрок вводит пароль
+// РљСЂР°СЃРёРІС‹Р№ РІРёРґ РіРѕСЂРѕРґР°, РїРѕРєР° РёРіСЂРѕРє РІРІРѕРґРёС‚ РїР°СЂРѕР»СЊ
 stock Account_ShowLoginCamera(playerid)
 {
 	SetPlayerCameraPos(playerid, 1300.0, -1500.0, 150.0);
 	SetPlayerCameraLookAt(playerid, 1550.0, -1350.0, 60.0);
 }
 
-// Обработка окон аккаунта. Возвращает 1, если окно было наше.
+// РћР±СЂР°Р±РѕС‚РєР° РѕРєРѕРЅ Р°РєРєР°СѓРЅС‚Р°. Р’РѕР·РІСЂР°С‰Р°РµС‚ 1, РµСЃР»Рё РѕРєРЅРѕ Р±С‹Р»Рѕ РЅР°С€Рµ.
 stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
 	if (dialogid != DIALOG_REGISTER && dialogid != DIALOG_LOGIN && dialogid != DIALOG_GENDER) return 0;
-	if (Player[playerid][pLogged]) return 1;   // защита: уже вошёл — окна входа игнорируем
+	if (Player[playerid][pLogged]) return 1;   // Р·Р°С‰РёС‚Р°: СѓР¶Рµ РІРѕС€С‘Р» вЂ” РѕРєРЅР° РІС…РѕРґР° РёРіРЅРѕСЂРёСЂСѓРµРј
 
 	switch (dialogid)
 	{
 		case DIALOG_REGISTER:
 		{
-			if (Player[playerid][pDbId] != 0) return 1;   // аккаунт уже есть
+			if (Player[playerid][pDbId] != 0) return 1;   // Р°РєРєР°СѓРЅС‚ СѓР¶Рµ РµСЃС‚СЊ
 			if (!response)
 			{
-				SendClientMessage(playerid, COLOR_GREY, "Ты отказался от регистрации.");
+				SendClientMessage(playerid, COLOR_GREY, "РўС‹ РѕС‚РєР°Р·Р°Р»СЃСЏ РѕС‚ СЂРµРіРёСЃС‚СЂР°С†РёРё.");
 				KickWithDelay(playerid);
 				return 1;
 			}
 			new len = strlen(inputtext);
 			if (len < MIN_PASSWORD_LEN || len > MAX_PASSWORD_LEN)
 			{
-				SendClientMessage(playerid, COLOR_RED, "Пароль должен быть от %d до %d символов.", MIN_PASSWORD_LEN, MAX_PASSWORD_LEN);
+				SendClientMessage(playerid, COLOR_RED, "РџР°СЂРѕР»СЊ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РѕС‚ %d РґРѕ %d СЃРёРјРІРѕР»РѕРІ.", MIN_PASSWORD_LEN, MAX_PASSWORD_LEN);
 				Account_ShowAuth(playerid);
 				return 1;
 			}
@@ -113,16 +113,16 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			Player[playerid][pMoney] = START_MONEY;
 			Player[playerid][pLevel] = 1;
 
-			ShowPlayerDialog(playerid, DIALOG_GENDER, DIALOG_STYLE_LIST, "Выбери пол персонажа",
-				"Мужской\nЖенский", "Выбрать", "");
+			ShowPlayerDialog(playerid, DIALOG_GENDER, DIALOG_STYLE_LIST, "Р’С‹Р±РµСЂРё РїРѕР» РїРµСЂСЃРѕРЅР°Р¶Р°",
+				"РњСѓР¶СЃРєРѕР№\nР–РµРЅСЃРєРёР№", "Р’С‹Р±СЂР°С‚СЊ", "");
 			return 1;
 		}
 		case DIALOG_GENDER:
 		{
 			if (Player[playerid][pDbId] == 0) return 1;
 			Player[playerid][pSkin] = (response && listitem == 1) ? SKIN_FEMALE : SKIN_MALE;
-			SendClientMessage(playerid, COLOR_GREEN, "Регистрация завершена! Тебе выдано $%d на старт.", START_MONEY);
-			SendClientMessage(playerid, COLOR_WHITE, "Список команд: /help");
+			SendClientMessage(playerid, COLOR_GREEN, "Р РµРіРёСЃС‚СЂР°С†РёСЏ Р·Р°РІРµСЂС€РµРЅР°! РўРµР±Рµ РІС‹РґР°РЅРѕ $%d РЅР° СЃС‚Р°СЂС‚.", START_MONEY);
+			SendClientMessage(playerid, COLOR_WHITE, "РЎРїРёСЃРѕРє РєРѕРјР°РЅРґ: /help");
 			Account_FinishLogin(playerid);
 			return 1;
 		}
@@ -137,25 +137,25 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			new hash[65];
 			SHA256_Hash(inputtext, Player[playerid][pSalt], hash, sizeof hash);
 
-			// strcmp на пустых строках возвращает 0, поэтому отдельно проверяем длину
+			// strcmp РЅР° РїСѓСЃС‚С‹С… СЃС‚СЂРѕРєР°С… РІРѕР·РІСЂР°С‰Р°РµС‚ 0, РїРѕСЌС‚РѕРјСѓ РѕС‚РґРµР»СЊРЅРѕ РїСЂРѕРІРµСЂСЏРµРј РґР»РёРЅСѓ
 			if (inputtext[0] == '\0' || strcmp(hash, Player[playerid][pPassHash]) != 0)
 			{
 				Player[playerid][pLoginTries]++;
 				if (Player[playerid][pLoginTries] >= MAX_LOGIN_TRIES)
 				{
-					SendClientMessage(playerid, COLOR_RED, "Слишком много неверных попыток. Вход с твоего адреса закрыт на %d мин.", LOGIN_LOCK_SECONDS / 60);
+					SendClientMessage(playerid, COLOR_RED, "РЎР»РёС€РєРѕРј РјРЅРѕРіРѕ РЅРµРІРµСЂРЅС‹С… РїРѕРїС‹С‚РѕРє. Р’С…РѕРґ СЃ С‚РІРѕРµРіРѕ Р°РґСЂРµСЃР° Р·Р°РєСЂС‹С‚ РЅР° %d РјРёРЅ.", LOGIN_LOCK_SECONDS / 60);
 					Login_Lock(playerid);
 					KickWithDelay(playerid);
 					return 1;
 				}
-				SendClientMessage(playerid, COLOR_RED, "Неверный пароль! Осталось попыток: %d",
+				SendClientMessage(playerid, COLOR_RED, "РќРµРІРµСЂРЅС‹Р№ РїР°СЂРѕР»СЊ! РћСЃС‚Р°Р»РѕСЃСЊ РїРѕРїС‹С‚РѕРє: %d",
 					MAX_LOGIN_TRIES - Player[playerid][pLoginTries]);
 				Account_ShowAuth(playerid);
 				return 1;
 			}
 
 			Account_Load(playerid);
-			SendClientMessage(playerid, COLOR_GREEN, "Ты успешно вошёл в аккаунт. Список команд: /help");
+			SendClientMessage(playerid, COLOR_GREEN, "РўС‹ СѓСЃРїРµС€РЅРѕ РІРѕС€С‘Р» РІ Р°РєРєР°СѓРЅС‚. РЎРїРёСЃРѕРє РєРѕРјР°РЅРґ: /help");
 			Account_FinishLogin(playerid);
 			return 1;
 		}
@@ -163,7 +163,7 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 	return 0;
 }
 
-// Загрузить данные аккаунта из базы
+// Р—Р°РіСЂСѓР·РёС‚СЊ РґР°РЅРЅС‹Рµ Р°РєРєР°СѓРЅС‚Р° РёР· Р±Р°Р·С‹
 stock Account_Load(playerid)
 {
 	new DBResult:r = DB_ExecuteQuery(gDB,
@@ -190,7 +190,7 @@ stock Account_Load(playerid)
 	}
 }
 
-// Сохранить аккаунт в базу. Вызывается при выходе, на PayDay и при важных событиях.
+// РЎРѕС…СЂР°РЅРёС‚СЊ Р°РєРєР°СѓРЅС‚ РІ Р±Р°Р·Сѓ. Р’С‹Р·С‹РІР°РµС‚СЃСЏ РїСЂРё РІС‹С…РѕРґРµ, РЅР° PayDay Рё РїСЂРё РІР°Р¶РЅС‹С… СЃРѕР±С‹С‚РёСЏС….
 stock Account_Save(playerid)
 {
 	if (!Player[playerid][pLogged] || Player[playerid][pDbId] == 0) return 0;
@@ -205,7 +205,7 @@ stock Account_Save(playerid)
 	return 1;
 }
 
-// Всё готово — выпускаем игрока в мир
+// Р’СЃС‘ РіРѕС‚РѕРІРѕ вЂ” РІС‹РїСѓСЃРєР°РµРј РёРіСЂРѕРєР° РІ РјРёСЂ
 stock Account_FinishLogin(playerid)
 {
 	Player[playerid][pLogged] = true;
@@ -215,22 +215,22 @@ stock Account_FinishLogin(playerid)
 	SetPlayerScore(playerid, Player[playerid][pLevel]);
 	Account_Save(playerid);
 
-	Vehicles_LoadForPlayer(playerid);   // личная машина, если есть (vehicles.inc)
-	Admin_OnLogin(playerid);            // мут, варны, деморган (admin.inc)
-	Families_OnLogin(playerid);         // семья игрока (families.inc)
-	Debts_OnLogin(playerid);            // долги по налогам и штрафам (debts.inc)
-	Spawns_LoadPlayer(playerid);        // выбор из /setspawn (spawns.inc)
-	Squad_Load(playerid);               // взвод во фракции (factions.inc)
+	Vehicles_LoadForPlayer(playerid);   // Р»РёС‡РЅР°СЏ РјР°С€РёРЅР°, РµСЃР»Рё РµСЃС‚СЊ (vehicles.inc)
+	Admin_OnLogin(playerid);            // РјСѓС‚, РІР°СЂРЅС‹, РґРµРјРѕСЂРіР°РЅ (admin.inc)
+	Families_OnLogin(playerid);         // СЃРµРјСЊСЏ РёРіСЂРѕРєР° (families.inc)
+	Debts_OnLogin(playerid);            // РґРѕР»РіРё РїРѕ РЅР°Р»РѕРіР°Рј Рё С€С‚СЂР°С„Р°Рј (debts.inc)
+	Spawns_LoadPlayer(playerid);        // РІС‹Р±РѕСЂ РёР· /setspawn (spawns.inc)
+	Squad_Load(playerid);               // РІР·РІРѕРґ РІРѕ С„СЂР°РєС†РёРё (factions.inc)
 
 	Account_SetNormalSpawn(playerid);
-	TogglePlayerSpectating(playerid, false);  // выход из режима наблюдения = спавн
+	TogglePlayerSpectating(playerid, false);  // РІС‹С…РѕРґ РёР· СЂРµР¶РёРјР° РЅР°Р±Р»СЋРґРµРЅРёСЏ = СЃРїР°РІРЅ
 }
 
-// Где появляется игрок: у своего дома, если он есть, иначе на базе фракции, иначе на обычном спавне
+// Р“РґРµ РїРѕСЏРІР»СЏРµС‚СЃСЏ РёРіСЂРѕРє: Сѓ СЃРІРѕРµРіРѕ РґРѕРјР°, РµСЃР»Рё РѕРЅ РµСЃС‚СЊ, РёРЅР°С‡Рµ РЅР° Р±Р°Р·Рµ С„СЂР°РєС†РёРё, РёРЅР°С‡Рµ РЅР° РѕР±С‹С‡РЅРѕРј СЃРїР°РІРЅРµ
 stock Account_SetNormalSpawn(playerid)
 {
 	new Float:x = SPAWN_X, Float:y = SPAWN_Y, Float:z = SPAWN_Z, Float:a = SPAWN_A;
-	// Выбор игрока из /setspawn (spawns.inc). Если выбранного места больше нет — обычный порядок.
+	// Р’С‹Р±РѕСЂ РёРіСЂРѕРєР° РёР· /setspawn (spawns.inc). Р•СЃР»Рё РІС‹Р±СЂР°РЅРЅРѕРіРѕ РјРµСЃС‚Р° Р±РѕР»СЊС€Рµ РЅРµС‚ вЂ” РѕР±С‹С‡РЅС‹Р№ РїРѕСЂСЏРґРѕРє.
 	new chosen = 0;
 	switch (Spawns_GetMode(playerid))
 	{
@@ -241,9 +241,9 @@ stock Account_SetNormalSpawn(playerid)
 	}
 	if (!chosen)
 	{
-		Spawns_Get(x, y, z, a);                  // spawns.inc — вокзалы, расставленные админом (случайный)
-		Factions_GetSpawn(playerid, x, y, z, a); // factions.inc — база фракции
-		Houses_GetSpawn(playerid, x, y, z, a);   // houses.inc — меняет координаты, если есть дом
+		Spawns_Get(x, y, z, a);                  // spawns.inc вЂ” РІРѕРєР·Р°Р»С‹, СЂР°СЃСЃС‚Р°РІР»РµРЅРЅС‹Рµ Р°РґРјРёРЅРѕРј (СЃР»СѓС‡Р°Р№РЅС‹Р№)
+		Factions_GetSpawn(playerid, x, y, z, a); // factions.inc вЂ” Р±Р°Р·Р° С„СЂР°РєС†РёРё
+		Houses_GetSpawn(playerid, x, y, z, a);   // houses.inc вЂ” РјРµРЅСЏРµС‚ РєРѕРѕСЂРґРёРЅР°С‚С‹, РµСЃР»Рё РµСЃС‚СЊ РґРѕРј
 	}
 	SetSpawnInfo(playerid, NO_TEAM, Player[playerid][pSkin], x, y, z, a);
 }

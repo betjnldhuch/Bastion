@@ -1,17 +1,17 @@
 // =====================================================================
-//  debts.inc — долги игрока перед штатом: налоги и штрафы.
+//  debts.inc вЂ” РґРѕР»РіРё РёРіСЂРѕРєР° РїРµСЂРµРґ С€С‚Р°С‚РѕРј: РЅР°Р»РѕРіРё Рё С€С‚СЂР°С„С‹.
 //
-//  Это два отдельных счёта (в базе accounts.tax_debt и accounts.fine_debt):
-//    * налоговый — сюда каждый PayDay начисляется налог на машину;
-//    * штрафной — сюда полицейский выписывает штраф: /fine [id] [сумма] [причина].
-//  Сами собой деньги не списываются. Игрок платит со счёта в банке:
-//  банкомат > «Оплатить налоги» / «Оплатить штрафы». Деньги уходят в казну.
+//  Р­С‚Рѕ РґРІР° РѕС‚РґРµР»СЊРЅС‹С… СЃС‡С‘С‚Р° (РІ Р±Р°Р·Рµ accounts.tax_debt Рё accounts.fine_debt):
+//    * РЅР°Р»РѕРіРѕРІС‹Р№ вЂ” СЃСЋРґР° РєР°Р¶РґС‹Р№ PayDay РЅР°С‡РёСЃР»СЏРµС‚СЃСЏ РЅР°Р»РѕРі РЅР° РјР°С€РёРЅСѓ;
+//    * С€С‚СЂР°С„РЅРѕР№ вЂ” СЃСЋРґР° РїРѕР»РёС†РµР№СЃРєРёР№ РІС‹РїРёСЃС‹РІР°РµС‚ С€С‚СЂР°С„: /fine [id] [СЃСѓРјРјР°] [РїСЂРёС‡РёРЅР°].
+//  РЎР°РјРё СЃРѕР±РѕР№ РґРµРЅСЊРіРё РЅРµ СЃРїРёСЃС‹РІР°СЋС‚СЃСЏ. РРіСЂРѕРє РїР»Р°С‚РёС‚ СЃРѕ СЃС‡С‘С‚Р° РІ Р±Р°РЅРєРµ:
+//  Р±Р°РЅРєРѕРјР°С‚ > В«РћРїР»Р°С‚РёС‚СЊ РЅР°Р»РѕРіРёВ» / В«РћРїР»Р°С‚РёС‚СЊ С€С‚СЂР°С„С‹В». Р”РµРЅСЊРіРё СѓС…РѕРґСЏС‚ РІ РєР°Р·РЅСѓ.
 //
-//  Что будет, если не платить (считается сумма обоих счетов):
-//    * от DEBT_LIMIT_BUY    — нельзя купить дом, машину и бизнес;
-//    * от DEBT_LIMIT_WANTED — на PayDay должника объявляют в розыск (1 звезда).
+//  Р§С‚Рѕ Р±СѓРґРµС‚, РµСЃР»Рё РЅРµ РїР»Р°С‚РёС‚СЊ (СЃС‡РёС‚Р°РµС‚СЃСЏ СЃСѓРјРјР° РѕР±РѕРёС… СЃС‡РµС‚РѕРІ):
+//    * РѕС‚ DEBT_LIMIT_BUY    вЂ” РЅРµР»СЊР·СЏ РєСѓРїРёС‚СЊ РґРѕРј, РјР°С€РёРЅСѓ Рё Р±РёР·РЅРµСЃ;
+//    * РѕС‚ DEBT_LIMIT_WANTED вЂ” РЅР° PayDay РґРѕР»Р¶РЅРёРєР° РѕР±СЉСЏРІР»СЏСЋС‚ РІ СЂРѕР·С‹СЃРє (1 Р·РІРµР·РґР°).
 //
-//  /debts — посмотреть свои долги.
+//  /debts вЂ” РїРѕСЃРјРѕС‚СЂРµС‚СЊ СЃРІРѕРё РґРѕР»РіРё.
 // =====================================================================
 
 #define DEBT_LIMIT_BUY      20000
@@ -34,7 +34,7 @@ stock Debts_OnConnect(playerid)
 	gDebt[playerid][DEBT_FINE] = 0;
 }
 
-// После входа в аккаунт (accounts.inc)
+// РџРѕСЃР»Рµ РІС…РѕРґР° РІ Р°РєРєР°СѓРЅС‚ (accounts.inc)
 stock Debts_OnLogin(playerid)
 {
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT tax_debt, fine_debt FROM accounts WHERE id = %d", Player[playerid][pDbId]);
@@ -46,7 +46,7 @@ stock Debts_OnLogin(playerid)
 	}
 	DB_FreeResultSet(r);
 	if (Debts_Total(playerid) > 0)
-		SendClientMessage(playerid, COLOR_ORANGE, "У тебя долг перед штатом: налоги $%d, штрафы $%d. Оплатить: банкомат. Подробнее: /debts",
+		SendClientMessage(playerid, COLOR_ORANGE, "РЈ С‚РµР±СЏ РґРѕР»Рі РїРµСЂРµРґ С€С‚Р°С‚РѕРј: РЅР°Р»РѕРіРё $%d, С€С‚СЂР°С„С‹ $%d. РћРїР»Р°С‚РёС‚СЊ: Р±Р°РЅРєРѕРјР°С‚. РџРѕРґСЂРѕР±РЅРµРµ: /debts",
 			gDebt[playerid][DEBT_TAX], gDebt[playerid][DEBT_FINE]);
 }
 
@@ -60,7 +60,7 @@ static Debts_Save(playerid)
 stock Debts_Get(playerid, kind) { return gDebt[playerid][kind]; }
 stock Debts_Total(playerid) { return gDebt[playerid][DEBT_TAX] + gDebt[playerid][DEBT_FINE]; }
 
-// Начислить долг (kind: DEBT_TAX или DEBT_FINE)
+// РќР°С‡РёСЃР»РёС‚СЊ РґРѕР»Рі (kind: DEBT_TAX РёР»Рё DEBT_FINE)
 stock Debts_Add(playerid, kind, amount)
 {
 	if (amount <= 0) return;
@@ -69,56 +69,56 @@ stock Debts_Add(playerid, kind, amount)
 	Debts_Save(playerid);
 }
 
-// Покупка дома, машины, бизнеса: 1 — нельзя, долг слишком большой (игроку уже написано почему)
+// РџРѕРєСѓРїРєР° РґРѕРјР°, РјР°С€РёРЅС‹, Р±РёР·РЅРµСЃР°: 1 вЂ” РЅРµР»СЊР·СЏ, РґРѕР»Рі СЃР»РёС€РєРѕРј Р±РѕР»СЊС€РѕР№ (РёРіСЂРѕРєСѓ СѓР¶Рµ РЅР°РїРёСЃР°РЅРѕ РїРѕС‡РµРјСѓ)
 stock Debts_BlockBuy(playerid)
 {
 	if (Debts_Total(playerid) < DEBT_LIMIT_BUY) return 0;
-	SendClientMessage(playerid, COLOR_RED, "Покупка недоступна: у тебя долг перед штатом $%d (налоги и штрафы). Оплати его в банкомате.", Debts_Total(playerid));
+	SendClientMessage(playerid, COLOR_RED, "РџРѕРєСѓРїРєР° РЅРµРґРѕСЃС‚СѓРїРЅР°: Сѓ С‚РµР±СЏ РґРѕР»Рі РїРµСЂРµРґ С€С‚Р°С‚РѕРј $%d (РЅР°Р»РѕРіРё Рё С€С‚СЂР°С„С‹). РћРїР»Р°С‚Рё РµРіРѕ РІ Р±Р°РЅРєРѕРјР°С‚Рµ.", Debts_Total(playerid));
 	return 1;
 }
 
-// На PayDay (rp.pwn): напоминание и розыск для злостных должников
+// РќР° PayDay (rp.pwn): РЅР°РїРѕРјРёРЅР°РЅРёРµ Рё СЂРѕР·С‹СЃРє РґР»СЏ Р·Р»РѕСЃС‚РЅС‹С… РґРѕР»Р¶РЅРёРєРѕРІ
 stock Debts_PayDay(playerid)
 {
 	new total = Debts_Total(playerid);
 	if (total <= 0) return;
-	SendClientMessage(playerid, COLOR_ORANGE, "Долг перед штатом: налоги $%d, штрафы $%d. Оплатить: банкомат.", gDebt[playerid][DEBT_TAX], gDebt[playerid][DEBT_FINE]);
+	SendClientMessage(playerid, COLOR_ORANGE, "Р”РѕР»Рі РїРµСЂРµРґ С€С‚Р°С‚РѕРј: РЅР°Р»РѕРіРё $%d, С€С‚СЂР°С„С‹ $%d. РћРїР»Р°С‚РёС‚СЊ: Р±Р°РЅРєРѕРјР°С‚.", gDebt[playerid][DEBT_TAX], gDebt[playerid][DEBT_FINE]);
 	if (total >= DEBT_LIMIT_WANTED && Player[playerid][pWanted] < 1 && Player[playerid][pJail] <= 0)
 	{
 		Player[playerid][pWanted] = 1;
 		SetPlayerWantedLevel(playerid, 1);
-		SendClientMessage(playerid, COLOR_RED, "Ты объявлен в розыск за неуплату долга штату ($%d).", total);
+		SendClientMessage(playerid, COLOR_RED, "РўС‹ РѕР±СЉСЏРІР»РµРЅ РІ СЂРѕР·С‹СЃРє Р·Р° РЅРµСѓРїР»Р°С‚Сѓ РґРѕР»РіР° С€С‚Р°С‚Сѓ ($%d).", total);
 		new msg[144];
-		format(msg, sizeof msg, "[Диспетчер] %s [%d] объявлен в розыск: долг штату $%d.", GetRPName(playerid), playerid, total);
+		format(msg, sizeof msg, "[Р”РёСЃРїРµС‚С‡РµСЂ] %s [%d] РѕР±СЉСЏРІР»РµРЅ РІ СЂРѕР·С‹СЃРє: РґРѕР»Рі С€С‚Р°С‚Сѓ $%d.", GetRPName(playerid), playerid, total);
 		Faction_MessageLaw(msg);
 	}
 	else if (total >= DEBT_LIMIT_BUY)
-		SendClientMessage(playerid, COLOR_ORANGE, "Пока долг больше $%d, ты не можешь покупать дом, машину и бизнес. От $%d — розыск.", DEBT_LIMIT_BUY, DEBT_LIMIT_WANTED);
+		SendClientMessage(playerid, COLOR_ORANGE, "РџРѕРєР° РґРѕР»Рі Р±РѕР»СЊС€Рµ $%d, С‚С‹ РЅРµ РјРѕР¶РµС€СЊ РїРѕРєСѓРїР°С‚СЊ РґРѕРј, РјР°С€РёРЅСѓ Рё Р±РёР·РЅРµСЃ. РћС‚ $%d вЂ” СЂРѕР·С‹СЃРє.", DEBT_LIMIT_BUY, DEBT_LIMIT_WANTED);
 }
 
-// Оплатить со счёта в банке, сколько хватит (из окна банкомата, bank.inc)
+// РћРїР»Р°С‚РёС‚СЊ СЃРѕ СЃС‡С‘С‚Р° РІ Р±Р°РЅРєРµ, СЃРєРѕР»СЊРєРѕ С…РІР°С‚РёС‚ (РёР· РѕРєРЅР° Р±Р°РЅРєРѕРјР°С‚Р°, bank.inc)
 stock Debts_Pay(playerid, kind)
 {
 	new debt = gDebt[playerid][kind];
 	if (debt <= 0)
 	{
-		SendClientMessage(playerid, COLOR_GREEN, (kind == DEBT_TAX) ? ("Долгов по налогам нет.") : ("Неоплаченных штрафов нет."));
+		SendClientMessage(playerid, COLOR_GREEN, (kind == DEBT_TAX) ? ("Р”РѕР»РіРѕРІ РїРѕ РЅР°Р»РѕРіР°Рј РЅРµС‚.") : ("РќРµРѕРїР»Р°С‡РµРЅРЅС‹С… С€С‚СЂР°С„РѕРІ РЅРµС‚."));
 		return 0;
 	}
 	new pay = (Player[playerid][pBank] < debt) ? Player[playerid][pBank] : debt;
 	if (pay <= 0)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "На счёте в банке нет денег. Долг: $%d. Сначала положи деньги на счёт.", debt);
+		SendClientMessage(playerid, COLOR_GREY, "РќР° СЃС‡С‘С‚Рµ РІ Р±Р°РЅРєРµ РЅРµС‚ РґРµРЅРµРі. Р”РѕР»Рі: $%d. РЎРЅР°С‡Р°Р»Р° РїРѕР»РѕР¶Рё РґРµРЅСЊРіРё РЅР° СЃС‡С‘С‚.", debt);
 		return 0;
 	}
 	Player[playerid][pBank] -= pay;
 	gDebt[playerid][kind] -= pay;
 	Econ_ToTreasury(pay);
-	Bank_MoneyLog(Player[playerid][pDbId], -pay, Player[playerid][pMoney], (kind == DEBT_TAX) ? ("оплата налогов") : ("оплата штрафов"));
+	Bank_MoneyLog(Player[playerid][pDbId], -pay, Player[playerid][pMoney], (kind == DEBT_TAX) ? ("РѕРїР»Р°С‚Р° РЅР°Р»РѕРіРѕРІ") : ("РѕРїР»Р°С‚Р° С€С‚СЂР°С„РѕРІ"));
 	Debts_Save(playerid);
 	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_GREEN, "%s: оплачено $%d со счёта. Осталось долга: $%d. На счёте: $%d.",
-		(kind == DEBT_TAX) ? ("Налоги") : ("Штрафы"), pay, gDebt[playerid][kind], Player[playerid][pBank]);
+	SendClientMessage(playerid, COLOR_GREEN, "%s: РѕРїР»Р°С‡РµРЅРѕ $%d СЃРѕ СЃС‡С‘С‚Р°. РћСЃС‚Р°Р»РѕСЃСЊ РґРѕР»РіР°: $%d. РќР° СЃС‡С‘С‚Рµ: $%d.",
+		(kind == DEBT_TAX) ? ("РќР°Р»РѕРіРё") : ("РЁС‚СЂР°С„С‹"), pay, gDebt[playerid][kind], Player[playerid][pBank]);
 	return pay;
 }
 
@@ -126,29 +126,29 @@ stock bool:Cmd_Debts(playerid)
 {
 	new text[600];
 	format(text, sizeof text,
-		"{FFFFFF}Налоговый счёт: {FF9900}$%d\n{FFFFFF}Штрафной счёт: {FF9900}$%d\n{FFFFFF}Всего: $%d\n\nОплатить можно в любом банкомате со счёта в банке.\n\n{FFFF00}Если не платить\n{FFFFFF}От $%d — нельзя купить дом, машину и бизнес.\nОт $%d — розыск.",
+		"{FFFFFF}РќР°Р»РѕРіРѕРІС‹Р№ СЃС‡С‘С‚: {FF9900}$%d\n{FFFFFF}РЁС‚СЂР°С„РЅРѕР№ СЃС‡С‘С‚: {FF9900}$%d\n{FFFFFF}Р’СЃРµРіРѕ: $%d\n\nРћРїР»Р°С‚РёС‚СЊ РјРѕР¶РЅРѕ РІ Р»СЋР±РѕРј Р±Р°РЅРєРѕРјР°С‚Рµ СЃРѕ СЃС‡С‘С‚Р° РІ Р±Р°РЅРєРµ.\n\n{FFFF00}Р•СЃР»Рё РЅРµ РїР»Р°С‚РёС‚СЊ\n{FFFFFF}РћС‚ $%d вЂ” РЅРµР»СЊР·СЏ РєСѓРїРёС‚СЊ РґРѕРј, РјР°С€РёРЅСѓ Рё Р±РёР·РЅРµСЃ.\nРћС‚ $%d вЂ” СЂРѕР·С‹СЃРє.",
 		gDebt[playerid][DEBT_TAX], gDebt[playerid][DEBT_FINE], Debts_Total(playerid), DEBT_LIMIT_BUY, DEBT_LIMIT_WANTED);
-	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Долги перед штатом", "%s", "Закрыть", "", text);
+	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Р”РѕР»РіРё РїРµСЂРµРґ С€С‚Р°С‚РѕРј", "%s", "Р—Р°РєСЂС‹С‚СЊ", "", text);
 	return true;
 }
 
-// /fine [id] [сумма] [причина] — полицейский на смене выписывает штраф
+// /fine [id] [СЃСѓРјРјР°] [РїСЂРёС‡РёРЅР°] вЂ” РїРѕР»РёС†РµР№СЃРєРёР№ РЅР° СЃРјРµРЅРµ РІС‹РїРёСЃС‹РІР°РµС‚ С€С‚СЂР°С„
 stock bool:Cmd_Fine(playerid, const params[])
 {
 	if (!Faction_NeedLaw(playerid)) return true;
 	new pos = 0, amount, reason[64];
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, amount) || amount < FINE_MIN || amount > FINE_MAX || !RestParam(params, pos, reason))
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /fine [id] [сумма $%d-%d] [причина]", FINE_MIN, FINE_MAX);
-	if (target == playerid || !Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Неверный игрок.");
-	if (!IsPlayerNearPlayer(playerid, target, 8.0)) return SendClientMessage(playerid, COLOR_GREY, "Игрок слишком далеко.");
+		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /fine [id] [СЃСѓРјРјР° $%d-%d] [РїСЂРёС‡РёРЅР°]", FINE_MIN, FINE_MAX);
+	if (target == playerid || !Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "РќРµРІРµСЂРЅС‹Р№ РёРіСЂРѕРє.");
+	if (!IsPlayerNearPlayer(playerid, target, 8.0)) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє СЃР»РёС€РєРѕРј РґР°Р»РµРєРѕ.");
 
 	Debts_Add(target, DEBT_FINE, amount);
 	new msg[144];
-	format(msg, sizeof msg, "%s выписывает штраф %s.", GetRPName(playerid), GetRPName(target));
+	format(msg, sizeof msg, "%s РІС‹РїРёСЃС‹РІР°РµС‚ С€С‚СЂР°С„ %s.", GetRPName(playerid), GetRPName(target));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
-	SendClientMessage(target, COLOR_RED, "Штраф $%d от %s. Причина: %s. Оплатить: банкомат. Всего штрафов: $%d.", amount, GetRPName(playerid), reason, gDebt[target][DEBT_FINE]);
-	format(msg, sizeof msg, "[Диспетчер] %s оштрафовал %s на $%d. Причина: %s", GetRPName(playerid), GetRPName(target), amount, reason);
+	SendClientMessage(target, COLOR_RED, "РЁС‚СЂР°С„ $%d РѕС‚ %s. РџСЂРёС‡РёРЅР°: %s. РћРїР»Р°С‚РёС‚СЊ: Р±Р°РЅРєРѕРјР°С‚. Р’СЃРµРіРѕ С€С‚СЂР°С„РѕРІ: $%d.", amount, GetRPName(playerid), reason, gDebt[target][DEBT_FINE]);
+	format(msg, sizeof msg, "[Р”РёСЃРїРµС‚С‡РµСЂ] %s РѕС€С‚СЂР°С„РѕРІР°Р» %s РЅР° $%d. РџСЂРёС‡РёРЅР°: %s", GetRPName(playerid), GetRPName(target), amount, reason);
 	Faction_MessageLaw(msg);
 	return true;
 }

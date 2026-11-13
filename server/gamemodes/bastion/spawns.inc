@@ -1,18 +1,18 @@
 // =====================================================================
-//  spawns.inc — точки появления обычных игроков (вокзалы и т.п.).
+//  spawns.inc вЂ” С‚РѕС‡РєРё РїРѕСЏРІР»РµРЅРёСЏ РѕР±С‹С‡РЅС‹С… РёРіСЂРѕРєРѕРІ (РІРѕРєР·Р°Р»С‹ Рё С‚.Рї.).
 //
-//  Игрок сам выбирает, где появляться: /setspawn (вокзал, дом или база фракции).
-//  Пока не выбрал — у дома, иначе на базе фракции, иначе на самом свободном вокзале
-//  (где сейчас меньше всего игроков рядом).
-//  Пока точек нет — на стандартном спавне из config.inc.
-//  Админ (4+), стоя на улице:
-//    /addspawn [название] — точка там, где стоишь (взгляд запоминается)
-//    /delspawn [№]        — убрать точку
-//    /spawns              — список точек, /gotospawn [№] — телепорт
+//  РРіСЂРѕРє СЃР°Рј РІС‹Р±РёСЂР°РµС‚, РіРґРµ РїРѕСЏРІР»СЏС‚СЊСЃСЏ: /setspawn (РІРѕРєР·Р°Р», РґРѕРј РёР»Рё Р±Р°Р·Р° С„СЂР°РєС†РёРё).
+//  РџРѕРєР° РЅРµ РІС‹Р±СЂР°Р» вЂ” Сѓ РґРѕРјР°, РёРЅР°С‡Рµ РЅР° Р±Р°Р·Рµ С„СЂР°РєС†РёРё, РёРЅР°С‡Рµ РЅР° СЃР°РјРѕРј СЃРІРѕР±РѕРґРЅРѕРј РІРѕРєР·Р°Р»Рµ
+//  (РіРґРµ СЃРµР№С‡Р°СЃ РјРµРЅСЊС€Рµ РІСЃРµРіРѕ РёРіСЂРѕРєРѕРІ СЂСЏРґРѕРј).
+//  РџРѕРєР° С‚РѕС‡РµРє РЅРµС‚ вЂ” РЅР° СЃС‚Р°РЅРґР°СЂС‚РЅРѕРј СЃРїР°РІРЅРµ РёР· config.inc.
+//  РђРґРјРёРЅ (4+), СЃС‚РѕСЏ РЅР° СѓР»РёС†Рµ:
+//    /addspawn [РЅР°Р·РІР°РЅРёРµ] вЂ” С‚РѕС‡РєР° С‚Р°Рј, РіРґРµ СЃС‚РѕРёС€СЊ (РІР·РіР»СЏРґ Р·Р°РїРѕРјРёРЅР°РµС‚СЃСЏ)
+//    /delspawn [в„–]        вЂ” СѓР±СЂР°С‚СЊ С‚РѕС‡РєСѓ
+//    /spawns              вЂ” СЃРїРёСЃРѕРє С‚РѕС‡РµРє, /gotospawn [в„–] вЂ” С‚РµР»РµРїРѕСЂС‚
 // =====================================================================
 
 #define MAX_SPAWNS          20
-#define SPAWN_LOAD_RANGE    80.0    // игроки в этом радиусе считаются «на вокзале»
+#define SPAWN_LOAD_RANGE    80.0    // РёРіСЂРѕРєРё РІ СЌС‚РѕРј СЂР°РґРёСѓСЃРµ СЃС‡РёС‚Р°СЋС‚СЃСЏ В«РЅР° РІРѕРєР·Р°Р»РµВ»
 
 enum E_SPAWN
 {
@@ -23,18 +23,18 @@ enum E_SPAWN
 static gSpawn[MAX_SPAWNS][E_SPAWN];
 static gSpawnCount = 0;
 
-// Что игрок выбрал в /setspawn (accounts.spawn_mode, spawn_ref)
+// Р§С‚Рѕ РёРіСЂРѕРє РІС‹Р±СЂР°Р» РІ /setspawn (accounts.spawn_mode, spawn_ref)
 enum
 {
-	SPAWN_AUTO,         // дом, иначе фракция, иначе случайный вокзал
-	SPAWN_STATION,      // вокзал: ref = номер точки в базе
-	SPAWN_HOUSE,        // свой или съёмный дом
-	SPAWN_FACTION,      // база фракции
-	SPAWN_ANYSTATION    // самый свободный вокзал
+	SPAWN_AUTO,         // РґРѕРј, РёРЅР°С‡Рµ С„СЂР°РєС†РёСЏ, РёРЅР°С‡Рµ СЃР»СѓС‡Р°Р№РЅС‹Р№ РІРѕРєР·Р°Р»
+	SPAWN_STATION,      // РІРѕРєР·Р°Р»: ref = РЅРѕРјРµСЂ С‚РѕС‡РєРё РІ Р±Р°Р·Рµ
+	SPAWN_HOUSE,        // СЃРІРѕР№ РёР»Рё СЃСЉС‘РјРЅС‹Р№ РґРѕРј
+	SPAWN_FACTION,      // Р±Р°Р·Р° С„СЂР°РєС†РёРё
+	SPAWN_ANYSTATION    // СЃР°РјС‹Р№ СЃРІРѕР±РѕРґРЅС‹Р№ РІРѕРєР·Р°Р»
 }
 static gSpawnMode[MAX_PLAYERS];
 static gSpawnRef[MAX_PLAYERS];
-static gSpawnPick[MAX_PLAYERS][MAX_SPAWNS + 3][2];   // +3: вокзал, дом, фракция   // строка окна -> { режим, ref }
+static gSpawnPick[MAX_PLAYERS][MAX_SPAWNS + 3][2];   // +3: РІРѕРєР·Р°Р», РґРѕРј, С„СЂР°РєС†РёСЏ   // СЃС‚СЂРѕРєР° РѕРєРЅР° -> { СЂРµР¶РёРј, ref }
 
 stock Spawns_Init()
 {
@@ -61,8 +61,8 @@ stock Spawns_Init()
 	printf("[Spawns] Loaded %d spawn points.", gSpawnCount);
 }
 
-// Самый свободный вокзал: где рядом меньше всего игроков (при равенстве — случайный из них).
-// 0 — точек нет, координаты не тронуты.
+// РЎР°РјС‹Р№ СЃРІРѕР±РѕРґРЅС‹Р№ РІРѕРєР·Р°Р»: РіРґРµ СЂСЏРґРѕРј РјРµРЅСЊС€Рµ РІСЃРµРіРѕ РёРіСЂРѕРєРѕРІ (РїСЂРё СЂР°РІРµРЅСЃС‚РІРµ вЂ” СЃР»СѓС‡Р°Р№РЅС‹Р№ РёР· РЅРёС…).
+// 0 вЂ” С‚РѕС‡РµРє РЅРµС‚, РєРѕРѕСЂРґРёРЅР°С‚С‹ РЅРµ С‚СЂРѕРЅСѓС‚С‹.
 stock Spawns_Get(&Float:x, &Float:y, &Float:z, &Float:a)
 {
 	if (gSpawnCount == 0) return 0;
@@ -99,15 +99,15 @@ static Spawn_FindByDbId(dbid)
 	return -1;
 }
 
-// Уровень админа для этих команд проверяется в commands.inc
+// РЈСЂРѕРІРµРЅСЊ Р°РґРјРёРЅР° РґР»СЏ СЌС‚РёС… РєРѕРјР°РЅРґ РїСЂРѕРІРµСЂСЏРµС‚СЃСЏ РІ commands.inc
 stock Cmd_AddSpawn(playerid, const params[])
 {
 	new name[32];
 	if (!RestParam(params, 0, name))
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /addspawn [название] — точка появления игроков там, где ты стоишь");
+		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /addspawn [РЅР°Р·РІР°РЅРёРµ] вЂ” С‚РѕС‡РєР° РїРѕСЏРІР»РµРЅРёСЏ РёРіСЂРѕРєРѕРІ С‚Р°Рј, РіРґРµ С‚С‹ СЃС‚РѕРёС€СЊ");
 	if (GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0)
-		return SendClientMessage(playerid, COLOR_GREY, "Точку спавна можно ставить только на улице.");
-	if (gSpawnCount >= MAX_SPAWNS) return SendClientMessage(playerid, COLOR_GREY, "Достигнут лимит точек спавна (%d).", MAX_SPAWNS);
+		return SendClientMessage(playerid, COLOR_GREY, "РўРѕС‡РєСѓ СЃРїР°РІРЅР° РјРѕР¶РЅРѕ СЃС‚Р°РІРёС‚СЊ С‚РѕР»СЊРєРѕ РЅР° СѓР»РёС†Рµ.");
+	if (gSpawnCount >= MAX_SPAWNS) return SendClientMessage(playerid, COLOR_GREY, "Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ С‚РѕС‡РµРє СЃРїР°РІРЅР° (%d).", MAX_SPAWNS);
 
 	new s = gSpawnCount++;
 	GetPlayerPos(playerid, gSpawn[s][spX], gSpawn[s][spY], gSpawn[s][spZ]);
@@ -117,18 +117,18 @@ stock Cmd_AddSpawn(playerid, const params[])
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO spawns (name, x, y, z, a) VALUES ('%q', %f, %f, %f, %f)",
 		name, gSpawn[s][spX], gSpawn[s][spY], gSpawn[s][spZ], gSpawn[s][spA]));
 	gSpawn[s][spDbId] = DB_LastInsertId();
-	SendClientMessage(playerid, COLOR_ADMIN, "Точка спавна №%d «%s» создана. Всего точек: %d. Список: /spawns", gSpawn[s][spDbId], name, gSpawnCount);
+	SendClientMessage(playerid, COLOR_ADMIN, "РўРѕС‡РєР° СЃРїР°РІРЅР° в„–%d В«%sВ» СЃРѕР·РґР°РЅР°. Р’СЃРµРіРѕ С‚РѕС‡РµРє: %d. РЎРїРёСЃРѕРє: /spawns", gSpawn[s][spDbId], name, gSpawnCount);
 	return 1;
 }
 
 stock Cmd_DelSpawn(playerid, const params[])
 {
 	new pos = 0, dbid;
-	if (!NextIntParam(params, pos, dbid)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /delspawn [№] (номера: /spawns)");
+	if (!NextIntParam(params, pos, dbid)) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /delspawn [в„–] (РЅРѕРјРµСЂР°: /spawns)");
 	new s = Spawn_FindByDbId(dbid);
-	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "Точки с таким номером нет. Список: /spawns");
+	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "РўРѕС‡РєРё СЃ С‚Р°РєРёРј РЅРѕРјРµСЂРѕРј РЅРµС‚. РЎРїРёСЃРѕРє: /spawns");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM spawns WHERE id = %d", dbid));
-	SendClientMessage(playerid, COLOR_ADMIN, "Точка спавна №%d «%s» убрана.", dbid, gSpawn[s][spName]);
+	SendClientMessage(playerid, COLOR_ADMIN, "РўРѕС‡РєР° СЃРїР°РІРЅР° в„–%d В«%sВ» СѓР±СЂР°РЅР°.", dbid, gSpawn[s][spName]);
 	new last = gSpawnCount - 1;
 	if (s != last) gSpawn[s] = gSpawn[last];
 	gSpawnCount--;
@@ -137,11 +137,11 @@ stock Cmd_DelSpawn(playerid, const params[])
 
 stock Cmd_Spawns(playerid)
 {
-	if (gSpawnCount == 0) return SendClientMessage(playerid, COLOR_GREY, "Точек спавна нет: игроки появляются на стандартном месте. Добавить: /addspawn [название]");
-	SendClientMessage(playerid, COLOR_YELLOW, "Точки спавна (игрок без дома и фракции появляется на самой свободной):");
+	if (gSpawnCount == 0) return SendClientMessage(playerid, COLOR_GREY, "РўРѕС‡РµРє СЃРїР°РІРЅР° РЅРµС‚: РёРіСЂРѕРєРё РїРѕСЏРІР»СЏСЋС‚СЃСЏ РЅР° СЃС‚Р°РЅРґР°СЂС‚РЅРѕРј РјРµСЃС‚Рµ. Р”РѕР±Р°РІРёС‚СЊ: /addspawn [РЅР°Р·РІР°РЅРёРµ]");
+	SendClientMessage(playerid, COLOR_YELLOW, "РўРѕС‡РєРё СЃРїР°РІРЅР° (РёРіСЂРѕРє Р±РµР· РґРѕРјР° Рё С„СЂР°РєС†РёРё РїРѕСЏРІР»СЏРµС‚СЃСЏ РЅР° СЃР°РјРѕР№ СЃРІРѕР±РѕРґРЅРѕР№):");
 	for (new s = 0; s < gSpawnCount; s++)
 	{
-		SendClientMessage(playerid, COLOR_WHITE, " №%d — %s (%.0f, %.0f)", gSpawn[s][spDbId], gSpawn[s][spName], gSpawn[s][spX], gSpawn[s][spY]);
+		SendClientMessage(playerid, COLOR_WHITE, " в„–%d вЂ” %s (%.0f, %.0f)", gSpawn[s][spDbId], gSpawn[s][spName], gSpawn[s][spX], gSpawn[s][spY]);
 	}
 	return 1;
 }
@@ -149,9 +149,9 @@ stock Cmd_Spawns(playerid)
 stock Cmd_GotoSpawn(playerid, const params[])
 {
 	new pos = 0, dbid;
-	if (!NextIntParam(params, pos, dbid)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /gotospawn [№] (номера: /spawns)");
+	if (!NextIntParam(params, pos, dbid)) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /gotospawn [в„–] (РЅРѕРјРµСЂР°: /spawns)");
 	new s = Spawn_FindByDbId(dbid);
-	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "Точки с таким номером нет. Список: /spawns");
+	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "РўРѕС‡РєРё СЃ С‚Р°РєРёРј РЅРѕРјРµСЂРѕРј РЅРµС‚. РЎРїРёСЃРѕРє: /spawns");
 	if (IsPlayerInAnyVehicle(playerid)) RemovePlayerFromVehicle(playerid);
 	SetPlayerInterior(playerid, 0);
 	SetPlayerVirtualWorld(playerid, 0);
@@ -163,10 +163,10 @@ stock Cmd_GotoSpawn(playerid, const params[])
 }
 
 // ---------------------------------------------------------------------
-//  /setspawn — игрок выбирает, где появляться
+//  /setspawn вЂ” РёРіСЂРѕРє РІС‹Р±РёСЂР°РµС‚, РіРґРµ РїРѕСЏРІР»СЏС‚СЊСЃСЏ
 // ---------------------------------------------------------------------
 
-// Из Account_FinishLogin: выбор игрока из базы
+// РР· Account_FinishLogin: РІС‹Р±РѕСЂ РёРіСЂРѕРєР° РёР· Р±Р°Р·С‹
 stock Spawns_LoadPlayer(playerid)
 {
 	gSpawnMode[playerid] = SPAWN_AUTO;
@@ -186,7 +186,7 @@ stock Spawns_LoadPlayer(playerid)
 
 stock Spawns_GetMode(playerid) { return gSpawnMode[playerid]; }
 
-// Вокзал, выбранный игроком. 0 — не выбран или точку уже убрали.
+// Р’РѕРєР·Р°Р», РІС‹Р±СЂР°РЅРЅС‹Р№ РёРіСЂРѕРєРѕРј. 0 вЂ” РЅРµ РІС‹Р±СЂР°РЅ РёР»Рё С‚РѕС‡РєСѓ СѓР¶Рµ СѓР±СЂР°Р»Рё.
 stock Spawns_GetChosen(playerid, &Float:x, &Float:y, &Float:z, &Float:a)
 {
 	if (gSpawnMode[playerid] != SPAWN_STATION) return 0;
@@ -203,16 +203,16 @@ stock Cmd_SetSpawn(playerid)
 {
 	new list[1024], line[64], n = 0;
 	gSpawnPick[playerid][n][0] = SPAWN_ANYSTATION; gSpawnPick[playerid][n][1] = 0; n++;
-	strcat(list, "{FFFFFF}Вокзал {AFAFAF}(где меньше людей)\n");
+	strcat(list, "{FFFFFF}Р’РѕРєР·Р°Р» {AFAFAF}(РіРґРµ РјРµРЅСЊС€Рµ Р»СЋРґРµР№)\n");
 	if (House_GetOwned(playerid) != -1 || House_GetRented(playerid) != -1 || Family_SpouseHouse(playerid) != -1 || Family_HouseOf(playerid) != -1)
 	{
 		gSpawnPick[playerid][n][0] = SPAWN_HOUSE; gSpawnPick[playerid][n][1] = 0; n++;
-		strcat(list, "{33CCFF}У своего дома\n");
+		strcat(list, "{33CCFF}РЈ СЃРІРѕРµРіРѕ РґРѕРјР°\n");
 	}
 	if (Player[playerid][pFaction] != FACTION_NONE)
 	{
 		gSpawnPick[playerid][n][0] = SPAWN_FACTION; gSpawnPick[playerid][n][1] = 0; n++;
-		strcat(list, "{FFFF66}На базе фракции\n");
+		strcat(list, "{FFFF66}РќР° Р±Р°Р·Рµ С„СЂР°РєС†РёРё\n");
 	}
 	for (new s = 0; s < gSpawnCount; s++)
 	{
@@ -222,11 +222,11 @@ stock Cmd_SetSpawn(playerid)
 		if (n >= sizeof (gSpawnPick[])) break;
 	}
 	for (new i = n; i < sizeof (gSpawnPick[]); i++) gSpawnPick[playerid][i][0] = -1;
-	ShowPlayerDialog(playerid, DIALOG_SETSPAWN, DIALOG_STYLE_LIST, "Где появляться", "%s", "Выбрать", "Закрыть", list);
+	ShowPlayerDialog(playerid, DIALOG_SETSPAWN, DIALOG_STYLE_LIST, "Р“РґРµ РїРѕСЏРІР»СЏС‚СЊСЃСЏ", "%s", "Р’С‹Р±СЂР°С‚СЊ", "Р—Р°РєСЂС‹С‚СЊ", list);
 	return 1;
 }
 
-// Из OnDialogResponse
+// РР· OnDialogResponse
 stock Spawns_OnDialog(playerid, dialogid, response, listitem)
 {
 	if (dialogid != DIALOG_SETSPAWN) return 0;
@@ -238,15 +238,15 @@ stock Spawns_OnDialog(playerid, dialogid, response, listitem)
 	Account_SetNormalSpawn(playerid);
 	switch (gSpawnMode[playerid])
 	{
-		case SPAWN_HOUSE:   SendClientMessage(playerid, COLOR_GREEN, "Теперь ты появляешься у своего дома.");
-		case SPAWN_FACTION: SendClientMessage(playerid, COLOR_GREEN, "Теперь ты появляешься на базе фракции.");
+		case SPAWN_HOUSE:   SendClientMessage(playerid, COLOR_GREEN, "РўРµРїРµСЂСЊ С‚С‹ РїРѕСЏРІР»СЏРµС€СЊСЃСЏ Сѓ СЃРІРѕРµРіРѕ РґРѕРјР°.");
+		case SPAWN_FACTION: SendClientMessage(playerid, COLOR_GREEN, "РўРµРїРµСЂСЊ С‚С‹ РїРѕСЏРІР»СЏРµС€СЊСЃСЏ РЅР° Р±Р°Р·Рµ С„СЂР°РєС†РёРё.");
 		case SPAWN_STATION:
 		{
 			new s = Spawn_FindByDbId(gSpawnRef[playerid]);
-			if (s != -1) SendClientMessage(playerid, COLOR_GREEN, "Теперь ты появляешься здесь: %s.", gSpawn[s][spName]);
+			if (s != -1) SendClientMessage(playerid, COLOR_GREEN, "РўРµРїРµСЂСЊ С‚С‹ РїРѕСЏРІР»СЏРµС€СЊСЃСЏ Р·РґРµСЃСЊ: %s.", gSpawn[s][spName]);
 		}
-		case SPAWN_ANYSTATION: SendClientMessage(playerid, COLOR_GREEN, "Теперь ты появляешься на вокзале, где меньше людей.");
-		default: SendClientMessage(playerid, COLOR_GREEN, "Место появления выбрано.");
+		case SPAWN_ANYSTATION: SendClientMessage(playerid, COLOR_GREEN, "РўРµРїРµСЂСЊ С‚С‹ РїРѕСЏРІР»СЏРµС€СЊСЃСЏ РЅР° РІРѕРєР·Р°Р»Рµ, РіРґРµ РјРµРЅСЊС€Рµ Р»СЋРґРµР№.");
+		default: SendClientMessage(playerid, COLOR_GREEN, "РњРµСЃС‚Рѕ РїРѕСЏРІР»РµРЅРёСЏ РІС‹Р±СЂР°РЅРѕ.");
 	}
 	return 1;
 }

@@ -1,20 +1,20 @@
 // =====================================================================
-//  dialogs.inc — номера всех окон (диалогов) сервера в одном месте.
+//  dialogs.inc вЂ” РЅРѕРјРµСЂР° РІСЃРµС… РѕРєРѕРЅ (РґРёР°Р»РѕРіРѕРІ) СЃРµСЂРІРµСЂР° РІ РѕРґРЅРѕРј РјРµСЃС‚Рµ.
 //
-//  У каждого окна должен быть свой номер, иначе ответ игрока попадёт
-//  в чужой модуль (так ломался /help). Раньше номера были разбросаны
-//  по модулям, и их легко было задать одинаковыми. Теперь они идут
-//  подряд в одном списке и совпасть не могут.
+//  РЈ РєР°Р¶РґРѕРіРѕ РѕРєРЅР° РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ СЃРІРѕР№ РЅРѕРјРµСЂ, РёРЅР°С‡Рµ РѕС‚РІРµС‚ РёРіСЂРѕРєР° РїРѕРїР°РґС‘С‚
+//  РІ С‡СѓР¶РѕР№ РјРѕРґСѓР»СЊ (С‚Р°Рє Р»РѕРјР°Р»СЃСЏ /help). Р Р°РЅСЊС€Рµ РЅРѕРјРµСЂР° Р±С‹Р»Рё СЂР°Р·Р±СЂРѕСЃР°РЅС‹
+//  РїРѕ РјРѕРґСѓР»СЏРј, Рё РёС… Р»РµРіРєРѕ Р±С‹Р»Рѕ Р·Р°РґР°С‚СЊ РѕРґРёРЅР°РєРѕРІС‹РјРё. РўРµРїРµСЂСЊ РѕРЅРё РёРґСѓС‚
+//  РїРѕРґСЂСЏРґ РІ РѕРґРЅРѕРј СЃРїРёСЃРєРµ Рё СЃРѕРІРїР°СЃС‚СЊ РЅРµ РјРѕРіСѓС‚.
 //
-//  Новое окно — новая строчка В КОНЕЦ своей группы. Группы не
-//  перемешивай: модули проверяют «от первого окна группы до последнего».
+//  РќРѕРІРѕРµ РѕРєРЅРѕ вЂ” РЅРѕРІР°СЏ СЃС‚СЂРѕС‡РєР° Р’ РљРћРќР•Р¦ СЃРІРѕРµР№ РіСЂСѓРїРїС‹. Р“СЂСѓРїРїС‹ РЅРµ
+//  РїРµСЂРµРјРµС€РёРІР°Р№: РјРѕРґСѓР»Рё РїСЂРѕРІРµСЂСЏСЋС‚ В«РѕС‚ РїРµСЂРІРѕРіРѕ РѕРєРЅР° РіСЂСѓРїРїС‹ РґРѕ РїРѕСЃР»РµРґРЅРµРіРѕВ».
 // =====================================================================
 
 enum
 {
 	DIALOG_NONE,
 
-	// --- Аккаунт, банк, бизнес, действия с игроком
+	// --- РђРєРєР°СѓРЅС‚, Р±Р°РЅРє, Р±РёР·РЅРµСЃ, РґРµР№СЃС‚РІРёСЏ СЃ РёРіСЂРѕРєРѕРј
 	DIALOG_REGISTER,
 	DIALOG_LOGIN,
 	DIALOG_GENDER,
@@ -32,7 +32,7 @@ enum
 	DIALOG_INTERACT,
 	DIALOG_INTERACT_PAY,
 
-	// --- Фракции (factions.inc): от DIALOG_LMENU до DIALOG_FACTION_LAST
+	// --- Р¤СЂР°РєС†РёРё (factions.inc): РѕС‚ DIALOG_LMENU РґРѕ DIALOG_FACTION_LAST
 	DIALOG_LMENU,
 	DIALOG_FBANK,
 	DIALOG_FBANK_DEPOSIT,
@@ -53,24 +53,24 @@ enum
 	DIALOG_LLOGS,
 	DIALOG_FACTION_LAST,
 
-	// --- Топливо (fuel.inc)
+	// --- РўРѕРїР»РёРІРѕ (fuel.inc)
 	DIALOG_FUEL_FILL,
 	DIALOG_FUEL_CAN,
 
-	// --- Автошкола (licenses.inc)
+	// --- РђРІС‚РѕС€РєРѕР»Р° (licenses.inc)
 	DIALOG_LIC_MENU,
 	DIALOG_LIC_THEORY,
 
-	// --- Работы (jobs.inc)
-	DIALOG_JOB_OFFER,           // предложение механика игроку
+	// --- Р Р°Р±РѕС‚С‹ (jobs.inc)
+	DIALOG_JOB_OFFER,           // РїСЂРµРґР»РѕР¶РµРЅРёРµ РјРµС…Р°РЅРёРєР° РёРіСЂРѕРєСѓ
 
-	// --- Сумка (needs.inc): от DIALOG_INVENTORY до DIALOG_INV_DROP
+	// --- РЎСѓРјРєР° (needs.inc): РѕС‚ DIALOG_INVENTORY РґРѕ DIALOG_INV_DROP
 	DIALOG_INVENTORY,
 	DIALOG_INV_ACTION,
 	DIALOG_INV_GIVE,
 	DIALOG_INV_DROP,
 
-	// --- Дом (houses.inc): от DIALOG_HOUSE_MENU до DIALOG_HOUSE_RENT
+	// --- Р”РѕРј (houses.inc): РѕС‚ DIALOG_HOUSE_MENU РґРѕ DIALOG_HOUSE_RENT
 	DIALOG_HOUSE_MENU,
 	DIALOG_HOUSE_TAKEGUN,
 	DIALOG_HOUSE_SAFE_IN,
@@ -79,24 +79,24 @@ enum
 	DIALOG_HOUSE_WITHDRAW,
 	DIALOG_HOUSE_RENT,
 
-	// --- СТО и штрафстоянка (garage.inc): от DIALOG_TUNE до DIALOG_UNIMPOUND
+	// --- РЎРўРћ Рё С€С‚СЂР°С„СЃС‚РѕСЏРЅРєР° (garage.inc): РѕС‚ DIALOG_TUNE РґРѕ DIALOG_UNIMPOUND
 	DIALOG_TUNE,
 	DIALOG_TUNE_PAINT,
 	DIALOG_TUNE_WHEELS,
 	DIALOG_UNIMPOUND,
 
-	// --- Разработка (dev.inc)
+	// --- Р Р°Р·СЂР°Р±РѕС‚РєР° (dev.inc)
 	DIALOG_DEV_POINTS,
 	DIALOG_DEV_HELP,
 
-	// --- Перекраска объектов (textures.inc): от DIALOG_TEX_SLOTS до DIALOG_TEX_TEXT, затем справка
+	// --- РџРµСЂРµРєСЂР°СЃРєР° РѕР±СЉРµРєС‚РѕРІ (textures.inc): РѕС‚ DIALOG_TEX_SLOTS РґРѕ DIALOG_TEX_TEXT, Р·Р°С‚РµРј СЃРїСЂР°РІРєР°
 	DIALOG_TEX_SLOTS,
 	DIALOG_TEX_PICK,
 	DIALOG_TEX_COLOR,
 	DIALOG_TEX_TEXT,
 	DIALOG_TEX_HELP,
 
-	// --- Маркеры и GPS (gps.inc): от DIALOG_MK_MENU до DIALOG_GPS_LIST
+	// --- РњР°СЂРєРµСЂС‹ Рё GPS (gps.inc): РѕС‚ DIALOG_MK_MENU РґРѕ DIALOG_GPS_LIST
 	DIALOG_MK_MENU,
 	DIALOG_MK_STYLE,
 	DIALOG_MK_ICON,
@@ -110,39 +110,39 @@ enum
 	DIALOG_GPS_MAIN,
 	DIALOG_GPS_LIST,
 
-	// --- Администрация (admin.inc): от DIALOG_ADMIN_INFO до DIALOG_REPORT_NEW
-	DIALOG_ADMIN_INFO,          // просто сообщение (бан, кик, справка)
-	DIALOG_AMENU,               // список игроков
-	DIALOG_AMENU_ACT,           // действия с игроком
-	DIALOG_AMENU_INPUT,         // ввод срока и причины
-	DIALOG_REPORTS,             // список репортов
-	DIALOG_REPORT_ACT,          // действия с репортом
-	DIALOG_REPORT_ANSWER,       // ввод ответа
-	DIALOG_REPORT_NEW,          // игрок пишет репорт
+	// --- РђРґРјРёРЅРёСЃС‚СЂР°С†РёСЏ (admin.inc): РѕС‚ DIALOG_ADMIN_INFO РґРѕ DIALOG_REPORT_NEW
+	DIALOG_ADMIN_INFO,          // РїСЂРѕСЃС‚Рѕ СЃРѕРѕР±С‰РµРЅРёРµ (Р±Р°РЅ, РєРёРє, СЃРїСЂР°РІРєР°)
+	DIALOG_AMENU,               // СЃРїРёСЃРѕРє РёРіСЂРѕРєРѕРІ
+	DIALOG_AMENU_ACT,           // РґРµР№СЃС‚РІРёСЏ СЃ РёРіСЂРѕРєРѕРј
+	DIALOG_AMENU_INPUT,         // РІРІРѕРґ СЃСЂРѕРєР° Рё РїСЂРёС‡РёРЅС‹
+	DIALOG_REPORTS,             // СЃРїРёСЃРѕРє СЂРµРїРѕСЂС‚РѕРІ
+	DIALOG_REPORT_ACT,          // РґРµР№СЃС‚РІРёСЏ СЃ СЂРµРїРѕСЂС‚РѕРј
+	DIALOG_REPORT_ANSWER,       // РІРІРѕРґ РѕС‚РІРµС‚Р°
+	DIALOG_REPORT_NEW,          // РёРіСЂРѕРє РїРёС€РµС‚ СЂРµРїРѕСЂС‚
 
-	// --- Инструменты админов (admin_tools.inc, admin.inc)
+	// --- РРЅСЃС‚СЂСѓРјРµРЅС‚С‹ Р°РґРјРёРЅРѕРІ (admin_tools.inc, admin.inc)
 	DIALOG_TPLIST,
 	DIALOG_VEH_CAT,
 	DIALOG_VEH_LIST,
 
-	// --- Ранения (wounded.inc)
+	// --- Р Р°РЅРµРЅРёСЏ (wounded.inc)
 	DIALOG_WOUNDS,
 
-	// --- Помощь (help.inc)
+	// --- РџРѕРјРѕС‰СЊ (help.inc)
 	DIALOG_HELP_TOPICS,
 	DIALOG_HELP_TOPIC,
 
-	// --- Выбор места появления (spawns.inc)
+	// --- Р’С‹Р±РѕСЂ РјРµСЃС‚Р° РїРѕСЏРІР»РµРЅРёСЏ (spawns.inc)
 	DIALOG_SETSPAWN,
 
-	// --- Цвет фракции (/fcolor, factions.inc)
+	// --- Р¦РІРµС‚ С„СЂР°РєС†РёРё (/fcolor, factions.inc)
 	DIALOG_FCOLOR,
 	DIALOG_FCOLOR_HEX,
 
-	// --- Чёрный рынок (/bm, factions.inc)
+	// --- Р§С‘СЂРЅС‹Р№ СЂС‹РЅРѕРє (/bm, factions.inc)
 	DIALOG_BM,
 
-	// --- Заводы, материалы, крафт (factions.inc)
+	// --- Р—Р°РІРѕРґС‹, РјР°С‚РµСЂРёР°Р»С‹, РєСЂР°С„С‚ (factions.inc)
 	DIALOG_CRAFT,
 	DIALOG_CRAFT_QTY,
 	DIALOG_FSTOREPT,
@@ -152,7 +152,7 @@ enum
 	DIALOG_FTRANSFER,
 	DIALOG_LOCKER,
 
-	// --- Новые системы: наркотики, казино, лотерея, больница
+	// --- РќРѕРІС‹Рµ СЃРёСЃС‚РµРјС‹: РЅР°СЂРєРѕС‚РёРєРё, РєР°Р·РёРЅРѕ, Р»РѕС‚РµСЂРµСЏ, Р±РѕР»СЊРЅРёС†Р°
 	DIALOG_DRUG_DEALER,
 	DIALOG_CASINO,
 	DIALOG_CASINO_PICK,
@@ -160,7 +160,7 @@ enum
 	DIALOG_LOTTO,
 	DIALOG_HOSPITAL,
 
-	// --- Донат (donate.inc)
+	// --- Р”РѕРЅР°С‚ (donate.inc)
 	DIALOG_DONATE,
 	DIALOG_DONATE_MONEY,
 	DIALOG_DONATE_INPUT

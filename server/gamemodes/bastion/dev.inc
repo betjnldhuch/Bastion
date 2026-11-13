@@ -1,29 +1,29 @@
 // =====================================================================
-//  dev.inc — инструменты разработки прямо в игре (админ DEV_LEVEL+).
+//  dev.inc вЂ” РёРЅСЃС‚СЂСѓРјРµРЅС‚С‹ СЂР°Р·СЂР°Р±РѕС‚РєРё РїСЂСЏРјРѕ РІ РёРіСЂРµ (Р°РґРјРёРЅ DEV_LEVEL+).
 //
-//  Координаты:
-//    /pos             — где я стою (или где моя машина), в чат
-//    /pos [название]  — то же + сохранить точку. Все точки пишутся в файл
-//                       scriptfiles/bastion_points.txt — его можно просто
-//                       переслать разработчику.
-//    /points          — список сохранённых точек (выбрать — телепорт)
-//    /delpoint [название]
-//    /dev             — живые координаты на экране (вкл/выкл)
+//  РљРѕРѕСЂРґРёРЅР°С‚С‹:
+//    /pos             вЂ” РіРґРµ СЏ СЃС‚РѕСЋ (РёР»Рё РіРґРµ РјРѕСЏ РјР°С€РёРЅР°), РІ С‡Р°С‚
+//    /pos [РЅР°Р·РІР°РЅРёРµ]  вЂ” С‚Рѕ Р¶Рµ + СЃРѕС…СЂР°РЅРёС‚СЊ С‚РѕС‡РєСѓ. Р’СЃРµ С‚РѕС‡РєРё РїРёС€СѓС‚СЃСЏ РІ С„Р°Р№Р»
+//                       scriptfiles/bastion_points.txt вЂ” РµРіРѕ РјРѕР¶РЅРѕ РїСЂРѕСЃС‚Рѕ
+//                       РїРµСЂРµСЃР»Р°С‚СЊ СЂР°Р·СЂР°Р±РѕС‚С‡РёРєСѓ.
+//    /points          вЂ” СЃРїРёСЃРѕРє СЃРѕС…СЂР°РЅС‘РЅРЅС‹С… С‚РѕС‡РµРє (РІС‹Р±СЂР°С‚СЊ вЂ” С‚РµР»РµРїРѕСЂС‚)
+//    /delpoint [РЅР°Р·РІР°РЅРёРµ]
+//    /dev             вЂ” Р¶РёРІС‹Рµ РєРѕРѕСЂРґРёРЅР°С‚С‹ РЅР° СЌРєСЂР°РЅРµ (РІРєР»/РІС‹РєР»)
 //
-//  Маппинг (свои объекты на карте, хранятся в таблице map_objects):
-//    /mo new [модель]  — поставить объект перед собой и сразу двигать
-//    /mo sel           — выбрать объект мышью (ПК)
-//    /mo edit [№]      — двигать объект мышью (без номера — ближайший)
-//    /mo move x y z    — сдвинуть на x y z метров (удобно с телефона)
-//    /mo rot x y z     — повернуть на x y z градусов
-//    /mo here          — перенести объект к себе под ноги
-//    /mo copy [№]      — копия рядом   /mo del [№] — удалить
-//    /mo near          — объекты рядом с номерами
-//    /mo remove [радиус] — убрать стандартные здания GTA вокруг себя
-//    /mo unremove      — отменить последнее удаление зданий (видно после перезахода)
-//    /mo export        — выгрузить карту в scriptfiles/map_export.txt
-//  Перекраска объектов (текстуры, цвет, надписи) — /mt, см. textures.inc
-//  /mo без параметров — справка.
+//  РњР°РїРїРёРЅРі (СЃРІРѕРё РѕР±СЉРµРєС‚С‹ РЅР° РєР°СЂС‚Рµ, С…СЂР°РЅСЏС‚СЃСЏ РІ С‚Р°Р±Р»РёС†Рµ map_objects):
+//    /mo new [РјРѕРґРµР»СЊ]  вЂ” РїРѕСЃС‚Р°РІРёС‚СЊ РѕР±СЉРµРєС‚ РїРµСЂРµРґ СЃРѕР±РѕР№ Рё СЃСЂР°Р·Сѓ РґРІРёРіР°С‚СЊ
+//    /mo sel           вЂ” РІС‹Р±СЂР°С‚СЊ РѕР±СЉРµРєС‚ РјС‹С€СЊСЋ (РџРљ)
+//    /mo edit [в„–]      вЂ” РґРІРёРіР°С‚СЊ РѕР±СЉРµРєС‚ РјС‹С€СЊСЋ (Р±РµР· РЅРѕРјРµСЂР° вЂ” Р±Р»РёР¶Р°Р№С€РёР№)
+//    /mo move x y z    вЂ” СЃРґРІРёРЅСѓС‚СЊ РЅР° x y z РјРµС‚СЂРѕРІ (СѓРґРѕР±РЅРѕ СЃ С‚РµР»РµС„РѕРЅР°)
+//    /mo rot x y z     вЂ” РїРѕРІРµСЂРЅСѓС‚СЊ РЅР° x y z РіСЂР°РґСѓСЃРѕРІ
+//    /mo here          вЂ” РїРµСЂРµРЅРµСЃС‚Рё РѕР±СЉРµРєС‚ Рє СЃРµР±Рµ РїРѕРґ РЅРѕРіРё
+//    /mo copy [в„–]      вЂ” РєРѕРїРёСЏ СЂСЏРґРѕРј   /mo del [в„–] вЂ” СѓРґР°Р»РёС‚СЊ
+//    /mo near          вЂ” РѕР±СЉРµРєС‚С‹ СЂСЏРґРѕРј СЃ РЅРѕРјРµСЂР°РјРё
+//    /mo remove [СЂР°РґРёСѓСЃ] вЂ” СѓР±СЂР°С‚СЊ СЃС‚Р°РЅРґР°СЂС‚РЅС‹Рµ Р·РґР°РЅРёСЏ GTA РІРѕРєСЂСѓРі СЃРµР±СЏ
+//    /mo unremove      вЂ” РѕС‚РјРµРЅРёС‚СЊ РїРѕСЃР»РµРґРЅРµРµ СѓРґР°Р»РµРЅРёРµ Р·РґР°РЅРёР№ (РІРёРґРЅРѕ РїРѕСЃР»Рµ РїРµСЂРµР·Р°С…РѕРґР°)
+//    /mo export        вЂ” РІС‹РіСЂСѓР·РёС‚СЊ РєР°СЂС‚Сѓ РІ scriptfiles/map_export.txt
+//  РџРµСЂРµРєСЂР°СЃРєР° РѕР±СЉРµРєС‚РѕРІ (С‚РµРєСЃС‚СѓСЂС‹, С†РІРµС‚, РЅР°РґРїРёСЃРё) вЂ” /mt, СЃРј. textures.inc
+//  /mo Р±РµР· РїР°СЂР°РјРµС‚СЂРѕРІ вЂ” СЃРїСЂР°РІРєР°.
 // =====================================================================
 
 #define DEV_LEVEL           4
@@ -47,13 +47,13 @@ enum E_MAP_REMOVAL
 static gMapRemoval[MAX_MAP_REMOVALS][E_MAP_REMOVAL];
 static gMapRemovalCount = 0;
 
-static gEditSlot[MAX_PLAYERS] = { -1, ... };    // объект, который игрок сейчас двигает
+static gEditSlot[MAX_PLAYERS] = { -1, ... };    // РѕР±СЉРµРєС‚, РєРѕС‚РѕСЂС‹Р№ РёРіСЂРѕРє СЃРµР№С‡Р°СЃ РґРІРёРіР°РµС‚
 static bool:gDevHud[MAX_PLAYERS];
 static PlayerText:gDevTD[MAX_PLAYERS] = { INVALID_PLAYER_TEXT_DRAW, ... };
-static gPointList[MAX_PLAYERS][40];             // строка окна -> id точки
+static gPointList[MAX_PLAYERS][40];             // СЃС‚СЂРѕРєР° РѕРєРЅР° -> id С‚РѕС‡РєРё
 
 // ---------------------------------------------------------------------
-//  Запуск
+//  Р—Р°РїСѓСЃРє
 // ---------------------------------------------------------------------
 stock Dev_Init()
 {
@@ -98,11 +98,11 @@ stock Dev_Init()
 		DB_FreeResultSet(r);
 	}
 	printf("[Dev] Map: %d objects, %d removed buildings.", gMapCount, gMapRemovalCount);
-	Tex_Init();           // перекраска объектов (textures.inc)
+	Tex_Init();           // РїРµСЂРµРєСЂР°СЃРєР° РѕР±СЉРµРєС‚РѕРІ (textures.inc)
 	SetTimer("Dev_HudTimer", 500, true);
 }
 
-// Из OnPlayerConnect: убрать удалённые здания GTA
+// РР· OnPlayerConnect: СѓР±СЂР°С‚СЊ СѓРґР°Р»С‘РЅРЅС‹Рµ Р·РґР°РЅРёСЏ GTA
 stock Dev_OnConnect(playerid)
 {
 	gEditSlot[playerid] = -1;
@@ -120,7 +120,7 @@ static bool:Dev_Check(playerid)
 }
 
 // ---------------------------------------------------------------------
-//  Координаты
+//  РљРѕРѕСЂРґРёРЅР°С‚С‹
 // ---------------------------------------------------------------------
 static Dev_GetPos(playerid, &Float:x, &Float:y, &Float:z, &Float:a)
 {
@@ -147,11 +147,11 @@ stock bool:Cmd_Pos(playerid, const params[])
 	while (params[pos] == ' ') pos++;
 	strmid(name, params[pos], 0, sizeof name - 1);
 
-	if (v != 0) SendClientMessage(playerid, COLOR_YELLOW, "Машина (модель %d): %.2f, %.2f, %.2f  угол %.1f  инт %d  мир %d", GetVehicleModel(v), x, y, z, a, interior, world);
-	else SendClientMessage(playerid, COLOR_YELLOW, "Позиция: %.2f, %.2f, %.2f  угол %.1f  инт %d  мир %d", x, y, z, a, interior, world);
+	if (v != 0) SendClientMessage(playerid, COLOR_YELLOW, "РњР°С€РёРЅР° (РјРѕРґРµР»СЊ %d): %.2f, %.2f, %.2f  СѓРіРѕР» %.1f  РёРЅС‚ %d  РјРёСЂ %d", GetVehicleModel(v), x, y, z, a, interior, world);
+	else SendClientMessage(playerid, COLOR_YELLOW, "РџРѕР·РёС†РёСЏ: %.2f, %.2f, %.2f  СѓРіРѕР» %.1f  РёРЅС‚ %d  РјРёСЂ %d", x, y, z, a, interior, world);
 	if (name[0] == '\0')
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Сохранить с названием: /pos [название], например /pos ферма_штаб");
+		SendClientMessage(playerid, COLOR_GREY, "РЎРѕС…СЂР°РЅРёС‚СЊ СЃ РЅР°Р·РІР°РЅРёРµРј: /pos [РЅР°Р·РІР°РЅРёРµ], РЅР°РїСЂРёРјРµСЂ /pos С„РµСЂРјР°_С€С‚Р°Р±");
 		return true;
 	}
 
@@ -161,15 +161,15 @@ stock bool:Cmd_Pos(playerid, const params[])
 		name, x, y, z, a, interior, world, author, gettime()));
 
 	new line[160];
-	if (v != 0) format(line, sizeof line, "%s: %.2f, %.2f, %.2f, %.1f (инт %d, мир %d) машина\r\n", name, x, y, z, a, interior, world);
-	else format(line, sizeof line, "%s: %.2f, %.2f, %.2f, %.1f (инт %d, мир %d)\r\n", name, x, y, z, a, interior, world);
+	if (v != 0) format(line, sizeof line, "%s: %.2f, %.2f, %.2f, %.1f (РёРЅС‚ %d, РјРёСЂ %d) РјР°С€РёРЅР°\r\n", name, x, y, z, a, interior, world);
+	else format(line, sizeof line, "%s: %.2f, %.2f, %.2f, %.1f (РёРЅС‚ %d, РјРёСЂ %d)\r\n", name, x, y, z, a, interior, world);
 	new File:f = fopen(DEV_POINTS_FILE, io_append);
 	if (f)
 	{
 		fwrite(f, line);
 		fclose(f);
 	}
-	SendClientMessage(playerid, COLOR_GREEN, "Точка «%s» сохранена. Все точки: /points и файл scriptfiles/%s", name, DEV_POINTS_FILE);
+	SendClientMessage(playerid, COLOR_GREEN, "РўРѕС‡РєР° В«%sВ» СЃРѕС…СЂР°РЅРµРЅР°. Р’СЃРµ С‚РѕС‡РєРё: /points Рё С„Р°Р№Р» scriptfiles/%s", name, DEV_POINTS_FILE);
 	return true;
 }
 
@@ -182,9 +182,9 @@ stock bool:Cmd_Points(playerid)
 	if (rows == 0)
 	{
 		DB_FreeResultSet(r);
-		return SendClientMessage(playerid, COLOR_GREY, "Точек пока нет. Сохранить: /pos [название]");
+		return SendClientMessage(playerid, COLOR_GREY, "РўРѕС‡РµРє РїРѕРєР° РЅРµС‚. РЎРѕС…СЂР°РЅРёС‚СЊ: /pos [РЅР°Р·РІР°РЅРёРµ]");
 	}
-	new list[2400] = "Название\tКоординаты\n", line[96], name[32];
+	new list[2400] = "РќР°Р·РІР°РЅРёРµ\tРљРѕРѕСЂРґРёРЅР°С‚С‹\n", line[96], name[32];
 	for (new i = 0; i < rows; i++)
 	{
 		gPointList[playerid][i] = DB_GetFieldInt(r, 0);
@@ -194,7 +194,7 @@ stock bool:Cmd_Points(playerid)
 		DB_SelectNextRow(r);
 	}
 	DB_FreeResultSet(r);
-	ShowPlayerDialog(playerid, DIALOG_DEV_POINTS, DIALOG_STYLE_TABLIST_HEADERS, "Точки (выбери — телепорт)", "%s", "Туда", "Закрыть", list);
+	ShowPlayerDialog(playerid, DIALOG_DEV_POINTS, DIALOG_STYLE_TABLIST_HEADERS, "РўРѕС‡РєРё (РІС‹Р±РµСЂРё вЂ” С‚РµР»РµРїРѕСЂС‚)", "%s", "РўСѓРґР°", "Р—Р°РєСЂС‹С‚СЊ", list);
 	return true;
 }
 
@@ -202,13 +202,13 @@ stock bool:Cmd_DelPoint(playerid, const params[])
 {
 	if (!Dev_Check(playerid)) return true;
 	new pos = 0, name[32];
-	if (!NextParam(params, pos, name)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /delpoint [название]");
+	if (!NextParam(params, pos, name)) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /delpoint [РЅР°Р·РІР°РЅРёРµ]");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM dev_points WHERE name = '%q'", name));
-	SendClientMessage(playerid, COLOR_WHITE, "Точка «%s» удалена из списка (в файле строка остаётся).", name);
+	SendClientMessage(playerid, COLOR_WHITE, "РўРѕС‡РєР° В«%sВ» СѓРґР°Р»РµРЅР° РёР· СЃРїРёСЃРєР° (РІ С„Р°Р№Р»Рµ СЃС‚СЂРѕРєР° РѕСЃС‚Р°С‘С‚СЃСЏ).", name);
 	return true;
 }
 
-// Живые координаты на экране
+// Р–РёРІС‹Рµ РєРѕРѕСЂРґРёРЅР°С‚С‹ РЅР° СЌРєСЂР°РЅРµ
 stock bool:Cmd_Dev(playerid)
 {
 	if (!Dev_Check(playerid)) return true;
@@ -222,13 +222,13 @@ stock bool:Cmd_Dev(playerid)
 		PlayerTextDrawColour(playerid, gDevTD[playerid], 0xFFFF66FF);
 		PlayerTextDrawSetOutline(playerid, gDevTD[playerid], 1);
 		PlayerTextDrawShow(playerid, gDevTD[playerid]);
-		SendClientMessage(playerid, COLOR_GREEN, "Координаты на экране включены. Выключить: /dev. Справка по маппингу: /mo");
+		SendClientMessage(playerid, COLOR_GREEN, "РљРѕРѕСЂРґРёРЅР°С‚С‹ РЅР° СЌРєСЂР°РЅРµ РІРєР»СЋС‡РµРЅС‹. Р’С‹РєР»СЋС‡РёС‚СЊ: /dev. РЎРїСЂР°РІРєР° РїРѕ РјР°РїРїРёРЅРіСѓ: /mo");
 	}
 	else
 	{
 		if (gDevTD[playerid] != INVALID_PLAYER_TEXT_DRAW) PlayerTextDrawDestroy(playerid, gDevTD[playerid]);
 		gDevTD[playerid] = INVALID_PLAYER_TEXT_DRAW;
-		SendClientMessage(playerid, COLOR_WHITE, "Координаты на экране выключены.");
+		SendClientMessage(playerid, COLOR_WHITE, "РљРѕРѕСЂРґРёРЅР°С‚С‹ РЅР° СЌРєСЂР°РЅРµ РІС‹РєР»СЋС‡РµРЅС‹.");
 	}
 	return true;
 }
@@ -248,7 +248,7 @@ public Dev_HudTimer()
 }
 
 // ---------------------------------------------------------------------
-//  Маппинг
+//  РњР°РїРїРёРЅРі
 // ---------------------------------------------------------------------
 static Map_SlotByObject(objectid)
 {
@@ -259,7 +259,7 @@ static Map_SlotByObject(objectid)
 	return -1;
 }
 
-// Для textures.inc
+// Р”Р»СЏ textures.inc
 stock Map_Count() return gMapCount;
 stock Map_ObjectOf(s) return gMapObj[s];
 stock Map_DbIdOf(s) return gMapDbId[s];
@@ -273,14 +273,14 @@ stock Map_ObjectByDbId(dbid)
 	return INVALID_OBJECT_ID;
 }
 
-// Объект, который игрок двигает, или ближайший в 30 м
+// РћР±СЉРµРєС‚, РєРѕС‚РѕСЂС‹Р№ РёРіСЂРѕРє РґРІРёРіР°РµС‚, РёР»Рё Р±Р»РёР¶Р°Р№С€РёР№ РІ 30 Рј
 stock Map_SelectedSlot(playerid)
 {
 	new pos = 0;
 	return Map_PickSlot(playerid, "", pos);
 }
 
-// Пересоздать объект на том же месте (перекраску в SA-MP не снять иначе)
+// РџРµСЂРµСЃРѕР·РґР°С‚СЊ РѕР±СЉРµРєС‚ РЅР° С‚РѕРј Р¶Рµ РјРµСЃС‚Рµ (РїРµСЂРµРєСЂР°СЃРєСѓ РІ SA-MP РЅРµ СЃРЅСЏС‚СЊ РёРЅР°С‡Рµ)
 stock Map_Rebuild(s)
 {
 	new Float:x, Float:y, Float:z, Float:rx, Float:ry, Float:rz;
@@ -295,7 +295,7 @@ stock Map_Rebuild(s)
 	return 1;
 }
 
-// Номер из параметра (как в /mo near, с 1) или ближайший объект в 30 м
+// РќРѕРјРµСЂ РёР· РїР°СЂР°РјРµС‚СЂР° (РєР°Рє РІ /mo near, СЃ 1) РёР»Рё Р±Р»РёР¶Р°Р№С€РёР№ РѕР±СЉРµРєС‚ РІ 30 Рј
 static Map_PickSlot(playerid, const params[], &pos)
 {
 	new num;
@@ -345,24 +345,24 @@ static Map_StartEdit(playerid, s)
 {
 	gEditSlot[playerid] = s;
 	BeginObjectEditing(playerid, gMapObj[s]);
-	SendClientMessage(playerid, COLOR_WHITE, "Объект №%d (модель %d). Двигай мышью, дискета — сохранить, ESC — отмена. С телефона: /mo move /mo rot",
+	SendClientMessage(playerid, COLOR_WHITE, "РћР±СЉРµРєС‚ в„–%d (РјРѕРґРµР»СЊ %d). Р”РІРёРіР°Р№ РјС‹С€СЊСЋ, РґРёСЃРєРµС‚Р° вЂ” СЃРѕС…СЂР°РЅРёС‚СЊ, ESC вЂ” РѕС‚РјРµРЅР°. РЎ С‚РµР»РµС„РѕРЅР°: /mo move /mo rot",
 		s + 1, GetObjectModel(gMapObj[s]));
 }
 
 static Map_Help(playerid)
 {
 	new text[1400];
-	strcat(text, "{FFFF00}Координаты\n{FFFFFF}/pos — где я   /pos [название] — сохранить точку (файл scriptfiles/bastion_points.txt)\n");
-	strcat(text, "/points — список точек   /delpoint [название]   /dev — координаты на экране\n\n");
-	strcat(text, "{FFFF00}Объекты\n{FFFFFF}/mo new [модель] — поставить перед собой   /mo sel — выбрать мышью\n");
-	strcat(text, "/mo edit [№] — двигать мышью   /mo move x y z — сдвинуть   /mo rot x y z — повернуть\n");
-	strcat(text, "/mo here — к себе под ноги   /mo copy [№] — копия   /mo del [№] — удалить   /mo near — что рядом\n\n");
-	strcat(text, "{FFFF00}Здания GTA и выгрузка\n{FFFFFF}/mo remove [радиус] — убрать здания вокруг   /mo unremove — вернуть последние\n");
-	strcat(text, "/mo export — выгрузить карту в scriptfiles/map_export.txt\n\n");
-	strcat(text, "{FFFF00}Перекраска\n{FFFFFF}/mt — текстуры, цвет и надписи на объекте (справка: /mt help)\n\n");
-	strcat(text, "{FFFF00}Маркеры и GPS\n{FFFFFF}/markers (/mk) — у маркера: перенести, вид, значок на карте, раздел GPS; вдали — своё место или список всех\n\n");
-	strcat(text, "{AFAFAF}Без номера команда берёт объект, который ты сейчас двигаешь, или ближайший.\nМодели объектов: dev.prineside.com/ru/gtasa_samp_model_id/");
-	ShowPlayerDialog(playerid, DIALOG_DEV_HELP, DIALOG_STYLE_MSGBOX, "Разработка в игре", "%s", "Закрыть", "", text);
+	strcat(text, "{FFFF00}РљРѕРѕСЂРґРёРЅР°С‚С‹\n{FFFFFF}/pos вЂ” РіРґРµ СЏ   /pos [РЅР°Р·РІР°РЅРёРµ] вЂ” СЃРѕС…СЂР°РЅРёС‚СЊ С‚РѕС‡РєСѓ (С„Р°Р№Р» scriptfiles/bastion_points.txt)\n");
+	strcat(text, "/points вЂ” СЃРїРёСЃРѕРє С‚РѕС‡РµРє   /delpoint [РЅР°Р·РІР°РЅРёРµ]   /dev вЂ” РєРѕРѕСЂРґРёРЅР°С‚С‹ РЅР° СЌРєСЂР°РЅРµ\n\n");
+	strcat(text, "{FFFF00}РћР±СЉРµРєС‚С‹\n{FFFFFF}/mo new [РјРѕРґРµР»СЊ] вЂ” РїРѕСЃС‚Р°РІРёС‚СЊ РїРµСЂРµРґ СЃРѕР±РѕР№   /mo sel вЂ” РІС‹Р±СЂР°С‚СЊ РјС‹С€СЊСЋ\n");
+	strcat(text, "/mo edit [в„–] вЂ” РґРІРёРіР°С‚СЊ РјС‹С€СЊСЋ   /mo move x y z вЂ” СЃРґРІРёРЅСѓС‚СЊ   /mo rot x y z вЂ” РїРѕРІРµСЂРЅСѓС‚СЊ\n");
+	strcat(text, "/mo here вЂ” Рє СЃРµР±Рµ РїРѕРґ РЅРѕРіРё   /mo copy [в„–] вЂ” РєРѕРїРёСЏ   /mo del [в„–] вЂ” СѓРґР°Р»РёС‚СЊ   /mo near вЂ” С‡С‚Рѕ СЂСЏРґРѕРј\n\n");
+	strcat(text, "{FFFF00}Р—РґР°РЅРёСЏ GTA Рё РІС‹РіСЂСѓР·РєР°\n{FFFFFF}/mo remove [СЂР°РґРёСѓСЃ] вЂ” СѓР±СЂР°С‚СЊ Р·РґР°РЅРёСЏ РІРѕРєСЂСѓРі   /mo unremove вЂ” РІРµСЂРЅСѓС‚СЊ РїРѕСЃР»РµРґРЅРёРµ\n");
+	strcat(text, "/mo export вЂ” РІС‹РіСЂСѓР·РёС‚СЊ РєР°СЂС‚Сѓ РІ scriptfiles/map_export.txt\n\n");
+	strcat(text, "{FFFF00}РџРµСЂРµРєСЂР°СЃРєР°\n{FFFFFF}/mt вЂ” С‚РµРєСЃС‚СѓСЂС‹, С†РІРµС‚ Рё РЅР°РґРїРёСЃРё РЅР° РѕР±СЉРµРєС‚Рµ (СЃРїСЂР°РІРєР°: /mt help)\n\n");
+	strcat(text, "{FFFF00}РњР°СЂРєРµСЂС‹ Рё GPS\n{FFFFFF}/markers (/mk) вЂ” Сѓ РјР°СЂРєРµСЂР°: РїРµСЂРµРЅРµСЃС‚Рё, РІРёРґ, Р·РЅР°С‡РѕРє РЅР° РєР°СЂС‚Рµ, СЂР°Р·РґРµР» GPS; РІРґР°Р»Рё вЂ” СЃРІРѕС‘ РјРµСЃС‚Рѕ РёР»Рё СЃРїРёСЃРѕРє РІСЃРµС…\n\n");
+	strcat(text, "{AFAFAF}Р‘РµР· РЅРѕРјРµСЂР° РєРѕРјР°РЅРґР° Р±РµСЂС‘С‚ РѕР±СЉРµРєС‚, РєРѕС‚РѕСЂС‹Р№ С‚С‹ СЃРµР№С‡Р°СЃ РґРІРёРіР°РµС€СЊ, РёР»Рё Р±Р»РёР¶Р°Р№С€РёР№.\nРњРѕРґРµР»Рё РѕР±СЉРµРєС‚РѕРІ: dev.prineside.com/ru/gtasa_samp_model_id/");
+	ShowPlayerDialog(playerid, DIALOG_DEV_HELP, DIALOG_STYLE_MSGBOX, "Р Р°Р·СЂР°Р±РѕС‚РєР° РІ РёРіСЂРµ", "%s", "Р—Р°РєСЂС‹С‚СЊ", "", text);
 }
 
 stock bool:Cmd_Mo(playerid, const params[])
@@ -379,14 +379,14 @@ stock bool:Cmd_Mo(playerid, const params[])
 	{
 		new model;
 		if (!NextIntParam(params, pos, model) || model < 300 || model > 20000)
-			return SendClientMessage(playerid, COLOR_GREY, "Использование: /mo new [модель], например /mo new 1225 (бочка)");
+			return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /mo new [РјРѕРґРµР»СЊ], РЅР°РїСЂРёРјРµСЂ /mo new 1225 (Р±РѕС‡РєР°)");
 		new Float:x, Float:y, Float:z, Float:a;
 		GetPlayerPos(playerid, x, y, z);
 		GetPlayerFacingAngle(playerid, a);
 		x += 3.0 * -floatsin(a, degrees);
 		y += 3.0 * floatcos(a, degrees);
 		new s = Map_Create(model, x, y, z, 0.0, 0.0, a);
-		if (s == -1) return SendClientMessage(playerid, COLOR_RED, "Не удалось создать объект (неверная модель или лимит %d).", MAX_MAP_OBJECTS);
+		if (s == -1) return SendClientMessage(playerid, COLOR_RED, "РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ РѕР±СЉРµРєС‚ (РЅРµРІРµСЂРЅР°СЏ РјРѕРґРµР»СЊ РёР»Рё Р»РёРјРёС‚ %d).", MAX_MAP_OBJECTS);
 		Admin_Log(playerid, "mo new", INVALID_PLAYER_ID, "", model);
 		Map_StartEdit(playerid, s);
 		return true;
@@ -394,29 +394,29 @@ stock bool:Cmd_Mo(playerid, const params[])
 	if (!strcmp(sub, "sel", true))
 	{
 		BeginObjectSelecting(playerid);
-		return SendClientMessage(playerid, COLOR_WHITE, "Кликни по объекту мышью. ESC — отмена.");
+		return SendClientMessage(playerid, COLOR_WHITE, "РљР»РёРєРЅРё РїРѕ РѕР±СЉРµРєС‚Сѓ РјС‹С€СЊСЋ. ESC вЂ” РѕС‚РјРµРЅР°.");
 	}
 	if (!strcmp(sub, "near", true))
 	{
 		new Float:x, Float:y, Float:z, found = 0;
-		SendClientMessage(playerid, COLOR_YELLOW, "Объекты в 50 м:");
+		SendClientMessage(playerid, COLOR_YELLOW, "РћР±СЉРµРєС‚С‹ РІ 50 Рј:");
 		for (new s = 0; s < gMapCount && found < 15; s++)
 		{
 			GetObjectPos(gMapObj[s], x, y, z);
 			new Float:d = GetPlayerDistanceFromPoint(playerid, x, y, z);
 			if (d > 50.0) continue;
-			SendClientMessage(playerid, COLOR_WHITE, " №%d — модель %d, %.0f м", s + 1, GetObjectModel(gMapObj[s]), d);
+			SendClientMessage(playerid, COLOR_WHITE, " в„–%d вЂ” РјРѕРґРµР»СЊ %d, %.0f Рј", s + 1, GetObjectModel(gMapObj[s]), d);
 			found++;
 		}
-		if (found == 0) SendClientMessage(playerid, COLOR_GREY, " Рядом нет объектов.");
+		if (found == 0) SendClientMessage(playerid, COLOR_GREY, " Р СЏРґРѕРј РЅРµС‚ РѕР±СЉРµРєС‚РѕРІ.");
 		return true;
 	}
 	if (!strcmp(sub, "remove", true))
 	{
 		new radius = 10;
 		NextIntParam(params, pos, radius);
-		if (radius < 1 || radius > 200) return SendClientMessage(playerid, COLOR_GREY, "Радиус от 1 до 200 метров.");
-		if (gMapRemovalCount >= MAX_MAP_REMOVALS) return SendClientMessage(playerid, COLOR_GREY, "Достигнут лимит удалений (%d).", MAX_MAP_REMOVALS);
+		if (radius < 1 || radius > 200) return SendClientMessage(playerid, COLOR_GREY, "Р Р°РґРёСѓСЃ РѕС‚ 1 РґРѕ 200 РјРµС‚СЂРѕРІ.");
+		if (gMapRemovalCount >= MAX_MAP_REMOVALS) return SendClientMessage(playerid, COLOR_GREY, "Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ СѓРґР°Р»РµРЅРёР№ (%d).", MAX_MAP_REMOVALS);
 		new Float:x, Float:y, Float:z;
 		GetPlayerPos(playerid, x, y, z);
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO map_removals (model, x, y, z, radius) VALUES (-1, %f, %f, %f, %f)", x, y, z, float(radius)));
@@ -432,15 +432,15 @@ stock bool:Cmd_Mo(playerid, const params[])
 			if (IsPlayerConnected(i)) RemoveBuildingForPlayer(i, -1, x, y, z, float(radius));
 		}
 		Admin_Log(playerid, "mo remove", INVALID_PLAYER_ID, "", radius);
-		return SendClientMessage(playerid, COLOR_GREEN, "Здания GTA в радиусе %d м убраны для всех. Отменить: /mo unremove", radius);
+		return SendClientMessage(playerid, COLOR_GREEN, "Р—РґР°РЅРёСЏ GTA РІ СЂР°РґРёСѓСЃРµ %d Рј СѓР±СЂР°РЅС‹ РґР»СЏ РІСЃРµС…. РћС‚РјРµРЅРёС‚СЊ: /mo unremove", radius);
 	}
 	if (!strcmp(sub, "unremove", true))
 	{
-		if (gMapRemovalCount == 0) return SendClientMessage(playerid, COLOR_GREY, "Удалений нет.");
+		if (gMapRemovalCount == 0) return SendClientMessage(playerid, COLOR_GREY, "РЈРґР°Р»РµРЅРёР№ РЅРµС‚.");
 		gMapRemovalCount--;
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM map_removals WHERE id = %d", gMapRemoval[gMapRemovalCount][mrDbId]));
 		Admin_Log(playerid, "mo unremove", INVALID_PLAYER_ID, "", 0);
-		return SendClientMessage(playerid, COLOR_WHITE, "Последнее удаление зданий отменено. Здания вернутся после перезахода в игру.");
+		return SendClientMessage(playerid, COLOR_WHITE, "РџРѕСЃР»РµРґРЅРµРµ СѓРґР°Р»РµРЅРёРµ Р·РґР°РЅРёР№ РѕС‚РјРµРЅРµРЅРѕ. Р—РґР°РЅРёСЏ РІРµСЂРЅСѓС‚СЃСЏ РїРѕСЃР»Рµ РїРµСЂРµР·Р°С…РѕРґР° РІ РёРіСЂСѓ.");
 	}
 	if (!strcmp(sub, "export", true))
 	{
@@ -448,9 +448,9 @@ stock bool:Cmd_Mo(playerid, const params[])
 		return true;
 	}
 
-	// Дальше — команды для одного объекта
+	// Р”Р°Р»СЊС€Рµ вЂ” РєРѕРјР°РЅРґС‹ РґР»СЏ РѕРґРЅРѕРіРѕ РѕР±СЉРµРєС‚Р°
 	new s = Map_PickSlot(playerid, params, pos);
-	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "Объект не найден. Номера объектов рядом: /mo near");
+	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "РћР±СЉРµРєС‚ РЅРµ РЅР°Р№РґРµРЅ. РќРѕРјРµСЂР° РѕР±СЉРµРєС‚РѕРІ СЂСЏРґРѕРј: /mo near");
 
 	if (!strcmp(sub, "edit", true))
 	{
@@ -462,7 +462,7 @@ stock bool:Cmd_Mo(playerid, const params[])
 		new Float:d[3], tmp[16];
 		for (new i = 0; i < 3; i++)
 		{
-			if (!NextParam(params, pos, tmp)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /mo %s x y z, например /mo %s 0 0 0.5", sub, sub);
+			if (!NextParam(params, pos, tmp)) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /mo %s x y z, РЅР°РїСЂРёРјРµСЂ /mo %s 0 0 0.5", sub, sub);
 			d[i] = floatstr(tmp);
 		}
 		new Float:x, Float:y, Float:z;
@@ -481,7 +481,7 @@ stock bool:Cmd_Mo(playerid, const params[])
 		GetObjectPos(gMapObj[s], x, y, z);
 		new Float:rx, Float:ry, Float:rz;
 		GetObjectRot(gMapObj[s], rx, ry, rz);
-		return SendClientMessage(playerid, COLOR_WHITE, "№%d: %.2f, %.2f, %.2f  поворот %.1f, %.1f, %.1f", s + 1, x, y, z, rx, ry, rz);
+		return SendClientMessage(playerid, COLOR_WHITE, "в„–%d: %.2f, %.2f, %.2f  РїРѕРІРѕСЂРѕС‚ %.1f, %.1f, %.1f", s + 1, x, y, z, rx, ry, rz);
 	}
 	if (!strcmp(sub, "here", true))
 	{
@@ -490,7 +490,7 @@ stock bool:Cmd_Mo(playerid, const params[])
 		SetObjectPos(gMapObj[s], x, y, z - 1.0);
 		Map_Save(s);
 		gEditSlot[playerid] = s;
-		return SendClientMessage(playerid, COLOR_WHITE, "Объект №%d перенесён к тебе. Отойди, чтобы не застрять.", s + 1);
+		return SendClientMessage(playerid, COLOR_WHITE, "РћР±СЉРµРєС‚ в„–%d РїРµСЂРµРЅРµСЃС‘РЅ Рє С‚РµР±Рµ. РћС‚РѕР№РґРё, С‡С‚РѕР±С‹ РЅРµ Р·Р°СЃС‚СЂСЏС‚СЊ.", s + 1);
 	}
 	if (!strcmp(sub, "copy", true))
 	{
@@ -498,7 +498,7 @@ stock bool:Cmd_Mo(playerid, const params[])
 		GetObjectPos(gMapObj[s], x, y, z);
 		GetObjectRot(gMapObj[s], rx, ry, rz);
 		new c = Map_Create(GetObjectModel(gMapObj[s]), x + 1.0, y, z, rx, ry, rz);
-		if (c == -1) return SendClientMessage(playerid, COLOR_RED, "Лимит объектов (%d).", MAX_MAP_OBJECTS);
+		if (c == -1) return SendClientMessage(playerid, COLOR_RED, "Р›РёРјРёС‚ РѕР±СЉРµРєС‚РѕРІ (%d).", MAX_MAP_OBJECTS);
 		Tex_OnMapCopy(gMapDbId[s], gMapDbId[c], gMapObj[c]);
 		Map_StartEdit(playerid, c);
 		return true;
@@ -510,7 +510,7 @@ stock bool:Cmd_Mo(playerid, const params[])
 		Tex_OnMapDelete(gMapDbId[s]);
 		DestroyObject(gMapObj[s]);
 		gMapCount--;
-		// последний объект на место удалённого (его номер меняется)
+		// РїРѕСЃР»РµРґРЅРёР№ РѕР±СЉРµРєС‚ РЅР° РјРµСЃС‚Рѕ СѓРґР°Р»С‘РЅРЅРѕРіРѕ (РµРіРѕ РЅРѕРјРµСЂ РјРµРЅСЏРµС‚СЃСЏ)
 		if (s != gMapCount)
 		{
 			gMapObj[s] = gMapObj[gMapCount];
@@ -522,7 +522,7 @@ stock bool:Cmd_Mo(playerid, const params[])
 			if (gEditSlot[i] == s || gEditSlot[i] == gMapCount) gEditSlot[i] = -1;
 		}
 		Admin_Log(playerid, "mo del", INVALID_PLAYER_ID, "", model);
-		return SendClientMessage(playerid, COLOR_WHITE, "Объект №%d (модель %d) удалён.", s + 1, model);
+		return SendClientMessage(playerid, COLOR_WHITE, "РћР±СЉРµРєС‚ в„–%d (РјРѕРґРµР»СЊ %d) СѓРґР°Р»С‘РЅ.", s + 1, model);
 	}
 	Map_Help(playerid);
 	return true;
@@ -533,7 +533,7 @@ static Map_Export(playerid)
 	new File:f = fopen(MAP_EXPORT_FILE, io_write);
 	if (!f)
 	{
-		SendClientMessage(playerid, COLOR_RED, "Не удалось создать файл scriptfiles/%s.", MAP_EXPORT_FILE);
+		SendClientMessage(playerid, COLOR_RED, "РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ С„Р°Р№Р» scriptfiles/%s.", MAP_EXPORT_FILE);
 		return 0;
 	}
 	new line[160], Float:x, Float:y, Float:z, Float:rx, Float:ry, Float:rz;
@@ -561,12 +561,12 @@ static Map_Export(playerid)
 		}
 	}
 	fclose(f);
-	SendClientMessage(playerid, COLOR_GREEN, "Выгружено: %d объектов и %d удалений зданий в scriptfiles/%s.", gMapCount, gMapRemovalCount, MAP_EXPORT_FILE);
+	SendClientMessage(playerid, COLOR_GREEN, "Р’С‹РіСЂСѓР¶РµРЅРѕ: %d РѕР±СЉРµРєС‚РѕРІ Рё %d СѓРґР°Р»РµРЅРёР№ Р·РґР°РЅРёР№ РІ scriptfiles/%s.", gMapCount, gMapRemovalCount, MAP_EXPORT_FILE);
 	return 1;
 }
 
 // ---------------------------------------------------------------------
-//  Колбэки (из rp.pwn)
+//  РљРѕР»Р±СЌРєРё (РёР· rp.pwn)
 // ---------------------------------------------------------------------
 stock Dev_OnEditObject(playerid, objectid, EDIT_RESPONSE:response, Float:x, Float:y, Float:z, Float:rx, Float:ry, Float:rz)
 {
@@ -577,11 +577,11 @@ stock Dev_OnEditObject(playerid, objectid, EDIT_RESPONSE:response, Float:x, Floa
 		SetObjectPos(objectid, x, y, z);
 		SetObjectRot(objectid, rx, ry, rz);
 		Map_Save(s);
-		SendClientMessage(playerid, COLOR_GREEN, "Объект №%d сохранён: %.2f, %.2f, %.2f  поворот %.1f, %.1f, %.1f", s + 1, x, y, z, rx, ry, rz);
+		SendClientMessage(playerid, COLOR_GREEN, "РћР±СЉРµРєС‚ в„–%d СЃРѕС…СЂР°РЅС‘РЅ: %.2f, %.2f, %.2f  РїРѕРІРѕСЂРѕС‚ %.1f, %.1f, %.1f", s + 1, x, y, z, rx, ry, rz);
 	}
 	else if (response == EDIT_RESPONSE_CANCEL)
 	{
-		// вернуть как было у всех (клиент мог сдвинуть объект у себя)
+		// РІРµСЂРЅСѓС‚СЊ РєР°Рє Р±С‹Р»Рѕ Сѓ РІСЃРµС… (РєР»РёРµРЅС‚ РјРѕРі СЃРґРІРёРЅСѓС‚СЊ РѕР±СЉРµРєС‚ Сѓ СЃРµР±СЏ)
 		new Float:ox, Float:oy, Float:oz, Float:orx, Float:ory, Float:orz;
 		GetObjectPos(objectid, ox, oy, oz);
 		GetObjectRot(objectid, orx, ory, orz);
@@ -598,7 +598,7 @@ stock Dev_OnSelectObject(playerid, SELECT_OBJECT:type, objectid)
 	if (s == -1)
 	{
 		EndObjectEditing(playerid);
-		SendClientMessage(playerid, COLOR_GREY, "Это не объект маппинга (стандартные здания убираются через /mo remove).");
+		SendClientMessage(playerid, COLOR_GREY, "Р­С‚Рѕ РЅРµ РѕР±СЉРµРєС‚ РјР°РїРїРёРЅРіР° (СЃС‚Р°РЅРґР°СЂС‚РЅС‹Рµ Р·РґР°РЅРёСЏ СѓР±РёСЂР°СЋС‚СЃСЏ С‡РµСЂРµР· /mo remove).");
 		return 1;
 	}
 	Map_StartEdit(playerid, s);

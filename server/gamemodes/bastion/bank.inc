@@ -1,49 +1,49 @@
 // =====================================================================
-//  bank.inc — банк и банкоматы.
+//  bank.inc вЂ” Р±Р°РЅРє Рё Р±Р°РЅРєРѕРјР°С‚С‹.
 //
-//  У каждого игрока есть банковский счёт. Номер счёта = номер аккаунта.
-//  Деньги на счёте в безопасности: их не теряешь при смерти, можно
-//  перевести другому игроку (даже если он не в сети) и снять в любом банкомате.
+//  РЈ РєР°Р¶РґРѕРіРѕ РёРіСЂРѕРєР° РµСЃС‚СЊ Р±Р°РЅРєРѕРІСЃРєРёР№ СЃС‡С‘С‚. РќРѕРјРµСЂ СЃС‡С‘С‚Р° = РЅРѕРјРµСЂ Р°РєРєР°СѓРЅС‚Р°.
+//  Р”РµРЅСЊРіРё РЅР° СЃС‡С‘С‚Рµ РІ Р±РµР·РѕРїР°СЃРЅРѕСЃС‚Рё: РёС… РЅРµ С‚РµСЂСЏРµС€СЊ РїСЂРё СЃРјРµСЂС‚Рё, РјРѕР¶РЅРѕ
+//  РїРµСЂРµРІРµСЃС‚Рё РґСЂСѓРіРѕРјСѓ РёРіСЂРѕРєСѓ (РґР°Р¶Рµ РµСЃР»Рё РѕРЅ РЅРµ РІ СЃРµС‚Рё) Рё СЃРЅСЏС‚СЊ РІ Р»СЋР±РѕРј Р±Р°РЅРєРѕРјР°С‚Рµ.
 //
-//  /bank (или /atm, или ALT) у банкомата — окно:
-//    баланс и номер счёта, положить, снять (с комиссией BANK_ATM_FEE_PCT),
-//    перевод игроку по id, перевод по номеру счёта, история операций.
-//  PayDay: зарплата приходит на счёт (PAYDAY_TO_BANK), на остаток
-//    начисляются проценты (BANK_INTEREST_PERMILLE, не больше BANK_INTEREST_MAX).
-//  Все операции пишутся в таблицу bank_log.
+//  /bank (РёР»Рё /atm, РёР»Рё ALT) Сѓ Р±Р°РЅРєРѕРјР°С‚Р° вЂ” РѕРєРЅРѕ:
+//    Р±Р°Р»Р°РЅСЃ Рё РЅРѕРјРµСЂ СЃС‡С‘С‚Р°, РїРѕР»РѕР¶РёС‚СЊ, СЃРЅСЏС‚СЊ (СЃ РєРѕРјРёСЃСЃРёРµР№ BANK_ATM_FEE_PCT),
+//    РїРµСЂРµРІРѕРґ РёРіСЂРѕРєСѓ РїРѕ id, РїРµСЂРµРІРѕРґ РїРѕ РЅРѕРјРµСЂСѓ СЃС‡С‘С‚Р°, РёСЃС‚РѕСЂРёСЏ РѕРїРµСЂР°С†РёР№.
+//  PayDay: Р·Р°СЂРїР»Р°С‚Р° РїСЂРёС…РѕРґРёС‚ РЅР° СЃС‡С‘С‚ (PAYDAY_TO_BANK), РЅР° РѕСЃС‚Р°С‚РѕРє
+//    РЅР°С‡РёСЃР»СЏСЋС‚СЃСЏ РїСЂРѕС†РµРЅС‚С‹ (BANK_INTEREST_PERMILLE, РЅРµ Р±РѕР»СЊС€Рµ BANK_INTEREST_MAX).
+//  Р’СЃРµ РѕРїРµСЂР°С†РёРё РїРёС€СѓС‚СЃСЏ РІ С‚Р°Р±Р»РёС†Сѓ bank_log.
 //
-//  Админы (4+): /addatm — банкомат там, где стоишь (аппарат появится
-//  перед тобой), /delatm — удалить ближайший.
+//  РђРґРјРёРЅС‹ (4+): /addatm вЂ” Р±Р°РЅРєРѕРјР°С‚ С‚Р°Рј, РіРґРµ СЃС‚РѕРёС€СЊ (Р°РїРїР°СЂР°С‚ РїРѕСЏРІРёС‚СЃСЏ
+//  РїРµСЂРµРґ С‚РѕР±РѕР№), /delatm вЂ” СѓРґР°Р»РёС‚СЊ Р±Р»РёР¶Р°Р№С€РёР№.
 // =====================================================================
 
 #define MAX_ATMS            50
 #define ATM_RANGE           2.5
-#define ATM_OBJECT_MODEL    19324       // модель банкомата
+#define ATM_OBJECT_MODEL    19324       // РјРѕРґРµР»СЊ Р±Р°РЅРєРѕРјР°С‚Р°
 #define BANK_HISTORY_ROWS   10
 
-// Типы записей в bank_log
+// РўРёРїС‹ Р·Р°РїРёСЃРµР№ РІ bank_log
 enum
 {
 	BANKLOG_NONE,
-	BANKLOG_DEPOSIT,        // положил наличные
-	BANKLOG_WITHDRAW,       // снял наличные
-	BANKLOG_TRANSFER_OUT,   // перевёл другому
-	BANKLOG_TRANSFER_IN,    // получил перевод
-	BANKLOG_SALARY,         // зарплата (PayDay)
-	BANKLOG_INTEREST,       // проценты на остаток
-	BANKLOG_FEE             // комиссия
+	BANKLOG_DEPOSIT,        // РїРѕР»РѕР¶РёР» РЅР°Р»РёС‡РЅС‹Рµ
+	BANKLOG_WITHDRAW,       // СЃРЅСЏР» РЅР°Р»РёС‡РЅС‹Рµ
+	BANKLOG_TRANSFER_OUT,   // РїРµСЂРµРІС‘Р» РґСЂСѓРіРѕРјСѓ
+	BANKLOG_TRANSFER_IN,    // РїРѕР»СѓС‡РёР» РїРµСЂРµРІРѕРґ
+	BANKLOG_SALARY,         // Р·Р°СЂРїР»Р°С‚Р° (PayDay)
+	BANKLOG_INTEREST,       // РїСЂРѕС†РµРЅС‚С‹ РЅР° РѕСЃС‚Р°С‚РѕРє
+	BANKLOG_FEE             // РєРѕРјРёСЃСЃРёСЏ
 }
 
 static const gBankLogNames[][] =
 {
 	"-",
-	"Пополнение",
-	"Снятие",
-	"Перевод",
-	"Получен перевод",
-	"Зарплата",
-	"Проценты",
-	"Комиссия"
+	"РџРѕРїРѕР»РЅРµРЅРёРµ",
+	"РЎРЅСЏС‚РёРµ",
+	"РџРµСЂРµРІРѕРґ",
+	"РџРѕР»СѓС‡РµРЅ РїРµСЂРµРІРѕРґ",
+	"Р—Р°СЂРїР»Р°С‚Р°",
+	"РџСЂРѕС†РµРЅС‚С‹",
+	"РљРѕРјРёСЃСЃРёСЏ"
 };
 
 enum E_ATM
@@ -52,21 +52,21 @@ enum E_ATM
 	Float:aX,
 	Float:aY,
 	Float:aZ,
-	Float:aA,           // угол; меньше 0 — без объекта (только значок)
-	aMarker,           // маркер (markers.inc)
+	Float:aA,           // СѓРіРѕР»; РјРµРЅСЊС€Рµ 0 вЂ” Р±РµР· РѕР±СЉРµРєС‚Р° (С‚РѕР»СЊРєРѕ Р·РЅР°С‡РѕРє)
+	aMarker,           // РјР°СЂРєРµСЂ (markers.inc)
 	aObject
 }
 new Atm[MAX_ATMS][E_ATM];
 new gAtmCount = 0;
 
-// Банкоматы по умолчанию (координаты примерные, без объекта — значок $)
+// Р‘Р°РЅРєРѕРјР°С‚С‹ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ (РєРѕРѕСЂРґРёРЅР°С‚С‹ РїСЂРёРјРµСЂРЅС‹Рµ, Р±РµР· РѕР±СЉРµРєС‚Р° вЂ” Р·РЅР°С‡РѕРє $)
 static const Float:gAtmDefaults[][3] =
 {
-	{ 1462.0, -1011.0, 26.84 },     // банк, Commerce
-	{ 2501.0, -1683.0, 13.45 },     // Grove Street, у спавна
-	{ 1540.0, -1670.0, 13.55 },     // у LSPD
-	{ 1185.0, -1323.0, 13.57 },     // у больницы All Saints
-	{ 1940.6, -1772.7, 13.4 }       // заправка Idlewood
+	{ 1462.0, -1011.0, 26.84 },     // Р±Р°РЅРє, Commerce
+	{ 2501.0, -1683.0, 13.45 },     // Grove Street, Сѓ СЃРїР°РІРЅР°
+	{ 1540.0, -1670.0, 13.55 },     // Сѓ LSPD
+	{ 1185.0, -1323.0, 13.57 },     // Сѓ Р±РѕР»СЊРЅРёС†С‹ All Saints
+	{ 1940.6, -1772.7, 13.4 }       // Р·Р°РїСЂР°РІРєР° Idlewood
 };
 
 stock Atm_Create(dbid, Float:x, Float:y, Float:z, Float:a = -1.0)
@@ -79,11 +79,11 @@ stock Atm_Create(dbid, Float:x, Float:y, Float:z, Float:a = -1.0)
 	Atm[n][aZ] = z;
 	Atm[n][aA] = a;
 	Atm[n][aObject] = INVALID_OBJECT_ID;
-	// Без аппарата — значок $, с аппаратом — только надпись
+	// Р‘РµР· Р°РїРїР°СЂР°С‚Р° вЂ” Р·РЅР°С‡РѕРє $, СЃ Р°РїРїР°СЂР°С‚РѕРј вЂ” С‚РѕР»СЊРєРѕ РЅР°РґРїРёСЃСЊ
 	new model = 1274;
 	if (a >= 0.0) model = 0;
-	Atm[n][aMarker] = Marker_Create(MK_ATM, dbid, "Банкомат", model, Atm[n][aX], Atm[n][aY], Atm[n][aZ], 0, 0, GPS_ATM, (a >= 0.0) ? a : 0.0);
-	Marker_SetLabel(Atm[n][aMarker], "{33AA33}Банкомат\n{FFFFFF}ALT — открыть счёт");
+	Atm[n][aMarker] = Marker_Create(MK_ATM, dbid, "Р‘Р°РЅРєРѕРјР°С‚", model, Atm[n][aX], Atm[n][aY], Atm[n][aZ], 0, 0, GPS_ATM, (a >= 0.0) ? a : 0.0);
+	Marker_SetLabel(Atm[n][aMarker], "{33AA33}Р‘Р°РЅРєРѕРјР°С‚\n{FFFFFF}ALT вЂ” РѕС‚РєСЂС‹С‚СЊ СЃС‡С‘С‚");
 	if (a >= 0.0)
 	{
 		Atm[n][aA] = Marker_GetAngle(Atm[n][aMarker]);
@@ -92,7 +92,7 @@ stock Atm_Create(dbid, Float:x, Float:y, Float:z, Float:a = -1.0)
 	return n;
 }
 
-// Аппарат стоит в метре перед точкой, лицом к игроку
+// РђРїРїР°СЂР°С‚ СЃС‚РѕРёС‚ РІ РјРµС‚СЂРµ РїРµСЂРµРґ С‚РѕС‡РєРѕР№, Р»РёС†РѕРј Рє РёРіСЂРѕРєСѓ
 static Atm_BuildObject(n)
 {
 	if (Atm[n][aObject] != INVALID_OBJECT_ID) DestroyObject(Atm[n][aObject]);
@@ -109,7 +109,7 @@ stock Atm_Destroy(n)
 	Atm[n][aObject] = INVALID_OBJECT_ID;
 }
 
-// Админ перенёс маркер банкомата (/markers): аппарат встаёт перед новым местом
+// РђРґРјРёРЅ РїРµСЂРµРЅС‘СЃ РјР°СЂРєРµСЂ Р±Р°РЅРєРѕРјР°С‚Р° (/markers): Р°РїРїР°СЂР°С‚ РІСЃС‚Р°С‘С‚ РїРµСЂРµРґ РЅРѕРІС‹Рј РјРµСЃС‚РѕРј
 stock Atm_OnMarkerMoved(dbid, Float:x, Float:y, Float:z, Float:a)
 {
 	for (new n = 0; n < gAtmCount; n++)
@@ -170,10 +170,10 @@ stock Atm_GetNearby(playerid)
 }
 
 // ---------------------------------------------------------------------
-//  Счета
+//  РЎС‡РµС‚Р°
 // ---------------------------------------------------------------------
 
-// Записать операцию в историю
+// Р—Р°РїРёСЃР°С‚СЊ РѕРїРµСЂР°С†РёСЋ РІ РёСЃС‚РѕСЂРёСЋ
 stock Bank_Log(account, type, amount, other = 0)
 {
 	if (account <= 0) return;
@@ -181,15 +181,15 @@ stock Bank_Log(account, type, amount, other = 0)
 		account, type, amount, other, gettime()));
 }
 
-// Запись в общий журнал денег (economy.inc, /moneylog). cash — наличные на руках.
+// Р—Р°РїРёСЃСЊ РІ РѕР±С‰РёР№ Р¶СѓСЂРЅР°Р» РґРµРЅРµРі (economy.inc, /moneylog). cash вЂ” РЅР°Р»РёС‡РЅС‹Рµ РЅР° СЂСѓРєР°С….
 stock Bank_MoneyLog(account, amount, cash, const reason[])
 {
 	if (account <= 0 || amount == 0) return;
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO money_log (time, account, amount, cash, reason) VALUES (%d, %d, %d, %d, 'банк: %q')",
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO money_log (time, account, amount, cash, reason) VALUES (%d, %d, %d, %d, 'Р±Р°РЅРє: %q')",
 		gettime(), account, amount, cash, reason));
 }
 
-// Комиссия от суммы (в процентах), не меньше $1, если процент не 0
+// РљРѕРјРёСЃСЃРёСЏ РѕС‚ СЃСѓРјРјС‹ (РІ РїСЂРѕС†РµРЅС‚Р°С…), РЅРµ РјРµРЅСЊС€Рµ $1, РµСЃР»Рё РїСЂРѕС†РµРЅС‚ РЅРµ 0
 stock Bank_Fee(amount, pct)
 {
 	if (pct <= 0 || amount <= 0) return 0;
@@ -197,7 +197,7 @@ stock Bank_Fee(amount, pct)
 	return (fee < 1) ? 1 : fee;
 }
 
-// Игрок в сети с этим номером аккаунта, или INVALID_PLAYER_ID
+// РРіСЂРѕРє РІ СЃРµС‚Рё СЃ СЌС‚РёРј РЅРѕРјРµСЂРѕРј Р°РєРєР°СѓРЅС‚Р°, РёР»Рё INVALID_PLAYER_ID
 stock Bank_FindOnline(dbid)
 {
 	if (dbid <= 0) return INVALID_PLAYER_ID;
@@ -208,29 +208,29 @@ stock Bank_FindOnline(dbid)
 	return INVALID_PLAYER_ID;
 }
 
-// Зачислить на счёт игрока в сети (с проверкой лимита). true — получилось.
+// Р—Р°С‡РёСЃР»РёС‚СЊ РЅР° СЃС‡С‘С‚ РёРіСЂРѕРєР° РІ СЃРµС‚Рё (СЃ РїСЂРѕРІРµСЂРєРѕР№ Р»РёРјРёС‚Р°). true вЂ” РїРѕР»СѓС‡РёР»РѕСЃСЊ.
 stock bool:Bank_Credit(playerid, amount, type, other = 0)
 {
 	if (amount <= 0) return false;
 	if (Player[playerid][pBank] > BANK_MAX_BALANCE - amount) return false;
 	Player[playerid][pBank] += amount;
 	Bank_Log(Player[playerid][pDbId], type, amount, other);
-	if (type == BANKLOG_SALARY) Bank_MoneyLog(Player[playerid][pDbId], amount, Player[playerid][pMoney], "зарплата на счёт");
-	else if (type == BANKLOG_INTEREST) Bank_MoneyLog(Player[playerid][pDbId], amount, Player[playerid][pMoney], "проценты");
+	if (type == BANKLOG_SALARY) Bank_MoneyLog(Player[playerid][pDbId], amount, Player[playerid][pMoney], "Р·Р°СЂРїР»Р°С‚Р° РЅР° СЃС‡С‘С‚");
+	else if (type == BANKLOG_INTEREST) Bank_MoneyLog(Player[playerid][pDbId], amount, Player[playerid][pMoney], "РїСЂРѕС†РµРЅС‚С‹");
 	return true;
 }
 
-// Зарплата на PayDay (из rp.pwn). Идёт на счёт или наличными — см. PAYDAY_TO_BANK.
+// Р—Р°СЂРїР»Р°С‚Р° РЅР° PayDay (РёР· rp.pwn). РРґС‘С‚ РЅР° СЃС‡С‘С‚ РёР»Рё РЅР°Р»РёС‡РЅС‹РјРё вЂ” СЃРј. PAYDAY_TO_BANK.
 stock Bank_Salary(playerid, amount)
 {
 	if (amount <= 0) return;
 #if PAYDAY_TO_BANK
 	if (Bank_Credit(playerid, amount, BANKLOG_SALARY)) return;
 #endif
-	GiveMoney(playerid, amount, "зарплата (PayDay)");  // счёт переполнен или выключено — наличными
+	GiveMoney(playerid, amount, "Р·Р°СЂРїР»Р°С‚Р° (PayDay)");  // СЃС‡С‘С‚ РїРµСЂРµРїРѕР»РЅРµРЅ РёР»Рё РІС‹РєР»СЋС‡РµРЅРѕ вЂ” РЅР°Р»РёС‡РЅС‹РјРё
 }
 
-// Проценты на остаток (из PayDay, после зарплаты)
+// РџСЂРѕС†РµРЅС‚С‹ РЅР° РѕСЃС‚Р°С‚РѕРє (РёР· PayDay, РїРѕСЃР»Рµ Р·Р°СЂРїР»Р°С‚С‹)
 stock Bank_PayDay(playerid)
 {
 #if BANK_INTEREST_PERMILLE > 0
@@ -239,28 +239,28 @@ stock Bank_PayDay(playerid)
 		new interest = Player[playerid][pBank] / 1000 * BANK_INTEREST_PERMILLE;
 		if (interest > BANK_INTEREST_MAX) interest = BANK_INTEREST_MAX;
 		if (interest > 0 && Bank_Credit(playerid, interest, BANKLOG_INTEREST))
-			SendClientMessage(playerid, COLOR_WHITE, "Проценты по счёту: $%d.", interest);
+			SendClientMessage(playerid, COLOR_WHITE, "РџСЂРѕС†РµРЅС‚С‹ РїРѕ СЃС‡С‘С‚Сѓ: $%d.", interest);
 	}
 #endif
 #if PAYDAY_TO_BANK
-	SendClientMessage(playerid, COLOR_WHITE, "Зарплата зачислена на счёт. Баланс: $%d.", Player[playerid][pBank]);
+	SendClientMessage(playerid, COLOR_WHITE, "Р—Р°СЂРїР»Р°С‚Р° Р·Р°С‡РёСЃР»РµРЅР° РЅР° СЃС‡С‘С‚. Р‘Р°Р»Р°РЅСЃ: $%d.", Player[playerid][pBank]);
 #endif
 }
 
 // ---------------------------------------------------------------------
-//  Окна
+//  РћРєРЅР°
 // ---------------------------------------------------------------------
 stock Bank_ShowMenu(playerid)
 {
 	ShowPlayerDialog(playerid, DIALOG_BANK, DIALOG_STYLE_LIST, "Bastion Bank",
-		"Баланс и номер счёта\nПоложить деньги\nСнять деньги\nПеревести игроку (по id)\nПеревести по номеру счёта\nИстория операций\nОплатить налоги ($%d)\nОплатить штрафы ($%d)",
-		"Выбрать", "Закрыть", Debts_Get(playerid, DEBT_TAX), Debts_Get(playerid, DEBT_FINE));
+		"Р‘Р°Р»Р°РЅСЃ Рё РЅРѕРјРµСЂ СЃС‡С‘С‚Р°\nРџРѕР»РѕР¶РёС‚СЊ РґРµРЅСЊРіРё\nРЎРЅСЏС‚СЊ РґРµРЅСЊРіРё\nРџРµСЂРµРІРµСЃС‚Рё РёРіСЂРѕРєСѓ (РїРѕ id)\nРџРµСЂРµРІРµСЃС‚Рё РїРѕ РЅРѕРјРµСЂСѓ СЃС‡С‘С‚Р°\nРСЃС‚РѕСЂРёСЏ РѕРїРµСЂР°С†РёР№\nРћРїР»Р°С‚РёС‚СЊ РЅР°Р»РѕРіРё ($%d)\nРћРїР»Р°С‚РёС‚СЊ С€С‚СЂР°С„С‹ ($%d)",
+		"Р’С‹Р±СЂР°С‚СЊ", "Р—Р°РєСЂС‹С‚СЊ", Debts_Get(playerid, DEBT_TAX), Debts_Get(playerid, DEBT_FINE));
 }
 
 stock Bank_ShowHistory(playerid)
 {
 	new body[1024], line[96], name[MAX_PLAYER_NAME], when[16];
-	format(body, sizeof (body), "{FFFFFF}Счёт №%d. Баланс: {33AA33}$%d{FFFFFF}\n\n", Player[playerid][pDbId], Player[playerid][pBank]);
+	format(body, sizeof (body), "{FFFFFF}РЎС‡С‘С‚ в„–%d. Р‘Р°Р»Р°РЅСЃ: {33AA33}$%d{FFFFFF}\n\n", Player[playerid][pDbId], Player[playerid][pBank]);
 
 	new DBResult:r = DB_ExecuteQuery(gDB,
 		"SELECT l.type, l.amount, IFNULL(a.name, ''), strftime('%q', l.date, 'unixepoch', 'localtime') FROM bank_log l LEFT JOIN accounts a ON a.id = l.other WHERE l.account = %d ORDER BY l.id DESC LIMIT %d",
@@ -282,7 +282,7 @@ stock Bank_ShowHistory(playerid)
 			if (name[0] != '\0')
 			{
 				for (new c = 0; name[c] != '\0'; c++) if (name[c] == '_') name[c] = ' ';
-				strcat(line, " — ");
+				strcat(line, " вЂ” ");
 				strcat(line, name);
 			}
 			strcat(line, "\n");
@@ -291,19 +291,19 @@ stock Bank_ShowHistory(playerid)
 		}
 		DB_FreeResultSet(r);
 	}
-	if (rows == 0) strcat(body, "Операций пока не было.");
-	ShowPlayerDialog(playerid, DIALOG_BANK_HISTORY, DIALOG_STYLE_MSGBOX, "История операций", "%s", "Назад", "", body);
+	if (rows == 0) strcat(body, "РћРїРµСЂР°С†РёР№ РїРѕРєР° РЅРµ Р±С‹Р»Рѕ.");
+	ShowPlayerDialog(playerid, DIALOG_BANK_HISTORY, DIALOG_STYLE_MSGBOX, "РСЃС‚РѕСЂРёСЏ РѕРїРµСЂР°С†РёР№", "%s", "РќР°Р·Р°Рґ", "", body);
 }
 
-// Перевод со счёта игрока на счёт с номером dbid. Сам проверяет всё.
+// РџРµСЂРµРІРѕРґ СЃРѕ СЃС‡С‘С‚Р° РёРіСЂРѕРєР° РЅР° СЃС‡С‘С‚ СЃ РЅРѕРјРµСЂРѕРј dbid. РЎР°Рј РїСЂРѕРІРµСЂСЏРµС‚ РІСЃС‘.
 stock Bank_Transfer(playerid, dbid, amount)
 {
 	if (dbid <= 0 || dbid == Player[playerid][pDbId])
-		return SendClientMessage(playerid, COLOR_GREY, "Неверный получатель.");
+		return SendClientMessage(playerid, COLOR_GREY, "РќРµРІРµСЂРЅС‹Р№ РїРѕР»СѓС‡Р°С‚РµР»СЊ.");
 
 	new fee = Bank_Fee(amount, BANK_TRANSFER_FEE_PCT);
 	if (amount < 1 || amount > BANK_MAX_TRANSFER || amount + fee > Player[playerid][pBank])
-		return SendClientMessage(playerid, COLOR_GREY, "Неверная сумма. На счёте $%d, комиссия $%d, максимум за раз $%d.",
+		return SendClientMessage(playerid, COLOR_GREY, "РќРµРІРµСЂРЅР°СЏ СЃСѓРјРјР°. РќР° СЃС‡С‘С‚Рµ $%d, РєРѕРјРёСЃСЃРёСЏ $%d, РјР°РєСЃРёРјСѓРј Р·Р° СЂР°Р· $%d.",
 			Player[playerid][pBank], fee, BANK_MAX_TRANSFER);
 
 	new target = Bank_FindOnline(dbid);
@@ -311,13 +311,13 @@ stock Bank_Transfer(playerid, dbid, amount)
 	if (target != INVALID_PLAYER_ID)
 	{
 		if (!Bank_Credit(target, amount, BANKLOG_TRANSFER_IN, Player[playerid][pDbId]))
-			return SendClientMessage(playerid, COLOR_GREY, "У получателя переполнен счёт.");
+			return SendClientMessage(playerid, COLOR_GREY, "РЈ РїРѕР»СѓС‡Р°С‚РµР»СЏ РїРµСЂРµРїРѕР»РЅРµРЅ СЃС‡С‘С‚.");
 		Account_Save(target);
 		format(tname, sizeof (tname), "%s", GetRPName(target));
 	}
 	else
 	{
-		// Получатель не в сети — меняем прямо в базе
+		// РџРѕР»СѓС‡Р°С‚РµР»СЊ РЅРµ РІ СЃРµС‚Рё вЂ” РјРµРЅСЏРµРј РїСЂСЏРјРѕ РІ Р±Р°Р·Рµ
 		new bool:ok = false;
 		new DBResult:r = DB_ExecuteQuery(gDB, "SELECT bank, name FROM accounts WHERE id = %d", dbid);
 		if (r != DBResult:0)
@@ -326,15 +326,15 @@ stock Bank_Transfer(playerid, dbid, amount)
 			{
 				ok = (DB_GetFieldInt(r, 0) <= BANK_MAX_BALANCE - amount);
 				DB_GetFieldString(r, 1, tname, sizeof (tname));
-				if (!ok) SendClientMessage(playerid, COLOR_GREY, "У получателя переполнен счёт.");
+				if (!ok) SendClientMessage(playerid, COLOR_GREY, "РЈ РїРѕР»СѓС‡Р°С‚РµР»СЏ РїРµСЂРµРїРѕР»РЅРµРЅ СЃС‡С‘С‚.");
 			}
-			else SendClientMessage(playerid, COLOR_GREY, "Счёта №%d не существует.", dbid);
+			else SendClientMessage(playerid, COLOR_GREY, "РЎС‡С‘С‚Р° в„–%d РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚.", dbid);
 			DB_FreeResultSet(r);
 		}
 		if (!ok) return 1;
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET bank = bank + %d WHERE id = %d", amount, dbid));
 		Bank_Log(dbid, BANKLOG_TRANSFER_IN, amount, Player[playerid][pDbId]);
-		Bank_MoneyLog(dbid, amount, 0, "перевод от счёта (игрок не в сети)");
+		Bank_MoneyLog(dbid, amount, 0, "РїРµСЂРµРІРѕРґ РѕС‚ СЃС‡С‘С‚Р° (РёРіСЂРѕРє РЅРµ РІ СЃРµС‚Рё)");
 		for (new i = 0; tname[i] != '\0'; i++) if (tname[i] == '_') tname[i] = ' ';
 	}
 
@@ -342,23 +342,23 @@ stock Bank_Transfer(playerid, dbid, amount)
 	Bank_Log(Player[playerid][pDbId], BANKLOG_TRANSFER_OUT, amount, dbid);
 	if (fee > 0) Bank_Log(Player[playerid][pDbId], BANKLOG_FEE, fee);
 	new reason[64];
-	format(reason, sizeof (reason), "перевод -> %s (комиссия $%d)", tname, fee);
+	format(reason, sizeof (reason), "РїРµСЂРµРІРѕРґ -> %s (РєРѕРјРёСЃСЃРёСЏ $%d)", tname, fee);
 	Bank_MoneyLog(Player[playerid][pDbId], -(amount + fee), Player[playerid][pMoney], reason);
 	if (target != INVALID_PLAYER_ID)
 	{
-		format(reason, sizeof (reason), "перевод <- %s", GetRPName(playerid));
+		format(reason, sizeof (reason), "РїРµСЂРµРІРѕРґ <- %s", GetRPName(playerid));
 		Bank_MoneyLog(dbid, amount, Player[target][pMoney], reason);
 	}
 	Account_Save(playerid);
 
-	SendClientMessage(playerid, COLOR_GREEN, "Ты перевёл $%d на счёт №%d (%s). Комиссия $%d. На счёте: $%d.",
+	SendClientMessage(playerid, COLOR_GREEN, "РўС‹ РїРµСЂРµРІС‘Р» $%d РЅР° СЃС‡С‘С‚ в„–%d (%s). РљРѕРјРёСЃСЃРёСЏ $%d. РќР° СЃС‡С‘С‚Рµ: $%d.",
 		amount, dbid, tname, fee, Player[playerid][pBank]);
 	if (target != INVALID_PLAYER_ID)
-		SendClientMessage(target, COLOR_GREEN, "%s перевёл тебе на счёт $%d.", GetRPName(playerid), amount);
+		SendClientMessage(target, COLOR_GREEN, "%s РїРµСЂРµРІС‘Р» С‚РµР±Рµ РЅР° СЃС‡С‘С‚ $%d.", GetRPName(playerid), amount);
 	return 1;
 }
 
-// Обработка окон банка (из OnDialogResponse). Возвращает 1, если окно было наше.
+// РћР±СЂР°Р±РѕС‚РєР° РѕРєРѕРЅ Р±Р°РЅРєР° (РёР· OnDialogResponse). Р’РѕР·РІСЂР°С‰Р°РµС‚ 1, РµСЃР»Рё РѕРєРЅРѕ Р±С‹Р»Рѕ РЅР°С€Рµ.
 stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
 	if (dialogid != DIALOG_BANK && dialogid != DIALOG_BANK_DEPOSIT && dialogid != DIALOG_BANK_WITHDRAW
@@ -370,12 +370,12 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 	}
 	if (!response)
 	{
-		if (dialogid != DIALOG_BANK) Bank_ShowMenu(playerid);   // "Назад" — в меню
+		if (dialogid != DIALOG_BANK) Bank_ShowMenu(playerid);   // "РќР°Р·Р°Рґ" вЂ” РІ РјРµРЅСЋ
 		return 1;
 	}
 	if (Atm_GetNearby(playerid) == -1)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от банкомата.");
+		SendClientMessage(playerid, COLOR_GREY, "РўС‹ РѕС‚РѕС€С‘Р» РѕС‚ Р±Р°РЅРєРѕРјР°С‚Р°.");
 		return 1;
 	}
 
@@ -387,19 +387,19 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			{
 				case 0:
 				{
-					SendClientMessage(playerid, COLOR_GREEN, "Счёт №%d. На счёте: $%d. Наличные: $%d.",
+					SendClientMessage(playerid, COLOR_GREEN, "РЎС‡С‘С‚ в„–%d. РќР° СЃС‡С‘С‚Рµ: $%d. РќР°Р»РёС‡РЅС‹Рµ: $%d.",
 						Player[playerid][pDbId], Player[playerid][pBank], GetMoney(playerid));
 					Bank_ShowMenu(playerid);
 				}
-				case 1: ShowPlayerDialog(playerid, DIALOG_BANK_DEPOSIT, DIALOG_STYLE_INPUT, "Положить деньги",
-					"{FFFFFF}Наличные: $%d\nСколько положить на счёт?", "Положить", "Назад", GetMoney(playerid));
-				case 2: ShowPlayerDialog(playerid, DIALOG_BANK_WITHDRAW, DIALOG_STYLE_INPUT, "Снять деньги",
-					"{FFFFFF}На счёте: $%d\nКомиссия банкомата: %d из каждых $100 (не меньше $1).\nСколько снять?", "Снять", "Назад",
+				case 1: ShowPlayerDialog(playerid, DIALOG_BANK_DEPOSIT, DIALOG_STYLE_INPUT, "РџРѕР»РѕР¶РёС‚СЊ РґРµРЅСЊРіРё",
+					"{FFFFFF}РќР°Р»РёС‡РЅС‹Рµ: $%d\nРЎРєРѕР»СЊРєРѕ РїРѕР»РѕР¶РёС‚СЊ РЅР° СЃС‡С‘С‚?", "РџРѕР»РѕР¶РёС‚СЊ", "РќР°Р·Р°Рґ", GetMoney(playerid));
+				case 2: ShowPlayerDialog(playerid, DIALOG_BANK_WITHDRAW, DIALOG_STYLE_INPUT, "РЎРЅСЏС‚СЊ РґРµРЅСЊРіРё",
+					"{FFFFFF}РќР° СЃС‡С‘С‚Рµ: $%d\nРљРѕРјРёСЃСЃРёСЏ Р±Р°РЅРєРѕРјР°С‚Р°: %d РёР· РєР°Р¶РґС‹С… $100 (РЅРµ РјРµРЅСЊС€Рµ $1).\nРЎРєРѕР»СЊРєРѕ СЃРЅСЏС‚СЊ?", "РЎРЅСЏС‚СЊ", "РќР°Р·Р°Рґ",
 					Player[playerid][pBank], BANK_ATM_FEE_PCT);
-				case 3: ShowPlayerDialog(playerid, DIALOG_BANK_TRANSFER, DIALOG_STYLE_INPUT, "Перевод игроку",
-					"{FFFFFF}На счёте: $%d\nВведи id игрока и сумму через пробел, например: 5 1000", "Перевести", "Назад", Player[playerid][pBank]);
-				case 4: ShowPlayerDialog(playerid, DIALOG_BANK_TRANSFER_ACC, DIALOG_STYLE_INPUT, "Перевод по номеру счёта",
-					"{FFFFFF}На счёте: $%d\nВведи номер счёта и сумму через пробел, например: 12 1000\nПолучатель может быть не в игре.", "Перевести", "Назад", Player[playerid][pBank]);
+				case 3: ShowPlayerDialog(playerid, DIALOG_BANK_TRANSFER, DIALOG_STYLE_INPUT, "РџРµСЂРµРІРѕРґ РёРіСЂРѕРєСѓ",
+					"{FFFFFF}РќР° СЃС‡С‘С‚Рµ: $%d\nР’РІРµРґРё id РёРіСЂРѕРєР° Рё СЃСѓРјРјСѓ С‡РµСЂРµР· РїСЂРѕР±РµР», РЅР°РїСЂРёРјРµСЂ: 5 1000", "РџРµСЂРµРІРµСЃС‚Рё", "РќР°Р·Р°Рґ", Player[playerid][pBank]);
+				case 4: ShowPlayerDialog(playerid, DIALOG_BANK_TRANSFER_ACC, DIALOG_STYLE_INPUT, "РџРµСЂРµРІРѕРґ РїРѕ РЅРѕРјРµСЂСѓ СЃС‡С‘С‚Р°",
+					"{FFFFFF}РќР° СЃС‡С‘С‚Рµ: $%d\nР’РІРµРґРё РЅРѕРјРµСЂ СЃС‡С‘С‚Р° Рё СЃСѓРјРјСѓ С‡РµСЂРµР· РїСЂРѕР±РµР», РЅР°РїСЂРёРјРµСЂ: 12 1000\nРџРѕР»СѓС‡Р°С‚РµР»СЊ РјРѕР¶РµС‚ Р±С‹С‚СЊ РЅРµ РІ РёРіСЂРµ.", "РџРµСЂРµРІРµСЃС‚Рё", "РќР°Р·Р°Рґ", Player[playerid][pBank]);
 				case 5: Bank_ShowHistory(playerid);
 				case 6: { Debts_Pay(playerid, DEBT_TAX); Bank_ShowMenu(playerid); }     // debts.inc
 				case 7: { Debts_Pay(playerid, DEBT_FINE); Bank_ShowMenu(playerid); }
@@ -410,18 +410,18 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			new amount = strval(inputtext);
 			if (!IsNumeric(inputtext) || amount < 1 || amount > GetMoney(playerid))
 			{
-				SendClientMessage(playerid, COLOR_GREY, "Неверная сумма. У тебя наличными $%d.", GetMoney(playerid));
+				SendClientMessage(playerid, COLOR_GREY, "РќРµРІРµСЂРЅР°СЏ СЃСѓРјРјР°. РЈ С‚РµР±СЏ РЅР°Р»РёС‡РЅС‹РјРё $%d.", GetMoney(playerid));
 				Bank_ShowMenu(playerid);
 				return 1;
 			}
 			if (!Bank_Credit(playerid, amount, BANKLOG_DEPOSIT))
 			{
-				SendClientMessage(playerid, COLOR_GREY, "Счёт переполнен (максимум $%d).", BANK_MAX_BALANCE);
+				SendClientMessage(playerid, COLOR_GREY, "РЎС‡С‘С‚ РїРµСЂРµРїРѕР»РЅРµРЅ (РјР°РєСЃРёРјСѓРј $%d).", BANK_MAX_BALANCE);
 				return 1;
 			}
-			GiveMoney(playerid, -amount, "банк: пополнение счёта");
+			GiveMoney(playerid, -amount, "Р±Р°РЅРє: РїРѕРїРѕР»РЅРµРЅРёРµ СЃС‡С‘С‚Р°");
 			Account_Save(playerid);
-			SendClientMessage(playerid, COLOR_GREEN, "Ты положил $%d. На счёте: $%d.", amount, Player[playerid][pBank]);
+			SendClientMessage(playerid, COLOR_GREEN, "РўС‹ РїРѕР»РѕР¶РёР» $%d. РќР° СЃС‡С‘С‚Рµ: $%d.", amount, Player[playerid][pBank]);
 		}
 		case DIALOG_BANK_WITHDRAW:
 		{
@@ -429,17 +429,17 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			new fee = Bank_Fee(amount, BANK_ATM_FEE_PCT);
 			if (!IsNumeric(inputtext) || amount < 1 || amount > Player[playerid][pBank] || amount + fee > Player[playerid][pBank])
 			{
-				SendClientMessage(playerid, COLOR_GREY, "Неверная сумма. На счёте $%d (комиссия $%d).", Player[playerid][pBank], fee);
+				SendClientMessage(playerid, COLOR_GREY, "РќРµРІРµСЂРЅР°СЏ СЃСѓРјРјР°. РќР° СЃС‡С‘С‚Рµ $%d (РєРѕРјРёСЃСЃРёСЏ $%d).", Player[playerid][pBank], fee);
 				Bank_ShowMenu(playerid);
 				return 1;
 			}
 			Player[playerid][pBank] -= amount + fee;
-			GiveMoney(playerid, amount, "банк: снятие со счёта");
-			if (fee > 0) Bank_MoneyLog(Player[playerid][pDbId], -fee, Player[playerid][pMoney], "комиссия банкомата");
+			GiveMoney(playerid, amount, "Р±Р°РЅРє: СЃРЅСЏС‚РёРµ СЃРѕ СЃС‡С‘С‚Р°");
+			if (fee > 0) Bank_MoneyLog(Player[playerid][pDbId], -fee, Player[playerid][pMoney], "РєРѕРјРёСЃСЃРёСЏ Р±Р°РЅРєРѕРјР°С‚Р°");
 			Bank_Log(Player[playerid][pDbId], BANKLOG_WITHDRAW, amount);
 			if (fee > 0) Bank_Log(Player[playerid][pDbId], BANKLOG_FEE, fee);
 			Account_Save(playerid);
-			SendClientMessage(playerid, COLOR_GREEN, "Ты снял $%d (комиссия $%d). На счёте: $%d.", amount, fee, Player[playerid][pBank]);
+			SendClientMessage(playerid, COLOR_GREEN, "РўС‹ СЃРЅСЏР» $%d (РєРѕРјРёСЃСЃРёСЏ $%d). РќР° СЃС‡С‘С‚Рµ: $%d.", amount, fee, Player[playerid][pBank]);
 		}
 		case DIALOG_BANK_TRANSFER:
 		{
@@ -447,12 +447,12 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			new target = NextPlayerParam(inputtext, pos);
 			if (target == INVALID_PLAYER_ID || !NextIntParam(inputtext, pos, amount))
 			{
-				SendClientMessage(playerid, COLOR_GREY, "Нужно ввести id игрока и сумму, например: 5 1000");
+				SendClientMessage(playerid, COLOR_GREY, "РќСѓР¶РЅРѕ РІРІРµСЃС‚Рё id РёРіСЂРѕРєР° Рё СЃСѓРјРјСѓ, РЅР°РїСЂРёРјРµСЂ: 5 1000");
 				Bank_ShowMenu(playerid);
 				return 1;
 			}
 			if (target == playerid || !Player[target][pLogged])
-				return SendClientMessage(playerid, COLOR_GREY, "Неверный получатель.");
+				return SendClientMessage(playerid, COLOR_GREY, "РќРµРІРµСЂРЅС‹Р№ РїРѕР»СѓС‡Р°С‚РµР»СЊ.");
 			Bank_Transfer(playerid, Player[target][pDbId], amount);
 		}
 		case DIALOG_BANK_TRANSFER_ACC:
@@ -460,7 +460,7 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			new pos = 0, account, amount;
 			if (!NextIntParam(inputtext, pos, account) || !NextIntParam(inputtext, pos, amount))
 			{
-				SendClientMessage(playerid, COLOR_GREY, "Нужно ввести номер счёта и сумму, например: 12 1000");
+				SendClientMessage(playerid, COLOR_GREY, "РќСѓР¶РЅРѕ РІРІРµСЃС‚Рё РЅРѕРјРµСЂ СЃС‡С‘С‚Р° Рё СЃСѓРјРјСѓ, РЅР°РїСЂРёРјРµСЂ: 12 1000");
 				Bank_ShowMenu(playerid);
 				return 1;
 			}
@@ -471,12 +471,12 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 }
 
 // ---------------------------------------------------------------------
-//  Команды
+//  РљРѕРјР°РЅРґС‹
 // ---------------------------------------------------------------------
 stock bool:Cmd_Bank(playerid)
 {
 	if (Atm_GetNearby(playerid) == -1)
-		return SendClientMessage(playerid, COLOR_GREY, "Подойди к банкомату (зелёный значок $ или аппарат).");
+		return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Рє Р±Р°РЅРєРѕРјР°С‚Сѓ (Р·РµР»С‘РЅС‹Р№ Р·РЅР°С‡РѕРє $ РёР»Рё Р°РїРїР°СЂР°С‚).");
 	Bank_ShowMenu(playerid);
 	return true;
 }
@@ -484,14 +484,14 @@ stock bool:Cmd_Bank(playerid)
 stock bool:Cmd_AddAtm(playerid)
 {
 	if (!Admin_Check(playerid, 4)) return true;
-	if (GetPlayerInterior(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "Банкомат можно ставить только на улице.");
-	if (gAtmCount >= MAX_ATMS) return SendClientMessage(playerid, COLOR_GREY, "Достигнут лимит банкоматов.");
+	if (GetPlayerInterior(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "Р‘Р°РЅРєРѕРјР°С‚ РјРѕР¶РЅРѕ СЃС‚Р°РІРёС‚СЊ С‚РѕР»СЊРєРѕ РЅР° СѓР»РёС†Рµ.");
+	if (gAtmCount >= MAX_ATMS) return SendClientMessage(playerid, COLOR_GREY, "Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ Р±Р°РЅРєРѕРјР°С‚РѕРІ.");
 	new Float:x, Float:y, Float:z, Float:a;
 	GetPlayerPos(playerid, x, y, z);
 	GetPlayerFacingAngle(playerid, a);
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO atms (x, y, z, a) VALUES (%f, %f, %f, %f)", x, y, z, a));
 	Atm_Create(DB_LastInsertId(), x, y, z, a);
-	SendClientMessage(playerid, COLOR_ADMIN, "Банкомат поставлен перед тобой. Удалить: /delatm");
+	SendClientMessage(playerid, COLOR_ADMIN, "Р‘Р°РЅРєРѕРјР°С‚ РїРѕСЃС‚Р°РІР»РµРЅ РїРµСЂРµРґ С‚РѕР±РѕР№. РЈРґР°Р»РёС‚СЊ: /delatm");
 	return true;
 }
 
@@ -499,12 +499,12 @@ stock bool:Cmd_DelAtm(playerid)
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new n = Atm_GetNearby(playerid);
-	if (n == -1) return SendClientMessage(playerid, COLOR_GREY, "Подойди к банкомату.");
+	if (n == -1) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Рє Р±Р°РЅРєРѕРјР°С‚Сѓ.");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM atms WHERE id = %d", Atm[n][aDbId]));
 	Atm_Destroy(n);
 	new last = gAtmCount - 1;
 	if (n != last) Atm[n] = Atm[last];
 	gAtmCount--;
-	SendClientMessage(playerid, COLOR_ADMIN, "Банкомат удалён.");
+	SendClientMessage(playerid, COLOR_ADMIN, "Р‘Р°РЅРєРѕРјР°С‚ СѓРґР°Р»С‘РЅ.");
 	return true;
 }

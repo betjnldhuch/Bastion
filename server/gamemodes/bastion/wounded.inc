@@ -1,49 +1,49 @@
 // =====================================================================
-//  wounded.inc — ранение вместо мгновенной смерти.
+//  wounded.inc вЂ” СЂР°РЅРµРЅРёРµ РІРјРµСЃС‚Рѕ РјРіРЅРѕРІРµРЅРЅРѕР№ СЃРјРµСЂС‚Рё.
 //
-//  Игрока убили — он не уезжает сразу в больницу, а лежит раненым на
-//  месте WOUND_TIME секунд. За это время его могут поднять:
-//    медик EMS на смене — /revive [id] (медик получает WOUND_REWARD);
-//    любой игрок с аптечкой в сумке — /aid [id] (тратится аптечка).
-//  Медикам на смене приходит вызов, /wounds — список раненых с GPS.
-//  Сдаться и уехать в больницу: /dead (через WOUND_GIVEUP секунд).
-//  Если раненого добили или время вышло — больница, как раньше.
+//  РРіСЂРѕРєР° СѓР±РёР»Рё вЂ” РѕРЅ РЅРµ СѓРµР·Р¶Р°РµС‚ СЃСЂР°Р·Сѓ РІ Р±РѕР»СЊРЅРёС†Сѓ, Р° Р»РµР¶РёС‚ СЂР°РЅРµРЅС‹Рј РЅР°
+//  РјРµСЃС‚Рµ WOUND_TIME СЃРµРєСѓРЅРґ. Р—Р° СЌС‚Рѕ РІСЂРµРјСЏ РµРіРѕ РјРѕРіСѓС‚ РїРѕРґРЅСЏС‚СЊ:
+//    РјРµРґРёРє EMS РЅР° СЃРјРµРЅРµ вЂ” /revive [id] (РјРµРґРёРє РїРѕР»СѓС‡Р°РµС‚ WOUND_REWARD);
+//    Р»СЋР±РѕР№ РёРіСЂРѕРє СЃ Р°РїС‚РµС‡РєРѕР№ РІ СЃСѓРјРєРµ вЂ” /aid [id] (С‚СЂР°С‚РёС‚СЃСЏ Р°РїС‚РµС‡РєР°).
+//  РњРµРґРёРєР°Рј РЅР° СЃРјРµРЅРµ РїСЂРёС…РѕРґРёС‚ РІС‹Р·РѕРІ, /wounds вЂ” СЃРїРёСЃРѕРє СЂР°РЅРµРЅС‹С… СЃ GPS.
+//  РЎРґР°С‚СЊСЃСЏ Рё СѓРµС…Р°С‚СЊ РІ Р±РѕР»СЊРЅРёС†Сѓ: /dead (С‡РµСЂРµР· WOUND_GIVEUP СЃРµРєСѓРЅРґ).
+//  Р•СЃР»Рё СЂР°РЅРµРЅРѕРіРѕ РґРѕР±РёР»Рё РёР»Рё РІСЂРµРјСЏ РІС‹С€Р»Рѕ вЂ” Р±РѕР»СЊРЅРёС†Р°, РєР°Рє СЂР°РЅСЊС€Рµ.
 //
-//  Обычно игрок падает раненым ещё до смерти: когда здоровье опускается
-//  ниже WOUND_DOWN_HP. Если его всё же убили одним выстрелом — он
-//  появляется раненым на том же месте.
+//  РћР±С‹С‡РЅРѕ РёРіСЂРѕРє РїР°РґР°РµС‚ СЂР°РЅРµРЅС‹Рј РµС‰С‘ РґРѕ СЃРјРµСЂС‚Рё: РєРѕРіРґР° Р·РґРѕСЂРѕРІСЊРµ РѕРїСѓСЃРєР°РµС‚СЃСЏ
+//  РЅРёР¶Рµ WOUND_DOWN_HP. Р•СЃР»Рё РµРіРѕ РІСЃС‘ Р¶Рµ СѓР±РёР»Рё РѕРґРЅРёРј РІС‹СЃС‚СЂРµР»РѕРј вЂ” РѕРЅ
+//  РїРѕСЏРІР»СЏРµС‚СЃСЏ СЂР°РЅРµРЅС‹Рј РЅР° С‚РѕРј Р¶Рµ РјРµСЃС‚Рµ.
 //
-//  /drag [id] — полиция на смене ведёт за собой задержанного в наручниках
-//  или раненого. /drag без id — отпустить.
-//  /carry [id] — понести раненого на руках (может любой, но раненый должен
-//  согласиться: Y). /carry без id — положить.
+//  /drag [id] вЂ” РїРѕР»РёС†РёСЏ РЅР° СЃРјРµРЅРµ РІРµРґС‘С‚ Р·Р° СЃРѕР±РѕР№ Р·Р°РґРµСЂР¶Р°РЅРЅРѕРіРѕ РІ РЅР°СЂСѓС‡РЅРёРєР°С…
+//  РёР»Рё СЂР°РЅРµРЅРѕРіРѕ. /drag Р±РµР· id вЂ” РѕС‚РїСѓСЃС‚РёС‚СЊ.
+//  /carry [id] вЂ” РїРѕРЅРµСЃС‚Рё СЂР°РЅРµРЅРѕРіРѕ РЅР° СЂСѓРєР°С… (РјРѕР¶РµС‚ Р»СЋР±РѕР№, РЅРѕ СЂР°РЅРµРЅС‹Р№ РґРѕР»Р¶РµРЅ
+//  СЃРѕРіР»Р°СЃРёС‚СЊСЃСЏ: Y). /carry Р±РµР· id вЂ” РїРѕР»РѕР¶РёС‚СЊ.
 // =====================================================================
 
-#define WOUND_TIME          180     // сколько секунд лежать раненым
-#define WOUND_GIVEUP        30      // через сколько секунд можно /dead
-#define WOUND_HEALTH        50.0    // здоровье раненого (пули его почти не берут)
-#define WOUND_DOWN_HP       20.0    // ниже этого здоровья игрок падает раненым, а не умирает
-#define WOUND_REVIVE_HP     40.0    // здоровье после /revive
-#define WOUND_AID_HP        25.0    // здоровье после /aid
-#define WOUND_REWARD        250     // медику за /revive
+#define WOUND_TIME          180     // СЃРєРѕР»СЊРєРѕ СЃРµРєСѓРЅРґ Р»РµР¶Р°С‚СЊ СЂР°РЅРµРЅС‹Рј
+#define WOUND_GIVEUP        30      // С‡РµСЂРµР· СЃРєРѕР»СЊРєРѕ СЃРµРєСѓРЅРґ РјРѕР¶РЅРѕ /dead
+#define WOUND_HEALTH        50.0    // Р·РґРѕСЂРѕРІСЊРµ СЂР°РЅРµРЅРѕРіРѕ (РїСѓР»Рё РµРіРѕ РїРѕС‡С‚Рё РЅРµ Р±РµСЂСѓС‚)
+#define WOUND_DOWN_HP       20.0    // РЅРёР¶Рµ СЌС‚РѕРіРѕ Р·РґРѕСЂРѕРІСЊСЏ РёРіСЂРѕРє РїР°РґР°РµС‚ СЂР°РЅРµРЅС‹Рј, Р° РЅРµ СѓРјРёСЂР°РµС‚
+#define WOUND_REVIVE_HP     40.0    // Р·РґРѕСЂРѕРІСЊРµ РїРѕСЃР»Рµ /revive
+#define WOUND_AID_HP        25.0    // Р·РґРѕСЂРѕРІСЊРµ РїРѕСЃР»Рµ /aid
+#define WOUND_REWARD        250     // РјРµРґРёРєСѓ Р·Р° /revive
 #define WOUND_RANGE         3.0
 
 forward Wound_OnSecond();
 forward Wound_ApplyAnim(playerid);
 forward Drag_Tick();
 
-static gDragBy[MAX_PLAYERS] = { INVALID_PLAYER_ID, ... };   // кто ведёт / несёт этого игрока
-static bool:gCarried[MAX_PLAYERS];                          // несут на руках (а не ведут)
+static gDragBy[MAX_PLAYERS] = { INVALID_PLAYER_ID, ... };   // РєС‚Рѕ РІРµРґС‘С‚ / РЅРµСЃС‘С‚ СЌС‚РѕРіРѕ РёРіСЂРѕРєР°
+static bool:gCarried[MAX_PLAYERS];                          // РЅРµСЃСѓС‚ РЅР° СЂСѓРєР°С… (Р° РЅРµ РІРµРґСѓС‚)
 static gCarryAnimTick[MAX_PLAYERS];
-static gDragWalk[MAX_PLAYERS];                              // 0 стоит, 1 идёт, 2 бежит
+static gDragWalk[MAX_PLAYERS];                              // 0 СЃС‚РѕРёС‚, 1 РёРґС‘С‚, 2 Р±РµР¶РёС‚
 
-static bool:gWoundPending[MAX_PLAYERS];     // умер, следующий спавн — на месте раненым
-static bool:gWounded[MAX_PLAYERS];          // лежит раненым
-static gWoundLeft[MAX_PLAYERS];             // секунд до больницы
+static bool:gWoundPending[MAX_PLAYERS];     // СѓРјРµСЂ, СЃР»РµРґСѓСЋС‰РёР№ СЃРїР°РІРЅ вЂ” РЅР° РјРµСЃС‚Рµ СЂР°РЅРµРЅС‹Рј
+static bool:gWounded[MAX_PLAYERS];          // Р»РµР¶РёС‚ СЂР°РЅРµРЅС‹Рј
+static gWoundLeft[MAX_PLAYERS];             // СЃРµРєСѓРЅРґ РґРѕ Р±РѕР»СЊРЅРёС†С‹
 static Float:gWoundPos[MAX_PLAYERS][4];
 static gWoundInt[MAX_PLAYERS];
 static gWoundWorld[MAX_PLAYERS];
-static gWoundList[MAX_PLAYERS][MAX_PLAYERS]; // строка окна /wounds -> id
+static gWoundList[MAX_PLAYERS][MAX_PLAYERS]; // СЃС‚СЂРѕРєР° РѕРєРЅР° /wounds -> id
 
 
 stock Wound_Init()
@@ -62,12 +62,12 @@ stock Wound_Reset(playerid)
 	gWoundLeft[playerid] = 0;
 }
 
-// Из OnPlayerDeath. true — игрок появится на месте раненым (больницы нет).
+// РР· OnPlayerDeath. true вЂ” РёРіСЂРѕРє РїРѕСЏРІРёС‚СЃСЏ РЅР° РјРµСЃС‚Рµ СЂР°РЅРµРЅС‹Рј (Р±РѕР»СЊРЅРёС†С‹ РЅРµС‚).
 stock bool:Wound_OnDeath(playerid)
 {
 	if (gWounded[playerid])
 	{
-		// добили раненого — в больницу
+		// РґРѕР±РёР»Рё СЂР°РЅРµРЅРѕРіРѕ вЂ” РІ Р±РѕР»СЊРЅРёС†Сѓ
 		gWounded[playerid] = false;
 		return false;
 	}
@@ -82,7 +82,7 @@ stock bool:Wound_OnDeath(playerid)
 	return true;
 }
 
-// Из OnPlayerSpawn (в самом конце)
+// РР· OnPlayerSpawn (РІ СЃР°РјРѕРј РєРѕРЅС†Рµ)
 stock Wound_OnSpawn(playerid)
 {
 	if (!gWoundPending[playerid]) return;
@@ -95,42 +95,42 @@ stock Wound_OnSpawn(playerid)
 	Wound_Start(playerid);
 }
 
-// Уложить раненым прямо сейчас (без смерти)
+// РЈР»РѕР¶РёС‚СЊ СЂР°РЅРµРЅС‹Рј РїСЂСЏРјРѕ СЃРµР№С‡Р°СЃ (Р±РµР· СЃРјРµСЂС‚Рё)
 static Wound_Start(playerid)
 {
 	SetPlayerHealth(playerid, WOUND_HEALTH);
 	gWounded[playerid] = true;
 	gWoundLeft[playerid] = WOUND_TIME;
 	TogglePlayerControllable(playerid, false);
-	// анимацию ставим чуть позже: сразу после спавна клиент её сбрасывает
+	// Р°РЅРёРјР°С†РёСЋ СЃС‚Р°РІРёРј С‡СѓС‚СЊ РїРѕР·Р¶Рµ: СЃСЂР°Р·Сѓ РїРѕСЃР»Рµ СЃРїР°РІРЅР° РєР»РёРµРЅС‚ РµС‘ СЃР±СЂР°СЃС‹РІР°РµС‚
 	ApplyAnimation(playerid, "CRACK", "null", 4.1, false, false, false, false, 0);
 	SetTimerEx("Wound_ApplyAnim", 500, false, "i", playerid);
 
-	SendClientMessage(playerid, COLOR_RED, "Ты тяжело ранен. Жди медика (вызов уже отправлен) или того, у кого есть аптечка.");
-	SendClientMessage(playerid, COLOR_GREY, "Через %d сек. можно сдаться и уехать в больницу: /dead. Через %d сек. увезут сами.", WOUND_GIVEUP, WOUND_TIME);
+	SendClientMessage(playerid, COLOR_RED, "РўС‹ С‚СЏР¶РµР»Рѕ СЂР°РЅРµРЅ. Р–РґРё РјРµРґРёРєР° (РІС‹Р·РѕРІ СѓР¶Рµ РѕС‚РїСЂР°РІР»РµРЅ) РёР»Рё С‚РѕРіРѕ, Сѓ РєРѕРіРѕ РµСЃС‚СЊ Р°РїС‚РµС‡РєР°.");
+	SendClientMessage(playerid, COLOR_GREY, "Р§РµСЂРµР· %d СЃРµРє. РјРѕР¶РЅРѕ СЃРґР°С‚СЊСЃСЏ Рё СѓРµС…Р°С‚СЊ РІ Р±РѕР»СЊРЅРёС†Сѓ: /dead. Р§РµСЂРµР· %d СЃРµРє. СѓРІРµР·СѓС‚ СЃР°РјРё.", WOUND_GIVEUP, WOUND_TIME);
 
 	new msg[144];
-	format(msg, sizeof msg, "[Вызов] Ранен %s [%d]. Метка на карте: /wounds, поднять: /revive %d", GetRPName(playerid), playerid, playerid);
+	format(msg, sizeof msg, "[Р’С‹Р·РѕРІ] Р Р°РЅРµРЅ %s [%d]. РњРµС‚РєР° РЅР° РєР°СЂС‚Рµ: /wounds, РїРѕРґРЅСЏС‚СЊ: /revive %d", GetRPName(playerid), playerid, playerid);
 	Faction_MessageMedic(msg);
 }
 
-// Из OnPlayerTakeDamage: при малом здоровье — упасть раненым, а не умереть
+// РР· OnPlayerTakeDamage: РїСЂРё РјР°Р»РѕРј Р·РґРѕСЂРѕРІСЊРµ вЂ” СѓРїР°СЃС‚СЊ СЂР°РЅРµРЅС‹Рј, Р° РЅРµ СѓРјРµСЂРµС‚СЊ
 stock Wound_OnDamage(playerid, Float:amount)
 {
 	if (!Player[playerid][pLogged]) return;
 	if (gWounded[playerid])
 	{
-		SetPlayerHealth(playerid, WOUND_HEALTH);    // лежачего не добивают обычным уроном
+		SetPlayerHealth(playerid, WOUND_HEALTH);    // Р»РµР¶Р°С‡РµРіРѕ РЅРµ РґРѕР±РёРІР°СЋС‚ РѕР±С‹С‡РЅС‹Рј СѓСЂРѕРЅРѕРј
 		return;
 	}
 	if (Player[playerid][pJail] > 0 || Admin_IsInAJail(playerid)) return;
-	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return;  // в машине — как раньше
+	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return;  // РІ РјР°С€РёРЅРµ вЂ” РєР°Рє СЂР°РЅСЊС€Рµ
 	new Float:hp;
 	GetPlayerHealth(playerid, hp);
 	if (hp <= 0.0 || hp - amount > WOUND_DOWN_HP) return;
-	// смертельный выстрел: клиент всё равно умрёт — пусть сработает OnPlayerDeath,
-	// он поставит раненым на том же месте (иначе смерть «раненого» = больница
-	// и двойное убийство в войне за район)
+	// СЃРјРµСЂС‚РµР»СЊРЅС‹Р№ РІС‹СЃС‚СЂРµР»: РєР»РёРµРЅС‚ РІСЃС‘ СЂР°РІРЅРѕ СѓРјСЂС‘С‚ вЂ” РїСѓСЃС‚СЊ СЃСЂР°Р±РѕС‚Р°РµС‚ OnPlayerDeath,
+	// РѕРЅ РїРѕСЃС‚Р°РІРёС‚ СЂР°РЅРµРЅС‹Рј РЅР° С‚РѕРј Р¶Рµ РјРµСЃС‚Рµ (РёРЅР°С‡Рµ СЃРјРµСЂС‚СЊ В«СЂР°РЅРµРЅРѕРіРѕВ» = Р±РѕР»СЊРЅРёС†Р°
+	// Рё РґРІРѕР№РЅРѕРµ СѓР±РёР№СЃС‚РІРѕ РІ РІРѕР№РЅРµ Р·Р° СЂР°Р№РѕРЅ)
 	if (hp - amount <= 0.0) return;
 
 	Job_Stop(playerid);
@@ -146,7 +146,7 @@ public Wound_ApplyAnim(playerid)
 	return 1;
 }
 
-// Поставить на ноги
+// РџРѕСЃС‚Р°РІРёС‚СЊ РЅР° РЅРѕРіРё
 static Wound_StandUp(playerid, Float:hp)
 {
 	Drag_Stop(playerid);
@@ -160,7 +160,7 @@ static Wound_StandUp(playerid, Float:hp)
 	GameTextForPlayer(playerid, "~g~Revived", 2000, 4);
 }
 
-// В больницу (время вышло или /dead) — как обычная смерть
+// Р’ Р±РѕР»СЊРЅРёС†Сѓ (РІСЂРµРјСЏ РІС‹С€Р»Рѕ РёР»Рё /dead) вЂ” РєР°Рє РѕР±С‹С‡РЅР°СЏ СЃРјРµСЂС‚СЊ
 static Wound_ToHospital(playerid)
 {
 	Drag_Stop(playerid);
@@ -174,9 +174,9 @@ static Wound_ToHospital(playerid)
 	SetPlayerHealth(playerid, 100.0);
 	SetCameraBehindPlayer(playerid);
 	Needs_OnHospital(playerid);
-	GiveMoney(playerid, -HOSPITAL_FEE, "счёт больницы");
+	GiveMoney(playerid, -HOSPITAL_FEE, "СЃС‡С‘С‚ Р±РѕР»СЊРЅРёС†С‹");
 	Econ_ToTreasury(HOSPITAL_FEE);
-	SendClientMessage(playerid, COLOR_WHITE, "Тебя довезли до больницы и вылечили. Счёт за лечение: $%d.", HOSPITAL_FEE);
+	SendClientMessage(playerid, COLOR_WHITE, "РўРµР±СЏ РґРѕРІРµР·Р»Рё РґРѕ Р±РѕР»СЊРЅРёС†С‹ Рё РІС‹Р»РµС‡РёР»Рё. РЎС‡С‘С‚ Р·Р° Р»РµС‡РµРЅРёРµ: $%d.", HOSPITAL_FEE);
 }
 
 public Wound_OnSecond()
@@ -185,13 +185,13 @@ public Wound_OnSecond()
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!gWounded[i] || !IsPlayerConnected(i)) continue;
-		// вылечили другим способом (/heal медика, админ) — встаёт сам
+		// РІС‹Р»РµС‡РёР»Рё РґСЂСѓРіРёРј СЃРїРѕСЃРѕР±РѕРј (/heal РјРµРґРёРєР°, Р°РґРјРёРЅ) вЂ” РІСЃС‚Р°С‘С‚ СЃР°Рј
 		new Float:hp;
 		GetPlayerHealth(i, hp);
 		if (hp > WOUND_HEALTH + 5.0)
 		{
 			Wound_StandUp(i, 0.0);
-			SendClientMessage(i, COLOR_GREEN, "Тебя вылечили, ты снова на ногах.");
+			SendClientMessage(i, COLOR_GREEN, "РўРµР±СЏ РІС‹Р»РµС‡РёР»Рё, С‚С‹ СЃРЅРѕРІР° РЅР° РЅРѕРіР°С….");
 			continue;
 		}
 		gWoundLeft[i]--;
@@ -202,95 +202,95 @@ public Wound_OnSecond()
 		}
 		format(buf, sizeof buf, "~r~WOUNDED~n~~w~%d s", gWoundLeft[i]);
 		GameTextForPlayer(i, buf, 1100, 3);
-		if (gWoundLeft[i] % 10 == 0) Wound_ApplyAnim(i);   // встать сам не должен
+		if (gWoundLeft[i] % 10 == 0) Wound_ApplyAnim(i);   // РІСЃС‚Р°С‚СЊ СЃР°Рј РЅРµ РґРѕР»Р¶РµРЅ
 	}
 	return 1;
 }
 
-// /dead — сдаться
+// /dead вЂ” СЃРґР°С‚СЊСЃСЏ
 stock bool:Cmd_Dead(playerid)
 {
-	if (!gWounded[playerid]) return SendClientMessage(playerid, COLOR_GREY, "Ты не ранен.");
+	if (!gWounded[playerid]) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РЅРµ СЂР°РЅРµРЅ.");
 	new waited = WOUND_TIME - gWoundLeft[playerid];
-	if (waited < WOUND_GIVEUP) return SendClientMessage(playerid, COLOR_GREY, "Подожди ещё %d сек. — вдруг успеют помочь.", WOUND_GIVEUP - waited);
+	if (waited < WOUND_GIVEUP) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР¶РґРё РµС‰С‘ %d СЃРµРє. вЂ” РІРґСЂСѓРі СѓСЃРїРµСЋС‚ РїРѕРјРѕС‡СЊ.", WOUND_GIVEUP - waited);
 	Wound_ToHospital(playerid);
 	return true;
 }
 
-// За одного и того же раненого премию платят не чаще раза в WOUND_REWARD_COOLDOWN секунд:
-// иначе медик с приятелем «роняют и поднимают» друг друга и печатают деньги
+// Р—Р° РѕРґРЅРѕРіРѕ Рё С‚РѕРіРѕ Р¶Рµ СЂР°РЅРµРЅРѕРіРѕ РїСЂРµРјРёСЋ РїР»Р°С‚СЏС‚ РЅРµ С‡Р°С‰Рµ СЂР°Р·Р° РІ WOUND_REWARD_COOLDOWN СЃРµРєСѓРЅРґ:
+// РёРЅР°С‡Рµ РјРµРґРёРє СЃ РїСЂРёСЏС‚РµР»РµРј В«СЂРѕРЅСЏСЋС‚ Рё РїРѕРґРЅРёРјР°СЋС‚В» РґСЂСѓРі РґСЂСѓРіР° Рё РїРµС‡Р°С‚Р°СЋС‚ РґРµРЅСЊРіРё
 #define WOUND_REWARD_COOLDOWN   600
 static gReviveRewardAt[MAX_PLAYERS];
 
-// /revive [id] — медик EMS на смене (или админ 2+ где угодно)
+// /revive [id] вЂ” РјРµРґРёРє EMS РЅР° СЃРјРµРЅРµ (РёР»Рё Р°РґРјРёРЅ 2+ РіРґРµ СѓРіРѕРґРЅРѕ)
 stock bool:Cmd_Revive(playerid, const params[])
 {
 	new bool:admin = Player[playerid][pAdmin] >= 2;
 	if (!admin && !Faction_NeedMedic(playerid)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /revive [id]");
-	if (!gWounded[target]) return SendClientMessage(playerid, COLOR_GREY, "Этот игрок не ранен.");
+	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /revive [id]");
+	if (!gWounded[target]) return SendClientMessage(playerid, COLOR_GREY, "Р­С‚РѕС‚ РёРіСЂРѕРє РЅРµ СЂР°РЅРµРЅ.");
 	new bool:near = IsPlayerNearPlayer(playerid, target, WOUND_RANGE);
-	if (!near && !admin) return SendClientMessage(playerid, COLOR_GREY, "Подойди ближе к раненому.");
+	if (!near && !admin) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Р±Р»РёР¶Рµ Рє СЂР°РЅРµРЅРѕРјСѓ.");
 
 	Wound_StandUp(target, WOUND_REVIVE_HP);
 	if (near) ApplyAnimation(playerid, "MEDIC", "CPR", 4.1, false, false, false, false, 0, SYNC_ALL);
-	SendClientMessage(target, COLOR_GREEN, "%s поставил тебя на ноги. Долечиться: медик (/heal) или аптечка.", GetRPName(playerid));
+	SendClientMessage(target, COLOR_GREEN, "%s РїРѕСЃС‚Р°РІРёР» С‚РµР±СЏ РЅР° РЅРѕРіРё. Р”РѕР»РµС‡РёС‚СЊСЃСЏ: РјРµРґРёРє (/heal) РёР»Рё Р°РїС‚РµС‡РєР°.", GetRPName(playerid));
 	if (Faction_IsMedic(Player[playerid][pFaction]) && near)
 	{
 		if (gettime() - gReviveRewardAt[target] >= WOUND_REWARD_COOLDOWN)
 		{
 			gReviveRewardAt[target] = gettime();
-			GiveMoney(playerid, WOUND_REWARD, "реанимация");
-			SendClientMessage(playerid, COLOR_GREEN, "Ты поднял %s. Премия: $%d.", GetRPName(target), WOUND_REWARD);
+			GiveMoney(playerid, WOUND_REWARD, "СЂРµР°РЅРёРјР°С†РёСЏ");
+			SendClientMessage(playerid, COLOR_GREEN, "РўС‹ РїРѕРґРЅСЏР» %s. РџСЂРµРјРёСЏ: $%d.", GetRPName(target), WOUND_REWARD);
 		}
-		else SendClientMessage(playerid, COLOR_GREEN, "Ты поднял %s. Премию за этого пациента недавно уже платили.", GetRPName(target));
+		else SendClientMessage(playerid, COLOR_GREEN, "РўС‹ РїРѕРґРЅСЏР» %s. РџСЂРµРјРёСЋ Р·Р° СЌС‚РѕРіРѕ РїР°С†РёРµРЅС‚Р° РЅРµРґР°РІРЅРѕ СѓР¶Рµ РїР»Р°С‚РёР»Рё.", GetRPName(target));
 	}
-	else SendClientMessage(playerid, COLOR_ADMIN, "%s поднят.", GetRPName(target));
+	else SendClientMessage(playerid, COLOR_ADMIN, "%s РїРѕРґРЅСЏС‚.", GetRPName(target));
 	return true;
 }
 
-// /aid [id] — первая помощь аптечкой из сумки, может любой
+// /aid [id] вЂ” РїРµСЂРІР°СЏ РїРѕРјРѕС‰СЊ Р°РїС‚РµС‡РєРѕР№ РёР· СЃСѓРјРєРё, РјРѕР¶РµС‚ Р»СЋР±РѕР№
 stock bool:Cmd_Aid(playerid, const params[])
 {
-	if (gWounded[playerid]) return SendClientMessage(playerid, COLOR_GREY, "Ты сам ранен.");
+	if (gWounded[playerid]) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ СЃР°Рј СЂР°РЅРµРЅ.");
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /aid [id] — нужна аптечка в сумке");
-	if (!gWounded[target]) return SendClientMessage(playerid, COLOR_GREY, "Этот игрок не ранен.");
-	if (!IsPlayerNearPlayer(playerid, target, WOUND_RANGE)) return SendClientMessage(playerid, COLOR_GREY, "Подойди ближе к раненому.");
-	if (!Inv_TakeOne(playerid, INV_MEDKIT)) return SendClientMessage(playerid, COLOR_GREY, "Нужна аптечка в сумке (продают в 24/7).");
+	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /aid [id] вЂ” РЅСѓР¶РЅР° Р°РїС‚РµС‡РєР° РІ СЃСѓРјРєРµ");
+	if (!gWounded[target]) return SendClientMessage(playerid, COLOR_GREY, "Р­С‚РѕС‚ РёРіСЂРѕРє РЅРµ СЂР°РЅРµРЅ.");
+	if (!IsPlayerNearPlayer(playerid, target, WOUND_RANGE)) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Р±Р»РёР¶Рµ Рє СЂР°РЅРµРЅРѕРјСѓ.");
+	if (!Inv_TakeOne(playerid, INV_MEDKIT)) return SendClientMessage(playerid, COLOR_GREY, "РќСѓР¶РЅР° Р°РїС‚РµС‡РєР° РІ СЃСѓРјРєРµ (РїСЂРѕРґР°СЋС‚ РІ 24/7).");
 
 	Wound_StandUp(target, WOUND_AID_HP);
 	ApplyAnimation(playerid, "MEDIC", "CPR", 4.1, false, false, false, false, 0, SYNC_ALL);
-	SendClientMessage(target, COLOR_GREEN, "%s перевязал тебя и поставил на ноги.", GetRPName(playerid));
-	SendClientMessage(playerid, COLOR_GREEN, "Ты помог %s. Потрачена аптечка.", GetRPName(target));
+	SendClientMessage(target, COLOR_GREEN, "%s РїРµСЂРµРІСЏР·Р°Р» С‚РµР±СЏ Рё РїРѕСЃС‚Р°РІРёР» РЅР° РЅРѕРіРё.", GetRPName(playerid));
+	SendClientMessage(playerid, COLOR_GREEN, "РўС‹ РїРѕРјРѕРі %s. РџРѕС‚СЂР°С‡РµРЅР° Р°РїС‚РµС‡РєР°.", GetRPName(target));
 	return true;
 }
 
-// /wounds — список раненых (медикам и админам), выбор — метка GPS
+// /wounds вЂ” СЃРїРёСЃРѕРє СЂР°РЅРµРЅС‹С… (РјРµРґРёРєР°Рј Рё Р°РґРјРёРЅР°Рј), РІС‹Р±РѕСЂ вЂ” РјРµС‚РєР° GPS
 stock bool:Cmd_Wounds(playerid)
 {
 	if (!Faction_IsMedic(Player[playerid][pFaction]) && Player[playerid][pAdmin] < 2)
-		return SendClientMessage(playerid, COLOR_GREY, "Только для медиков EMS.");
+		return SendClientMessage(playerid, COLOR_GREY, "РўРѕР»СЊРєРѕ РґР»СЏ РјРµРґРёРєРѕРІ EMS.");
 	new list[1024], line[96], n = 0, Float:x, Float:y, Float:z;
-	strcat(list, "Раненый\tДистанция\tОсталось\n");
+	strcat(list, "Р Р°РЅРµРЅС‹Р№\tР”РёСЃС‚Р°РЅС†РёСЏ\tРћСЃС‚Р°Р»РѕСЃСЊ\n");
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!gWounded[i] || !IsPlayerConnected(i)) continue;
 		GetPlayerPos(i, x, y, z);
-		format(line, sizeof line, "%s [%d]\t%.0f м\t%d сек.\n", GetRPName(i), i, GetPlayerDistanceFromPoint(playerid, x, y, z), gWoundLeft[i]);
+		format(line, sizeof line, "%s [%d]\t%.0f Рј\t%d СЃРµРє.\n", GetRPName(i), i, GetPlayerDistanceFromPoint(playerid, x, y, z), gWoundLeft[i]);
 		if (strlen(list) + strlen(line) >= sizeof list) break;
 		strcat(list, line);
 		gWoundList[playerid][n++] = i;
 	}
-	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "Раненых сейчас нет.");
-	ShowPlayerDialog(playerid, DIALOG_WOUNDS, DIALOG_STYLE_TABLIST_HEADERS, "Раненые", "%s", "GPS", "Закрыть", list);
+	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "Р Р°РЅРµРЅС‹С… СЃРµР№С‡Р°СЃ РЅРµС‚.");
+	ShowPlayerDialog(playerid, DIALOG_WOUNDS, DIALOG_STYLE_TABLIST_HEADERS, "Р Р°РЅРµРЅС‹Рµ", "%s", "GPS", "Р—Р°РєСЂС‹С‚СЊ", list);
 	return true;
 }
 
-// Из OnDialogResponse
+// РР· OnDialogResponse
 stock Wound_OnDialog(playerid, dialogid, response, listitem)
 {
 	if (dialogid != DIALOG_WOUNDS) return 0;
@@ -298,18 +298,18 @@ stock Wound_OnDialog(playerid, dialogid, response, listitem)
 	new target = gWoundList[playerid][listitem];
 	if (!IsPlayerConnected(target) || !gWounded[target])
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Ему уже помогли.");
+		SendClientMessage(playerid, COLOR_GREY, "Р•РјСѓ СѓР¶Рµ РїРѕРјРѕРіР»Рё.");
 		return 1;
 	}
 	new Float:x, Float:y, Float:z, name[48];
 	GetPlayerPos(target, x, y, z);
-	format(name, sizeof name, "раненый %s", GetRPName(target));
+	format(name, sizeof name, "СЂР°РЅРµРЅС‹Р№ %s", GetRPName(target));
 	Gps_SetPoint(playerid, x, y, z, name);
 	return 1;
 }
 
 // ---------------------------------------------------------------------
-//  /drag — полиция ведёт задержанного, /carry — нести раненого на руках
+//  /drag вЂ” РїРѕР»РёС†РёСЏ РІРµРґС‘С‚ Р·Р°РґРµСЂР¶Р°РЅРЅРѕРіРѕ, /carry вЂ” РЅРµСЃС‚Рё СЂР°РЅРµРЅРѕРіРѕ РЅР° СЂСѓРєР°С…
 // ---------------------------------------------------------------------
 static Drag_Stop(target)
 {
@@ -323,13 +323,13 @@ static Drag_Stop(target)
 	if (carried)
 	{
 		ClearAnimations(by, SYNC_ALL);
-		SendClientMessage(by, COLOR_GREY, "Ты положил %s.", GetRPName(target));
+		SendClientMessage(by, COLOR_GREY, "РўС‹ РїРѕР»РѕР¶РёР» %s.", GetRPName(target));
 	}
-	else SendClientMessage(by, COLOR_GREY, "Ты отпустил %s.", GetRPName(target));
+	else SendClientMessage(by, COLOR_GREY, "РўС‹ РѕС‚РїСѓСЃС‚РёР» %s.", GetRPName(target));
 }
 
-// Игрок вышел: отпустить того, кого он вёл, и освободиться самому
-// Остановить шаг задержанного, которого вели
+// РРіСЂРѕРє РІС‹С€РµР»: РѕС‚РїСѓСЃС‚РёС‚СЊ С‚РѕРіРѕ, РєРѕРіРѕ РѕРЅ РІС‘Р», Рё РѕСЃРІРѕР±РѕРґРёС‚СЊСЃСЏ СЃР°РјРѕРјСѓ
+// РћСЃС‚Р°РЅРѕРІРёС‚СЊ С€Р°Рі Р·Р°РґРµСЂР¶Р°РЅРЅРѕРіРѕ, РєРѕС‚РѕСЂРѕРіРѕ РІРµР»Рё
 static Drag_StopWalk(target)
 {
 	if (gDragWalk[target] == 0) return;
@@ -365,12 +365,12 @@ static bool:Drag_CanLead(playerid)
 {
 	if (gWounded[playerid] || Player[playerid][pCuffed])
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Сейчас ты не можешь никого вести.");
+		SendClientMessage(playerid, COLOR_GREY, "РЎРµР№С‡Р°СЃ С‚С‹ РЅРµ РјРѕР¶РµС€СЊ РЅРёРєРѕРіРѕ РІРµСЃС‚Рё.");
 		return false;
 	}
 	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Выйди из машины.");
+		SendClientMessage(playerid, COLOR_GREY, "Р’С‹Р№РґРё РёР· РјР°С€РёРЅС‹.");
 		return false;
 	}
 	return true;
@@ -387,7 +387,7 @@ static Drag_Begin(target, by, bool:carry)
 	if (carry) ApplyAnimation(by, "CARRY", "crry_prtial", 4.1, true, false, false, true, 1, SYNC_ALL);
 }
 
-// /drag [id] — только полиция на смене
+// /drag [id] вЂ” С‚РѕР»СЊРєРѕ РїРѕР»РёС†РёСЏ РЅР° СЃРјРµРЅРµ
 stock bool:Cmd_Drag(playerid, const params[])
 {
 	new pos = 0;
@@ -396,23 +396,23 @@ stock bool:Cmd_Drag(playerid, const params[])
 	{
 		new cur = Drag_Find(playerid);
 		if (cur != INVALID_PLAYER_ID && !gCarried[cur]) { Drag_Stop(cur); return true; }
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /drag [id] — вести задержанного, /drag — отпустить");
+		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /drag [id] вЂ” РІРµСЃС‚Рё Р·Р°РґРµСЂР¶Р°РЅРЅРѕРіРѕ, /drag вЂ” РѕС‚РїСѓСЃС‚РёС‚СЊ");
 	}
 	if (gDragBy[target] == playerid && !gCarried[target]) { Drag_Stop(target); return true; }
 	if (!Faction_NeedLaw(playerid)) return true;
-	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Себя вести нельзя.");
+	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "РЎРµР±СЏ РІРµСЃС‚Рё РЅРµР»СЊР·СЏ.");
 	if (!Drag_CanLead(playerid)) return true;
-	if (!IsPlayerNearPlayer(playerid, target, WOUND_RANGE)) return SendClientMessage(playerid, COLOR_GREY, "Подойди ближе.");
-	if (!gWounded[target] && !Player[target][pCuffed]) return SendClientMessage(playerid, COLOR_GREY, "Сначала надень наручники (/cuff).");
-	if (gDragBy[target] != INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Его уже ведут.");
+	if (!IsPlayerNearPlayer(playerid, target, WOUND_RANGE)) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Р±Р»РёР¶Рµ.");
+	if (!gWounded[target] && !Player[target][pCuffed]) return SendClientMessage(playerid, COLOR_GREY, "РЎРЅР°С‡Р°Р»Р° РЅР°РґРµРЅСЊ РЅР°СЂСѓС‡РЅРёРєРё (/cuff).");
+	if (gDragBy[target] != INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Р•РіРѕ СѓР¶Рµ РІРµРґСѓС‚.");
 
 	Drag_Begin(target, playerid, false);
-	SendClientMessage(playerid, COLOR_WHITE, "Ты ведёшь %s. Отпустить: /drag", GetRPName(target));
-	SendClientMessage(target, COLOR_WHITE, "Офицер %s ведёт тебя за собой.", GetRPName(playerid));
+	SendClientMessage(playerid, COLOR_WHITE, "РўС‹ РІРµРґС‘С€СЊ %s. РћС‚РїСѓСЃС‚РёС‚СЊ: /drag", GetRPName(target));
+	SendClientMessage(target, COLOR_WHITE, "РћС„РёС†РµСЂ %s РІРµРґС‘С‚ С‚РµР±СЏ Р·Р° СЃРѕР±РѕР№.", GetRPName(playerid));
 	return true;
 }
 
-// /carry [id] — предложить раненому понести его
+// /carry [id] вЂ” РїСЂРµРґР»РѕР¶РёС‚СЊ СЂР°РЅРµРЅРѕРјСѓ РїРѕРЅРµСЃС‚Рё РµРіРѕ
 stock bool:Cmd_Carry(playerid, const params[])
 {
 	new pos = 0;
@@ -421,55 +421,55 @@ stock bool:Cmd_Carry(playerid, const params[])
 	{
 		new cur = Drag_Find(playerid);
 		if (cur != INVALID_PLAYER_ID && gCarried[cur]) { Drag_Stop(cur); return true; }
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /carry [id] — понести раненого, /carry — положить");
+		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /carry [id] вЂ” РїРѕРЅРµСЃС‚Рё СЂР°РЅРµРЅРѕРіРѕ, /carry вЂ” РїРѕР»РѕР¶РёС‚СЊ");
 	}
 	if (gDragBy[target] == playerid && gCarried[target]) { Drag_Stop(target); return true; }
-	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Себя нести нельзя.");
+	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "РЎРµР±СЏ РЅРµСЃС‚Рё РЅРµР»СЊР·СЏ.");
 	if (!Drag_CanLead(playerid)) return true;
-	if (!gWounded[target]) return SendClientMessage(playerid, COLOR_GREY, "Нести можно только раненого.");
-	if (!IsPlayerNearPlayer(playerid, target, WOUND_RANGE)) return SendClientMessage(playerid, COLOR_GREY, "Подойди ближе.");
-	if (gDragBy[target] != INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Его уже несут.");
+	if (!gWounded[target]) return SendClientMessage(playerid, COLOR_GREY, "РќРµСЃС‚Рё РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ СЂР°РЅРµРЅРѕРіРѕ.");
+	if (!IsPlayerNearPlayer(playerid, target, WOUND_RANGE)) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Р±Р»РёР¶Рµ.");
+	if (gDragBy[target] != INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Р•РіРѕ СѓР¶Рµ РЅРµСЃСѓС‚.");
 
 	Player[target][pOfferType] = OFFER_CARRY;
 	Player[target][pOfferFrom] = playerid;
 	Player[target][pOfferFromDb] = Player[playerid][pDbId];
 	Player[target][pOfferValue] = 0;
-	SendClientMessage(target, COLOR_BLUE, "%s хочет понести тебя на руках. Согласиться: Y (или /accept), отказаться: N", GetRPName(playerid));
-	SendClientMessage(playerid, COLOR_WHITE, "Ты предложил %s понести его. Ждём согласия.", GetRPName(target));
+	SendClientMessage(target, COLOR_BLUE, "%s С…РѕС‡РµС‚ РїРѕРЅРµСЃС‚Рё С‚РµР±СЏ РЅР° СЂСѓРєР°С…. РЎРѕРіР»Р°СЃРёС‚СЊСЃСЏ: Y (РёР»Рё /accept), РѕС‚РєР°Р·Р°С‚СЊСЃСЏ: N", GetRPName(playerid));
+	SendClientMessage(playerid, COLOR_WHITE, "РўС‹ РїСЂРµРґР»РѕР¶РёР» %s РїРѕРЅРµСЃС‚Рё РµРіРѕ. Р–РґС‘Рј СЃРѕРіР»Р°СЃРёСЏ.", GetRPName(target));
 	return true;
 }
 
-// Из Cmd_Accept (factions.inc): раненый согласился
+// РР· Cmd_Accept (factions.inc): СЂР°РЅРµРЅС‹Р№ СЃРѕРіР»Р°СЃРёР»СЃСЏ
 stock Wound_AcceptCarry(playerid, from)
 {
 	if (!gWounded[playerid])
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Ты уже не ранен.");
+		SendClientMessage(playerid, COLOR_GREY, "РўС‹ СѓР¶Рµ РЅРµ СЂР°РЅРµРЅ.");
 		return;
 	}
 	if (gDragBy[playerid] != INVALID_PLAYER_ID)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Тебя уже несут.");
+		SendClientMessage(playerid, COLOR_GREY, "РўРµР±СЏ СѓР¶Рµ РЅРµСЃСѓС‚.");
 		return;
 	}
 	if (gWounded[from] || Player[from][pCuffed] || GetPlayerState(from) != PLAYER_STATE_ONFOOT || !IsPlayerNearPlayer(playerid, from, WOUND_RANGE + 2.0))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Человек отошёл.");
+		SendClientMessage(playerid, COLOR_GREY, "Р§РµР»РѕРІРµРє РѕС‚РѕС€С‘Р».");
 		return;
 	}
 	Drag_Begin(playerid, from, true);
-	SendClientMessage(from, COLOR_WHITE, "Ты несёшь %s. Положить: /carry", GetRPName(playerid));
-	SendClientMessage(playerid, COLOR_WHITE, "%s несёт тебя на руках.", GetRPName(from));
+	SendClientMessage(from, COLOR_WHITE, "РўС‹ РЅРµСЃС‘С€СЊ %s. РџРѕР»РѕР¶РёС‚СЊ: /carry", GetRPName(playerid));
+	SendClientMessage(playerid, COLOR_WHITE, "%s РЅРµСЃС‘С‚ С‚РµР±СЏ РЅР° СЂСѓРєР°С….", GetRPName(from));
 	new msg[144];
-	format(msg, sizeof msg, "%s поднимает %s на руки.", GetRPName(from), GetRPName(playerid));
+	format(msg, sizeof msg, "%s РїРѕРґРЅРёРјР°РµС‚ %s РЅР° СЂСѓРєРё.", GetRPName(from), GetRPName(playerid));
 	SendNearbyMessage(from, CHAT_RADIUS, COLOR_PURPLE, msg);
 }
 
-// Задержанный идёт за офицером своими ногами (анимация шага двигает его сама)
+// Р—Р°РґРµСЂР¶Р°РЅРЅС‹Р№ РёРґС‘С‚ Р·Р° РѕС„РёС†РµСЂРѕРј СЃРІРѕРёРјРё РЅРѕРіР°РјРё (Р°РЅРёРјР°С†РёСЏ С€Р°РіР° РґРІРёРіР°РµС‚ РµРіРѕ СЃР°РјР°)
 static Drag_Walk(t, by)
 {
-	// задержанный идёт сам: держится на шаг за спиной офицера и идёт к нему маленькими шагами,
-	// с анимацией ходьбы (или бега, если отстал). Тик — 100 мс, поэтому не «телепортируется».
+	// Р·Р°РґРµСЂР¶Р°РЅРЅС‹Р№ РёРґС‘С‚ СЃР°Рј: РґРµСЂР¶РёС‚СЃСЏ РЅР° С€Р°Рі Р·Р° СЃРїРёРЅРѕР№ РѕС„РёС†РµСЂР° Рё РёРґС‘С‚ Рє РЅРµРјСѓ РјР°Р»РµРЅСЊРєРёРјРё С€Р°РіР°РјРё,
+	// СЃ Р°РЅРёРјР°С†РёРµР№ С…РѕРґСЊР±С‹ (РёР»Рё Р±РµРіР°, РµСЃР»Рё РѕС‚СЃС‚Р°Р»). РўРёРє вЂ” 100 РјСЃ, РїРѕСЌС‚РѕРјСѓ РЅРµ В«С‚РµР»РµРїРѕСЂС‚РёСЂСѓРµС‚СЃСЏВ».
 	new Float:bx, Float:byy, Float:bz, Float:a;
 	GetPlayerPos(by, bx, byy, bz);
 	GetPlayerFacingAngle(by, a);
@@ -481,7 +481,7 @@ static Drag_Walk(t, by)
 
 	if (dist > 10.0 || floatabs(bz - cz) > 3.0)
 	{
-		// совсем отстал (дверь, лестница, телепорт) — ставим за спиной сразу
+		// СЃРѕРІСЃРµРј РѕС‚СЃС‚Р°Р» (РґРІРµСЂСЊ, Р»РµСЃС‚РЅРёС†Р°, С‚РµР»РµРїРѕСЂС‚) вЂ” СЃС‚Р°РІРёРј Р·Р° СЃРїРёРЅРѕР№ СЃСЂР°Р·Сѓ
 		SetPlayerPos(t, tx, ty, bz);
 		SetPlayerFacingAngle(t, a);
 		if (gDragWalk[t] != 0) ClearAnimations(t, SYNC_ALL);
@@ -490,7 +490,7 @@ static Drag_Walk(t, by)
 	}
 	if (dist <= 0.25)
 	{
-		// на месте: стоим, смотрим туда же, куда офицер
+		// РЅР° РјРµСЃС‚Рµ: СЃС‚РѕРёРј, СЃРјРѕС‚СЂРёРј С‚СѓРґР° Р¶Рµ, РєСѓРґР° РѕС„РёС†РµСЂ
 		SetPlayerFacingAngle(t, a);
 		if (gDragWalk[t] != 0)
 		{
@@ -499,8 +499,8 @@ static Drag_Walk(t, by)
 		}
 		return;
 	}
-	new mode = (dist > 2.5) ? 2 : 1;          // 1 — идёт, 2 — бежит
-	new Float:step = (mode == 2) ? 0.40 : 0.14;   // метров за тик: ~4 и ~1.4 м/с
+	new mode = (dist > 2.5) ? 2 : 1;          // 1 вЂ” РёРґС‘С‚, 2 вЂ” Р±РµР¶РёС‚
+	new Float:step = (mode == 2) ? 0.40 : 0.14;   // РјРµС‚СЂРѕРІ Р·Р° С‚РёРє: ~4 Рё ~1.4 Рј/СЃ
 	if (step > dist) step = dist;
 	new Float:f = step / dist;
 	SetPlayerPos(t, cx + (tx - cx) * f, cy + (ty - cy) * f, cz);
@@ -535,7 +535,7 @@ public Drag_Tick()
 		if (GetPlayerInterior(t) != GetPlayerInterior(by)) SetPlayerInterior(t, GetPlayerInterior(by));
 		if (GetPlayerVirtualWorld(t) != GetPlayerVirtualWorld(by)) SetPlayerVirtualWorld(t, GetPlayerVirtualWorld(by));
 
-		// задержанный на ногах идёт сам: поворачиваем к офицеру и включаем шаг
+		// Р·Р°РґРµСЂР¶Р°РЅРЅС‹Р№ РЅР° РЅРѕРіР°С… РёРґС‘С‚ СЃР°Рј: РїРѕРІРѕСЂР°С‡РёРІР°РµРј Рє РѕС„РёС†РµСЂСѓ Рё РІРєР»СЋС‡Р°РµРј С€Р°Рі
 		if (!gCarried[t] && !gWounded[t])
 		{
 			Drag_Walk(t, by);
@@ -544,7 +544,7 @@ public Drag_Tick()
 
 		GetPlayerPos(by, x, y, z);
 		GetPlayerFacingAngle(by, a);
-		// раненого тащат сзади, на руках — перед грудью
+		// СЂР°РЅРµРЅРѕРіРѕ С‚Р°С‰Р°С‚ СЃР·Р°РґРё, РЅР° СЂСѓРєР°С… вЂ” РїРµСЂРµРґ РіСЂСѓРґСЊСЋ
 		new Float:d = gCarried[t] ? 0.55 : -1.0;
 		x += d * floatsin(-a, degrees);
 		y += d * floatcos(-a, degrees);
@@ -553,7 +553,7 @@ public Drag_Tick()
 			SetPlayerPos(t, x, y, z);
 			SetPlayerFacingAngle(t, a + 90.0);
 		}
-		// руки «с ношей» сбиваются от бега — обновляем раз в ~3 сек.
+		// СЂСѓРєРё В«СЃ РЅРѕС€РµР№В» СЃР±РёРІР°СЋС‚СЃСЏ РѕС‚ Р±РµРіР° вЂ” РѕР±РЅРѕРІР»СЏРµРј СЂР°Р· РІ ~3 СЃРµРє.
 		if (gCarried[t] && ++gCarryAnimTick[t] >= 30)
 		{
 			gCarryAnimTick[t] = 0;

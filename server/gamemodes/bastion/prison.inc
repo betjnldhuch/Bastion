@@ -1,31 +1,31 @@
 // =====================================================================
-//  prison.inc — федеральная тюрьма и её охрана (организация типа «тюрьма»).
+//  prison.inc вЂ” С„РµРґРµСЂР°Р»СЊРЅР°СЏ С‚СЋСЂСЊРјР° Рё РµС‘ РѕС…СЂР°РЅР° (РѕСЂРіР°РЅРёР·Р°С†РёСЏ С‚РёРїР° В«С‚СЋСЂСЊРјР°В»).
 //
-//  Как запустить:
-//    1. /createfaction 6 [название] — организация охраны, лидер: /makeleader.
-//       Вход для охраны: /setfint (как у любой организации), раздевалка /setfduty.
-//    2. Точки (админ 4+, places.inc): /place cell — камеры (можно несколько),
-//       /place pwork — места работ заключённых, /place escape — лаз для побега,
-//       /place release — где выпускают на свободу, /place pguard — пост охраны.
-//  Пока нет ни одной камеры, все сидят в камере LSPD, как раньше.
+//  РљР°Рє Р·Р°РїСѓСЃС‚РёС‚СЊ:
+//    1. /createfaction 6 [РЅР°Р·РІР°РЅРёРµ] вЂ” РѕСЂРіР°РЅРёР·Р°С†РёСЏ РѕС…СЂР°РЅС‹, Р»РёРґРµСЂ: /makeleader.
+//       Р’С…РѕРґ РґР»СЏ РѕС…СЂР°РЅС‹: /setfint (РєР°Рє Сѓ Р»СЋР±РѕР№ РѕСЂРіР°РЅРёР·Р°С†РёРё), СЂР°Р·РґРµРІР°Р»РєР° /setfduty.
+//    2. РўРѕС‡РєРё (Р°РґРјРёРЅ 4+, places.inc): /place cell вЂ” РєР°РјРµСЂС‹ (РјРѕР¶РЅРѕ РЅРµСЃРєРѕР»СЊРєРѕ),
+//       /place pwork вЂ” РјРµСЃС‚Р° СЂР°Р±РѕС‚ Р·Р°РєР»СЋС‡С‘РЅРЅС‹С…, /place escape вЂ” Р»Р°Р· РґР»СЏ РїРѕР±РµРіР°,
+//       /place release вЂ” РіРґРµ РІС‹РїСѓСЃРєР°СЋС‚ РЅР° СЃРІРѕР±РѕРґСѓ, /place pguard вЂ” РїРѕСЃС‚ РѕС…СЂР°РЅС‹.
+//  РџРѕРєР° РЅРµС‚ РЅРё РѕРґРЅРѕР№ РєР°РјРµСЂС‹, РІСЃРµ СЃРёРґСЏС‚ РІ РєР°РјРµСЂРµ LSPD, РєР°Рє СЂР°РЅСЊС€Рµ.
 //
-//  Срок от PRISON_MIN_TERM минут — заключённого везут в тюрьму, меньше — КПЗ LSPD.
-//  Заключённый: /pwork у места работ — работа, каждые PRISON_WORK_STEPS заданий -1 минута срока.
-//    /escape у лаза — побег: PRISON_ESCAPE_SEC секунд копать, охрану и полицию оповещают.
-//  Охрана (на смене): /prisoners — список, /pextend [id] [мин] [причина] — добавить срок (ранг 2+),
-//    /preduce [id] [мин] — скостить (ранг 7+), /cuff /uncuff /frisk /seize — как у полиции.
+//  РЎСЂРѕРє РѕС‚ PRISON_MIN_TERM РјРёРЅСѓС‚ вЂ” Р·Р°РєР»СЋС‡С‘РЅРЅРѕРіРѕ РІРµР·СѓС‚ РІ С‚СЋСЂСЊРјСѓ, РјРµРЅСЊС€Рµ вЂ” РљРџР— LSPD.
+//  Р—Р°РєР»СЋС‡С‘РЅРЅС‹Р№: /pwork Сѓ РјРµСЃС‚Р° СЂР°Р±РѕС‚ вЂ” СЂР°Р±РѕС‚Р°, РєР°Р¶РґС‹Рµ PRISON_WORK_STEPS Р·Р°РґР°РЅРёР№ -1 РјРёРЅСѓС‚Р° СЃСЂРѕРєР°.
+//    /escape Сѓ Р»Р°Р·Р° вЂ” РїРѕР±РµРі: PRISON_ESCAPE_SEC СЃРµРєСѓРЅРґ РєРѕРїР°С‚СЊ, РѕС…СЂР°РЅСѓ Рё РїРѕР»РёС†РёСЋ РѕРїРѕРІРµС‰Р°СЋС‚.
+//  РћС…СЂР°РЅР° (РЅР° СЃРјРµРЅРµ): /prisoners вЂ” СЃРїРёСЃРѕРє, /pextend [id] [РјРёРЅ] [РїСЂРёС‡РёРЅР°] вЂ” РґРѕР±Р°РІРёС‚СЊ СЃСЂРѕРє (СЂР°РЅРі 2+),
+//    /preduce [id] [РјРёРЅ] вЂ” СЃРєРѕСЃС‚РёС‚СЊ (СЂР°РЅРі 7+), /cuff /uncuff /frisk /seize вЂ” РєР°Рє Сѓ РїРѕР»РёС†РёРё.
 // =====================================================================
 
-#define PRISON_MIN_TERM         20      // с какого срока сажают в тюрьму, а не в КПЗ
-#define PRISON_RANGE            120.0   // дальше от камер и работ — значит сбежал без /escape: вернуть
+#define PRISON_MIN_TERM         20      // СЃ РєР°РєРѕРіРѕ СЃСЂРѕРєР° СЃР°Р¶Р°СЋС‚ РІ С‚СЋСЂСЊРјСѓ, Р° РЅРµ РІ РљРџР—
+#define PRISON_RANGE            120.0   // РґР°Р»СЊС€Рµ РѕС‚ РєР°РјРµСЂ Рё СЂР°Р±РѕС‚ вЂ” Р·РЅР°С‡РёС‚ СЃР±РµР¶Р°Р» Р±РµР· /escape: РІРµСЂРЅСѓС‚СЊ
 #define PRISON_WORK_STEPS       3
 #define PRISON_ESCAPE_SEC       90
-#define PRISON_ESCAPE_FAIL_ADD  15      // минут сверху за неудачный побег
+#define PRISON_ESCAPE_FAIL_ADD  15      // РјРёРЅСѓС‚ СЃРІРµСЂС…Сѓ Р·Р° РЅРµСѓРґР°С‡РЅС‹Р№ РїРѕР±РµРі
 #define PRISON_ESCAPE_COOLDOWN  1800
 #define PRISON_EXTEND_MAX       30
 
 static bool:gInmate[MAX_PLAYERS];
-static gPWorkStep[MAX_PLAYERS];          // 0 — не работает, иначе сколько сделано + 1
+static gPWorkStep[MAX_PLAYERS];          // 0 вЂ” РЅРµ СЂР°Р±РѕС‚Р°РµС‚, РёРЅР°С‡Рµ СЃРєРѕР»СЊРєРѕ СЃРґРµР»Р°РЅРѕ + 1
 static gPWorkPlace[MAX_PLAYERS] = { -1, ... };
 static gPWorkBusy[MAX_PLAYERS];
 static gEscapeLeft[MAX_PLAYERS];
@@ -75,9 +75,9 @@ static Prison_MessageGuards(const msg[])
 }
 
 // ---------------------------------------------------------------------
-//  Посадка и освобождение (из Jail_PutInCell / Jail_Release, factions.inc)
+//  РџРѕСЃР°РґРєР° Рё РѕСЃРІРѕР±РѕР¶РґРµРЅРёРµ (РёР· Jail_PutInCell / Jail_Release, factions.inc)
 // ---------------------------------------------------------------------
-// true — посадили в тюрьму (а не в КПЗ)
+// true вЂ” РїРѕСЃР°РґРёР»Рё РІ С‚СЋСЂСЊРјСѓ (Р° РЅРµ РІ РљРџР—)
 stock bool:Prison_TryPutInCell(playerid)
 {
 	if (!Prison_Ready()) { gInmate[playerid] = false; return false; }
@@ -92,15 +92,15 @@ stock bool:Prison_TryPutInCell(playerid)
 	Player[playerid][pHouseInside] = -1;
 	if (first)
 	{
-		SendClientMessage(playerid, 0xD2691EFF, "Тебя этапировали в федеральную тюрьму. Работа: /pwork (скостить срок), побег: /escape у лаза.");
+		SendClientMessage(playerid, 0xD2691EFF, "РўРµР±СЏ СЌС‚Р°РїРёСЂРѕРІР°Р»Рё РІ С„РµРґРµСЂР°Р»СЊРЅСѓСЋ С‚СЋСЂСЊРјСѓ. Р Р°Р±РѕС‚Р°: /pwork (СЃРєРѕСЃС‚РёС‚СЊ СЃСЂРѕРє), РїРѕР±РµРі: /escape Сѓ Р»Р°Р·Р°.");
 		new msg[144];
-		format(msg, sizeof msg, "[Тюрьма] Поступил заключённый %s [%d], срок %d мин.", GetRPName(playerid), playerid, Player[playerid][pJail]);
+		format(msg, sizeof msg, "[РўСЋСЂСЊРјР°] РџРѕСЃС‚СѓРїРёР» Р·Р°РєР»СЋС‡С‘РЅРЅС‹Р№ %s [%d], СЃСЂРѕРє %d РјРёРЅ.", GetRPName(playerid), playerid, Player[playerid][pJail]);
 		Prison_MessageGuards(msg);
 	}
 	return true;
 }
 
-// true — выпустили через ворота тюрьмы
+// true вЂ” РІС‹РїСѓСЃС‚РёР»Рё С‡РµСЂРµР· РІРѕСЂРѕС‚Р° С‚СЋСЂСЊРјС‹
 stock bool:Prison_TryRelease(playerid)
 {
 	if (!gInmate[playerid]) return false;
@@ -109,20 +109,20 @@ stock bool:Prison_TryRelease(playerid)
 	Prison_StopWork(playerid);
 	gEscapeLeft[playerid] = 0;
 	new r = Place_First(PL_RELEASE);
-	if (r == -1) return false;          // выхода нет — выпустят у LSPD, как раньше
+	if (r == -1) return false;          // РІС‹С…РѕРґР° РЅРµС‚ вЂ” РІС‹РїСѓСЃС‚СЏС‚ Сѓ LSPD, РєР°Рє СЂР°РЅСЊС€Рµ
 	Place_Teleport(playerid, r);
-	SendClientMessage(playerid, COLOR_GREEN, "Срок закончился. Ворота тюрьмы открываются: ты на свободе.");
+	SendClientMessage(playerid, COLOR_GREEN, "РЎСЂРѕРє Р·Р°РєРѕРЅС‡РёР»СЃСЏ. Р’РѕСЂРѕС‚Р° С‚СЋСЂСЊРјС‹ РѕС‚РєСЂС‹РІР°СЋС‚СЃСЏ: С‚С‹ РЅР° СЃРІРѕР±РѕРґРµ.");
 	Account_Save(playerid);
 	return true;
 }
 
-// Раз в минуту для каждого заключённого (из Factions_OnMinute). true — заключённый тюрьмы
+// Р Р°Р· РІ РјРёРЅСѓС‚Сѓ РґР»СЏ РєР°Р¶РґРѕРіРѕ Р·Р°РєР»СЋС‡С‘РЅРЅРѕРіРѕ (РёР· Factions_OnMinute). true вЂ” Р·Р°РєР»СЋС‡С‘РЅРЅС‹Р№ С‚СЋСЂСЊРјС‹
 stock bool:Prison_OnMinute(playerid)
 {
 	if (!gInmate[playerid]) return false;
 	if (!Prison_Ready()) { gInmate[playerid] = false; Prison_SaveFlag(playerid); return false; }
 	if (gEscapeLeft[playerid] > 0) return true;
-	// ушёл далеко от камер и работ (или в чужой интерьер) — вернуть в камеру
+	// СѓС€С‘Р» РґР°Р»РµРєРѕ РѕС‚ РєР°РјРµСЂ Рё СЂР°Р±РѕС‚ (РёР»Рё РІ С‡СѓР¶РѕР№ РёРЅС‚РµСЂСЊРµСЂ) вЂ” РІРµСЂРЅСѓС‚СЊ РІ РєР°РјРµСЂСѓ
 	new bool:inside = false;
 	for (new i = 0; i < MAX_PLACES && !inside; i++)
 	{
@@ -135,7 +135,7 @@ stock bool:Prison_OnMinute(playerid)
 }
 
 // ---------------------------------------------------------------------
-//  Работа заключённых: /pwork
+//  Р Р°Р±РѕС‚Р° Р·Р°РєР»СЋС‡С‘РЅРЅС‹С…: /pwork
 // ---------------------------------------------------------------------
 static Prison_StopWork(playerid)
 {
@@ -159,21 +159,21 @@ static Prison_NextWork(playerid)
 
 stock bool:Cmd_PWork(playerid)
 {
-	if (!gInmate[playerid]) return SendClientMessage(playerid, COLOR_GREY, "Работают только заключённые тюрьмы.");
+	if (!gInmate[playerid]) return SendClientMessage(playerid, COLOR_GREY, "Р Р°Р±РѕС‚Р°СЋС‚ С‚РѕР»СЊРєРѕ Р·Р°РєР»СЋС‡С‘РЅРЅС‹Рµ С‚СЋСЂСЊРјС‹.");
 	if (gPWorkStep[playerid] != 0)
 	{
 		Prison_StopWork(playerid);
-		return SendClientMessage(playerid, COLOR_WHITE, "Ты закончил работу.");
+		return SendClientMessage(playerid, COLOR_WHITE, "РўС‹ Р·Р°РєРѕРЅС‡РёР» СЂР°Р±РѕС‚Сѓ.");
 	}
-	if (Place_First(PL_PWORK) == -1) return SendClientMessage(playerid, COLOR_GREY, "В этой тюрьме работы нет (админ: /place pwork).");
-	if (Player[playerid][pJail] <= 1) return SendClientMessage(playerid, COLOR_GREY, "Тебе и так скоро на свободу.");
+	if (Place_First(PL_PWORK) == -1) return SendClientMessage(playerid, COLOR_GREY, "Р’ СЌС‚РѕР№ С‚СЋСЂСЊРјРµ СЂР°Р±РѕС‚С‹ РЅРµС‚ (Р°РґРјРёРЅ: /place pwork).");
+	if (Player[playerid][pJail] <= 1) return SendClientMessage(playerid, COLOR_GREY, "РўРµР±Рµ Рё С‚Р°Рє СЃРєРѕСЂРѕ РЅР° СЃРІРѕР±РѕРґСѓ.");
 	gPWorkStep[playerid] = 1;
 	gPWorkPlace[playerid] = -1;
 	Prison_NextWork(playerid);
-	return SendClientMessage(playerid, COLOR_GREEN, "Работа: иди к маркеру и сделай дело. Каждые %d заданий — минус минута срока. Закончить: /pwork", PRISON_WORK_STEPS);
+	return SendClientMessage(playerid, COLOR_GREEN, "Р Р°Р±РѕС‚Р°: РёРґРё Рє РјР°СЂРєРµСЂСѓ Рё СЃРґРµР»Р°Р№ РґРµР»Рѕ. РљР°Р¶РґС‹Рµ %d Р·Р°РґР°РЅРёР№ вЂ” РјРёРЅСѓСЃ РјРёРЅСѓС‚Р° СЃСЂРѕРєР°. Р—Р°РєРѕРЅС‡РёС‚СЊ: /pwork", PRISON_WORK_STEPS);
 }
 
-// Из OnPlayerEnterCheckpoint. true — точка работы заключённого
+// РР· OnPlayerEnterCheckpoint. true вЂ” С‚РѕС‡РєР° СЂР°Р±РѕС‚С‹ Р·Р°РєР»СЋС‡С‘РЅРЅРѕРіРѕ
 stock bool:Prison_OnEnterCheckpoint(playerid)
 {
 	if (gPWorkStep[playerid] == 0) return false;
@@ -199,29 +199,29 @@ static Prison_WorkDone(playerid)
 	{
 		Player[playerid][pJail]--;
 		Account_Save(playerid);
-		SendClientMessage(playerid, COLOR_GREEN, "Хорошо работаешь: срок -1 мин. Осталось %d мин.", Player[playerid][pJail]);
+		SendClientMessage(playerid, COLOR_GREEN, "РҐРѕСЂРѕС€Рѕ СЂР°Р±РѕС‚Р°РµС€СЊ: СЃСЂРѕРє -1 РјРёРЅ. РћСЃС‚Р°Р»РѕСЃСЊ %d РјРёРЅ.", Player[playerid][pJail]);
 	}
 	if (Player[playerid][pJail] <= 1) { Prison_StopWork(playerid); return; }
 	Prison_NextWork(playerid);
 }
 
 // ---------------------------------------------------------------------
-//  Побег: /escape у лаза
+//  РџРѕР±РµРі: /escape Сѓ Р»Р°Р·Р°
 // ---------------------------------------------------------------------
 stock bool:Cmd_Escape(playerid)
 {
-	if (!gInmate[playerid]) return SendClientMessage(playerid, COLOR_GREY, "Ты не в тюрьме.");
-	if (gEscapeLeft[playerid] > 0) return SendClientMessage(playerid, COLOR_GREY, "Ты уже копаешь.");
-	if (Place_Nearby(playerid, PL_ESCAPE, 3.0) == -1) return SendClientMessage(playerid, COLOR_GREY, "Здесь не выбраться. Нужен лаз.");
+	if (!gInmate[playerid]) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РЅРµ РІ С‚СЋСЂСЊРјРµ.");
+	if (gEscapeLeft[playerid] > 0) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ СѓР¶Рµ РєРѕРїР°РµС€СЊ.");
+	if (Place_Nearby(playerid, PL_ESCAPE, 3.0) == -1) return SendClientMessage(playerid, COLOR_GREY, "Р—РґРµСЃСЊ РЅРµ РІС‹Р±СЂР°С‚СЊСЃСЏ. РќСѓР¶РµРЅ Р»Р°Р·.");
 	new now = gettime();
-	if (now - gEscapeLast[playerid] < PRISON_ESCAPE_COOLDOWN) return SendClientMessage(playerid, COLOR_GREY, "Охрана ещё начеку после прошлой попытки. Подожди %d мин.", (PRISON_ESCAPE_COOLDOWN - (now - gEscapeLast[playerid])) / 60 + 1);
+	if (now - gEscapeLast[playerid] < PRISON_ESCAPE_COOLDOWN) return SendClientMessage(playerid, COLOR_GREY, "РћС…СЂР°РЅР° РµС‰С‘ РЅР°С‡РµРєСѓ РїРѕСЃР»Рµ РїСЂРѕС€Р»РѕР№ РїРѕРїС‹С‚РєРё. РџРѕРґРѕР¶РґРё %d РјРёРЅ.", (PRISON_ESCAPE_COOLDOWN - (now - gEscapeLast[playerid])) / 60 + 1);
 	gEscapeLast[playerid] = now;
 	Prison_StopWork(playerid);
 	gEscapeLeft[playerid] = PRISON_ESCAPE_SEC;
 	ApplyAnimation(playerid, "BOMBER", "BOM_Plant_Loop", 4.1, true, false, false, false, 0);
-	SendClientMessage(playerid, COLOR_RED, "Ты начал копать лаз. Не уходи %d сек. Если охрана заметит — к сроку добавят.", PRISON_ESCAPE_SEC);
+	SendClientMessage(playerid, COLOR_RED, "РўС‹ РЅР°С‡Р°Р» РєРѕРїР°С‚СЊ Р»Р°Р·. РќРµ СѓС…РѕРґРё %d СЃРµРє. Р•СЃР»Рё РѕС…СЂР°РЅР° Р·Р°РјРµС‚РёС‚ вЂ” Рє СЃСЂРѕРєСѓ РґРѕР±Р°РІСЏС‚.", PRISON_ESCAPE_SEC);
 	new msg[144];
-	format(msg, sizeof msg, "[Тюрьма] Тревога! %s [%d] пытается сбежать через лаз.", GetRPName(playerid), playerid);
+	format(msg, sizeof msg, "[РўСЋСЂСЊРјР°] РўСЂРµРІРѕРіР°! %s [%d] РїС‹С‚Р°РµС‚СЃСЏ СЃР±РµР¶Р°С‚СЊ С‡РµСЂРµР· Р»Р°Р·.", GetRPName(playerid), playerid);
 	Prison_MessageGuards(msg);
 	return true;
 }
@@ -232,17 +232,17 @@ static Prison_EscapeFail(playerid, const why[])
 	ClearAnimations(playerid);
 	Player[playerid][pJail] += PRISON_ESCAPE_FAIL_ADD;
 	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_RED, "Побег сорван (%s). К сроку +%d мин., всего %d мин.", why, PRISON_ESCAPE_FAIL_ADD, Player[playerid][pJail]);
+	SendClientMessage(playerid, COLOR_RED, "РџРѕР±РµРі СЃРѕСЂРІР°РЅ (%s). Рљ СЃСЂРѕРєСѓ +%d РјРёРЅ., РІСЃРµРіРѕ %d РјРёРЅ.", why, PRISON_ESCAPE_FAIL_ADD, Player[playerid][pJail]);
 	new msg[144];
-	format(msg, sizeof msg, "[Тюрьма] Побег %s сорван (%s).", GetRPName(playerid), why);
+	format(msg, sizeof msg, "[РўСЋСЂСЊРјР°] РџРѕР±РµРі %s СЃРѕСЂРІР°РЅ (%s).", GetRPName(playerid), why);
 	Prison_MessageGuards(msg);
 }
 
 static Prison_EscapeTick(playerid)
 {
-	if (Player[playerid][pCuffed]) { Prison_EscapeFail(playerid, "надели наручники"); return; }
-	if (Wound_IsWounded(playerid)) { Prison_EscapeFail(playerid, "ранен"); return; }
-	if (Place_Nearby(playerid, PL_ESCAPE, 4.0) == -1) { Prison_EscapeFail(playerid, "отошёл от лаза"); return; }
+	if (Player[playerid][pCuffed]) { Prison_EscapeFail(playerid, "РЅР°РґРµР»Рё РЅР°СЂСѓС‡РЅРёРєРё"); return; }
+	if (Wound_IsWounded(playerid)) { Prison_EscapeFail(playerid, "СЂР°РЅРµРЅ"); return; }
+	if (Place_Nearby(playerid, PL_ESCAPE, 4.0) == -1) { Prison_EscapeFail(playerid, "РѕС‚РѕС€С‘Р» РѕС‚ Р»Р°Р·Р°"); return; }
 	if (--gEscapeLeft[playerid] > 0)
 	{
 		if (gEscapeLeft[playerid] % 15 == 0) GameTextForPlayer(playerid, "~y~digging...", 2000, 4);
@@ -264,9 +264,9 @@ static Prison_EscapeTick(playerid)
 	}
 	else Jail_Release(playerid);
 	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_RED, "Ты выбрался! Теперь ты в розыске (6 зв.). Беги.");
+	SendClientMessage(playerid, COLOR_RED, "РўС‹ РІС‹Р±СЂР°Р»СЃСЏ! РўРµРїРµСЂСЊ С‚С‹ РІ СЂРѕР·С‹СЃРєРµ (6 Р·РІ.). Р‘РµРіРё.");
 	new msg[144];
-	format(msg, sizeof msg, "[Тюрьма] ПОБЕГ! %s [%d] выбрался наружу. Объявлен в розыск: 6 зв.", GetRPName(playerid), playerid);
+	format(msg, sizeof msg, "[РўСЋСЂСЊРјР°] РџРћР‘Р•Р“! %s [%d] РІС‹Р±СЂР°Р»СЃСЏ РЅР°СЂСѓР¶Сѓ. РћР±СЉСЏРІР»РµРЅ РІ СЂРѕР·С‹СЃРє: 6 Р·РІ.", GetRPName(playerid), playerid);
 	Prison_MessageGuards(msg);
 	Faction_MessageLaw(msg);
 }
@@ -283,35 +283,35 @@ public Prison_OnSecond()
 }
 
 // ---------------------------------------------------------------------
-//  Охрана
+//  РћС…СЂР°РЅР°
 // ---------------------------------------------------------------------
 static bool:Prison_NeedGuard(playerid, rank = 1)
 {
-	if (!Faction_IsPrison(Player[playerid][pFaction])) { SendClientMessage(playerid, COLOR_GREY, "Команда для охраны тюрьмы."); return false; }
-	if (!Player[playerid][pDuty]) { SendClientMessage(playerid, COLOR_GREY, "Сначала заступи на смену."); return false; }
-	if (Player[playerid][pRank] < rank) { SendClientMessage(playerid, COLOR_GREY, "Нужен ранг %d или выше.", rank); return false; }
+	if (!Faction_IsPrison(Player[playerid][pFaction])) { SendClientMessage(playerid, COLOR_GREY, "РљРѕРјР°РЅРґР° РґР»СЏ РѕС…СЂР°РЅС‹ С‚СЋСЂСЊРјС‹."); return false; }
+	if (!Player[playerid][pDuty]) { SendClientMessage(playerid, COLOR_GREY, "РЎРЅР°С‡Р°Р»Р° Р·Р°СЃС‚СѓРїРё РЅР° СЃРјРµРЅСѓ."); return false; }
+	if (Player[playerid][pRank] < rank) { SendClientMessage(playerid, COLOR_GREY, "РќСѓР¶РµРЅ СЂР°РЅРі %d РёР»Рё РІС‹С€Рµ.", rank); return false; }
 	return true;
 }
 
 stock bool:Cmd_Prisoners(playerid)
 {
 	if (!Faction_IsPrison(Player[playerid][pFaction]) && Player[playerid][pAdmin] < 2 && !Faction_IsLaw(Player[playerid][pFaction]))
-		return SendClientMessage(playerid, COLOR_GREY, "Команда для охраны тюрьмы и полиции.");
-	new list[1536] = "Заключённый\tСрок\tСейчас\n", line[96], n = 0;
+		return SendClientMessage(playerid, COLOR_GREY, "РљРѕРјР°РЅРґР° РґР»СЏ РѕС…СЂР°РЅС‹ С‚СЋСЂСЊРјС‹ Рё РїРѕР»РёС†РёРё.");
+	new list[1536] = "Р—Р°РєР»СЋС‡С‘РЅРЅС‹Р№\tРЎСЂРѕРє\tРЎРµР№С‡Р°СЃ\n", line[96], n = 0;
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!IsPlayerConnected(i) || Player[i][pJail] <= 0) continue;
 		new what[24];
-		if (gEscapeLeft[i] > 0) strcat(what, "{FF4040}копает лаз");
-		else if (gPWorkStep[i] != 0) strcat(what, "{33AA33}работает");
-		else if (gInmate[i]) strcat(what, "в тюрьме");
-		else strcat(what, "в КПЗ LSPD");
-		format(line, sizeof line, "%s [%d]\t%d мин.\t%s\n", GetRPName(i), i, Player[i][pJail], what);
+		if (gEscapeLeft[i] > 0) strcat(what, "{FF4040}РєРѕРїР°РµС‚ Р»Р°Р·");
+		else if (gPWorkStep[i] != 0) strcat(what, "{33AA33}СЂР°Р±РѕС‚Р°РµС‚");
+		else if (gInmate[i]) strcat(what, "РІ С‚СЋСЂСЊРјРµ");
+		else strcat(what, "РІ РљРџР— LSPD");
+		format(line, sizeof line, "%s [%d]\t%d РјРёРЅ.\t%s\n", GetRPName(i), i, Player[i][pJail], what);
 		strcat(list, line);
 		n++;
 	}
-	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "Заключённых онлайн нет.");
-	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_TABLIST_HEADERS, "Заключённые", "%s", "Закрыть", "", list);
+	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "Р—Р°РєР»СЋС‡С‘РЅРЅС‹С… РѕРЅР»Р°Р№РЅ РЅРµС‚.");
+	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_TABLIST_HEADERS, "Р—Р°РєР»СЋС‡С‘РЅРЅС‹Рµ", "%s", "Р—Р°РєСЂС‹С‚СЊ", "", list);
 	return true;
 }
 
@@ -321,14 +321,14 @@ stock bool:Cmd_PExtend(playerid, const params[])
 	new pos = 0, mins, reason[64];
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, mins) || !RestParam(params, pos, reason))
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /pextend [id] [минуты 1-%d] [причина]", PRISON_EXTEND_MAX);
-	if (mins < 1 || mins > PRISON_EXTEND_MAX) return SendClientMessage(playerid, COLOR_GREY, "От 1 до %d минут.", PRISON_EXTEND_MAX);
-	if (!gInmate[target]) return SendClientMessage(playerid, COLOR_GREY, "Он не заключённый тюрьмы.");
+		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /pextend [id] [РјРёРЅСѓС‚С‹ 1-%d] [РїСЂРёС‡РёРЅР°]", PRISON_EXTEND_MAX);
+	if (mins < 1 || mins > PRISON_EXTEND_MAX) return SendClientMessage(playerid, COLOR_GREY, "РћС‚ 1 РґРѕ %d РјРёРЅСѓС‚.", PRISON_EXTEND_MAX);
+	if (!gInmate[target]) return SendClientMessage(playerid, COLOR_GREY, "РћРЅ РЅРµ Р·Р°РєР»СЋС‡С‘РЅРЅС‹Р№ С‚СЋСЂСЊРјС‹.");
 	Player[target][pJail] += mins;
 	Account_Save(target);
-	SendClientMessage(target, COLOR_RED, "Охранник %s добавил тебе %d мин. срока. Причина: %s", GetRPName(playerid), mins, reason);
+	SendClientMessage(target, COLOR_RED, "РћС…СЂР°РЅРЅРёРє %s РґРѕР±Р°РІРёР» С‚РµР±Рµ %d РјРёРЅ. СЃСЂРѕРєР°. РџСЂРёС‡РёРЅР°: %s", GetRPName(playerid), mins, reason);
 	new msg[144];
-	format(msg, sizeof msg, "[Тюрьма] %s добавил %s %d мин. (%s). Теперь %d мин.", GetRPName(playerid), GetRPName(target), mins, reason, Player[target][pJail]);
+	format(msg, sizeof msg, "[РўСЋСЂСЊРјР°] %s РґРѕР±Р°РІРёР» %s %d РјРёРЅ. (%s). РўРµРїРµСЂСЊ %d РјРёРЅ.", GetRPName(playerid), GetRPName(target), mins, reason, Player[target][pJail]);
 	Prison_MessageGuards(msg);
 	Faction_Log(Player[playerid][pFaction], msg[9]);
 	return true;
@@ -340,15 +340,15 @@ stock bool:Cmd_PReduce(playerid, const params[])
 	new pos = 0, mins;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, mins) || mins < 1)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /preduce [id] [минуты]");
-	if (!gInmate[target]) return SendClientMessage(playerid, COLOR_GREY, "Он не заключённый тюрьмы.");
+		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /preduce [id] [РјРёРЅСѓС‚С‹]");
+	if (!gInmate[target]) return SendClientMessage(playerid, COLOR_GREY, "РћРЅ РЅРµ Р·Р°РєР»СЋС‡С‘РЅРЅС‹Р№ С‚СЋСЂСЊРјС‹.");
 	if (mins >= Player[target][pJail]) mins = Player[target][pJail] - 1;
-	if (mins < 1) return SendClientMessage(playerid, COLOR_GREY, "Ему и так осталась минута.");
+	if (mins < 1) return SendClientMessage(playerid, COLOR_GREY, "Р•РјСѓ Рё С‚Р°Рє РѕСЃС‚Р°Р»Р°СЃСЊ РјРёРЅСѓС‚Р°.");
 	Player[target][pJail] -= mins;
 	Account_Save(target);
-	SendClientMessage(target, COLOR_GREEN, "Начальство скостило тебе %d мин. Осталось %d мин.", mins, Player[target][pJail]);
+	SendClientMessage(target, COLOR_GREEN, "РќР°С‡Р°Р»СЊСЃС‚РІРѕ СЃРєРѕСЃС‚РёР»Рѕ С‚РµР±Рµ %d РјРёРЅ. РћСЃС‚Р°Р»РѕСЃСЊ %d РјРёРЅ.", mins, Player[target][pJail]);
 	new msg[144];
-	format(msg, sizeof msg, "[Тюрьма] %s скостил %s %d мин. Осталось %d мин.", GetRPName(playerid), GetRPName(target), mins, Player[target][pJail]);
+	format(msg, sizeof msg, "[РўСЋСЂСЊРјР°] %s СЃРєРѕСЃС‚РёР» %s %d РјРёРЅ. РћСЃС‚Р°Р»РѕСЃСЊ %d РјРёРЅ.", GetRPName(playerid), GetRPName(target), mins, Player[target][pJail]);
 	Prison_MessageGuards(msg);
 	Faction_Log(Player[playerid][pFaction], msg[9]);
 	return true;
@@ -367,7 +367,7 @@ stock Prison_OnDisconnect(playerid)
 	gPWorkBusy[playerid] = 0;
 	if (gEscapeLeft[playerid] > 0)
 	{
-		// вышел из игры во время побега — побег сорван
+		// РІС‹С€РµР» РёР· РёРіСЂС‹ РІРѕ РІСЂРµРјСЏ РїРѕР±РµРіР° вЂ” РїРѕР±РµРі СЃРѕСЂРІР°РЅ
 		gEscapeLeft[playerid] = 0;
 		Player[playerid][pJail] += PRISON_ESCAPE_FAIL_ADD;
 	}

@@ -1,53 +1,53 @@
 // =====================================================================
-//  anticheat.inc — античит.
+//  anticheat.inc вЂ” Р°РЅС‚РёС‡РёС‚.
 //
-//  Сервер сам помнит, что он выдал игроку, и раз в секунду сверяет это
-//  с тем, что присылает клиент:
+//  РЎРµСЂРІРµСЂ СЃР°Рј РїРѕРјРЅРёС‚, С‡С‚Рѕ РѕРЅ РІС‹РґР°Р» РёРіСЂРѕРєСѓ, Рё СЂР°Р· РІ СЃРµРєСѓРЅРґСѓ СЃРІРµСЂСЏРµС‚ СЌС‚Рѕ
+//  СЃ С‚РµРј, С‡С‚Рѕ РїСЂРёСЃС‹Р»Р°РµС‚ РєР»РёРµРЅС‚:
 //
-//  - оружие и патроны: чего сервер не выдавал — отбирается, админам уходит
-//    сообщение; AC_KICK_HITS срабатываний за AC_KICK_WINDOW секунд — кик;
-//  - здоровье и броня: выросли сами — возвращаются назад, сообщение админам;
-//  - скорость и телепорт: только сообщение админам (никого не кикает,
-//    потому что лаги выглядят так же);
-//  - деньги: на экране игрока всегда ровно столько, сколько знает сервер.
+//  - РѕСЂСѓР¶РёРµ Рё РїР°С‚СЂРѕРЅС‹: С‡РµРіРѕ СЃРµСЂРІРµСЂ РЅРµ РІС‹РґР°РІР°Р» вЂ” РѕС‚Р±РёСЂР°РµС‚СЃСЏ, Р°РґРјРёРЅР°Рј СѓС…РѕРґРёС‚
+//    СЃРѕРѕР±С‰РµРЅРёРµ; AC_KICK_HITS СЃСЂР°Р±Р°С‚С‹РІР°РЅРёР№ Р·Р° AC_KICK_WINDOW СЃРµРєСѓРЅРґ вЂ” РєРёРє;
+//  - Р·РґРѕСЂРѕРІСЊРµ Рё Р±СЂРѕРЅСЏ: РІС‹СЂРѕСЃР»Рё СЃР°РјРё вЂ” РІРѕР·РІСЂР°С‰Р°СЋС‚СЃСЏ РЅР°Р·Р°Рґ, СЃРѕРѕР±С‰РµРЅРёРµ Р°РґРјРёРЅР°Рј;
+//  - СЃРєРѕСЂРѕСЃС‚СЊ Рё С‚РµР»РµРїРѕСЂС‚: С‚РѕР»СЊРєРѕ СЃРѕРѕР±С‰РµРЅРёРµ Р°РґРјРёРЅР°Рј (РЅРёРєРѕРіРѕ РЅРµ РєРёРєР°РµС‚,
+//    РїРѕС‚РѕРјСѓ С‡С‚Рѕ Р»Р°РіРё РІС‹РіР»СЏРґСЏС‚ С‚Р°Рє Р¶Рµ);
+//  - РґРµРЅСЊРіРё: РЅР° СЌРєСЂР°РЅРµ РёРіСЂРѕРєР° РІСЃРµРіРґР° СЂРѕРІРЅРѕ СЃС‚РѕР»СЊРєРѕ, СЃРєРѕР»СЊРєРѕ Р·РЅР°РµС‚ СЃРµСЂРІРµСЂ.
 //
-//  Админов (уровень 1+) античит не проверяет. У телефонов пороги скорости
-//  выше (AC_MOBILE_FACTOR): у них чаще задержки.
+//  РђРґРјРёРЅРѕРІ (СѓСЂРѕРІРµРЅСЊ 1+) Р°РЅС‚РёС‡РёС‚ РЅРµ РїСЂРѕРІРµСЂСЏРµС‚. РЈ С‚РµР»РµС„РѕРЅРѕРІ РїРѕСЂРѕРіРё СЃРєРѕСЂРѕСЃС‚Рё
+//  РІС‹С€Рµ (AC_MOBILE_FACTOR): Сѓ РЅРёС… С‡Р°С‰Рµ Р·Р°РґРµСЂР¶РєРё.
 //
-//  ВАЖНО для тех, кто пишет код мода. Этот файл подменяет стандартные
-//  функции (см. конец файла): GivePlayerWeapon, ResetPlayerWeapons,
+//  Р’РђР–РќРћ РґР»СЏ С‚РµС…, РєС‚Рѕ РїРёС€РµС‚ РєРѕРґ РјРѕРґР°. Р­С‚РѕС‚ С„Р°Р№Р» РїРѕРґРјРµРЅСЏРµС‚ СЃС‚Р°РЅРґР°СЂС‚РЅС‹Рµ
+//  С„СѓРЅРєС†РёРё (СЃРј. РєРѕРЅРµС† С„Р°Р№Р»Р°): GivePlayerWeapon, ResetPlayerWeapons,
 //  SetPlayerHealth, SetPlayerArmour, SetPlayerPos, SetPlayerPosFindZ,
-//  PutPlayerInVehicle, SetVehiclePos, SetPlayerInterior. Пиши их как обычно —
-//  античит сам узнает, что это сделал сервер. Файл должен подключаться
-//  в rp.pwn раньше остальных модулей.
+//  PutPlayerInVehicle, SetVehiclePos, SetPlayerInterior. РџРёС€Рё РёС… РєР°Рє РѕР±С‹С‡РЅРѕ вЂ”
+//  Р°РЅС‚РёС‡РёС‚ СЃР°Рј СѓР·РЅР°РµС‚, С‡С‚Рѕ СЌС‚Рѕ СЃРґРµР»Р°Р» СЃРµСЂРІРµСЂ. Р¤Р°Р№Р» РґРѕР»Р¶РµРЅ РїРѕРґРєР»СЋС‡Р°С‚СЊСЃСЏ
+//  РІ rp.pwn СЂР°РЅСЊС€Рµ РѕСЃС‚Р°Р»СЊРЅС‹С… РјРѕРґСѓР»РµР№.
 // =====================================================================
 
-#define AC_GRACE_MS         4000        // столько мс после действия сервера клиенту дают «догнать»
-#define AC_FOOT_SPEED       35.0        // м/с пешком (по земле, без высоты)
-#define AC_VEH_SPEED        110.0       // м/с в транспорте (около 400 км/ч)
-#define AC_MOBILE_FACTOR    1.5         // во сколько раз мягче пороги скорости для телефонов
-#define AC_REPORT_COOLDOWN  20          // секунд между сообщениями админам об одном игроке
-#define AC_KICK_HITS        3           // столько раз чужое оружие...
-#define AC_KICK_WINDOW      120         // ...за столько секунд — кик
-#define AC_SET_WINDOW_MS    15000       // столько мс после лечения здоровье может «дорасти» до выданного
+#define AC_GRACE_MS         4000        // СЃС‚РѕР»СЊРєРѕ РјСЃ РїРѕСЃР»Рµ РґРµР№СЃС‚РІРёСЏ СЃРµСЂРІРµСЂР° РєР»РёРµРЅС‚Сѓ РґР°СЋС‚ В«РґРѕРіРЅР°С‚СЊВ»
+#define AC_FOOT_SPEED       35.0        // Рј/СЃ РїРµС€РєРѕРј (РїРѕ Р·РµРјР»Рµ, Р±РµР· РІС‹СЃРѕС‚С‹)
+#define AC_VEH_SPEED        110.0       // Рј/СЃ РІ С‚СЂР°РЅСЃРїРѕСЂС‚Рµ (РѕРєРѕР»Рѕ 400 РєРј/С‡)
+#define AC_MOBILE_FACTOR    1.5         // РІРѕ СЃРєРѕР»СЊРєРѕ СЂР°Р· РјСЏРіС‡Рµ РїРѕСЂРѕРіРё СЃРєРѕСЂРѕСЃС‚Рё РґР»СЏ С‚РµР»РµС„РѕРЅРѕРІ
+#define AC_REPORT_COOLDOWN  20          // СЃРµРєСѓРЅРґ РјРµР¶РґСѓ СЃРѕРѕР±С‰РµРЅРёСЏРјРё Р°РґРјРёРЅР°Рј РѕР± РѕРґРЅРѕРј РёРіСЂРѕРєРµ
+#define AC_KICK_HITS        3           // СЃС‚РѕР»СЊРєРѕ СЂР°Р· С‡СѓР¶РѕРµ РѕСЂСѓР¶РёРµ...
+#define AC_KICK_WINDOW      120         // ...Р·Р° СЃС‚РѕР»СЊРєРѕ СЃРµРєСѓРЅРґ вЂ” РєРёРє
+#define AC_SET_WINDOW_MS    15000       // СЃС‚РѕР»СЊРєРѕ РјСЃ РїРѕСЃР»Рµ Р»РµС‡РµРЅРёСЏ Р·РґРѕСЂРѕРІСЊРµ РјРѕР¶РµС‚ В«РґРѕСЂР°СЃС‚РёВ» РґРѕ РІС‹РґР°РЅРЅРѕРіРѕ
 
-static WEAPON:gAcWeapon[MAX_PLAYERS][13];   // что сервер выдал в каждый слот
-static gAcAmmo[MAX_PLAYERS][13];            // и сколько патронов там может быть
-static gAcWeaponTick[MAX_PLAYERS];          // когда сервер последний раз менял оружие
+static WEAPON:gAcWeapon[MAX_PLAYERS][13];   // С‡С‚Рѕ СЃРµСЂРІРµСЂ РІС‹РґР°Р» РІ РєР°Р¶РґС‹Р№ СЃР»РѕС‚
+static gAcAmmo[MAX_PLAYERS][13];            // Рё СЃРєРѕР»СЊРєРѕ РїР°С‚СЂРѕРЅРѕРІ С‚Р°Рј РјРѕР¶РµС‚ Р±С‹С‚СЊ
+static gAcWeaponTick[MAX_PLAYERS];          // РєРѕРіРґР° СЃРµСЂРІРµСЂ РїРѕСЃР»РµРґРЅРёР№ СЂР°Р· РјРµРЅСЏР» РѕСЂСѓР¶РёРµ
 
-static Float:gAcHealth[MAX_PLAYERS];        // последнее честное здоровье
-static Float:gAcHealthSet[MAX_PLAYERS];     // что сервер выставил последним
+static Float:gAcHealth[MAX_PLAYERS];        // РїРѕСЃР»РµРґРЅРµРµ С‡РµСЃС‚РЅРѕРµ Р·РґРѕСЂРѕРІСЊРµ
+static Float:gAcHealthSet[MAX_PLAYERS];     // С‡С‚Рѕ СЃРµСЂРІРµСЂ РІС‹СЃС‚Р°РІРёР» РїРѕСЃР»РµРґРЅРёРј
 static gAcHealthTick[MAX_PLAYERS];
 static Float:gAcArmour[MAX_PLAYERS];
 static Float:gAcArmourSet[MAX_PLAYERS];
 static gAcArmourTick[MAX_PLAYERS];
 
-static Float:gAcPos[MAX_PLAYERS][3];        // где игрок был на прошлой проверке
+static Float:gAcPos[MAX_PLAYERS][3];        // РіРґРµ РёРіСЂРѕРє Р±С‹Р» РЅР° РїСЂРѕС€Р»РѕР№ РїСЂРѕРІРµСЂРєРµ
 static gAcPosTick[MAX_PLAYERS];
 static gAcPosInterior[MAX_PLAYERS];
 static bool:gAcPosValid[MAX_PLAYERS];
-static gAcMoveTick[MAX_PLAYERS];            // когда сервер сам перемещал игрока
-static gAcUpdateTick[MAX_PLAYERS];          // когда от клиента последний раз пришли данные
+static gAcMoveTick[MAX_PLAYERS];            // РєРѕРіРґР° СЃРµСЂРІРµСЂ СЃР°Рј РїРµСЂРµРјРµС‰Р°Р» РёРіСЂРѕРєР°
+static gAcUpdateTick[MAX_PLAYERS];          // РєРѕРіРґР° РѕС‚ РєР»РёРµРЅС‚Р° РїРѕСЃР»РµРґРЅРёР№ СЂР°Р· РїСЂРёС€Р»Рё РґР°РЅРЅС‹Рµ
 
 static gAcReportAt[MAX_PLAYERS];
 static gAcHits[MAX_PLAYERS];
@@ -61,7 +61,7 @@ static bool:AC_Valid(playerid)
 	return (playerid >= 0 && playerid < MAX_PLAYERS);
 }
 
-// В каком слоте лежит оружие (-1 — такого оружия нет)
+// Р’ РєР°РєРѕРј СЃР»РѕС‚Рµ Р»РµР¶РёС‚ РѕСЂСѓР¶РёРµ (-1 вЂ” С‚Р°РєРѕРіРѕ РѕСЂСѓР¶РёСЏ РЅРµС‚)
 static AC_WeaponSlot(WEAPON:weaponid)
 {
 	switch (_:weaponid)
@@ -83,19 +83,19 @@ static AC_WeaponSlot(WEAPON:weaponid)
 	return -1;
 }
 
-// Сервер только что сам переместил игрока — проверку скорости пропускаем
+// РЎРµСЂРІРµСЂ С‚РѕР»СЊРєРѕ С‡С‚Рѕ СЃР°Рј РїРµСЂРµРјРµСЃС‚РёР» РёРіСЂРѕРєР° вЂ” РїСЂРѕРІРµСЂРєСѓ СЃРєРѕСЂРѕСЃС‚Рё РїСЂРѕРїСѓСЃРєР°РµРј
 stock AC_Moved(playerid)
 {
 	if (AC_Valid(playerid)) gAcMoveTick[playerid] = GetTickCount();
 }
 
-// Запомнить выданное оружие (без самой выдачи — для оружия, которое даёт игра: дробовик в полицейской машине)
+// Р—Р°РїРѕРјРЅРёС‚СЊ РІС‹РґР°РЅРЅРѕРµ РѕСЂСѓР¶РёРµ (Р±РµР· СЃР°РјРѕР№ РІС‹РґР°С‡Рё вЂ” РґР»СЏ РѕСЂСѓР¶РёСЏ, РєРѕС‚РѕСЂРѕРµ РґР°С‘С‚ РёРіСЂР°: РґСЂРѕР±РѕРІРёРє РІ РїРѕР»РёС†РµР№СЃРєРѕР№ РјР°С€РёРЅРµ)
 static AC_AllowWeapon(playerid, WEAPON:weaponid, ammo)
 {
 	new s = AC_WeaponSlot(weaponid);
 	if (s == -1 || !AC_Valid(playerid)) return;
 	gAcWeapon[playerid][s] = weaponid;
-	if (ammo > 0) gAcAmmo[playerid][s] += ammo;     // в одном слоте патроны общие — складываем
+	if (ammo > 0) gAcAmmo[playerid][s] += ammo;     // РІ РѕРґРЅРѕРј СЃР»РѕС‚Рµ РїР°С‚СЂРѕРЅС‹ РѕР±С‰РёРµ вЂ” СЃРєР»Р°РґС‹РІР°РµРј
 	gAcWeaponTick[playerid] = GetTickCount();
 }
 
@@ -110,7 +110,7 @@ static AC_ClearWeapons(playerid)
 }
 
 // ---------------------------------------------------------------------
-//  Замены стандартных функций (подключаются в конце файла)
+//  Р—Р°РјРµРЅС‹ СЃС‚Р°РЅРґР°СЂС‚РЅС‹С… С„СѓРЅРєС†РёР№ (РїРѕРґРєР»СЋС‡Р°СЋС‚СЃСЏ РІ РєРѕРЅС†Рµ С„Р°Р№Р»Р°)
 // ---------------------------------------------------------------------
 stock AC_GivePlayerWeapon(playerid, WEAPON:weaponid, ammo)
 {
@@ -180,7 +180,7 @@ stock AC_SetVehiclePos(vehicleid, Float:x, Float:y, Float:z)
 }
 
 // ---------------------------------------------------------------------
-//  События (вызываются из rp.pwn)
+//  РЎРѕР±С‹С‚РёСЏ (РІС‹Р·С‹РІР°СЋС‚СЃСЏ РёР· rp.pwn)
 // ---------------------------------------------------------------------
 stock AC_Init()
 {
@@ -206,8 +206,8 @@ stock AC_OnConnect(playerid)
 	gAcKicked[playerid] = false;
 }
 
-// Спавн: игра сама даёт 100 здоровья и убирает оружие и броню.
-// Вызывать ПЕРВЫМ в OnPlayerSpawn — модули после него выдают своё уже через замены.
+// РЎРїР°РІРЅ: РёРіСЂР° СЃР°РјР° РґР°С‘С‚ 100 Р·РґРѕСЂРѕРІСЊСЏ Рё СѓР±РёСЂР°РµС‚ РѕСЂСѓР¶РёРµ Рё Р±СЂРѕРЅСЋ.
+// Р’С‹Р·С‹РІР°С‚СЊ РџР•Р Р’Р«Рњ РІ OnPlayerSpawn вЂ” РјРѕРґСѓР»Рё РїРѕСЃР»Рµ РЅРµРіРѕ РІС‹РґР°СЋС‚ СЃРІРѕС‘ СѓР¶Рµ С‡РµСЂРµР· Р·Р°РјРµРЅС‹.
 stock AC_OnSpawn(playerid)
 {
 	new now = GetTickCount();
@@ -231,13 +231,13 @@ stock AC_OnDeath(playerid)
 	AC_Moved(playerid);
 }
 
-// Из OnPlayerUpdate: только отметка времени
+// РР· OnPlayerUpdate: С‚РѕР»СЊРєРѕ РѕС‚РјРµС‚РєР° РІСЂРµРјРµРЅРё
 stock AC_OnUpdate(playerid)
 {
 	gAcUpdateTick[playerid] = GetTickCount();
 }
 
-// Сел за руль: некоторые машины сами что-то дают водителю — это не чит
+// РЎРµР» Р·Р° СЂСѓР»СЊ: РЅРµРєРѕС‚РѕСЂС‹Рµ РјР°С€РёРЅС‹ СЃР°РјРё С‡С‚Рѕ-С‚Рѕ РґР°СЋС‚ РІРѕРґРёС‚РµР»СЋ вЂ” СЌС‚Рѕ РЅРµ С‡РёС‚
 stock AC_OnStateChange(playerid, PLAYER_STATE:newstate)
 {
 	AC_Moved(playerid);
@@ -245,14 +245,14 @@ stock AC_OnStateChange(playerid, PLAYER_STATE:newstate)
 	new now = GetTickCount();
 	switch (GetVehicleModel(GetPlayerVehicleID(playerid)))
 	{
-		case 596, 597, 598, 599: AC_AllowWeapon(playerid, WEAPON:25, 5);    // полицейская машина: дробовик
-		case 457: AC_AllowWeapon(playerid, WEAPON:2, 1);                    // гольф-кар: клюшка
-		case 416:                                                           // скорая: +20 здоровья
+		case 596, 597, 598, 599: AC_AllowWeapon(playerid, WEAPON:25, 5);    // РїРѕР»РёС†РµР№СЃРєР°СЏ РјР°С€РёРЅР°: РґСЂРѕР±РѕРІРёРє
+		case 457: AC_AllowWeapon(playerid, WEAPON:2, 1);                    // РіРѕР»СЊС„-РєР°СЂ: РєР»СЋС€РєР°
+		case 416:                                                           // СЃРєРѕСЂР°СЏ: +20 Р·РґРѕСЂРѕРІСЊСЏ
 		{
 			gAcHealthSet[playerid] = 100.0;
 			gAcHealthTick[playerid] = now;
 		}
-		case 427:                                                           // Enforcer: броня
+		case 427:                                                           // Enforcer: Р±СЂРѕРЅСЏ
 		{
 			gAcArmourSet[playerid] = 100.0;
 			gAcArmourTick[playerid] = now;
@@ -261,7 +261,7 @@ stock AC_OnStateChange(playerid, PLAYER_STATE:newstate)
 }
 
 // ---------------------------------------------------------------------
-//  Сообщения и наказания
+//  РЎРѕРѕР±С‰РµРЅРёСЏ Рё РЅР°РєР°Р·Р°РЅРёСЏ
 // ---------------------------------------------------------------------
 static AC_Report(playerid, const what[])
 {
@@ -270,12 +270,12 @@ static AC_Report(playerid, const what[])
 	gAcReportAt[playerid] = now;
 
 	new msg[144];
-	format(msg, sizeof msg, "[Античит] %s[%d]%s: %s", GetRPName(playerid), playerid, IsPlayerMobile[playerid] ? (" (телефон)") : (""), what);
+	format(msg, sizeof msg, "[РђРЅС‚РёС‡РёС‚] %s[%d]%s: %s", GetRPName(playerid), playerid, IsPlayerMobile[playerid] ? (" (С‚РµР»РµС„РѕРЅ)") : (""), what);
 	SendAdminMessage(COLOR_RED, msg);
 	printf("%s", msg);
 }
 
-// Чужое оружие: отбираем, считаем, на AC_KICK_HITS-й раз кикаем
+// Р§СѓР¶РѕРµ РѕСЂСѓР¶РёРµ: РѕС‚Р±РёСЂР°РµРј, СЃС‡РёС‚Р°РµРј, РЅР° AC_KICK_HITS-Р№ СЂР°Р· РєРёРєР°РµРј
 static AC_WeaponHit(playerid, const what[])
 {
 	new now = gettime();
@@ -285,10 +285,10 @@ static AC_WeaponHit(playerid, const what[])
 		gAcHits[playerid] = 0;
 	}
 	gAcHits[playerid]++;
-	gAcReportAt[playerid] = 0;      // об оружии сообщаем всегда
+	gAcReportAt[playerid] = 0;      // РѕР± РѕСЂСѓР¶РёРё СЃРѕРѕР±С‰Р°РµРј РІСЃРµРіРґР°
 	AC_Report(playerid, what);
 
-	// Вернуть игроку ровно то, что выдавал сервер
+	// Р’РµСЂРЅСѓС‚СЊ РёРіСЂРѕРєСѓ СЂРѕРІРЅРѕ С‚Рѕ, С‡С‚Рѕ РІС‹РґР°РІР°Р» СЃРµСЂРІРµСЂ
 	ResetPlayerWeapons(playerid);
 	for (new s = 0; s < 13; s++)
 	{
@@ -306,13 +306,13 @@ static AC_WeaponHit(playerid, const what[])
 	{
 		gAcKicked[playerid] = true;
 		Admin_Log(INVALID_PLAYER_ID, "anticheat kick", playerid, what);
-		SendClientMessage(playerid, COLOR_RED, "Ты кикнут античитом (оружие). Если это ошибка — напиши на форум.");
+		SendClientMessage(playerid, COLOR_RED, "РўС‹ РєРёРєРЅСѓС‚ Р°РЅС‚РёС‡РёС‚РѕРј (РѕСЂСѓР¶РёРµ). Р•СЃР»Рё СЌС‚Рѕ РѕС€РёР±РєР° вЂ” РЅР°РїРёС€Рё РЅР° С„РѕСЂСѓРј.");
 		KickWithDelay(playerid);
 	}
 }
 
 // ---------------------------------------------------------------------
-//  Проверки, раз в секунду
+//  РџСЂРѕРІРµСЂРєРё, СЂР°Р· РІ СЃРµРєСѓРЅРґСѓ
 // ---------------------------------------------------------------------
 static AC_CheckWeapons(playerid, now)
 {
@@ -325,14 +325,14 @@ static AC_CheckWeapons(playerid, now)
 		ammo = 0;
 		GetPlayerWeaponData(playerid, WEAPON_SLOT:s, weapon, ammo);
 		if (weapon == WEAPON:0) continue;
-		if (s >= 2 && s <= 9 && ammo <= 0) continue;                    // пустой ствол — не оружие
-		if (weapon == WEAPON:46) continue;                              // парашют игра выдаёт сама
-		if (weapon == WEAPON:40 && gAcWeapon[playerid][8] == WEAPON:39) continue;   // детонатор идёт с взрывчаткой
+		if (s >= 2 && s <= 9 && ammo <= 0) continue;                    // РїСѓСЃС‚РѕР№ СЃС‚РІРѕР» вЂ” РЅРµ РѕСЂСѓР¶РёРµ
+		if (weapon == WEAPON:46) continue;                              // РїР°СЂР°С€СЋС‚ РёРіСЂР° РІС‹РґР°С‘С‚ СЃР°РјР°
+		if (weapon == WEAPON:40 && gAcWeapon[playerid][8] == WEAPON:39) continue;   // РґРµС‚РѕРЅР°С‚РѕСЂ РёРґС‘С‚ СЃ РІР·СЂС‹РІС‡Р°С‚РєРѕР№
 
 		if (weapon != gAcWeapon[playerid][s])
 		{
 			GetWeaponName(weapon, name, sizeof name);
-			format(what, sizeof what, "оружие, которого сервер не выдавал: %s (%d патр.)", name, ammo);
+			format(what, sizeof what, "РѕСЂСѓР¶РёРµ, РєРѕС‚РѕСЂРѕРіРѕ СЃРµСЂРІРµСЂ РЅРµ РІС‹РґР°РІР°Р»: %s (%d РїР°С‚СЂ.)", name, ammo);
 			AC_WeaponHit(playerid, what);
 			return;
 		}
@@ -341,11 +341,11 @@ static AC_CheckWeapons(playerid, now)
 			if (ammo > gAcAmmo[playerid][s])
 			{
 				GetWeaponName(weapon, name, sizeof name);
-				format(what, sizeof what, "лишние патроны: %s, %d вместо %d", name, ammo, gAcAmmo[playerid][s]);
+				format(what, sizeof what, "Р»РёС€РЅРёРµ РїР°С‚СЂРѕРЅС‹: %s, %d РІРјРµСЃС‚Рѕ %d", name, ammo, gAcAmmo[playerid][s]);
 				AC_WeaponHit(playerid, what);
 				return;
 			}
-			gAcAmmo[playerid][s] = ammo;    // патроны только тратятся
+			gAcAmmo[playerid][s] = ammo;    // РїР°С‚СЂРѕРЅС‹ С‚РѕР»СЊРєРѕ С‚СЂР°С‚СЏС‚СЃСЏ
 		}
 	}
 }
@@ -359,7 +359,7 @@ static AC_CheckHealth(playerid, now)
 	else if (now - gAcHealthTick[playerid] < AC_SET_WINDOW_MS && value <= gAcHealthSet[playerid] + 1.0) gAcHealth[playerid] = value;
 	else
 	{
-		format(what, sizeof what, "здоровье выросло само: %.0f вместо %.0f (возвращено)", value, gAcHealth[playerid]);
+		format(what, sizeof what, "Р·РґРѕСЂРѕРІСЊРµ РІС‹СЂРѕСЃР»Рѕ СЃР°РјРѕ: %.0f РІРјРµСЃС‚Рѕ %.0f (РІРѕР·РІСЂР°С‰РµРЅРѕ)", value, gAcHealth[playerid]);
 		AC_Report(playerid, what);
 		SetPlayerHealth(playerid, gAcHealth[playerid]);
 	}
@@ -369,7 +369,7 @@ static AC_CheckHealth(playerid, now)
 	else if (now - gAcArmourTick[playerid] < AC_SET_WINDOW_MS && value <= gAcArmourSet[playerid] + 1.0) gAcArmour[playerid] = value;
 	else
 	{
-		format(what, sizeof what, "броня появилась сама: %.0f вместо %.0f (возвращена)", value, gAcArmour[playerid]);
+		format(what, sizeof what, "Р±СЂРѕРЅСЏ РїРѕСЏРІРёР»Р°СЃСЊ СЃР°РјР°: %.0f РІРјРµСЃС‚Рѕ %.0f (РІРѕР·РІСЂР°С‰РµРЅР°)", value, gAcArmour[playerid]);
 		AC_Report(playerid, what);
 		SetPlayerArmour(playerid, gAcArmour[playerid]);
 	}
@@ -382,8 +382,8 @@ static AC_CheckMove(playerid, now, PLAYER_STATE:st)
 
 	new elapsed = now - gAcPosTick[playerid];
 	if (gAcPosValid[playerid] && interior == gAcPosInterior[playerid]
-		&& now - gAcMoveTick[playerid] >= AC_GRACE_MS      // сервер его не перемещал
-		&& now - gAcUpdateTick[playerid] < 1500             // клиент на связи, не свёрнут
+		&& now - gAcMoveTick[playerid] >= AC_GRACE_MS      // СЃРµСЂРІРµСЂ РµРіРѕ РЅРµ РїРµСЂРµРјРµС‰Р°Р»
+		&& now - gAcUpdateTick[playerid] < 1500             // РєР»РёРµРЅС‚ РЅР° СЃРІСЏР·Рё, РЅРµ СЃРІС‘СЂРЅСѓС‚
 		&& elapsed >= 500 && elapsed <= 2500)
 	{
 		new Float:dx = x - gAcPos[playerid][0], Float:dy = y - gAcPos[playerid][1];
@@ -394,8 +394,8 @@ static AC_CheckMove(playerid, now, PLAYER_STATE:st)
 		if (speed > limit)
 		{
 			new what[96];
-			format(what, sizeof what, "%s: %.0f м за %.1f с (%s)", (speed > limit * 3.0) ? ("телепорт") : ("скорость"),
-				floatsqroot(dx * dx + dy * dy), float(elapsed) / 1000.0, riding ? ("в транспорте") : ("пешком"));
+			format(what, sizeof what, "%s: %.0f Рј Р·Р° %.1f СЃ (%s)", (speed > limit * 3.0) ? ("С‚РµР»РµРїРѕСЂС‚") : ("СЃРєРѕСЂРѕСЃС‚СЊ"),
+				floatsqroot(dx * dx + dy * dy), float(elapsed) / 1000.0, riding ? ("РІ С‚СЂР°РЅСЃРїРѕСЂС‚Рµ") : ("РїРµС€РєРѕРј"));
 			AC_Report(playerid, what);
 		}
 	}
@@ -414,7 +414,7 @@ public AC_Tick()
 	{
 		if (!IsPlayerConnected(i) || !Player[i][pLogged] || gAcKicked[i]) continue;
 
-		// Деньги: на экране ровно столько, сколько знает сервер
+		// Р”РµРЅСЊРіРё: РЅР° СЌРєСЂР°РЅРµ СЂРѕРІРЅРѕ СЃС‚РѕР»СЊРєРѕ, СЃРєРѕР»СЊРєРѕ Р·РЅР°РµС‚ СЃРµСЂРІРµСЂ
 		if (GetPlayerMoney(i) != Player[i][pMoney])
 		{
 			ResetPlayerMoney(i);
@@ -427,7 +427,7 @@ public AC_Tick()
 			gAcPosValid[i] = false;
 			continue;
 		}
-		if (Player[i][pAdmin] > 0)      // админов не проверяем, только запоминаем их здоровье
+		if (Player[i][pAdmin] > 0)      // Р°РґРјРёРЅРѕРІ РЅРµ РїСЂРѕРІРµСЂСЏРµРј, С‚РѕР»СЊРєРѕ Р·Р°РїРѕРјРёРЅР°РµРј РёС… Р·РґРѕСЂРѕРІСЊРµ
 		{
 			GetPlayerHealth(i, gAcHealth[i]);
 			GetPlayerArmour(i, gAcArmour[i]);
@@ -443,7 +443,7 @@ public AC_Tick()
 }
 
 // ---------------------------------------------------------------------
-//  Подмена стандартных функций. Всё, что ниже по rp.pwn, вызывает уже наши.
+//  РџРѕРґРјРµРЅР° СЃС‚Р°РЅРґР°СЂС‚РЅС‹С… С„СѓРЅРєС†РёР№. Р’СЃС‘, С‡С‚Рѕ РЅРёР¶Рµ РїРѕ rp.pwn, РІС‹Р·С‹РІР°РµС‚ СѓР¶Рµ РЅР°С€Рё.
 // ---------------------------------------------------------------------
 #define GivePlayerWeapon        AC_GivePlayerWeapon
 #define ResetPlayerWeapons      AC_ResetPlayerWeapons

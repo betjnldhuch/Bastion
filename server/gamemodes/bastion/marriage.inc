@@ -1,14 +1,14 @@
 // =====================================================================
-//  marriage.inc — свадьба, развод, общий дом и семейный счёт.
+//  marriage.inc вЂ” СЃРІР°РґСЊР±Р°, СЂР°Р·РІРѕРґ, РѕР±С‰РёР№ РґРѕРј Рё СЃРµРјРµР№РЅС‹Р№ СЃС‡С‘С‚.
 //
-//  Церковь (/place church). Стоя в церкви рядом с партнёром: /marry [id] —
-//  предложение (MARRY_PRICE платит тот, кто предлагает), партнёр принимает Y или /accept.
-//  Всем приходит объявление о свадьбе.
-//  Супруги: дом одного — общий (входить в закрытый, /lock, спавн у дома).
-//  Семейный счёт: /sbank — баланс, /sbank put [сумма], /sbank take [сумма]
-//    (у банкомата или дома). Деньги видят и снимают оба.
-//  /divorce — развод в церкви (DIVORCE_PRICE), деньги семейного счёта делятся пополам.
-//  /spouse — кто супруг и онлайн ли он.
+//  Р¦РµСЂРєРѕРІСЊ (/place church). РЎС‚РѕСЏ РІ С†РµСЂРєРІРё СЂСЏРґРѕРј СЃ РїР°СЂС‚РЅС‘СЂРѕРј: /marry [id] вЂ”
+//  РїСЂРµРґР»РѕР¶РµРЅРёРµ (MARRY_PRICE РїР»Р°С‚РёС‚ С‚РѕС‚, РєС‚Рѕ РїСЂРµРґР»Р°РіР°РµС‚), РїР°СЂС‚РЅС‘СЂ РїСЂРёРЅРёРјР°РµС‚ Y РёР»Рё /accept.
+//  Р’СЃРµРј РїСЂРёС…РѕРґРёС‚ РѕР±СЉСЏРІР»РµРЅРёРµ Рѕ СЃРІР°РґСЊР±Рµ.
+//  РЎСѓРїСЂСѓРіРё: РґРѕРј РѕРґРЅРѕРіРѕ вЂ” РѕР±С‰РёР№ (РІС…РѕРґРёС‚СЊ РІ Р·Р°РєСЂС‹С‚С‹Р№, /lock, СЃРїР°РІРЅ Сѓ РґРѕРјР°).
+//  РЎРµРјРµР№РЅС‹Р№ СЃС‡С‘С‚: /sbank вЂ” Р±Р°Р»Р°РЅСЃ, /sbank put [СЃСѓРјРјР°], /sbank take [СЃСѓРјРјР°]
+//    (Сѓ Р±Р°РЅРєРѕРјР°С‚Р° РёР»Рё РґРѕРјР°). Р”РµРЅСЊРіРё РІРёРґСЏС‚ Рё СЃРЅРёРјР°СЋС‚ РѕР±Р°.
+//  /divorce вЂ” СЂР°Р·РІРѕРґ РІ С†РµСЂРєРІРё (DIVORCE_PRICE), РґРµРЅСЊРіРё СЃРµРјРµР№РЅРѕРіРѕ СЃС‡С‘С‚Р° РґРµР»СЏС‚СЃСЏ РїРѕРїРѕР»Р°Рј.
+//  /spouse вЂ” РєС‚Рѕ СЃСѓРїСЂСѓРі Рё РѕРЅР»Р°Р№РЅ Р»Рё РѕРЅ.
 // =====================================================================
 
 #define MARRY_PRICE         5000
@@ -16,7 +16,7 @@
 #define MARRY_MIN_LEVEL     2
 #define SBANK_MAX           50000000
 
-static gSpouse[MAX_PLAYERS];                // аккаунт супруга (0 — нет)
+static gSpouse[MAX_PLAYERS];                // Р°РєРєР°СѓРЅС‚ СЃСѓРїСЂСѓРіР° (0 вЂ” РЅРµС‚)
 static gSpouseName[MAX_PLAYERS][MAX_PLAYER_NAME];
 static gMarriageId[MAX_PLAYERS];
 
@@ -52,7 +52,7 @@ stock Marriage_LoadPlayer(playerid)
 
 stock Marriage_GetSpouse(playerid) { return gSpouse[playerid]; }
 
-// Дом супруга (-1 — нет)
+// Р”РѕРј СЃСѓРїСЂСѓРіР° (-1 вЂ” РЅРµС‚)
 stock Family_SpouseHouse(playerid)
 {
 	if (gSpouse[playerid] == 0) return -1;
@@ -84,39 +84,39 @@ static bool:Marriage_AtChurch(playerid)
 }
 
 // ---------------------------------------------------------------------
-//  Свадьба
+//  РЎРІР°РґСЊР±Р°
 // ---------------------------------------------------------------------
 stock bool:Cmd_Marry(playerid, const params[])
 {
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /marry [id]  (в церкви, рядом с партнёром; $%d)", MARRY_PRICE);
-	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
-	if (!Marriage_AtChurch(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Жениться можно только в церкви (/gps).");
-	if (!IsPlayerNearPlayer(playerid, target, 4.0)) return SendClientMessage(playerid, COLOR_GREY, "Партнёр должен стоять рядом.");
-	if (gSpouse[playerid] != 0) return SendClientMessage(playerid, COLOR_GREY, "Ты уже в браке. Развод: /divorce");
-	if (gSpouse[target] != 0) return SendClientMessage(playerid, COLOR_GREY, "Этот человек уже в браке.");
-	if (Player[playerid][pLevel] < MARRY_MIN_LEVEL || Player[target][pLevel] < MARRY_MIN_LEVEL) return SendClientMessage(playerid, COLOR_GREY, "Жениться можно с %d уровня (обоим).", MARRY_MIN_LEVEL);
-	if (GetMoney(playerid) < MARRY_PRICE) return SendClientMessage(playerid, COLOR_GREY, "Свадьба стоит $%d.", MARRY_PRICE);
-	if (Player[target][pOfferType] != OFFER_NONE) return SendClientMessage(playerid, COLOR_GREY, "Ему уже что-то предложили, подожди.");
+	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /marry [id]  (РІ С†РµСЂРєРІРё, СЂСЏРґРѕРј СЃ РїР°СЂС‚РЅС‘СЂРѕРј; $%d)", MARRY_PRICE);
+	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє РµС‰С‘ РЅРµ РІРѕС€С‘Р» РІ Р°РєРєР°СѓРЅС‚.");
+	if (!Marriage_AtChurch(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Р–РµРЅРёС‚СЊСЃСЏ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ РІ С†РµСЂРєРІРё (/gps).");
+	if (!IsPlayerNearPlayer(playerid, target, 4.0)) return SendClientMessage(playerid, COLOR_GREY, "РџР°СЂС‚РЅС‘СЂ РґРѕР»Р¶РµРЅ СЃС‚РѕСЏС‚СЊ СЂСЏРґРѕРј.");
+	if (gSpouse[playerid] != 0) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ СѓР¶Рµ РІ Р±СЂР°РєРµ. Р Р°Р·РІРѕРґ: /divorce");
+	if (gSpouse[target] != 0) return SendClientMessage(playerid, COLOR_GREY, "Р­С‚РѕС‚ С‡РµР»РѕРІРµРє СѓР¶Рµ РІ Р±СЂР°РєРµ.");
+	if (Player[playerid][pLevel] < MARRY_MIN_LEVEL || Player[target][pLevel] < MARRY_MIN_LEVEL) return SendClientMessage(playerid, COLOR_GREY, "Р–РµРЅРёС‚СЊСЃСЏ РјРѕР¶РЅРѕ СЃ %d СѓСЂРѕРІРЅСЏ (РѕР±РѕРёРј).", MARRY_MIN_LEVEL);
+	if (GetMoney(playerid) < MARRY_PRICE) return SendClientMessage(playerid, COLOR_GREY, "РЎРІР°РґСЊР±Р° СЃС‚РѕРёС‚ $%d.", MARRY_PRICE);
+	if (Player[target][pOfferType] != OFFER_NONE) return SendClientMessage(playerid, COLOR_GREY, "Р•РјСѓ СѓР¶Рµ С‡С‚Рѕ-С‚Рѕ РїСЂРµРґР»РѕР¶РёР»Рё, РїРѕРґРѕР¶РґРё.");
 	Player[target][pOfferType] = OFFER_MARRY;
 	Player[target][pOfferFrom] = playerid;
 	Player[target][pOfferFromDb] = Player[playerid][pDbId];
 	Player[target][pOfferValue] = 0;
 	new msg[128];
-	format(msg, sizeof msg, "%s опускается на одно колено и протягивает кольцо %s.", GetRPName(playerid), GetRPName(target));
+	format(msg, sizeof msg, "%s РѕРїСѓСЃРєР°РµС‚СЃСЏ РЅР° РѕРґРЅРѕ РєРѕР»РµРЅРѕ Рё РїСЂРѕС‚СЏРіРёРІР°РµС‚ РєРѕР»СЊС†Рѕ %s.", GetRPName(playerid), GetRPName(target));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
-	SendClientMessage(target, COLOR_YELLOW, "%s делает тебе предложение руки и сердца! Согласиться: Y или /accept, отказать: N.", GetRPName(playerid));
+	SendClientMessage(target, COLOR_YELLOW, "%s РґРµР»Р°РµС‚ С‚РµР±Рµ РїСЂРµРґР»РѕР¶РµРЅРёРµ СЂСѓРєРё Рё СЃРµСЂРґС†Р°! РЎРѕРіР»Р°СЃРёС‚СЊСЃСЏ: Y РёР»Рё /accept, РѕС‚РєР°Р·Р°С‚СЊ: N.", GetRPName(playerid));
 	return true;
 }
 
-// Из Cmd_Accept (factions.inc)
+// РР· Cmd_Accept (factions.inc)
 stock Marry_Accept(playerid, from)
 {
-	if (gSpouse[playerid] != 0 || gSpouse[from] != 0) return SendClientMessage(playerid, COLOR_GREY, "Кто-то из вас уже в браке.");
-	if (!IsPlayerNearPlayer(playerid, from, 5.0) || !Marriage_AtChurch(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Нужно стоять рядом в церкви.");
-	if (GetMoney(from) < MARRY_PRICE) return SendClientMessage(playerid, COLOR_GREY, "У жениха (невесты) не хватает денег на свадьбу.");
-	GiveMoney(from, -MARRY_PRICE, "свадьба");
+	if (gSpouse[playerid] != 0 || gSpouse[from] != 0) return SendClientMessage(playerid, COLOR_GREY, "РљС‚Рѕ-С‚Рѕ РёР· РІР°СЃ СѓР¶Рµ РІ Р±СЂР°РєРµ.");
+	if (!IsPlayerNearPlayer(playerid, from, 5.0) || !Marriage_AtChurch(playerid)) return SendClientMessage(playerid, COLOR_GREY, "РќСѓР¶РЅРѕ СЃС‚РѕСЏС‚СЊ СЂСЏРґРѕРј РІ С†РµСЂРєРІРё.");
+	if (GetMoney(from) < MARRY_PRICE) return SendClientMessage(playerid, COLOR_GREY, "РЈ Р¶РµРЅРёС…Р° (РЅРµРІРµСЃС‚С‹) РЅРµ С…РІР°С‚Р°РµС‚ РґРµРЅРµРі РЅР° СЃРІР°РґСЊР±Сѓ.");
+	GiveMoney(from, -MARRY_PRICE, "СЃРІР°РґСЊР±Р°");
 	Econ_ToTreasury(MARRY_PRICE);
 	new na[MAX_PLAYER_NAME], nb[MAX_PLAYER_NAME];
 	GetPlayerName(from, na, sizeof na);
@@ -129,23 +129,23 @@ stock Marry_Accept(playerid, from)
 	ApplyAnimation(playerid, "KISSING", "Playa_Kiss_02", 4.1, false, false, false, false, 0, SYNC_ALL);
 	ApplyAnimation(from, "KISSING", "Playa_Kiss_01", 4.1, false, false, false, false, 0, SYNC_ALL);
 	new msg[144];
-	format(msg, sizeof msg, "[Свадьба] %s и %s поженились! Поздравляем!", GetRPName(from), GetRPName(playerid));
+	format(msg, sizeof msg, "[РЎРІР°РґСЊР±Р°] %s Рё %s РїРѕР¶РµРЅРёР»РёСЃСЊ! РџРѕР·РґСЂР°РІР»СЏРµРј!", GetRPName(from), GetRPName(playerid));
 	SendClientMessageToAll(0xFF69B4FF, msg);
-	SendClientMessage(playerid, COLOR_WHITE, "Дом супруга теперь и твой, семейный счёт: /sbank. Супруг: /spouse");
-	SendClientMessage(from, COLOR_WHITE, "Дом супруга теперь и твой, семейный счёт: /sbank. Супруг: /spouse");
+	SendClientMessage(playerid, COLOR_WHITE, "Р”РѕРј СЃСѓРїСЂСѓРіР° С‚РµРїРµСЂСЊ Рё С‚РІРѕР№, СЃРµРјРµР№РЅС‹Р№ СЃС‡С‘С‚: /sbank. РЎСѓРїСЂСѓРі: /spouse");
+	SendClientMessage(from, COLOR_WHITE, "Р”РѕРј СЃСѓРїСЂСѓРіР° С‚РµРїРµСЂСЊ Рё С‚РІРѕР№, СЃРµРјРµР№РЅС‹Р№ СЃС‡С‘С‚: /sbank. РЎСѓРїСЂСѓРі: /spouse");
 	return 1;
 }
 
 stock bool:Cmd_Divorce(playerid)
 {
-	if (gSpouse[playerid] == 0) return SendClientMessage(playerid, COLOR_GREY, "Ты не в браке.");
-	if (!Marriage_AtChurch(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Развод оформляют в церкви (/gps).");
-	if (GetMoney(playerid) < DIVORCE_PRICE) return SendClientMessage(playerid, COLOR_GREY, "Развод стоит $%d.", DIVORCE_PRICE);
-	GiveMoney(playerid, -DIVORCE_PRICE, "развод");
+	if (gSpouse[playerid] == 0) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РЅРµ РІ Р±СЂР°РєРµ.");
+	if (!Marriage_AtChurch(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Р Р°Р·РІРѕРґ РѕС„РѕСЂРјР»СЏСЋС‚ РІ С†РµСЂРєРІРё (/gps).");
+	if (GetMoney(playerid) < DIVORCE_PRICE) return SendClientMessage(playerid, COLOR_GREY, "Р Р°Р·РІРѕРґ СЃС‚РѕРёС‚ $%d.", DIVORCE_PRICE);
+	GiveMoney(playerid, -DIVORCE_PRICE, "СЂР°Р·РІРѕРґ");
 	Econ_ToTreasury(DIVORCE_PRICE);
 	new bank = Marriage_GetBank(playerid), half = bank / 2;
 	new other = gSpouse[playerid];
-	// семейный счёт пополам — на личные счета в банке
+	// СЃРµРјРµР№РЅС‹Р№ СЃС‡С‘С‚ РїРѕРїРѕР»Р°Рј вЂ” РЅР° Р»РёС‡РЅС‹Рµ СЃС‡РµС‚Р° РІ Р±Р°РЅРєРµ
 	Player[playerid][pBank] += bank - half;
 	new online = Bank_FindOnline(other);
 	if (online != INVALID_PLAYER_ID)
@@ -155,7 +155,7 @@ stock bool:Cmd_Divorce(playerid)
 		gMarriageId[online] = 0;
 		gSpouseName[online][0] = '\0';
 		Account_Save(online);
-		SendClientMessage(online, COLOR_ORANGE, "%s подал(а) на развод. Брак расторгнут. Половина семейного счёта ($%d) — на твоём счёте в банке.", GetRPName(playerid), half);
+		SendClientMessage(online, COLOR_ORANGE, "%s РїРѕРґР°Р»(Р°) РЅР° СЂР°Р·РІРѕРґ. Р‘СЂР°Рє СЂР°СЃС‚РѕСЂРіРЅСѓС‚. РџРѕР»РѕРІРёРЅР° СЃРµРјРµР№РЅРѕРіРѕ СЃС‡С‘С‚Р° ($%d) вЂ” РЅР° С‚РІРѕС‘Рј СЃС‡С‘С‚Рµ РІ Р±Р°РЅРєРµ.", GetRPName(playerid), half);
 	}
 	else DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET bank = bank + %d WHERE id = %d", half, other));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM marriages WHERE id = %d", gMarriageId[playerid]));
@@ -163,56 +163,56 @@ stock bool:Cmd_Divorce(playerid)
 	gMarriageId[playerid] = 0;
 	gSpouseName[playerid][0] = '\0';
 	Account_Save(playerid);
-	return SendClientMessage(playerid, COLOR_WHITE, "Брак расторгнут. Твоя половина семейного счёта ($%d) — на счёте в банке.", bank - half);
+	return SendClientMessage(playerid, COLOR_WHITE, "Р‘СЂР°Рє СЂР°СЃС‚РѕСЂРіРЅСѓС‚. РўРІРѕСЏ РїРѕР»РѕРІРёРЅР° СЃРµРјРµР№РЅРѕРіРѕ СЃС‡С‘С‚Р° ($%d) вЂ” РЅР° СЃС‡С‘С‚Рµ РІ Р±Р°РЅРєРµ.", bank - half);
 }
 
 stock bool:Cmd_Spouse(playerid)
 {
-	if (gSpouse[playerid] == 0) return SendClientMessage(playerid, COLOR_GREY, "Ты не в браке. Свадьба — в церкви: /marry [id].");
+	if (gSpouse[playerid] == 0) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РЅРµ РІ Р±СЂР°РєРµ. РЎРІР°РґСЊР±Р° вЂ” РІ С†РµСЂРєРІРё: /marry [id].");
 	new online = Bank_FindOnline(gSpouse[playerid]);
 	new h = Family_SpouseHouse(playerid);
 	new house[24];
-	if (House_GetOwned(playerid) != -1) format(house, sizeof house, "№%d (твой)", House[House_GetOwned(playerid)][hDbId]);
-	else if (h != -1) format(house, sizeof house, "№%d", House[h][hDbId]);
-	else strcat(house, "нет");
-	SendClientMessage(playerid, 0xFF69B4FF, "Супруг(а): %s%s. Общий дом: %s. Семейный счёт: $%d (/sbank).", gSpouseName[playerid],
-		(online != INVALID_PLAYER_ID) ? " — в сети" : "", house, Marriage_GetBank(playerid));
+	if (House_GetOwned(playerid) != -1) format(house, sizeof house, "в„–%d (С‚РІРѕР№)", House[House_GetOwned(playerid)][hDbId]);
+	else if (h != -1) format(house, sizeof house, "в„–%d", House[h][hDbId]);
+	else strcat(house, "РЅРµС‚");
+	SendClientMessage(playerid, 0xFF69B4FF, "РЎСѓРїСЂСѓРі(Р°): %s%s. РћР±С‰РёР№ РґРѕРј: %s. РЎРµРјРµР№РЅС‹Р№ СЃС‡С‘С‚: $%d (/sbank).", gSpouseName[playerid],
+		(online != INVALID_PLAYER_ID) ? " вЂ” РІ СЃРµС‚Рё" : "", house, Marriage_GetBank(playerid));
 	return true;
 }
 
 // ---------------------------------------------------------------------
-//  Семейный счёт
+//  РЎРµРјРµР№РЅС‹Р№ СЃС‡С‘С‚
 // ---------------------------------------------------------------------
 stock bool:Cmd_SBank(playerid, const params[])
 {
-	if (gSpouse[playerid] == 0) return SendClientMessage(playerid, COLOR_GREY, "Семейный счёт есть только у супругов.");
+	if (gSpouse[playerid] == 0) return SendClientMessage(playerid, COLOR_GREY, "РЎРµРјРµР№РЅС‹Р№ СЃС‡С‘С‚ РµСЃС‚СЊ С‚РѕР»СЊРєРѕ Сѓ СЃСѓРїСЂСѓРіРѕРІ.");
 	new pos = 0, what[8], amount;
 	new bank = Marriage_GetBank(playerid);
 	if (!NextParam(params, pos, what))
-		return SendClientMessage(playerid, 0xFF69B4FF, "Семейный счёт: $%d. Положить: /sbank put [сумма], снять: /sbank take [сумма] (у банкомата или дома).", bank);
+		return SendClientMessage(playerid, 0xFF69B4FF, "РЎРµРјРµР№РЅС‹Р№ СЃС‡С‘С‚: $%d. РџРѕР»РѕР¶РёС‚СЊ: /sbank put [СЃСѓРјРјР°], СЃРЅСЏС‚СЊ: /sbank take [СЃСѓРјРјР°] (Сѓ Р±Р°РЅРєРѕРјР°С‚Р° РёР»Рё РґРѕРјР°).", bank);
 	new h = Player[playerid][pHouseInside];
 	new bool:home = (h != -1 && House_IsInside(playerid, h) && (House[h][hOwner] == Player[playerid][pDbId] || House[h][hOwner] == gSpouse[playerid]));
-	if (Atm_GetNearby(playerid) == -1 && !home) return SendClientMessage(playerid, COLOR_GREY, "Нужно стоять у банкомата или быть в своём доме.");
-	if (!NextIntParam(params, pos, amount) || amount < 1) return SendClientMessage(playerid, COLOR_GREY, "Использование: /sbank put|take [сумма]");
+	if (Atm_GetNearby(playerid) == -1 && !home) return SendClientMessage(playerid, COLOR_GREY, "РќСѓР¶РЅРѕ СЃС‚РѕСЏС‚СЊ Сѓ Р±Р°РЅРєРѕРјР°С‚Р° РёР»Рё Р±С‹С‚СЊ РІ СЃРІРѕС‘Рј РґРѕРјРµ.");
+	if (!NextIntParam(params, pos, amount) || amount < 1) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /sbank put|take [СЃСѓРјРјР°]");
 	new msg[96];
 	if (!strcmp(what, "put", true))
 	{
-		if (GetMoney(playerid) < amount) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет столько наличных.");
-		if (bank + amount > SBANK_MAX) return SendClientMessage(playerid, COLOR_GREY, "Счёт переполнен.");
-		GiveMoney(playerid, -amount, "на семейный счёт");
+		if (GetMoney(playerid) < amount) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ СЃС‚РѕР»СЊРєРѕ РЅР°Р»РёС‡РЅС‹С….");
+		if (bank + amount > SBANK_MAX) return SendClientMessage(playerid, COLOR_GREY, "РЎС‡С‘С‚ РїРµСЂРµРїРѕР»РЅРµРЅ.");
+		GiveMoney(playerid, -amount, "РЅР° СЃРµРјРµР№РЅС‹Р№ СЃС‡С‘С‚");
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE marriages SET bank = bank + %d WHERE id = %d", amount, gMarriageId[playerid]));
-		format(msg, sizeof msg, "%s положил(а) на семейный счёт $%d.", GetRPName(playerid), amount);
+		format(msg, sizeof msg, "%s РїРѕР»РѕР¶РёР»(Р°) РЅР° СЃРµРјРµР№РЅС‹Р№ СЃС‡С‘С‚ $%d.", GetRPName(playerid), amount);
 	}
 	else if (!strcmp(what, "take", true))
 	{
-		if (bank < amount) return SendClientMessage(playerid, COLOR_GREY, "На семейном счёте только $%d.", bank);
+		if (bank < amount) return SendClientMessage(playerid, COLOR_GREY, "РќР° СЃРµРјРµР№РЅРѕРј СЃС‡С‘С‚Рµ С‚РѕР»СЊРєРѕ $%d.", bank);
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE marriages SET bank = bank - %d WHERE id = %d", amount, gMarriageId[playerid]));
-		GiveMoney(playerid, amount, "с семейного счёта");
-		format(msg, sizeof msg, "%s снял(а) с семейного счёта $%d.", GetRPName(playerid), amount);
+		GiveMoney(playerid, amount, "СЃ СЃРµРјРµР№РЅРѕРіРѕ СЃС‡С‘С‚Р°");
+		format(msg, sizeof msg, "%s СЃРЅСЏР»(Р°) СЃ СЃРµРјРµР№РЅРѕРіРѕ СЃС‡С‘С‚Р° $%d.", GetRPName(playerid), amount);
 	}
-	else return SendClientMessage(playerid, COLOR_GREY, "Использование: /sbank put|take [сумма]");
+	else return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /sbank put|take [СЃСѓРјРјР°]");
 	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_GREEN, "%s Остаток: $%d.", msg, Marriage_GetBank(playerid));
+	SendClientMessage(playerid, COLOR_GREEN, "%s РћСЃС‚Р°С‚РѕРє: $%d.", msg, Marriage_GetBank(playerid));
 	new online = Bank_FindOnline(gSpouse[playerid]);
 	if (online != INVALID_PLAYER_ID) SendClientMessage(online, 0xFF69B4FF, "%s", msg);
 	return true;
@@ -221,8 +221,8 @@ stock bool:Cmd_SBank(playerid, const params[])
 stock bool:Marriage_TryAlt(playerid)
 {
 	if (Place_Nearby(playerid, PL_CHURCH, 2.5) == -1) return false;
-	if (gSpouse[playerid] == 0) SendClientMessage(playerid, 0xFF69B4FF, "Церковь. Свадьба: встань рядом с партнёром и введи /marry [id] ($%d).", MARRY_PRICE);
-	else SendClientMessage(playerid, 0xFF69B4FF, "Церковь. Ты в браке с %s. Развод: /divorce ($%d).", gSpouseName[playerid], DIVORCE_PRICE);
+	if (gSpouse[playerid] == 0) SendClientMessage(playerid, 0xFF69B4FF, "Р¦РµСЂРєРѕРІСЊ. РЎРІР°РґСЊР±Р°: РІСЃС‚Р°РЅСЊ СЂСЏРґРѕРј СЃ РїР°СЂС‚РЅС‘СЂРѕРј Рё РІРІРµРґРё /marry [id] ($%d).", MARRY_PRICE);
+	else SendClientMessage(playerid, 0xFF69B4FF, "Р¦РµСЂРєРѕРІСЊ. РўС‹ РІ Р±СЂР°РєРµ СЃ %s. Р Р°Р·РІРѕРґ: /divorce ($%d).", gSpouseName[playerid], DIVORCE_PRICE);
 	return true;
 }
 

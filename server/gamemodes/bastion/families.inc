@@ -1,55 +1,55 @@
 // =====================================================================
-//  families.inc — семьи: организации, которые создают сами игроки.
+//  families.inc вЂ” СЃРµРјСЊРё: РѕСЂРіР°РЅРёР·Р°С†РёРё, РєРѕС‚РѕСЂС‹Рµ СЃРѕР·РґР°СЋС‚ СЃР°РјРё РёРіСЂРѕРєРё.
 //
-//  Семья — это не фракция: её не выдаёт админ, у неё нет базы, формы и
-//  зарплат. Игрок сам создаёт её за FAMILY_PRICE, сам называет тип
-//  («Семья», «Банда», «Клан», «Картель» — любое слово) и приглашает людей.
-//  Состоять можно и во фракции, и в семье одновременно. Лимита на число
-//  людей нет.
+//  РЎРµРјСЊСЏ вЂ” СЌС‚Рѕ РЅРµ С„СЂР°РєС†РёСЏ: РµС‘ РЅРµ РІС‹РґР°С‘С‚ Р°РґРјРёРЅ, Сѓ РЅРµС‘ РЅРµС‚ Р±Р°Р·С‹, С„РѕСЂРјС‹ Рё
+//  Р·Р°СЂРїР»Р°С‚. РРіСЂРѕРє СЃР°Рј СЃРѕР·РґР°С‘С‚ РµС‘ Р·Р° FAMILY_PRICE, СЃР°Рј РЅР°Р·С‹РІР°РµС‚ С‚РёРї
+//  (В«РЎРµРјСЊСЏВ», В«Р‘Р°РЅРґР°В», В«РљР»Р°РЅВ», В«РљР°СЂС‚РµР»СЊВ» вЂ” Р»СЋР±РѕРµ СЃР»РѕРІРѕ) Рё РїСЂРёРіР»Р°С€Р°РµС‚ Р»СЋРґРµР№.
+//  РЎРѕСЃС‚РѕСЏС‚СЊ РјРѕР¶РЅРѕ Рё РІРѕ С„СЂР°РєС†РёРё, Рё РІ СЃРµРјСЊРµ РѕРґРЅРѕРІСЂРµРјРµРЅРЅРѕ. Р›РёРјРёС‚Р° РЅР° С‡РёСЃР»Рѕ
+//  Р»СЋРґРµР№ РЅРµС‚.
 //
-//  В семье FAMILY_RANKS рангов: 6 — глава, 5 — заместитель.
-//  Глава и заместитель принимают и выгоняют, глава меняет названия
-//  рангов, цвет и снимает деньги из общака.
+//  Р’ СЃРµРјСЊРµ FAMILY_RANKS СЂР°РЅРіРѕРІ: 6 вЂ” РіР»Р°РІР°, 5 вЂ” Р·Р°РјРµСЃС‚РёС‚РµР»СЊ.
+//  Р“Р»Р°РІР° Рё Р·Р°РјРµСЃС‚РёС‚РµР»СЊ РїСЂРёРЅРёРјР°СЋС‚ Рё РІС‹РіРѕРЅСЏСЋС‚, РіР»Р°РІР° РјРµРЅСЏРµС‚ РЅР°Р·РІР°РЅРёСЏ
+//  СЂР°РЅРіРѕРІ, С†РІРµС‚ Рё СЃРЅРёРјР°РµС‚ РґРµРЅСЊРіРё РёР· РѕР±С‰Р°РєР°.
 //
-//  Семейный дом: глава встаёт у своего дома и вводит /famhouse. Все в семье входят
-//  в него (даже закрытый), закрывают /lock и могут появляться у него (/setspawn).
-//  /famhouse off — убрать. Хранится в families.house (номер дома в базе).
-//  Команды: /famhelp
-//  Данные: таблицы families и family_ranks, поля accounts.family и famrank.
+//  РЎРµРјРµР№РЅС‹Р№ РґРѕРј: РіР»Р°РІР° РІСЃС‚Р°С‘С‚ Сѓ СЃРІРѕРµРіРѕ РґРѕРјР° Рё РІРІРѕРґРёС‚ /famhouse. Р’СЃРµ РІ СЃРµРјСЊРµ РІС…РѕРґСЏС‚
+//  РІ РЅРµРіРѕ (РґР°Р¶Рµ Р·Р°РєСЂС‹С‚С‹Р№), Р·Р°РєСЂС‹РІР°СЋС‚ /lock Рё РјРѕРіСѓС‚ РїРѕСЏРІР»СЏС‚СЊСЃСЏ Сѓ РЅРµРіРѕ (/setspawn).
+//  /famhouse off вЂ” СѓР±СЂР°С‚СЊ. РҐСЂР°РЅРёС‚СЃСЏ РІ families.house (РЅРѕРјРµСЂ РґРѕРјР° РІ Р±Р°Р·Рµ).
+//  РљРѕРјР°РЅРґС‹: /famhelp
+//  Р”Р°РЅРЅС‹Рµ: С‚Р°Р±Р»РёС†С‹ families Рё family_ranks, РїРѕР»СЏ accounts.family Рё famrank.
 // =====================================================================
 
 #define MAX_FAMILIES        200
-#define FAMILY_RANKS        6           // 6 — глава, 5 — заместитель
-#define FAMILY_PRICE        50000       // цена создания (уходит в казну)
-#define FAMILY_MIN_LEVEL    3           // с какого уровня игрока можно создать семью
+#define FAMILY_RANKS        6           // 6 вЂ” РіР»Р°РІР°, 5 вЂ” Р·Р°РјРµСЃС‚РёС‚РµР»СЊ
+#define FAMILY_PRICE        50000       // С†РµРЅР° СЃРѕР·РґР°РЅРёСЏ (СѓС…РѕРґРёС‚ РІ РєР°Р·РЅСѓ)
+#define FAMILY_MIN_LEVEL    3           // СЃ РєР°РєРѕРіРѕ СѓСЂРѕРІРЅСЏ РёРіСЂРѕРєР° РјРѕР¶РЅРѕ СЃРѕР·РґР°С‚СЊ СЃРµРјСЊСЋ
 #define FAMILY_BANK_MAX     100000000
-#define FAMILY_COLOR        0xE0B040FF  // цвет семьи по умолчанию (чат семьи)
+#define FAMILY_COLOR        0xE0B040FF  // С†РІРµС‚ СЃРµРјСЊРё РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ (С‡Р°С‚ СЃРµРјСЊРё)
 
 enum E_FAMILY
 {
-	famDb,              // номер в таблице families (0 — слот свободен)
+	famDb,              // РЅРѕРјРµСЂ РІ С‚Р°Р±Р»РёС†Рµ families (0 вЂ” СЃР»РѕС‚ СЃРІРѕР±РѕРґРµРЅ)
 	famName[32],
-	famType[16],        // «Семья», «Банда» — как назвал создатель
+	famType[16],        // В«РЎРµРјСЊСЏВ», В«Р‘Р°РЅРґР°В» вЂ” РєР°Рє РЅР°Р·РІР°Р» СЃРѕР·РґР°С‚РµР»СЊ
 	famColor,
 	famBank,
-	famOwner,           // аккаунт главы
-	famHouse            // номер семейного дома в базе (0 — нет)
+	famOwner,           // Р°РєРєР°СѓРЅС‚ РіР»Р°РІС‹
+	famHouse            // РЅРѕРјРµСЂ СЃРµРјРµР№РЅРѕРіРѕ РґРѕРјР° РІ Р±Р°Р·Рµ (0 вЂ” РЅРµС‚)
 }
 static Family[MAX_FAMILIES][E_FAMILY];
 static gFamRankName[MAX_FAMILIES][FAMILY_RANKS][24];
 
-static gFam[MAX_PLAYERS] = {-1, ...};       // слот семьи игрока (-1 — не состоит)
+static gFam[MAX_PLAYERS] = {-1, ...};       // СЃР»РѕС‚ СЃРµРјСЊРё РёРіСЂРѕРєР° (-1 вЂ” РЅРµ СЃРѕСЃС‚РѕРёС‚)
 static gFamRank[MAX_PLAYERS];
-static gFamInvite[MAX_PLAYERS] = {-1, ...}; // в какую семью пригласили
-static gFamInviteDb[MAX_PLAYERS];           // номер семьи в базе на момент приглашения
+static gFamInvite[MAX_PLAYERS] = {-1, ...}; // РІ РєР°РєСѓСЋ СЃРµРјСЊСЋ РїСЂРёРіР»Р°СЃРёР»Рё
+static gFamInviteDb[MAX_PLAYERS];           // РЅРѕРјРµСЂ СЃРµРјСЊРё РІ Р±Р°Р·Рµ РЅР° РјРѕРјРµРЅС‚ РїСЂРёРіР»Р°С€РµРЅРёСЏ
 
 static const gFamDefRanks[FAMILY_RANKS][24] =
 {
-	"Новичок", "Участник", "Доверенный", "Старший", "Заместитель", "Глава"
+	"РќРѕРІРёС‡РѕРє", "РЈС‡Р°СЃС‚РЅРёРє", "Р”РѕРІРµСЂРµРЅРЅС‹Р№", "РЎС‚Р°СЂС€РёР№", "Р—Р°РјРµСЃС‚РёС‚РµР»СЊ", "Р“Р»Р°РІР°"
 };
 
 // ---------------------------------------------------------------------
-//  Запуск и вход игрока
+//  Р—Р°РїСѓСЃРє Рё РІС…РѕРґ РёРіСЂРѕРєР°
 // ---------------------------------------------------------------------
 stock Families_Init()
 {
@@ -128,7 +128,7 @@ stock Families_OnConnect(playerid)
 	gFamInvite[playerid] = -1;
 }
 
-// После входа в аккаунт (accounts.inc)
+// РџРѕСЃР»Рµ РІС…РѕРґР° РІ Р°РєРєР°СѓРЅС‚ (accounts.inc)
 stock Families_OnLogin(playerid)
 {
 	gFam[playerid] = -1;
@@ -145,24 +145,24 @@ stock Families_OnLogin(playerid)
 	else
 	{
 		if (gFamRank[playerid] < 1 || gFamRank[playerid] > FAMILY_RANKS) gFamRank[playerid] = 1;
-		SendClientMessage(playerid, Family[gFam[playerid]][famColor], "%s «%s»: ты %s. Чат: /fc, команды: /famhelp",
+		SendClientMessage(playerid, Family[gFam[playerid]][famColor], "%s В«%sВ»: С‚С‹ %s. Р§Р°С‚: /fc, РєРѕРјР°РЅРґС‹: /famhelp",
 			Family[gFam[playerid]][famType], Family[gFam[playerid]][famName], gFamRankName[gFam[playerid]][gFamRank[playerid] - 1]);
 	}
 }
 
 // ---------------------------------------------------------------------
-//  Помощники
+//  РџРѕРјРѕС‰РЅРёРєРё
 // ---------------------------------------------------------------------
-// Название семьи игрока для /stats и т.п. («нет», если не состоит)
+// РќР°Р·РІР°РЅРёРµ СЃРµРјСЊРё РёРіСЂРѕРєР° РґР»СЏ /stats Рё С‚.Рї. (В«РЅРµС‚В», РµСЃР»Рё РЅРµ СЃРѕСЃС‚РѕРёС‚)
 stock Family_GetPlayerText(playerid)
 {
 	new text[64], s = gFam[playerid];
-	if (s == -1) strcat(text, "нет");
-	else format(text, sizeof text, "%s «%s»", Family[s][famType], Family[s][famName]);
+	if (s == -1) strcat(text, "РЅРµС‚");
+	else format(text, sizeof text, "%s В«%sВ»", Family[s][famType], Family[s][famName]);
 	return text;
 }
 
-// Семейный дом игрока (индекс в House[], -1 — нет)
+// РЎРµРјРµР№РЅС‹Р№ РґРѕРј РёРіСЂРѕРєР° (РёРЅРґРµРєСЃ РІ House[], -1 вЂ” РЅРµС‚)
 stock Family_HouseOf(playerid)
 {
 	new s = gFam[playerid];
@@ -170,13 +170,13 @@ stock Family_HouseOf(playerid)
 	for (new h = 0; h < gHouseCount; h++)
 	{
 		if (House[h][hDbId] != Family[s][famHouse]) continue;
-		if (House[h][hOwner] == 0) return -1;       // дом продали — семейного больше нет
+		if (House[h][hOwner] == 0) return -1;       // РґРѕРј РїСЂРѕРґР°Р»Рё вЂ” СЃРµРјРµР№РЅРѕРіРѕ Р±РѕР»СЊС€Рµ РЅРµС‚
 		return h;
 	}
 	return -1;
 }
 
-// Игрок может войти в закрытый дом h как член семьи
+// РРіСЂРѕРє РјРѕР¶РµС‚ РІРѕР№С‚Рё РІ Р·Р°РєСЂС‹С‚С‹Р№ РґРѕРј h РєР°Рє С‡Р»РµРЅ СЃРµРјСЊРё
 stock bool:Family_IsHouseMember(playerid, h)
 {
 	return h != -1 && Family_HouseOf(playerid) == h;
@@ -185,8 +185,8 @@ stock bool:Family_IsHouseMember(playerid, h)
 static Family_HouseText(playerid)
 {
 	new t[24], h = Family_HouseOf(playerid);
-	if (h == -1) strcat(t, "нет (/famhouse)");
-	else format(t, sizeof t, "№%d", House[h][hDbId]);
+	if (h == -1) strcat(t, "РЅРµС‚ (/famhouse)");
+	else format(t, sizeof t, "в„–%d", House[h][hDbId]);
 	return t;
 }
 
@@ -211,18 +211,18 @@ static Family_Message(s, const message[])
 	}
 }
 
-// Игрок в семье? Если нужен ранг и его нет — пишет почему
+// РРіСЂРѕРє РІ СЃРµРјСЊРµ? Р•СЃР»Рё РЅСѓР¶РµРЅ СЂР°РЅРі Рё РµРіРѕ РЅРµС‚ вЂ” РїРёС€РµС‚ РїРѕС‡РµРјСѓ
 static bool:Family_Need(playerid, rank)
 {
 	if (gFam[playerid] == -1)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Ты не состоишь в семье. Создать свою: /famcreate");
+		SendClientMessage(playerid, COLOR_GREY, "РўС‹ РЅРµ СЃРѕСЃС‚РѕРёС€СЊ РІ СЃРµРјСЊРµ. РЎРѕР·РґР°С‚СЊ СЃРІРѕСЋ: /famcreate");
 		return false;
 	}
 	if (gFamRank[playerid] < rank)
 	{
-		if (rank >= FAMILY_RANKS) SendClientMessage(playerid, COLOR_GREY, "Это может только глава семьи.");
-		else SendClientMessage(playerid, COLOR_GREY, "Это могут только глава и заместитель (ранг %d+).", rank);
+		if (rank >= FAMILY_RANKS) SendClientMessage(playerid, COLOR_GREY, "Р­С‚Рѕ РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ РіР»Р°РІР° СЃРµРјСЊРё.");
+		else SendClientMessage(playerid, COLOR_GREY, "Р­С‚Рѕ РјРѕРіСѓС‚ С‚РѕР»СЊРєРѕ РіР»Р°РІР° Рё Р·Р°РјРµСЃС‚РёС‚РµР»СЊ (СЂР°РЅРі %d+).", rank);
 		return false;
 	}
 	return true;
@@ -234,20 +234,20 @@ static bool:Cmd_FamHouse(playerid, const params[])
 	new s = gFam[playerid], pos = 0, word[8], msg[144];
 	if (NextParam(params, pos, word) && !strcmp(word, "off", true))
 	{
-		if (Family[s][famHouse] == 0) return SendClientMessage(playerid, COLOR_GREY, "Семейного дома нет.");
+		if (Family[s][famHouse] == 0) return SendClientMessage(playerid, COLOR_GREY, "РЎРµРјРµР№РЅРѕРіРѕ РґРѕРјР° РЅРµС‚.");
 		Family[s][famHouse] = 0;
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE families SET house = 0 WHERE id = %d", Family[s][famDb]));
-		format(msg, sizeof msg, "[%s] %s убрал семейный дом.", Family[s][famType], GetRPName(playerid));
+		format(msg, sizeof msg, "[%s] %s СѓР±СЂР°Р» СЃРµРјРµР№РЅС‹Р№ РґРѕРј.", Family[s][famType], GetRPName(playerid));
 		Family_Message(s, msg);
 		return true;
 	}
 	new h = House_GetNearby(playerid);
 	if (h == -1 && Player[playerid][pHouseInside] != -1 && House_IsInside(playerid, Player[playerid][pHouseInside])) h = Player[playerid][pHouseInside];
-	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Встань у двери своего дома (или зайди в него). Убрать семейный дом: /famhouse off");
-	if (House[h][hOwner] != Player[playerid][pDbId]) return SendClientMessage(playerid, COLOR_GREY, "Семейным можно сделать только свой дом.");
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Р’СЃС‚Р°РЅСЊ Сѓ РґРІРµСЂРё СЃРІРѕРµРіРѕ РґРѕРјР° (РёР»Рё Р·Р°Р№РґРё РІ РЅРµРіРѕ). РЈР±СЂР°С‚СЊ СЃРµРјРµР№РЅС‹Р№ РґРѕРј: /famhouse off");
+	if (House[h][hOwner] != Player[playerid][pDbId]) return SendClientMessage(playerid, COLOR_GREY, "РЎРµРјРµР№РЅС‹Рј РјРѕР¶РЅРѕ СЃРґРµР»Р°С‚СЊ С‚РѕР»СЊРєРѕ СЃРІРѕР№ РґРѕРј.");
 	Family[s][famHouse] = House[h][hDbId];
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE families SET house = %d WHERE id = %d", Family[s][famHouse], Family[s][famDb]));
-	format(msg, sizeof msg, "[%s] %s сделал дом №%d семейным. Входить может вся семья, спавн: /setspawn.", Family[s][famType], GetRPName(playerid), House[h][hDbId]);
+	format(msg, sizeof msg, "[%s] %s СЃРґРµР»Р°Р» РґРѕРј в„–%d СЃРµРјРµР№РЅС‹Рј. Р’С…РѕРґРёС‚СЊ РјРѕР¶РµС‚ РІСЃСЏ СЃРµРјСЊСЏ, СЃРїР°РІРЅ: /setspawn.", Family[s][famType], GetRPName(playerid), House[h][hDbId]);
 	Family_Message(s, msg);
 	return true;
 }
@@ -265,34 +265,34 @@ static Family_Members(s)
 }
 
 // ---------------------------------------------------------------------
-//  Команды
+//  РљРѕРјР°РЅРґС‹
 // ---------------------------------------------------------------------
 static bool:Cmd_FamCreate(playerid, const params[])
 {
 	new pos = 0, type[16], name[32];
 	if (!NextParam(params, pos, type) || !RestParam(params, pos, name))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Использование: /famcreate [тип одним словом] [название]. Пример: /famcreate Семья Corleone");
-		return SendClientMessage(playerid, COLOR_GREY, "Цена $%d наличными, нужен уровень %d.", FAMILY_PRICE, FAMILY_MIN_LEVEL);
+		SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /famcreate [С‚РёРї РѕРґРЅРёРј СЃР»РѕРІРѕРј] [РЅР°Р·РІР°РЅРёРµ]. РџСЂРёРјРµСЂ: /famcreate РЎРµРјСЊСЏ Corleone");
+		return SendClientMessage(playerid, COLOR_GREY, "Р¦РµРЅР° $%d РЅР°Р»РёС‡РЅС‹РјРё, РЅСѓР¶РµРЅ СѓСЂРѕРІРµРЅСЊ %d.", FAMILY_PRICE, FAMILY_MIN_LEVEL);
 	}
-	if (gFam[playerid] != -1) return SendClientMessage(playerid, COLOR_GREY, "Ты уже состоишь в семье. Сначала выйди: /famleave");
-	if (Player[playerid][pLevel] < FAMILY_MIN_LEVEL) return SendClientMessage(playerid, COLOR_GREY, "Создать семью можно с %d уровня.", FAMILY_MIN_LEVEL);
-	if (!Faction_IsGoodName(type, 3, 15)) return SendClientMessage(playerid, COLOR_GREY, "Тип: одно слово от 3 до 15 символов (Семья, Банда, Клан).");
-	if (!Faction_IsGoodName(name, 3, 30)) return SendClientMessage(playerid, COLOR_GREY, "Название: от 3 до 30 символов, без { } и %%.");
-	if (GetMoney(playerid) < FAMILY_PRICE) return SendClientMessage(playerid, COLOR_GREY, "Нужно $%d наличными.", FAMILY_PRICE);
+	if (gFam[playerid] != -1) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ СѓР¶Рµ СЃРѕСЃС‚РѕРёС€СЊ РІ СЃРµРјСЊРµ. РЎРЅР°С‡Р°Р»Р° РІС‹Р№РґРё: /famleave");
+	if (Player[playerid][pLevel] < FAMILY_MIN_LEVEL) return SendClientMessage(playerid, COLOR_GREY, "РЎРѕР·РґР°С‚СЊ СЃРµРјСЊСЋ РјРѕР¶РЅРѕ СЃ %d СѓСЂРѕРІРЅСЏ.", FAMILY_MIN_LEVEL);
+	if (!Faction_IsGoodName(type, 3, 15)) return SendClientMessage(playerid, COLOR_GREY, "РўРёРї: РѕРґРЅРѕ СЃР»РѕРІРѕ РѕС‚ 3 РґРѕ 15 СЃРёРјРІРѕР»РѕРІ (РЎРµРјСЊСЏ, Р‘Р°РЅРґР°, РљР»Р°РЅ).");
+	if (!Faction_IsGoodName(name, 3, 30)) return SendClientMessage(playerid, COLOR_GREY, "РќР°Р·РІР°РЅРёРµ: РѕС‚ 3 РґРѕ 30 СЃРёРјРІРѕР»РѕРІ, Р±РµР· { } Рё %%.");
+	if (GetMoney(playerid) < FAMILY_PRICE) return SendClientMessage(playerid, COLOR_GREY, "РќСѓР¶РЅРѕ $%d РЅР°Р»РёС‡РЅС‹РјРё.", FAMILY_PRICE);
 
 	new s = -1;
 	for (new i = 0; i < MAX_FAMILIES; i++)
 	{
 		if (Family[i][famDb] == 0) { if (s == -1) s = i; }
-		else if (!strcmp(Family[i][famName], name, true)) return SendClientMessage(playerid, COLOR_GREY, "Такое название уже занято.");
+		else if (!strcmp(Family[i][famName], name, true)) return SendClientMessage(playerid, COLOR_GREY, "РўР°РєРѕРµ РЅР°Р·РІР°РЅРёРµ СѓР¶Рµ Р·Р°РЅСЏС‚Рѕ.");
 	}
-	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "На сервере уже слишком много семей. Сообщи администрации.");
+	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "РќР° СЃРµСЂРІРµСЂРµ СѓР¶Рµ СЃР»РёС€РєРѕРј РјРЅРѕРіРѕ СЃРµРјРµР№. РЎРѕРѕР±С‰Рё Р°РґРјРёРЅРёСЃС‚СЂР°С†РёРё.");
 
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO families (name, type, color, bank, owner, created) VALUES ('%q', '%q', %d, 0, %d, %d)",
 		name, type, FAMILY_COLOR, Player[playerid][pDbId], gettime()));
 	new dbid = DB_LastInsertId();
-	if (dbid <= 0) return SendClientMessage(playerid, COLOR_GREY, "Не удалось создать семью. Попробуй другое название.");
+	if (dbid <= 0) return SendClientMessage(playerid, COLOR_GREY, "РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ СЃРµРјСЊСЋ. РџРѕРїСЂРѕР±СѓР№ РґСЂСѓРіРѕРµ РЅР°Р·РІР°РЅРёРµ.");
 
 	Family[s][famDb] = dbid;
 	Family[s][famName][0] = '\0';
@@ -304,14 +304,14 @@ static bool:Cmd_FamCreate(playerid, const params[])
 	Family[s][famOwner] = Player[playerid][pDbId];
 	Family_DefaultRanks(s);
 
-	GiveMoney(playerid, -FAMILY_PRICE, "создание семьи");
+	GiveMoney(playerid, -FAMILY_PRICE, "СЃРѕР·РґР°РЅРёРµ СЃРµРјСЊРё");
 	Econ_ToTreasury(FAMILY_PRICE);
 	gFam[playerid] = s;
 	gFamRank[playerid] = FAMILY_RANKS;
 	Family_SaveMember(playerid);
 	Account_Save(playerid);
 
-	SendClientMessage(playerid, COLOR_GREEN, "Создано: %s «%s». Ты глава. Пригласить: /faminvite [id], все команды: /famhelp", type, name);
+	SendClientMessage(playerid, COLOR_GREEN, "РЎРѕР·РґР°РЅРѕ: %s В«%sВ». РўС‹ РіР»Р°РІР°. РџСЂРёРіР»Р°СЃРёС‚СЊ: /faminvite [id], РІСЃРµ РєРѕРјР°РЅРґС‹: /famhelp", type, name);
 	return true;
 }
 
@@ -320,16 +320,16 @@ static bool:Cmd_FamInvite(playerid, const params[])
 	if (!Family_Need(playerid, FAMILY_RANKS - 1)) return true;
 	new pos = 0, s = gFam[playerid];
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /faminvite [id]");
-	if (target == playerid || !Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Неверный игрок.");
-	if (gFam[target] != -1) return SendClientMessage(playerid, COLOR_GREY, "Игрок уже состоит в семье.");
-	if (!IsPlayerNearPlayer(playerid, target, 5.0)) return SendClientMessage(playerid, COLOR_GREY, "Игрок слишком далеко.");
+	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /faminvite [id]");
+	if (target == playerid || !Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "РќРµРІРµСЂРЅС‹Р№ РёРіСЂРѕРє.");
+	if (gFam[target] != -1) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє СѓР¶Рµ СЃРѕСЃС‚РѕРёС‚ РІ СЃРµРјСЊРµ.");
+	if (!IsPlayerNearPlayer(playerid, target, 5.0)) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє СЃР»РёС€РєРѕРј РґР°Р»РµРєРѕ.");
 
 	gFamInvite[target] = s;
 	gFamInviteDb[target] = Family[s][famDb];
-	SendClientMessage(target, Family[s][famColor], "%s приглашает тебя: %s «%s». Принять: /famaccept",
+	SendClientMessage(target, Family[s][famColor], "%s РїСЂРёРіР»Р°С€Р°РµС‚ С‚РµР±СЏ: %s В«%sВ». РџСЂРёРЅСЏС‚СЊ: /famaccept",
 		GetRPName(playerid), Family[s][famType], Family[s][famName]);
-	SendClientMessage(playerid, COLOR_WHITE, "Ты пригласил %s. Ждём ответа.", GetRPName(target));
+	SendClientMessage(playerid, COLOR_WHITE, "РўС‹ РїСЂРёРіР»Р°СЃРёР» %s. Р–РґС‘Рј РѕС‚РІРµС‚Р°.", GetRPName(target));
 	return true;
 }
 
@@ -338,14 +338,14 @@ static bool:Cmd_FamAccept(playerid)
 	new s = gFamInvite[playerid];
 	gFamInvite[playerid] = -1;
 	if (s == -1 || Family[s][famDb] == 0 || Family[s][famDb] != gFamInviteDb[playerid])
-		return SendClientMessage(playerid, COLOR_GREY, "Тебя никуда не приглашали или приглашение устарело.");
-	if (gFam[playerid] != -1) return SendClientMessage(playerid, COLOR_GREY, "Ты уже состоишь в семье.");
+		return SendClientMessage(playerid, COLOR_GREY, "РўРµР±СЏ РЅРёРєСѓРґР° РЅРµ РїСЂРёРіР»Р°С€Р°Р»Рё РёР»Рё РїСЂРёРіР»Р°С€РµРЅРёРµ СѓСЃС‚Р°СЂРµР»Рѕ.");
+	if (gFam[playerid] != -1) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ СѓР¶Рµ СЃРѕСЃС‚РѕРёС€СЊ РІ СЃРµРјСЊРµ.");
 
 	gFam[playerid] = s;
 	gFamRank[playerid] = 1;
 	Family_SaveMember(playerid);
 	new msg[144];
-	format(msg, sizeof msg, "[%s] %s вступил в «%s».", Family[s][famType], GetRPName(playerid), Family[s][famName]);
+	format(msg, sizeof msg, "[%s] %s РІСЃС‚СѓРїРёР» РІ В«%sВ».", Family[s][famType], GetRPName(playerid), Family[s][famName]);
 	Family_Message(s, msg);
 	return true;
 }
@@ -355,13 +355,13 @@ static bool:Cmd_FamKick(playerid, const params[])
 	if (!Family_Need(playerid, FAMILY_RANKS - 1)) return true;
 	new pos = 0, s = gFam[playerid];
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /famkick [id]. Кого нет в игре: /famoffkick [Имя_Фамилия]");
-	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Чтобы уйти самому: /famleave");
-	if (gFam[target] != s) return SendClientMessage(playerid, COLOR_GREY, "Игрок не в твоей семье.");
-	if (gFamRank[target] >= gFamRank[playerid]) return SendClientMessage(playerid, COLOR_GREY, "Нельзя выгнать равного или старшего по рангу.");
+	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /famkick [id]. РљРѕРіРѕ РЅРµС‚ РІ РёРіСЂРµ: /famoffkick [РРјСЏ_Р¤Р°РјРёР»РёСЏ]");
+	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Р§С‚РѕР±С‹ СѓР№С‚Рё СЃР°РјРѕРјСѓ: /famleave");
+	if (gFam[target] != s) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє РЅРµ РІ С‚РІРѕРµР№ СЃРµРјСЊРµ.");
+	if (gFamRank[target] >= gFamRank[playerid]) return SendClientMessage(playerid, COLOR_GREY, "РќРµР»СЊР·СЏ РІС‹РіРЅР°С‚СЊ СЂР°РІРЅРѕРіРѕ РёР»Рё СЃС‚Р°СЂС€РµРіРѕ РїРѕ СЂР°РЅРіСѓ.");
 
 	new msg[144];
-	format(msg, sizeof msg, "[%s] %s выгнал %s.", Family[s][famType], GetRPName(playerid), GetRPName(target));
+	format(msg, sizeof msg, "[%s] %s РІС‹РіРЅР°Р» %s.", Family[s][famType], GetRPName(playerid), GetRPName(target));
 	Family_Message(s, msg);
 	gFam[target] = -1;
 	gFamRank[target] = 0;
@@ -369,12 +369,12 @@ static bool:Cmd_FamKick(playerid, const params[])
 	return true;
 }
 
-// Выгнать того, кого нет в игре
+// Р’С‹РіРЅР°С‚СЊ С‚РѕРіРѕ, РєРѕРіРѕ РЅРµС‚ РІ РёРіСЂРµ
 static bool:Cmd_FamOffKick(playerid, const params[])
 {
 	if (!Family_Need(playerid, FAMILY_RANKS - 1)) return true;
 	new pos = 0, name[MAX_PLAYER_NAME], s = gFam[playerid];
-	if (!NextParam(params, pos, name)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /famoffkick [Имя_Фамилия]");
+	if (!NextParam(params, pos, name)) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /famoffkick [РРјСЏ_Р¤Р°РјРёР»РёСЏ]");
 
 	new dbid = 0, rank = 0;
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, famrank FROM accounts WHERE name = '%q' AND family = %d LIMIT 1", name, Family[s][famDb]);
@@ -387,14 +387,14 @@ static bool:Cmd_FamOffKick(playerid, const params[])
 		}
 		DB_FreeResultSet(r);
 	}
-	if (dbid == 0) return SendClientMessage(playerid, COLOR_GREY, "В твоей семье нет такого человека.");
-	if (dbid == Player[playerid][pDbId]) return SendClientMessage(playerid, COLOR_GREY, "Чтобы уйти самому: /famleave");
-	if (rank >= gFamRank[playerid]) return SendClientMessage(playerid, COLOR_GREY, "Нельзя выгнать равного или старшего по рангу.");
-	if (Faction_FindOnline(dbid) != INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Этот человек сейчас в игре: /famkick [id]");
+	if (dbid == 0) return SendClientMessage(playerid, COLOR_GREY, "Р’ С‚РІРѕРµР№ СЃРµРјСЊРµ РЅРµС‚ С‚Р°РєРѕРіРѕ С‡РµР»РѕРІРµРєР°.");
+	if (dbid == Player[playerid][pDbId]) return SendClientMessage(playerid, COLOR_GREY, "Р§С‚РѕР±С‹ СѓР№С‚Рё СЃР°РјРѕРјСѓ: /famleave");
+	if (rank >= gFamRank[playerid]) return SendClientMessage(playerid, COLOR_GREY, "РќРµР»СЊР·СЏ РІС‹РіРЅР°С‚СЊ СЂР°РІРЅРѕРіРѕ РёР»Рё СЃС‚Р°СЂС€РµРіРѕ РїРѕ СЂР°РЅРіСѓ.");
+	if (Faction_FindOnline(dbid) != INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Р­С‚РѕС‚ С‡РµР»РѕРІРµРє СЃРµР№С‡Р°СЃ РІ РёРіСЂРµ: /famkick [id]");
 
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET family = 0, famrank = 0 WHERE id = %d", dbid));
 	new msg[144];
-	format(msg, sizeof msg, "[%s] %s выгнал %s (не в игре).", Family[s][famType], GetRPName(playerid), name);
+	format(msg, sizeof msg, "[%s] %s РІС‹РіРЅР°Р» %s (РЅРµ РІ РёРіСЂРµ).", Family[s][famType], GetRPName(playerid), name);
 	Family_Message(s, msg);
 	return true;
 }
@@ -405,16 +405,16 @@ static bool:Cmd_FamRank(playerid, const params[])
 	new pos = 0, rank, s = gFam[playerid];
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, rank))
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /famrank [id] [ранг 1-%d]", gFamRank[playerid] - 1);
-	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Себе ранг менять нельзя.");
-	if (gFam[target] != s) return SendClientMessage(playerid, COLOR_GREY, "Игрок не в твоей семье.");
-	if (gFamRank[target] >= gFamRank[playerid]) return SendClientMessage(playerid, COLOR_GREY, "Нельзя менять ранг равному или старшему.");
-	if (rank < 1 || rank >= gFamRank[playerid]) return SendClientMessage(playerid, COLOR_GREY, "Ранг должен быть от 1 до %d.", gFamRank[playerid] - 1);
+		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /famrank [id] [СЂР°РЅРі 1-%d]", gFamRank[playerid] - 1);
+	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "РЎРµР±Рµ СЂР°РЅРі РјРµРЅСЏС‚СЊ РЅРµР»СЊР·СЏ.");
+	if (gFam[target] != s) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє РЅРµ РІ С‚РІРѕРµР№ СЃРµРјСЊРµ.");
+	if (gFamRank[target] >= gFamRank[playerid]) return SendClientMessage(playerid, COLOR_GREY, "РќРµР»СЊР·СЏ РјРµРЅСЏС‚СЊ СЂР°РЅРі СЂР°РІРЅРѕРјСѓ РёР»Рё СЃС‚Р°СЂС€РµРјСѓ.");
+	if (rank < 1 || rank >= gFamRank[playerid]) return SendClientMessage(playerid, COLOR_GREY, "Р Р°РЅРі РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РѕС‚ 1 РґРѕ %d.", gFamRank[playerid] - 1);
 
 	gFamRank[target] = rank;
 	Family_SaveMember(target);
 	new msg[144];
-	format(msg, sizeof msg, "[%s] %s назначил %s: «%s» (%d).", Family[s][famType], GetRPName(playerid), GetRPName(target), gFamRankName[s][rank - 1], rank);
+	format(msg, sizeof msg, "[%s] %s РЅР°Р·РЅР°С‡РёР» %s: В«%sВ» (%d).", Family[s][famType], GetRPName(playerid), GetRPName(target), gFamRankName[s][rank - 1], rank);
 	Family_Message(s, msg);
 	return true;
 }
@@ -424,9 +424,9 @@ static bool:Cmd_FamLeave(playerid)
 	if (!Family_Need(playerid, 1)) return true;
 	new s = gFam[playerid];
 	if (gFamRank[playerid] >= FAMILY_RANKS)
-		return SendClientMessage(playerid, COLOR_GREY, "Глава не может просто уйти. Передай семью: /famleader [id] или распусти её: /famdisband");
+		return SendClientMessage(playerid, COLOR_GREY, "Р“Р»Р°РІР° РЅРµ РјРѕР¶РµС‚ РїСЂРѕСЃС‚Рѕ СѓР№С‚Рё. РџРµСЂРµРґР°Р№ СЃРµРјСЊСЋ: /famleader [id] РёР»Рё СЂР°СЃРїСѓСЃС‚Рё РµС‘: /famdisband");
 	new msg[144];
-	format(msg, sizeof msg, "[%s] %s вышел из «%s».", Family[s][famType], GetRPName(playerid), Family[s][famName]);
+	format(msg, sizeof msg, "[%s] %s РІС‹С€РµР» РёР· В«%sВ».", Family[s][famType], GetRPName(playerid), Family[s][famName]);
 	Family_Message(s, msg);
 	gFam[playerid] = -1;
 	gFamRank[playerid] = 0;
@@ -439,8 +439,8 @@ static bool:Cmd_FamLeader(playerid, const params[])
 	if (!Family_Need(playerid, FAMILY_RANKS)) return true;
 	new pos = 0, s = gFam[playerid];
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /famleader [id] — передать семью другому её участнику");
-	if (gFam[target] != s) return SendClientMessage(playerid, COLOR_GREY, "Игрок не в твоей семье.");
+	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /famleader [id] вЂ” РїРµСЂРµРґР°С‚СЊ СЃРµРјСЊСЋ РґСЂСѓРіРѕРјСѓ РµС‘ СѓС‡Р°СЃС‚РЅРёРєСѓ");
+	if (gFam[target] != s) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє РЅРµ РІ С‚РІРѕРµР№ СЃРµРјСЊРµ.");
 
 	gFamRank[target] = FAMILY_RANKS;
 	gFamRank[playerid] = FAMILY_RANKS - 1;
@@ -449,7 +449,7 @@ static bool:Cmd_FamLeader(playerid, const params[])
 	Family_SaveMember(playerid);
 	Family_SaveInfo(s);
 	new msg[144];
-	format(msg, sizeof msg, "[%s] %s передал главенство %s.", Family[s][famType], GetRPName(playerid), GetRPName(target));
+	format(msg, sizeof msg, "[%s] %s РїРµСЂРµРґР°Р» РіР»Р°РІРµРЅСЃС‚РІРѕ %s.", Family[s][famType], GetRPName(playerid), GetRPName(target));
 	Family_Message(s, msg);
 	return true;
 }
@@ -458,11 +458,11 @@ static bool:Cmd_FamDisband(playerid, const params[])
 {
 	if (!Family_Need(playerid, FAMILY_RANKS)) return true;
 	new pos = 0, word[16], s = gFam[playerid];
-	if (!NextParam(params, pos, word) || strcmp(word, "да", true) != 0)
-		return SendClientMessage(playerid, COLOR_GREY, "Семья будет удалена навсегда, общак вернётся тебе. Подтверди: /famdisband да");
+	if (!NextParam(params, pos, word) || strcmp(word, "РґР°", true) != 0)
+		return SendClientMessage(playerid, COLOR_GREY, "РЎРµРјСЊСЏ Р±СѓРґРµС‚ СѓРґР°Р»РµРЅР° РЅР°РІСЃРµРіРґР°, РѕР±С‰Р°Рє РІРµСЂРЅС‘С‚СЃСЏ С‚РµР±Рµ. РџРѕРґС‚РІРµСЂРґРё: /famdisband РґР°");
 
 	new msg[144], bank = Family[s][famBank], dbid = Family[s][famDb];
-	format(msg, sizeof msg, "[%s] %s распустил «%s».", Family[s][famType], GetRPName(playerid), Family[s][famName]);
+	format(msg, sizeof msg, "[%s] %s СЂР°СЃРїСѓСЃС‚РёР» В«%sВ».", Family[s][famType], GetRPName(playerid), Family[s][famName]);
 	Family_Message(s, msg);
 
 	for (new i = 0; i < MAX_PLAYERS; i++)
@@ -477,7 +477,7 @@ static bool:Cmd_FamDisband(playerid, const params[])
 	Family[s][famBank] = 0;
 	if (bank > 0)
 	{
-		GiveMoney(playerid, bank, "общак распущенной семьи");
+		GiveMoney(playerid, bank, "РѕР±С‰Р°Рє СЂР°СЃРїСѓС‰РµРЅРЅРѕР№ СЃРµРјСЊРё");
 		Account_Save(playerid);
 	}
 	return true;
@@ -487,16 +487,16 @@ static bool:Cmd_Fam(playerid)
 {
 	if (!Family_Need(playerid, 1)) return true;
 	new s = gFam[playerid], text[1200], line[96], online = 0;
-	format(text, sizeof text, "{FFFFFF}%s «%s»\nУчастников: %d\nОбщак: {33AA33}$%d{FFFFFF}\nТвой ранг: %s (%d)\nСемейный дом: %s\n\n{FFFF00}Сейчас в игре\n{FFFFFF}",
+	format(text, sizeof text, "{FFFFFF}%s В«%sВ»\nРЈС‡Р°СЃС‚РЅРёРєРѕРІ: %d\nРћР±С‰Р°Рє: {33AA33}$%d{FFFFFF}\nРўРІРѕР№ СЂР°РЅРі: %s (%d)\nРЎРµРјРµР№РЅС‹Р№ РґРѕРј: %s\n\n{FFFF00}РЎРµР№С‡Р°СЃ РІ РёРіСЂРµ\n{FFFFFF}",
 		Family[s][famType], Family[s][famName], Family_Members(s), Family[s][famBank], gFamRankName[s][gFamRank[playerid] - 1], gFamRank[playerid], Family_HouseText(playerid));
 	for (new i = 0; i < MAX_PLAYERS && online < 25; i++)
 	{
 		if (!IsPlayerConnected(i) || !Player[i][pLogged] || gFam[i] != s) continue;
-		format(line, sizeof line, "%s [%d] — %s\n", GetRPName(i), i, gFamRankName[s][gFamRank[i] - 1]);
+		format(line, sizeof line, "%s [%d] вЂ” %s\n", GetRPName(i), i, gFamRankName[s][gFamRank[i] - 1]);
 		strcat(text, line);
 		online++;
 	}
-	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, Family[s][famName], "%s", "Закрыть", "", text);
+	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, Family[s][famName], "%s", "Р—Р°РєСЂС‹С‚СЊ", "", text);
 	return true;
 }
 
@@ -504,7 +504,7 @@ static bool:Cmd_FamChat(playerid, const params[])
 {
 	if (!Family_Need(playerid, 1)) return true;
 	new text[110], msg[144], s = gFam[playerid];
-	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /fc [текст]");
+	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /fc [С‚РµРєСЃС‚]");
 	format(msg, sizeof msg, "[%s] %s %s: %s", Family[s][famType], gFamRankName[s][gFamRank[playerid] - 1], GetRPName(playerid), text);
 	Family_Message(s, msg);
 	return true;
@@ -515,25 +515,25 @@ static bool:Cmd_FamBank(playerid, const params[])
 	if (!Family_Need(playerid, 1)) return true;
 	new pos = 0, what[8], amount, s = gFam[playerid], msg[144];
 	if (!NextParam(params, pos, what) || !NextIntParam(params, pos, amount) || amount < 1)
-		return SendClientMessage(playerid, COLOR_GREY, "Общак: $%d. Положить: /fambank put [сумма]. Снять (глава): /fambank take [сумма]", Family[s][famBank]);
+		return SendClientMessage(playerid, COLOR_GREY, "РћР±С‰Р°Рє: $%d. РџРѕР»РѕР¶РёС‚СЊ: /fambank put [СЃСѓРјРјР°]. РЎРЅСЏС‚СЊ (РіР»Р°РІР°): /fambank take [СЃСѓРјРјР°]", Family[s][famBank]);
 
 	if (!strcmp(what, "put", true))
 	{
-		if (GetMoney(playerid) < amount) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет столько наличных.");
-		if (Family[s][famBank] + amount > FAMILY_BANK_MAX) return SendClientMessage(playerid, COLOR_GREY, "Общак переполнен.");
-		GiveMoney(playerid, -amount, "в общак семьи");
+		if (GetMoney(playerid) < amount) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ СЃС‚РѕР»СЊРєРѕ РЅР°Р»РёС‡РЅС‹С….");
+		if (Family[s][famBank] + amount > FAMILY_BANK_MAX) return SendClientMessage(playerid, COLOR_GREY, "РћР±С‰Р°Рє РїРµСЂРµРїРѕР»РЅРµРЅ.");
+		GiveMoney(playerid, -amount, "РІ РѕР±С‰Р°Рє СЃРµРјСЊРё");
 		Family[s][famBank] += amount;
-		format(msg, sizeof msg, "[%s] %s положил в общак $%d. В общаке: $%d.", Family[s][famType], GetRPName(playerid), amount, Family[s][famBank]);
+		format(msg, sizeof msg, "[%s] %s РїРѕР»РѕР¶РёР» РІ РѕР±С‰Р°Рє $%d. Р’ РѕР±С‰Р°РєРµ: $%d.", Family[s][famType], GetRPName(playerid), amount, Family[s][famBank]);
 	}
 	else if (!strcmp(what, "take", true))
 	{
-		if (gFamRank[playerid] < FAMILY_RANKS) return SendClientMessage(playerid, COLOR_GREY, "Снимать деньги из общака может только глава.");
-		if (Family[s][famBank] < amount) return SendClientMessage(playerid, COLOR_GREY, "В общаке только $%d.", Family[s][famBank]);
+		if (gFamRank[playerid] < FAMILY_RANKS) return SendClientMessage(playerid, COLOR_GREY, "РЎРЅРёРјР°С‚СЊ РґРµРЅСЊРіРё РёР· РѕР±С‰Р°РєР° РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ РіР»Р°РІР°.");
+		if (Family[s][famBank] < amount) return SendClientMessage(playerid, COLOR_GREY, "Р’ РѕР±С‰Р°РєРµ С‚РѕР»СЊРєРѕ $%d.", Family[s][famBank]);
 		Family[s][famBank] -= amount;
-		GiveMoney(playerid, amount, "из общака семьи");
-		format(msg, sizeof msg, "[%s] %s снял из общака $%d. В общаке: $%d.", Family[s][famType], GetRPName(playerid), amount, Family[s][famBank]);
+		GiveMoney(playerid, amount, "РёР· РѕР±С‰Р°РєР° СЃРµРјСЊРё");
+		format(msg, sizeof msg, "[%s] %s СЃРЅСЏР» РёР· РѕР±С‰Р°РєР° $%d. Р’ РѕР±С‰Р°РєРµ: $%d.", Family[s][famType], GetRPName(playerid), amount, Family[s][famBank]);
 	}
-	else return SendClientMessage(playerid, COLOR_GREY, "Использование: /fambank put [сумма] или /fambank take [сумма]");
+	else return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /fambank put [СЃСѓРјРјР°] РёР»Рё /fambank take [СЃСѓРјРјР°]");
 
 	Family_SaveInfo(s);
 	Account_Save(playerid);
@@ -546,13 +546,13 @@ static bool:Cmd_FamRankName(playerid, const params[])
 	if (!Family_Need(playerid, FAMILY_RANKS)) return true;
 	new pos = 0, rank, name[24], s = gFam[playerid];
 	if (!NextIntParam(params, pos, rank) || rank < 1 || rank > FAMILY_RANKS || !RestParam(params, pos, name))
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /famrankname [ранг 1-%d] [название]", FAMILY_RANKS);
-	if (!Faction_IsGoodName(name, 2, 23)) return SendClientMessage(playerid, COLOR_GREY, "Название ранга: от 2 до 23 символов, без { } и %%.");
+		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /famrankname [СЂР°РЅРі 1-%d] [РЅР°Р·РІР°РЅРёРµ]", FAMILY_RANKS);
+	if (!Faction_IsGoodName(name, 2, 23)) return SendClientMessage(playerid, COLOR_GREY, "РќР°Р·РІР°РЅРёРµ СЂР°РЅРіР°: РѕС‚ 2 РґРѕ 23 СЃРёРјРІРѕР»РѕРІ, Р±РµР· { } Рё %%.");
 
 	gFamRankName[s][rank - 1][0] = '\0';
 	strcat(gFamRankName[s][rank - 1], name, 24);
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO family_ranks (family, rank, name) VALUES (%d, %d, '%q')", Family[s][famDb], rank, name));
-	SendClientMessage(playerid, COLOR_GREEN, "Ранг %d теперь называется «%s».", rank, name);
+	SendClientMessage(playerid, COLOR_GREEN, "Р Р°РЅРі %d С‚РµРїРµСЂСЊ РЅР°Р·С‹РІР°РµС‚СЃСЏ В«%sВ».", rank, name);
 	return true;
 }
 
@@ -561,41 +561,41 @@ static bool:Cmd_FamColor(playerid, const params[])
 	if (!Family_Need(playerid, FAMILY_RANKS)) return true;
 	new pos = 0, hex[16], s = gFam[playerid], value = 0;
 	if (!NextParam(params, pos, hex) || strlen(hex) != 6)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /famcolor [RRGGBB], например /famcolor E0B040");
+		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /famcolor [RRGGBB], РЅР°РїСЂРёРјРµСЂ /famcolor E0B040");
 	for (new i = 0; i < 6; i++)
 	{
 		new c = hex[i], d;
 		if (c >= '0' && c <= '9') d = c - '0';
 		else if (c >= 'a' && c <= 'f') d = c - 'a' + 10;
 		else if (c >= 'A' && c <= 'F') d = c - 'A' + 10;
-		else return SendClientMessage(playerid, COLOR_GREY, "Цвет — шесть знаков 0-9 и A-F, например E0B040.");
+		else return SendClientMessage(playerid, COLOR_GREY, "Р¦РІРµС‚ вЂ” С€РµСЃС‚СЊ Р·РЅР°РєРѕРІ 0-9 Рё A-F, РЅР°РїСЂРёРјРµСЂ E0B040.");
 		value = value * 16 + d;
 	}
 	Family[s][famColor] = (value << 8) | 0xFF;
 	Family_SaveInfo(s);
-	SendClientMessage(playerid, Family[s][famColor], "Цвет семьи изменён.");
+	SendClientMessage(playerid, Family[s][famColor], "Р¦РІРµС‚ СЃРµРјСЊРё РёР·РјРµРЅС‘РЅ.");
 	return true;
 }
 
 static bool:Cmd_FamHelp(playerid)
 {
 	new text[1200], line[96];
-	strcat(text, "{FFFF00}Семьи\n{FFFFFF}Семью создаёт сам игрок. Можно состоять и во фракции, и в семье.\n\n");
-	format(line, sizeof line, "/famcreate [тип] [название] — создать ($%d, уровень %d+)\n", FAMILY_PRICE, FAMILY_MIN_LEVEL);
+	strcat(text, "{FFFF00}РЎРµРјСЊРё\n{FFFFFF}РЎРµРјСЊСЋ СЃРѕР·РґР°С‘С‚ СЃР°Рј РёРіСЂРѕРє. РњРѕР¶РЅРѕ СЃРѕСЃС‚РѕСЏС‚СЊ Рё РІРѕ С„СЂР°РєС†РёРё, Рё РІ СЃРµРјСЊРµ.\n\n");
+	format(line, sizeof line, "/famcreate [С‚РёРї] [РЅР°Р·РІР°РЅРёРµ] вЂ” СЃРѕР·РґР°С‚СЊ ($%d, СѓСЂРѕРІРµРЅСЊ %d+)\n", FAMILY_PRICE, FAMILY_MIN_LEVEL);
 	strcat(text, line);
-	strcat(text, "/fam — состав и общак   /fc [текст] — чат семьи\n");
-	strcat(text, "/famaccept — принять приглашение   /famleave — выйти\n");
-	strcat(text, "/fambank put [сумма] — положить в общак\n\n");
-	strcat(text, "{FFFF00}Глава и заместитель (ранг 5-6)\n{FFFFFF}");
-	strcat(text, "/faminvite [id]   /famkick [id]   /famoffkick [Имя_Фамилия]\n/famrank [id] [ранг]\n\n");
-	strcat(text, "{FFFF00}Только глава (ранг 6)\n{FFFFFF}");
-	strcat(text, "/fambank take [сумма] — снять из общака\n/famrankname [ранг] [название]   /famcolor [RRGGBB]\n/famhouse — свой дом сделать семейным (off — убрать)\n");
-	strcat(text, "/famleader [id] — передать семью   /famdisband — распустить");
-	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Семьи", "%s", "Закрыть", "", text);
+	strcat(text, "/fam вЂ” СЃРѕСЃС‚Р°РІ Рё РѕР±С‰Р°Рє   /fc [С‚РµРєСЃС‚] вЂ” С‡Р°С‚ СЃРµРјСЊРё\n");
+	strcat(text, "/famaccept вЂ” РїСЂРёРЅСЏС‚СЊ РїСЂРёРіР»Р°С€РµРЅРёРµ   /famleave вЂ” РІС‹Р№С‚Рё\n");
+	strcat(text, "/fambank put [СЃСѓРјРјР°] вЂ” РїРѕР»РѕР¶РёС‚СЊ РІ РѕР±С‰Р°Рє\n\n");
+	strcat(text, "{FFFF00}Р“Р»Р°РІР° Рё Р·Р°РјРµСЃС‚РёС‚РµР»СЊ (СЂР°РЅРі 5-6)\n{FFFFFF}");
+	strcat(text, "/faminvite [id]   /famkick [id]   /famoffkick [РРјСЏ_Р¤Р°РјРёР»РёСЏ]\n/famrank [id] [СЂР°РЅРі]\n\n");
+	strcat(text, "{FFFF00}РўРѕР»СЊРєРѕ РіР»Р°РІР° (СЂР°РЅРі 6)\n{FFFFFF}");
+	strcat(text, "/fambank take [СЃСѓРјРјР°] вЂ” СЃРЅСЏС‚СЊ РёР· РѕР±С‰Р°РєР°\n/famrankname [СЂР°РЅРі] [РЅР°Р·РІР°РЅРёРµ]   /famcolor [RRGGBB]\n/famhouse вЂ” СЃРІРѕР№ РґРѕРј СЃРґРµР»Р°С‚СЊ СЃРµРјРµР№РЅС‹Рј (off вЂ” СѓР±СЂР°С‚СЊ)\n");
+	strcat(text, "/famleader [id] вЂ” РїРµСЂРµРґР°С‚СЊ СЃРµРјСЊСЋ   /famdisband вЂ” СЂР°СЃРїСѓСЃС‚РёС‚СЊ");
+	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "РЎРµРјСЊРё", "%s", "Р—Р°РєСЂС‹С‚СЊ", "", text);
 	return true;
 }
 
-// Из commands.inc. Возвращает 1, если команда наша.
+// РР· commands.inc. Р’РѕР·РІСЂР°С‰Р°РµС‚ 1, РµСЃР»Рё РєРѕРјР°РЅРґР° РЅР°С€Р°.
 stock Families_OnCommand(playerid, const cmd[], const params[])
 {
 	if (strcmp(cmd, "/fam", true, 4) != 0 && strcmp(cmd, "/fc", true) != 0) return 0;
