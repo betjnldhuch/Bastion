@@ -1288,6 +1288,17 @@ namespace BastionLauncher
 
         void InstallGame()
         {
+            // Прошлая установка оборвалась — предложить докачать в ту же папку
+            string pending = Samp.GetValue("BastionInstallDir");
+            if (pending.Length > 0 && GameInstaller.HasPartial(pending) && !File.Exists(Path.Combine(pending, "gta_sa.exe")))
+            {
+                DialogResult r = MessageBox.Show(this, "Загрузка игры в папку\r\n" + pending +
+                    "\r\nне закончилась. Продолжить с места обрыва?\r\n\r\n«Нет» — выбрать другую папку.",
+                    cfg.Title, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+                if (r == DialogResult.Cancel) return;
+                if (r == DialogResult.Yes) { StartInstall(pending); return; }
+            }
+
             string baseDir;
             using (FolderBrowserDialog d = new FolderBrowserDialog())
             {
@@ -1317,6 +1328,12 @@ namespace BastionLauncher
                 return;
             }
 
+            StartInstall(dest);
+        }
+
+        void StartInstall(string dest)
+        {
+            try { Samp.SetValue("BastionInstallDir", dest); } catch (Exception) { }
             string url = cfg.EffectiveGameUrl, md5 = cfg.EffectiveGameMd5;
             installing = true;
             play.Text = "УСТАНОВКА…"; play.Enabled = false; play.Invalidate();
@@ -1341,7 +1358,15 @@ namespace BastionLauncher
                         {
                             gtaPath.Text = dest;
                             SaveSettings(false);
+                            try { Samp.SetValue("BastionInstallDir", ""); } catch (Exception) { }
                             SetStatus("Игра установлена: " + dest);
+                            // Сразу докачать свежие файлы Bastion (client-pack.json)
+                            if (cfg.EffectiveClientPackUrl.Length > 0)
+                            {
+                                UpdatePlayLabel();
+                                SyncPack(dest, false, false);
+                                return;
+                            }
                         }
                         else
                         {
