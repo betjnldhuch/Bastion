@@ -54,6 +54,12 @@ stock Account_OnConnect(playerid)
 // Показать окно входа или регистрации. error — текст ошибки в HTML-окне (ui.inc).
 stock Account_ShowAuth(playerid, const error[] = "")
 {
+	// Новичок сначала принимает правила (referral.inc)
+	if (Player[playerid][pDbId] == 0 && !Player[playerid][pRulesOk])
+	{
+		Rules_Show(playerid);
+		return;
+	}
 	if (UI_Has(playerid))
 	{
 		new json[256], err[128];
@@ -85,6 +91,17 @@ stock Account_ShowAuth(playerid, const error[] = "")
 	}
 }
 
+// Выбор пола после регистрации
+stock Account_ShowGender(playerid)
+{
+	if (UI_Has(playerid))
+		// По строке на пункт списка, чтобы клиент мог вернуть listitem 0 или 1
+		UI_Show(playerid, DIALOG_GENDER, DIALOG_STYLE_LIST, "gender", "{\"items\":[\n\"Мужской\",\n\"Женский\"]}", "Выбрать");
+	else
+		ShowPlayerDialog(playerid, DIALOG_GENDER, DIALOG_STYLE_LIST, "Выбери пол персонажа",
+			"Мужской\nЖенский", "Выбрать", "");
+}
+
 // Красивый вид города, пока игрок вводит пароль
 stock Account_ShowLoginCamera(playerid)
 {
@@ -95,7 +112,8 @@ stock Account_ShowLoginCamera(playerid)
 // Обработка окон аккаунта. Возвращает 1, если окно было наше.
 stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
-	if (dialogid != DIALOG_REGISTER && dialogid != DIALOG_LOGIN && dialogid != DIALOG_GENDER) return 0;
+	if (dialogid != DIALOG_REGISTER && dialogid != DIALOG_LOGIN && dialogid != DIALOG_GENDER
+		&& dialogid != DIALOG_RULES && dialogid != DIALOG_REFERRAL) return 0;
 	if (Player[playerid][pLogged]) return 1;   // защита: уже вошёл — окна входа игнорируем
 
 	switch (dialogid)
@@ -130,12 +148,35 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			Player[playerid][pMoney] = START_MONEY;
 			Player[playerid][pLevel] = 1;
 
-			if (UI_Has(playerid))
-				// По строке на пункт списка, чтобы клиент мог вернуть listitem 0 или 1
-				UI_Show(playerid, DIALOG_GENDER, DIALOG_STYLE_LIST, "gender", "{\"items\":[\n\"Мужской\",\n\"Женский\"]}", "Выбрать");
-			else
-				ShowPlayerDialog(playerid, DIALOG_GENDER, DIALOG_STYLE_LIST, "Выбери пол персонажа",
-					"Мужской\nЖенский", "Выбрать", "");
+			Referral_Show(playerid);   // кто пригласил, потом выбор пола
+			return 1;
+		}
+		case DIALOG_RULES:
+		{
+			if (Player[playerid][pDbId] != 0) return 1;
+			if (!response)
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Без согласия с правилами играть на сервере нельзя.");
+				KickWithDelay(playerid);
+				return 1;
+			}
+			Player[playerid][pRulesOk] = true;
+			Account_ShowAuth(playerid);
+			return 1;
+		}
+		case DIALOG_REFERRAL:
+		{
+			if (Player[playerid][pDbId] == 0) return 1;
+			if (response && inputtext[0] != '\0')
+			{
+				new error[96];
+				if (!Referral_Set(playerid, inputtext, error))
+				{
+					Referral_Show(playerid, error);
+					return 1;
+				}
+			}
+			Account_ShowGender(playerid);
 			return 1;
 		}
 		case DIALOG_GENDER:
