@@ -298,6 +298,7 @@ stock House_GetRented(playerid)
 stock Houses_GetSpawn(playerid, &Float:x, &Float:y, &Float:z, &Float:a)
 {
 	new h = House_GetOwned(playerid);
+	if (h == -1) h = Family_SpouseHouse(playerid);     // дом супруга (marriage.inc)
 	if (h == -1) h = gRentHouse[playerid];
 	if (h == -1) return 0;
 	x = House[h][hX];
@@ -312,6 +313,7 @@ stock Houses_GetSpawn(playerid, &Float:x, &Float:y, &Float:z, &Float:a)
 stock Houses_OnSpawn(playerid)
 {
 	new h = House_GetOwned(playerid);
+	if (h == -1) h = Family_SpouseHouse(playerid);
 	if (h == -1) h = gRentHouse[playerid];
 	if (h == -1 || (House[h][hOutInt] == 0 && House[h][hOutWorld] == 0)) return;
 	if (!IsPlayerInRangeOfPoint(playerid, 3.0, House[h][hX], House[h][hY], House[h][hZ])) return;
@@ -525,7 +527,7 @@ stock bool:Cmd_Enter(playerid)
 	new h = House_GetNearby(playerid);
 	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет входа.");
 	if (House[h][hOwner] == 0) return SendClientMessage(playerid, COLOR_GREY, "Дом продаётся и закрыт. Купить: /buyhouse");
-	if (House[h][hLocked] && House[h][hOwner] != Player[playerid][pDbId] && gRentHouse[playerid] != h)
+	if (House[h][hLocked] && House[h][hOwner] != Player[playerid][pDbId] && gRentHouse[playerid] != h && !Family_IsSpouseOf(playerid, House[h][hOwner]))
 	{
 		if (House[h][hRent] > 0)
 			return SendClientMessage(playerid, COLOR_GREY, "Дверь заперта. Здесь сдаются комнаты: /rent ($%d в час).", House[h][hRent]);
@@ -566,6 +568,7 @@ stock bool:Cmd_Lock(playerid)
 {
 	// Сначала пробуем дом, потом машину (vehicles.inc)
 	new h = House_GetOwned(playerid);
+	if (h == -1) h = Family_SpouseHouse(playerid);     // общий дом супругов (marriage.inc)
 	if (h != -1 && (House_GetNearby(playerid) == h || House_IsInside(playerid, h)))
 	{
 		House[h][hLocked] = !House[h][hLocked];

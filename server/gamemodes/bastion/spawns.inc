@@ -204,7 +204,7 @@ stock Cmd_SetSpawn(playerid)
 	new list[1024], line[64], n = 0;
 	gSpawnPick[playerid][n][0] = SPAWN_ANYSTATION; gSpawnPick[playerid][n][1] = 0; n++;
 	strcat(list, "{FFFFFF}Вокзал {AFAFAF}(где меньше людей)\n");
-	if (House_GetOwned(playerid) != -1 || House_GetRented(playerid) != -1)
+	if (House_GetOwned(playerid) != -1 || House_GetRented(playerid) != -1 || Family_SpouseHouse(playerid) != -1)
 	{
 		gSpawnPick[playerid][n][0] = SPAWN_HOUSE; gSpawnPick[playerid][n][1] = 0; n++;
 		strcat(list, "{33CCFF}У своего дома\n");

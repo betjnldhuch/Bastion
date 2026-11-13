@@ -66,7 +66,8 @@ enum
 	FTYPE_MEDIC,        // медики: лечение, вызовы раненых
 	FTYPE_GANG,         // банда: районы, войны
 	FTYPE_CIVIL,        // гос. организация без особых прав (мэрия, СМИ и т.п.)
-	FTYPE_ARMY          // армия: возит материалы
+	FTYPE_ARMY,         // армия: возит материалы
+	FTYPE_PRISON        // охрана тюрьмы (prison.inc)
 }
 
 // Материалы: армия возит их с базы снабжения на свой склад, а оттуда — госструктурам
@@ -153,7 +154,9 @@ enum
 	OFFER_HEAL,         // медик предлагает лечение
 	OFFER_CARRY,        // понести раненого (wounded.inc)
 	OFFER_HANDSHAKE,    // пожать руку
-	OFFER_BRIBE         // взятка полицейскому от заключённого (law.inc)
+	OFFER_BRIBE,        // взятка полицейскому от заключённого (law.inc)
+	OFFER_DRUGS,        // купить наркотики с рук (drugs.inc)
+	OFFER_MARRY         // предложение руки и сердца (family.inc)
 }
 
 // Значения по умолчанию. Потом их меняют лидер (/lmenu) и админ (/fedit) — они хранятся в базе.
@@ -195,14 +198,15 @@ static const gFactionDefSkin[FACTION_BUILTIN][MAX_RANK] =
 };
 
 // Названия рангов: 0 — полиция, 1 — медики, 2 — банды, 3 — ФБР, 4 — армия, 5 — гос. организация
-static const gDefRankNames[6][MAX_RANK][24] =
+static const gDefRankNames[7][MAX_RANK][24] =
 {
 	{ "Кадет", "Офицер", "Сержант", "Лейтенант", "Ст. лейтенант", "Капитан", "Майор", "Подполковник", "Зам. шефа", "Шеф полиции" },
 	{ "Интерн", "Фельдшер", "Врач", "Хирург", "Ст. хирург", "Зав. отделением", "Нач. смены", "Консультант", "Зам. главврача", "Главврач" },
 	{ "Новичок", "Боец", "Бывалый", "Старший", "Смотрящий", "Авторитет", "Советник", "Капитан", "Правая рука", "Лидер" },
 	{ "Стажёр", "Мл. агент", "Агент", "Ст. агент", "Спец. агент", "Ст. спец. агент", "Нач. отдела", "Инспектор", "Зам. директора", "Директор ФБР" },
 	{ "Рядовой", "Ефрейтор", "Сержант", "Ст. сержант", "Прапорщик", "Лейтенант", "Капитан", "Майор", "Полковник", "Генерал" },
-	{ "Стажёр", "Мл. сотрудник", "Сотрудник", "Ст. сотрудник", "Специалист", "Вед. специалист", "Нач. отдела", "Советник", "Заместитель", "Руководитель" }
+	{ "Стажёр", "Мл. сотрудник", "Сотрудник", "Ст. сотрудник", "Специалист", "Вед. специалист", "Нач. отдела", "Советник", "Заместитель", "Руководитель" },
+	{ "Курсант", "Мл. надзиратель", "Надзиратель", "Ст. надзиратель", "Нач. смены", "Нач. блока", "Нач. охраны", "Зам. начальника", "Заместитель", "Начальник тюрьмы" }
 };
 
 // Базы по умолчанию: спавн (x, y, z, угол) и раздевалка /duty (x, y, z).
@@ -365,6 +369,7 @@ stock Faction_RankSet(f)
 		case FTYPE_MEDIC: return 1;
 		case FTYPE_ARMY: return 4;
 		case FTYPE_CIVIL: return 5;
+		case FTYPE_PRISON: return 6;
 	}
 	return 2;
 }
@@ -729,7 +734,7 @@ stock Factions_Init()
 		for (new i = 0; i < trows; i++)
 		{
 			new f = DB_GetFieldInt(tr, 0), type = DB_GetFieldInt(tr, 1);
-			if (f >= FACTION_BUILTIN && f < MAX_FACTIONS && type >= FTYPE_LAW && type <= FTYPE_CIVIL) Faction[f][fType] = type;
+			if (f >= FACTION_BUILTIN && f < MAX_FACTIONS && type >= FTYPE_LAW && (type <= FTYPE_CIVIL || type == FTYPE_PRISON)) Faction[f][fType] = type;
 			DB_SelectNextRow(tr);
 		}
 		DB_FreeResultSet(tr);
@@ -1031,6 +1036,7 @@ stock Factions_GetSpawn(playerid, &Float:x, &Float:y, &Float:z, &Float:a)
 
 stock Jail_PutInCell(playerid)
 {
+	if (Prison_TryPutInCell(playerid)) return;     // большой срок — в федеральную тюрьму (prison.inc)
 	SetPlayerInterior(playerid, JAIL_INTERIOR);
 	SetPlayerVirtualWorld(playerid, 0);
 	// две камеры с решётками (law.inc): заключённых делим между ними
@@ -1043,6 +1049,7 @@ stock Jail_PutInCell(playerid)
 stock Jail_Release(playerid)
 {
 	Player[playerid][pJail] = 0;
+	if (Prison_TryRelease(playerid)) return;       // из тюрьмы выпускают у её ворот (prison.inc)
 	SetPlayerInterior(playerid, 0);
 	SetPlayerVirtualWorld(playerid, 0);
 	SetPlayerPos(playerid, JAIL_RELEASE_X, JAIL_RELEASE_Y, JAIL_RELEASE_Z);
@@ -1127,7 +1134,8 @@ stock Factions_OnMinute()
 			continue;
 		}
 		// Ушёл от камеры — возвращаем (кроме случая, когда дверь открыл полицейский или взята взятка, law.inc)
-		if (!Law_MayLeaveCell(i) && (GetPlayerInterior(i) != JAIL_INTERIOR || !IsPlayerInRangeOfPoint(i, 15.0, JAIL_X, JAIL_Y, JAIL_Z)))
+		if (Prison_OnMinute(i)) { }     // заключённый федеральной тюрьмы (prison.inc)
+		else if (!Law_MayLeaveCell(i) && (GetPlayerInterior(i) != JAIL_INTERIOR || !IsPlayerInRangeOfPoint(i, 15.0, JAIL_X, JAIL_Y, JAIL_Z)))
 		{
 			Jail_PutInCell(i);
 		}
@@ -1342,6 +1350,8 @@ stock bool:Cmd_Accept(playerid)
 		}
 		case OFFER_CARRY: Wound_AcceptCarry(playerid, from);
 		case OFFER_BRIBE: Law_AcceptBribe(playerid, from, Player[playerid][pOfferValue]);
+		case OFFER_DRUGS: Drugs_AcceptSale(playerid, from, Player[playerid][pOfferValue]);
+		case OFFER_MARRY: Marry_Accept(playerid, from);
 		case OFFER_HANDSHAKE:
 		{
 			if (!IsPlayerNearPlayer(playerid, from, 2.5)) return SendClientMessage(playerid, COLOR_GREY, "Человек отошёл.");
@@ -1448,7 +1458,7 @@ stock bool:Cmd_Wanted(playerid)
 
 stock bool:Cmd_Cuff(playerid, const params[])
 {
-	if (!Faction_NeedLaw(playerid)) return true;
+	if (!Prison_IsGuardOnDuty(playerid) && !Faction_NeedLaw(playerid)) return true;   // охрана тюрьмы тоже (prison.inc)
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /cuff [id]");
@@ -1467,7 +1477,7 @@ stock bool:Cmd_Cuff(playerid, const params[])
 
 stock bool:Cmd_Uncuff(playerid, const params[])
 {
-	if (!Faction_NeedLaw(playerid)) return true;
+	if (!Prison_IsGuardOnDuty(playerid) && !Faction_NeedLaw(playerid)) return true;   // охрана тюрьмы тоже (prison.inc)
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /uncuff [id]");
@@ -1484,7 +1494,7 @@ stock bool:Cmd_Uncuff(playerid, const params[])
 // Обыск: оружие и деньги задержанного
 stock bool:Cmd_Frisk(playerid, const params[])
 {
-	if (!Faction_NeedLaw(playerid)) return true;
+	if (!Prison_IsGuardOnDuty(playerid) && !Faction_NeedLaw(playerid)) return true;   // охрана тюрьмы тоже (prison.inc)
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /frisk [id]");
@@ -1505,6 +1515,7 @@ stock bool:Cmd_Frisk(playerid, const params[])
 		found++;
 	}
 	if (found == 0) SendClientMessage(playerid, COLOR_WHITE, " Оружия нет.");
+	Drugs_FriskInfo(playerid, target);     // наркотики (drugs.inc)
 	return true;
 }
 
@@ -2751,21 +2762,21 @@ stock bool:Cmd_FIntLock(playerid, const params[])
 //  Дальше фракция настраивается как обычная: /setfspawn, /setfduty, /setfint,
 //  /addfcar, /fcolor, /fedit, /makeleader; ранги, скины и зарплаты — лидер в /lmenu.
 // =====================================================================
-static const gFTypeName[6][24] =
+static const gFTypeName[7][24] =
 {
-	"нет", "силовая структура", "медики", "банда", "гос. организация", "армия"
+	"нет", "силовая структура", "медики", "банда", "гос. организация", "армия", "тюрьма"
 };
-static const gFTypeColor[6] = { 0xFFFFFFFF, 0x3A6EFFFF, 0xFF8080FF, 0xE0A030FF, 0xC8C8C8FF, 0x6B8E23FF };
-static const gFTypeSkin[6]  = { 0, 280, 274, 21, 17, 287 };
+static const gFTypeColor[7] = { 0xFFFFFFFF, 0x3A6EFFFF, 0xFF8080FF, 0xE0A030FF, 0xC8C8C8FF, 0x6B8E23FF, 0xD2691EFF };
+static const gFTypeSkin[7]  = { 0, 280, 274, 21, 17, 287, 71 };
 
 stock bool:Cmd_CreateFaction(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, type, name[32];
-	if (!NextIntParam(params, pos, type) || type < FTYPE_LAW || type > FTYPE_CIVIL || !RestParam(params, pos, name))
+	if (!NextIntParam(params, pos, type) || type < FTYPE_LAW || (type > FTYPE_CIVIL && type != FTYPE_PRISON) || !RestParam(params, pos, name))
 	{
 		SendClientMessage(playerid, COLOR_GREY, "Использование: /createfaction [тип] [название]");
-		SendClientMessage(playerid, COLOR_GREY, "Типы: 1 — силовая (права полиции), 2 — медики, 3 — банда, 4 — гос. организация без особых прав.");
+		SendClientMessage(playerid, COLOR_GREY, "Типы: 1 — силовая (права полиции), 2 — медики, 3 — банда, 4 — гос. организация без особых прав, 6 — тюрьма (охрана).");
 		return true;
 	}
 	if (!Faction_IsGoodName(name, 2, 31)) return SendClientMessage(playerid, COLOR_GREY, "Название: от 2 до 31 символа, без фигурных скобок и знака процента.");
