@@ -126,6 +126,12 @@ enum
 	DIALOG_REPORT_ANSWER,       // ввод ответа
 	DIALOG_REPORT_NEW,          // игрок пишет репорт
 
+	// --- ¬ход в админку (admin_auth.inc)
+	DIALOG_ALOGIN,              // ввод админ-парол€
+	DIALOG_ALOGIN_NEW,          // первый вход: придумать админ-пароль
+	DIALOG_APASS_OLD,           // /apass: текущий пароль
+	DIALOG_APASS_NEW,           // /apass: новый пароль
+
 	// --- »нструменты админов (admin_tools.inc, admin.inc)
 	DIALOG_TPLIST,
 	DIALOG_VEH_CAT,

@@ -262,7 +262,7 @@ stock Account_Save(playerid)
 	DB_FreeResultSet(DB_ExecuteQuery(gDB,
 		"UPDATE accounts SET money = %d, level = %d, exp = %d, skin = %d, admin = %d, job = %d, faction = %d, frank = %d, wanted = %d, jail = %d, bank = %d, phone = %d WHERE id = %d",
 		Player[playerid][pMoney], Player[playerid][pLevel], Player[playerid][pExp],
-		Player[playerid][pSkin], Player[playerid][pAdmin], Player[playerid][pJob],
+		Player[playerid][pSkin], Admin_RealLevel(playerid), Player[playerid][pJob],
 		Player[playerid][pFaction], Player[playerid][pRank], Player[playerid][pWanted], Player[playerid][pJail],
 		Player[playerid][pBank], Player[playerid][pPhone],
 		Player[playerid][pDbId]));
