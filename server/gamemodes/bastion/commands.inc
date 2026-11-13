@@ -135,6 +135,7 @@ stock Commands_Process(playerid, const input[])
 	// --- общее ---
 	if (!strcmp(cmd, "/help", true))        { Cmd_Help(playerid); return 1; }
 	if (!strcmp(cmd, "/stats", true))       { Cmd_Stats(playerid); return 1; }
+	if (!strcmp(cmd, "/bot", true))         { Cmd_Bot(playerid); return 1; }
 	if (!strcmp(cmd, "/time", true))        { Cmd_Time(playerid); return 1; }
 	if (!strcmp(cmd, "/taxes", true))       { Cmd_Taxes(playerid); return 1; }
 	if (!strcmp(cmd, "/debts", true))       { Cmd_Debts(playerid); return 1; }

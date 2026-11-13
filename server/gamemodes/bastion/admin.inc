@@ -608,6 +608,10 @@ static Bans_Add(const name[], const ip[], const reason[], const admin[], days)
 	new until = (days > 0) ? (gettime() + days * 86400) : 0;
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO bans (name, reason, admin, date, until, ip) VALUES ('%q', '%q', '%q', %d, %d, '%q')",
 		name, reason, admin, gettime(), until, ip));
+	new text[200];
+	if (days > 0) format(text, sizeof text, "Аккаунт %s заблокирован на %d дн. Причина: %s. Администратор: %s.", name, days, reason, admin);
+	else format(text, sizeof text, "Аккаунт %s заблокирован навсегда. Причина: %s. Администратор: %s.", name, reason, admin);
+	Social_NotifyName(name, text);   // уведомление в ВК/ТГ (social.inc)
 }
 
 static Admin_BanText(days)

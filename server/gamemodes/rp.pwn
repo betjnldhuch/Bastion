@@ -52,6 +52,7 @@
 #include "bastion/platform.inc"   // ПК или телефон: IsPlayerMobile[playerid]
 #include "bastion/anticheat.inc"  // античит; подменяет SetPlayerPos, GivePlayerWeapon и др., поэтому стоит до модулей
 #include "bastion/database.inc"
+#include "bastion/social.inc"     // боты ВК и Telegram: /bot, уведомления (папка bots/)
 #include "bastion/markers.inc"    // все маркеры (значки и надписи) в одном месте
 #include "bastion/spawns.inc"     // точки появления игроков (вокзалы): /addspawn
 #include "bastion/referral.inc"   // правила для новичков и «кто пригласил»
@@ -141,6 +142,7 @@ public OnGameModeInit()
 	Wound_Init();
 	Robbery_Init();
 	AC_Init();            // античит (anticheat.inc)
+	Social_Init();        // таблицы для ботов ВК/Telegram (social.inc)
 	Backup_Init();        // копия базы, если сегодняшней ещё нет
 
 	new hour;
