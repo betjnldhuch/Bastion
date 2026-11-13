@@ -70,11 +70,12 @@ enum
 	// --- Работы (jobs.inc)
 	DIALOG_JOB_OFFER,           // предложение механика игроку
 
-	// --- Сумка (needs.inc): от DIALOG_INVENTORY до DIALOG_INV_DROP
+	// --- Сумка (needs.inc): от DIALOG_INVENTORY до DIALOG_INV_UI
 	DIALOG_INVENTORY,
 	DIALOG_INV_ACTION,
 	DIALOG_INV_GIVE,
 	DIALOG_INV_DROP,
+	DIALOG_INV_UI,               // HTML-окно сумки (ui.inc)
 
 	// --- Дом (houses.inc): от DIALOG_HOUSE_MENU до DIALOG_HOUSE_RENT
 	DIALOG_HOUSE_MENU,
