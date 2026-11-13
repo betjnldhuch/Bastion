@@ -280,3 +280,5 @@ forward bool:Prison_IsGuardOnDuty(playerid);
 forward bool:Prison_OnEnterCheckpoint(playerid);
 forward bool:Hospital_HasMedcard(playerid);
 forward bool:Family_IsSpouseOf(playerid, dbid);
+forward bool:Family_IsHouseMember(playerid, h);
+forward bool:Donate_IsVip(playerid);

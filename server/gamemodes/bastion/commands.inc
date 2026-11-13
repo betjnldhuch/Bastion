@@ -174,6 +174,7 @@ stock Commands_Process(playerid, const input[])
 	if (Prison_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
 	if (Hospital_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
 	if (Marriage_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
+	if (Donate_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
 
 	// --- работа (jobs.inc) ---
 	if (!strcmp(cmd, "/getjob", true))      { Cmd_GetJob(playerid); return 1; }

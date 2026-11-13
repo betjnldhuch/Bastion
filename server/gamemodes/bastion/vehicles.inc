@@ -139,6 +139,7 @@ stock Vehicles_LoadForPlayer(playerid)
 	Prison_LoadPlayer(playerid);        // сидит ли в тюрьме (prison.inc)
 	Hospital_LoadPlayer(playerid);      // страховка и медкарта (hospital.inc)
 	Marriage_LoadPlayer(playerid);      // супруг (marriage.inc)
+	Donate_LoadPlayer(playerid);        // донат-монеты и VIP (donate.inc)
 }
 
 // При выходе игрока машина пропадает (и появится снова при входе)

@@ -88,6 +88,7 @@
 #include "bastion/prison.inc"     // федеральна€ тюрьма и еЄ охрана
 #include "bastion/hospital.inc"   // больница: лечение, страховка, медкарта
 #include "bastion/marriage.inc"   // свадьба, общий дом и семейный счЄт
+#include "bastion/donate.inc"     // донат-меню: монеты, VIP
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
 #include "bastion/fps.inc"
@@ -153,6 +154,7 @@ public OnGameModeInit()
 	Prison_Init();
 	Hospital_Init();
 	Marriage_Init();
+	Donate_Init();
 	AC_Init();            // античит (anticheat.inc)
 	Backup_Init();        // копи€ базы, если сегодн€шней ещЄ нет
 
@@ -407,6 +409,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Drugs_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Casino_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Hospital_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Donate_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	return 0;
 }
 
@@ -523,6 +526,7 @@ stock PayDay()
 
 		Econ_PayDay(i, PAYDAY_SALARY + fpay);   // налоги (economy.inc)
 		Debts_PayDay(i);                        // напоминание о долгах, розыск должников (debts.inc)
+		Donate_PayDay(i);       // VIP: прибавка и двойной опыт (donate.inc)
 		Bank_PayDay(i);         // проценты по счЄту и баланс (bank.inc)
 
 		if (Player[i][pExp] >= Player[i][pLevel] * EXP_PER_LEVEL)
