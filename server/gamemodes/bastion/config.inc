@@ -79,6 +79,8 @@
 // Банк (bank.inc)
 #define BANK_MAX_TRANSFER   1000000          // максимум за один перевод
 #define BANK_MAX_BALANCE    2000000000       // максимум денег на одном счёте
+#define BANK_MAX_EXTRA      5                // сколько дополнительных счетов можно открыть
+#define BANK_OPEN_COST      10000            // цена открытия доп. счёта (списывается с основного)
 #define BANK_ATM_FEE_PCT    1                // комиссия за снятие в банкомате, % (0 — без комиссии)
 #define BANK_TRANSFER_FEE_PCT 1              // комиссия за перевод, % (0 — без комиссии)
 #define BANK_INTEREST_PERMILLE 1             // проценты на остаток каждый PayDay, в десятых долях % (1 = 0.1%)
