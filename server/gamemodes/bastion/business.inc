@@ -22,6 +22,9 @@
 #define BIZ_WORLD_OFFSET    5000        // вирт. мир интерьера = 5000 + номер бизнеса в базе
 #define BIZ_EXIT_RANGE      1.5         // как близко к стрелке внутри срабатывает выход
 #define BIZ_IN_REF          1000000     // ref маркера выхода внутри: BIZ_IN_REF + номер бизнеса в базе
+// Вход может стоять внутри здания (торговый центр, дом, другой бизнес). Мир дома зависит от его
+// места в списке, поэтому в базе хранится BIZ_HOUSE_W + номер дома, а мир считается при постройке.
+#define BIZ_HOUSE_W         1000000
 #define GUNS_MIN_LEVEL      2           // с какого уровня продают оружие
 
 enum
@@ -77,6 +80,7 @@ static const gBizItems[][E_BIZ_ITEM] =
 	{ BIZ_SHOP,    "Бургер (в сумку)",  60,   ITEM_INV,    INV_BURGER, 1 },
 	{ BIZ_SHOP,    "Хот-дог (в сумку)", 30,   ITEM_INV,    INV_HOTDOG, 1 },
 	{ BIZ_SHOP,    "Ремкомплект",       400,  ITEM_INV,    INV_REPAIRKIT, 1 },
+	{ BIZ_SHOP,    "Домкрат",           800,  ITEM_INV,    INV_JACK, 1 },
 	{ BIZ_SHOP,    "Пицца (в сумку)",   90,   ITEM_INV,    INV_PIZZA, 1 },
 	{ BIZ_SHOP,    "Вода (в сумку)",    10,   ITEM_INV,    INV_WATER, 1 },
 	{ BIZ_SHOP,    "Пиво (в сумку)",    25,   ITEM_INV,    INV_BEER, 1 },
@@ -122,7 +126,9 @@ enum E_BIZ
 	bIntMode,                   // как в базе: -1 стандартный по типу, 0 без интерьера, иначе своя точка
 	bInt,                       // интерьер (0 — входа нет, торговля у значка)
 	Float:bIX, Float:bIY, Float:bIZ, Float:bIA,   // точка внутри у двери
-	bExitMk                     // маркер-стрелка у двери внутри (markers.inc)
+	bExitMk,                    // маркер-стрелка у двери внутри (markers.inc)
+	bOInt,                      // где стоит вход: интерьер (0 — улица)
+	bOWorld                     // и мир (как в базе: дом хранится как BIZ_HOUSE_W + номер дома)
 }
 new Biz[MAX_BUSINESSES][E_BIZ];
 new gBizCount = 0;
@@ -156,6 +162,20 @@ stock Biz_GetTypeName(type)
 	return name;
 }
 
+static Biz_EncWorld(world)
+{
+	new dbid = House_DbIdByWorld(world);
+	return (dbid > 0) ? BIZ_HOUSE_W + dbid : world;
+}
+
+stock Biz_OuterWorld(b)
+{
+	new stored = Biz[b][bOWorld];
+	if (stored < BIZ_HOUSE_W) return stored;
+	new w = House_WorldByDbId(stored - BIZ_HOUSE_W);
+	return (w == -1) ? 999999 : w;
+}
+
 stock Biz_Refresh(b)
 {
 	new text[MK_TEXT_LEN];
@@ -180,7 +200,9 @@ stock Biz_Refresh(b)
 		new gps = GPS_SHOPS;
 		if (Biz[b][bType] == BIZ_BAR) gps = GPS_FUN;
 		new Float:a = (Biz[b][bA] < 0.0) ? 0.0 : Biz[b][bA];
-		Biz[b][bMarker] = Marker_Create(MK_BIZ, Biz[b][bDbId], Biz[b][bName], 1239, Biz[b][bX], Biz[b][bY], Biz[b][bZ], 0, 0, gps, a);
+		if (Biz[b][bOInt] != 0) gps = GPS_NONE;     // вход внутри здания: в GPS не показываем
+		Biz[b][bMarker] = Marker_Create(MK_BIZ, Biz[b][bDbId], Biz[b][bName], 1239, Biz[b][bX], Biz[b][bY], Biz[b][bZ],
+			Biz_OuterWorld(b), Biz[b][bOInt], gps, a);
 	}
 	Marker_SetLabel(Biz[b][bMarker], text);
 }
@@ -209,7 +231,7 @@ stock Biz_OnMarkerMoved(dbid, Float:x, Float:y, Float:z)
 	}
 }
 
-stock Biz_Add(dbid, const name[], type, owner, const ownerName[], price, Float:x, Float:y, Float:z, till, Float:a = -1.0, bool:locked = false)
+stock Biz_Add(dbid, const name[], type, owner, const ownerName[], price, Float:x, Float:y, Float:z, till, Float:a = -1.0, bool:locked = false, oint = 0, oworld = 0)
 {
 	if (gBizCount >= MAX_BUSINESSES) return -1;
 	new b = gBizCount++;
@@ -229,6 +251,8 @@ stock Biz_Add(dbid, const name[], type, owner, const ownerName[], price, Float:x
 	Biz[b][bLocked] = locked;
 	Biz[b][bMarker] = -1;
 	Biz[b][bExitMk] = -1;
+	Biz[b][bOInt] = oint;
+	Biz[b][bOWorld] = oworld;
 	Biz_ApplyInt(b, -1, 0, 0.0, 0.0, 0.0, 0.0);     // стандартный интерьер по типу
 	Biz_Refresh(b);
 	return b;
@@ -305,12 +329,12 @@ stock Biz_Exit(playerid, b)
 	{
 		new Float:x = Biz[b][bX], Float:y = Biz[b][bY], Float:z = Biz[b][bZ];
 		Marker_GetPos(Biz[b][bMarker], x, y, z);
-		SetPlayerInterior(playerid, 0);
-		SetPlayerVirtualWorld(playerid, 0);
+		SetPlayerInterior(playerid, Biz[b][bOInt]);
+		SetPlayerVirtualWorld(playerid, Biz_OuterWorld(b));
 		SetPlayerPos(playerid, x, y, z);
 		SetCameraBehindPlayer(playerid);
 	}
-	Player[playerid][pHouseInside] = -1;
+	Player[playerid][pHouseInside] = House_ByWorld(Biz_OuterWorld(b));   // вход мог быть в доме
 }
 
 // /gotobiz [№] — ко входу бизнеса, /gotobizint [№] — внутрь (админ 3+), /bizlist — все бизнесы
@@ -336,12 +360,12 @@ stock bool:Cmd_GotoBiz(playerid, const params[], bool:inside)
 	{
 		new Float:x = Biz[b][bX], Float:y = Biz[b][bY], Float:z = Biz[b][bZ];
 		Marker_GetPos(Biz[b][bMarker], x, y, z);
-		SetPlayerInterior(playerid, 0);
-		SetPlayerVirtualWorld(playerid, 0);
+		SetPlayerInterior(playerid, Biz[b][bOInt]);
+		SetPlayerVirtualWorld(playerid, Biz_OuterWorld(b));
 		SetPlayerPos(playerid, x + 1.0, y, z);
 		SetCameraBehindPlayer(playerid);
 	}
-	Player[playerid][pHouseInside] = -1;
+	Player[playerid][pHouseInside] = inside ? -1 : House_ByWorld(Biz_OuterWorld(b));
 	SendClientMessage(playerid, COLOR_ADMIN, "«%s» (№%d)%s. Назад: /back", Biz[b][bName], Biz[b][bDbId], inside ? (", внутри") : (""));
 	return true;
 }
@@ -422,6 +446,8 @@ stock Business_Init()
 	DB_AddColumn("businesses", "ia", "REAL DEFAULT 0");
 	DB_AddColumn("businesses", "oa", "REAL DEFAULT -1");
 	DB_AddColumn("businesses", "locked", "INTEGER DEFAULT 0");
+	DB_AddColumn("businesses", "oint", "INTEGER DEFAULT 0");
+	DB_AddColumn("businesses", "oworld", "INTEGER DEFAULT 0");
 
 	new count = 0;
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT COUNT(*) FROM businesses");
@@ -441,7 +467,7 @@ stock Business_Init()
 		}
 	}
 
-	r = DB_ExecuteQuery(gDB, "SELECT b.id, b.name, b.type, b.owner, IFNULL(a.name, ''), b.price, b.x, b.y, b.z, b.till, b.imode, b.iint, b.ix, b.iy, b.iz, b.ia, b.oa, b.locked FROM businesses b LEFT JOIN accounts a ON a.id = b.owner ORDER BY b.id");
+	r = DB_ExecuteQuery(gDB, "SELECT b.id, b.name, b.type, b.owner, IFNULL(a.name, ''), b.price, b.x, b.y, b.z, b.till, b.imode, b.iint, b.ix, b.iy, b.iz, b.ia, b.oa, b.locked, b.oint, b.oworld FROM businesses b LEFT JOIN accounts a ON a.id = b.owner ORDER BY b.id");
 	if (r != DBResult:0)
 	{
 		new rows = DB_GetRowCount(r);
@@ -452,7 +478,7 @@ stock Business_Init()
 			DB_GetFieldString(r, 4, owner, sizeof owner);
 			new b = Biz_Add(DB_GetFieldInt(r, 0), name, DB_GetFieldInt(r, 2), DB_GetFieldInt(r, 3), owner, DB_GetFieldInt(r, 5),
 				DB_GetFieldFloat(r, 6), DB_GetFieldFloat(r, 7), DB_GetFieldFloat(r, 8), DB_GetFieldInt(r, 9),
-				DB_GetFieldFloat(r, 16), DB_GetFieldInt(r, 17) != 0);
+				DB_GetFieldFloat(r, 16), DB_GetFieldInt(r, 17) != 0, DB_GetFieldInt(r, 18), DB_GetFieldInt(r, 19));
 			if (b != -1 && DB_GetFieldInt(r, 10) >= 0)
 			{
 				Biz_ApplyInt(b, DB_GetFieldInt(r, 10), DB_GetFieldInt(r, 11),
@@ -468,18 +494,18 @@ stock Business_Init()
 
 stock Biz_GetNearby(playerid)
 {
+	// сначала входы рядом (они бывают и внутри зданий: торговый центр, бизнес в бизнесе)
+	for (new b = 0; b < gBizCount; b++)
+	{
+		if (Marker_InRange(playerid, Biz[b][bMarker], BIZ_RANGE)) return b;
+	}
 	// внутри интерьера бизнеса: весь зал считается «рядом»
 	new world = GetPlayerVirtualWorld(playerid);
-	if (world >= BIZ_WORLD_OFFSET)
+	if (world >= BIZ_WORLD_OFFSET && world < BIZ_WORLD_OFFSET + BIZ_HOUSE_W)
 	{
 		new inside = Biz_FindByDbId(world - BIZ_WORLD_OFFSET);
 		if (inside != -1 && Biz[inside][bInt] == 0) inside = -1;
 		return inside;
-	}
-	if (GetPlayerInterior(playerid) != 0 || world != 0) return -1;
-	for (new b = 0; b < gBizCount; b++)
-	{
-		if (IsPlayerInRangeOfPoint(playerid, BIZ_RANGE, Biz[b][bX], Biz[b][bY], Biz[b][bZ])) return b;
 	}
 	return -1;
 }
@@ -711,16 +737,16 @@ stock bool:Cmd_CreateBiz(playerid, const params[])
 	if (!NextIntParam(params, pos, type) || type <= BIZ_NONE || type >= BIZ_TYPES
 		|| !NextIntParam(params, pos, price) || price < 1 || !RestParam(params, pos, name))
 		return SendClientMessage(playerid, COLOR_GREY, "Использование: /createbiz [тип 1-5] [цена] [название]  (1 24/7, 2 бар, 3 одежда, 4 оружие, 5 казино)");
-	if (GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "Бизнес можно ставить только на улице.");
 	if (gBizCount >= MAX_BUSINESSES) return SendClientMessage(playerid, COLOR_GREY, "Достигнут лимит бизнесов (MAX_BUSINESSES).");
 
 	new Float:x, Float:y, Float:z, Float:a;
 	GetPlayerPos(playerid, x, y, z);
 	GetPlayerFacingAngle(playerid, a);
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO businesses (name, type, price, x, y, z, oa) VALUES ('%q', %d, %d, %f, %f, %f, %f)",
-		name, type, price, x, y, z, a));
-	Biz_Add(DB_LastInsertId(), name, type, 0, "", price, x, y, z, 0, a);
-	SendClientMessage(playerid, COLOR_ADMIN, "Бизнес «%s» (%s) создан, цена $%d. Ставь его у двери, спиной к ней: выходят сюда лицом на улицу.", name, Biz_GetTypeName(type), price);
+	new oint = GetPlayerInterior(playerid), oworld = Biz_EncWorld(GetPlayerVirtualWorld(playerid));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO businesses (name, type, price, x, y, z, oa, oint, oworld) VALUES ('%q', %d, %d, %f, %f, %f, %f, %d, %d)",
+		name, type, price, x, y, z, a, oint, oworld));
+	Biz_Add(DB_LastInsertId(), name, type, 0, "", price, x, y, z, 0, a, false, oint, oworld);
+	SendClientMessage(playerid, COLOR_ADMIN, "Бизнес «%s» (%s) создан, цена $%d. Ставь его у двери, спиной к ней (можно и внутри здания).", name, Biz_GetTypeName(type), price);
 	return true;
 }
 
@@ -767,11 +793,13 @@ stock bool:Cmd_SetBizInt(playerid, const params[])
 		else if (!strcmp(word, "off", true)) mode = 0;
 		else if (!strcmp(word, "out", true))
 		{
-			if (GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "Вход ставится на улице.");
+			if (GetPlayerVirtualWorld(playerid) == BIZ_WORLD_OFFSET + Biz[b][bDbId]) return SendClientMessage(playerid, COLOR_GREY, "Вход не может стоять в зале этого же бизнеса.");
 			GetPlayerPos(playerid, Biz[b][bX], Biz[b][bY], Biz[b][bZ]);
 			GetPlayerFacingAngle(playerid, Biz[b][bA]);
-			DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE businesses SET x = %f, y = %f, z = %f, oa = %f WHERE id = %d",
-				Biz[b][bX], Biz[b][bY], Biz[b][bZ], Biz[b][bA], Biz[b][bDbId]));
+			Biz[b][bOInt] = GetPlayerInterior(playerid);
+			Biz[b][bOWorld] = Biz_EncWorld(GetPlayerVirtualWorld(playerid));
+			DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE businesses SET x = %f, y = %f, z = %f, oa = %f, oint = %d, oworld = %d WHERE id = %d",
+				Biz[b][bX], Biz[b][bY], Biz[b][bZ], Biz[b][bA], Biz[b][bOInt], Biz[b][bOWorld], Biz[b][bDbId]));
 			Marker_Destroy(Biz[b][bMarker], true);     // с правками /markers: место теперь новое
 			Biz[b][bMarker] = -1;
 			Biz_Refresh(b);

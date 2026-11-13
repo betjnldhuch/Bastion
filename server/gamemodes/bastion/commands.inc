@@ -253,7 +253,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/f", true))           { Cmd_FactionChat(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/members", true))     { Cmd_MembersWindow(playerid); return 1; }
 	if (!strcmp(cmd, "/fr", true) || !strcmp(cmd, "/faction", true)) { FrMenu_Show(playerid); return 1; }
-	if (!strcmp(cmd, "/duty", true))        { Cmd_Duty(playerid); return 1; }
+	if (!strcmp(cmd, "/duty", true))        { Cmd_Duty(playerid, cmdtext[pos] != '\0' && !strcmp(cmdtext[pos], "civ", true)); return 1; }
 	if (!strcmp(cmd, "/invite", true))      { Cmd_Invite(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/uninvite", true))    { Cmd_Uninvite(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/giverank", true))    { Cmd_GiveRank(playerid, cmdtext[pos]); return 1; }
@@ -283,11 +283,14 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/setdoor", true))     { Cmd_SetDoor(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/deldoor", true))     { Cmd_DelDoor(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/doors", true))       { Cmd_Doors(playerid); return 1; }
+	if (!strcmp(cmd, "/doorfaction", true)) { Cmd_DoorFaction(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/offices", true))     { Cmd_Offices(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delfint", true))     { Cmd_DelFInt(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fintlock", true))    { Cmd_FIntLock(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/createfaction", true)) { Cmd_CreateFaction(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delfaction", true))  { Cmd_DelFaction(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/flist", true))       { Cmd_FList(playerid); return 1; }
+	if (!strcmp(cmd, "/fhide", true))       { Cmd_FHide(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fcolor", true))      { Cmd_FColor(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/addfactory", true))  { Cmd_AddFactory(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/setfpoint", true))   { Cmd_SetFPoint(playerid, cmdtext[pos]); return 1; }

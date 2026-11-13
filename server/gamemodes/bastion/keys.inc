@@ -241,8 +241,8 @@ stock Keys_Interact(playerid)
 		return;
 	}
 
-	// 3. Банкомат
-	if (Atm_GetNearby(playerid) != -1)
+	// 3. Банкомат или зал банка
+	if (Bank_CanUse(playerid))
 	{
 		Bank_ShowMenu(playerid);
 		return;

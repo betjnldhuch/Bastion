@@ -192,7 +192,7 @@ stock bool:Cmd_SBank(playerid, const params[])
 		return SendClientMessage(playerid, 0xFF69B4FF, "Семейный счёт: $%d. Положить: /sbank put [сумма], снять: /sbank take [сумма] (у банкомата или дома).", bank);
 	new h = Player[playerid][pHouseInside];
 	new bool:home = (h != -1 && House_IsInside(playerid, h) && (House[h][hOwner] == Player[playerid][pDbId] || House[h][hOwner] == gSpouse[playerid]));
-	if (Atm_GetNearby(playerid) == -1 && !home) return SendClientMessage(playerid, COLOR_GREY, "Нужно стоять у банкомата или быть в своём доме.");
+	if (!Bank_CanUse(playerid) && !home) return SendClientMessage(playerid, COLOR_GREY, "Нужно стоять у банкомата или быть в своём доме.");
 	if (!NextIntParam(params, pos, amount) || amount < 1) return SendClientMessage(playerid, COLOR_GREY, "Использование: /sbank put|take [сумма]");
 	new msg[96];
 	if (!strcmp(what, "put", true))

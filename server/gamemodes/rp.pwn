@@ -117,6 +117,7 @@ public OnGameModeInit()
 {
 	SetGameModeText(MODE_TEXT);
 	DB_Init();
+	Factions_RunMoves();  // перенос фракций на другой номер (один раз, до загрузки всего)
 	Markers_Init();       // таблица markers: правки маркеров из игры
 	Admin_Init();         // таблицы admin_log, reports, сроки банов
 
@@ -197,6 +198,7 @@ public OnPlayerConnect(playerid)
 	Law_OnConnect(playerid);
 	Debts_OnConnect(playerid);
 	Families_OnConnect(playerid);
+	Markers_OnConnect(playerid);        // свои надписи фракционных точек
 	Dev_OnConnect(playerid);            // убранные здания GTA (dev.inc)
 	Tex_OnConnect(playerid);
 	Gps_OnConnect(playerid);            // значки на карте, сброс GPS
