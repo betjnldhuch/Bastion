@@ -67,6 +67,19 @@ CREATE TABLE IF NOT EXISTS sessions (
     created INTEGER NOT NULL,
     expires INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS donate_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    server TEXT NOT NULL,
+    name TEXT NOT NULL,
+    coins INTEGER NOT NULL,
+    rub INTEGER NOT NULL,
+    contact TEXT NOT NULL DEFAULT '',
+    ip TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'new',
+    handled_by TEXT NOT NULL DEFAULT '',
+    created INTEGER NOT NULL,
+    handled INTEGER NOT NULL DEFAULT 0
+);
 CREATE TABLE IF NOT EXISTS mod_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -456,3 +469,31 @@ class Storage:
                 """SELECT m.*, u.name AS user_name, t.title AS topic_title FROM mod_log m
                    JOIN users u ON u.id = m.user_id LEFT JOIN topics t ON t.id = m.topic_id
                    ORDER BY m.id DESC LIMIT ?""", (limit,))]
+
+    # ---------- заявки на донат ----------
+
+    def add_donate_request(self, server, name, coins, rub, contact, ip):
+        with self.db() as con:
+            cur = con.execute(
+                "INSERT INTO donate_requests (server, name, coins, rub, contact, ip, created) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (server, name, coins, rub, contact, ip, int(time.time())))
+            return cur.lastrowid
+
+    def donate_requests(self, limit=200):
+        with self.db() as con:
+            return [dict(r) for r in con.execute(
+                "SELECT * FROM donate_requests ORDER BY status = 'new' DESC, id DESC LIMIT ?", (limit,))]
+
+    def donate_request(self, req_id):
+        with self.db() as con:
+            row = con.execute("SELECT * FROM donate_requests WHERE id = ?", (req_id,)).fetchone()
+            return dict(row) if row else None
+
+    def set_donate_status(self, req_id, status, who):
+        with self.db() as con:
+            con.execute("UPDATE donate_requests SET status = ?, handled_by = ?, handled = ? WHERE id = ?",
+                        (status, who, int(time.time()), req_id))
+
+    def count_new_donates(self):
+        with self.db() as con:
+            return con.execute("SELECT COUNT(*) FROM donate_requests WHERE status = 'new'").fetchone()[0]

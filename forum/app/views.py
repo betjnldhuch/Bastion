@@ -99,7 +99,7 @@ def editor(name, value="", rows=10, field_id="body"):
 #  Общий каркас страницы
 # ------------------------------------------------------------------
 
-def layout(ctx, title, body, crumbs=None, status=200):
+def layout(ctx, title, body, crumbs=None, status=200, script=""):
     cfg = ctx.cfg
     user = ctx.user
     if user:
@@ -115,11 +115,13 @@ def layout(ctx, title, body, crumbs=None, status=200):
         nxt = urllib.parse.quote(ctx.path, safe="/")
         account = f'<a class="btn small" href="/login?next={e(nxt)}">Войти</a>'
     discord = f'<a href="{e(cfg.discord)}" target="_blank" rel="noopener">Discord</a>' if cfg.discord else ""
+    donate_admin = '<a href="/donate/requests">Заявки доната</a>' if ctx.perm.is_admin else ""
     nav = "".join(
         f'<li><a href="{e(u)}">{e(t)}</a></li>' for t, u in crumbs or [])
-    crumbs_html = (f'<ol class="crumbs"><li><a href="/">Форум</a></li>{nav}</ol>' if crumbs else "")
+    crumbs_html = (f'<ol class="crumbs"><li><a href="/forum">Форум</a></li>{nav}</ol>' if crumbs else "")
     flash = f'<div class="flash">{e(ctx.flash)}</div>' if ctx.flash else ""
     page_title = f"{title} — {cfg.title}" if title else cfg.title
+    extra_js = f'\n<script src="/static/{e(script)}" defer></script>' if script else ""
     return status, f"""<!doctype html>
 <html lang="ru"><head>
 <meta charset="utf-8">
@@ -129,16 +131,16 @@ def layout(ctx, title, body, crumbs=None, status=200):
 <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
 </head><body>
 <header class="top"><div class="wrap">
-  <a class="logo" href="/"><span>{e(cfg.title.upper())}</span><small>форум</small></a>
+  <a class="logo" href="/"><span>{e(cfg.title.upper())}</span></a>
   <nav class="menu">
-    <a href="/">Разделы</a><a href="/team">Администрация</a><a href="/bans">Баны</a>{discord}
+    <a href="/map">Карта</a><a href="/forum">Форум</a><a href="/donate">Донат</a><a href="/team">Администрация</a><a href="/bans">Баны</a>{discord}{donate_admin}
     <form action="/search" method="get" class="search"><input name="q" placeholder="Поиск" aria-label="Поиск"></form>
   </nav>
   <div class="account">{account}</div>
 </div></header>
 <main class="wrap">{crumbs_html}{flash}{body}</main>
-<footer class="wrap foot">{e(cfg.title)} · форум работает на том же компьютере, что и сервер · вход по игровому аккаунту</footer>
-<script src="/static/forum.js" defer></script>
+<footer class="wrap foot">{e(cfg.title)} · RolePlay-проект GTA San Andreas Multiplayer · вход по игровому аккаунту</footer>
+<script src="/static/forum.js" defer></script>{extra_js}
 </body></html>"""
 
 
@@ -202,7 +204,7 @@ def index(ctx, cats, totals, online, recent):
 <div><b>{totals['users']}</b><span>участников</span></div></div></div>
 <div class="card"><h3>Сейчас на форуме</h3><p>{online_html}</p></div>
 </aside>"""
-    return layout(ctx, "", f'{hero}<div class="cols"><div class="main-col">{"".join(rows)}</div>{side}</div>')
+    return layout(ctx, "Форум", f'{hero}<div class="cols"><div class="main-col">{"".join(rows)}</div>{side}</div>')
 
 
 # ------------------------------------------------------------------
@@ -493,3 +495,141 @@ def modlog(ctx, rows):
 def error(ctx, code, text):
     return layout(ctx, "Ошибка", f'<section class="card narrow"><h1>{code}</h1><p>{e(text)}</p>'
                   '<a class="btn" href="/">На главную</a></section>', status=code)
+
+
+# ------------------------------------------------------------------
+#  Сайт: главная, карта, донат
+# ------------------------------------------------------------------
+
+DONATE_ITEMS = [
+    # что, монет, пояснение
+    ("Игровая валюта", 1, "1 монета = $1 000 на руки"),
+    ("VIP на 30 дней", 300, "+$2 000 к каждому PayDay и двойной опыт"),
+    ("Смена скина", 150, "любой доступный скин"),
+    ("Уровень +1", 200, "сразу следующий уровень"),
+    ("Снятие предупреждений", 100, "все варны с аккаунта"),
+    ("Номер телефона", 150, "свой номер на выбор"),
+]
+DONATE_STATUSES = {"new": "Ждёт оплаты", "done": "Монеты выданы", "rejected": "Отклонена"}
+
+SITE_TILES = [
+    ("/map", "Карта", "Дома, бизнесы и территории банд. Видно, что свободно и кто владеет.", "tile-map"),
+    ("/forum", "Форум", "Новости, правила, жалобы, заявки во фракции и общение.", "tile-forum"),
+    ("/donate", "Донат", "Поддержать проект и получить монеты на свой аккаунт.", "tile-donate"),
+]
+
+
+def rub(n):
+    return f"{int(n):,}".replace(",", " ") + " ₽"
+
+
+def site_home(ctx, news):
+    tiles = "".join(f'''<a class="tile {cls}" href="{u}"><span class="tile-ico"></span><b>{e(t)}</b>
+<span class="muted">{e(d)}</span></a>''' for u, t, d, cls in SITE_TILES)
+    news_html = "".join(
+        f'<li><a href="/t/{n["id"]}">{e(n["title"])}</a><div class="muted">{date(n["created"])} · '
+        f'{e(markup.plain(n["body"] or "", 140))}</div></li>' for n in news)
+    news_block = (f'<section class="card"><h3>Новости</h3><ul class="recent">{news_html}</ul></section>'
+                  if news else "")
+    body = f"""<section class="site-hero"><div>
+<h1>{e(ctx.cfg.title)}</h1><p>{e(ctx.cfg.subtitle)}</p></div>
+<div class="srv-cards">{server_cards(ctx)}</div></section>
+<nav class="tiles">{tiles}</nav>{news_block}"""
+    return layout(ctx, "", body)
+
+
+def map_page(ctx, image):
+    servers = ctx.cfg.servers
+    select = ""
+    if len(servers) > 1:
+        opts = "".join(f'<option value="{e(k)}">{e(s.name)}</option>' for k, s in servers.items())
+        select = f'<label class="map-srv">Сервер<select id="map-server">{opts}</select></label>'
+    hint = "" if image else ('<p class="muted">Подложка карты не найдена: положи картинку карты San Andreas в '
+                             '<span class="mono">forum/static/map.jpg</span> (квадратную) или впиши ссылку в map_image в forum.ini.</p>')
+    body = f"""<div class="page-head"><div><h1>Карта</h1>
+<p class="muted">Дома, бизнесы и территории банд. Яркий значок — свободно, тёмный или красный — занято. Колесо мыши или два пальца приближают, клик по значку показывает подробности.</p></div></div>
+<section class="map-tools">{select}
+<label class="chk"><input type="checkbox" id="f-houses" checked><span class="lg lg-house"></span>Дома</label>
+<label class="chk"><input type="checkbox" id="f-biz" checked><span class="lg lg-biz"></span>Бизнесы</label>
+<label class="chk"><input type="checkbox" id="f-turfs" checked><span class="lg lg-turf"></span>Территории</label>
+<label class="chk"><input type="checkbox" id="f-free">Только свободные</label>
+<span class="muted" id="map-count"></span></section>
+<div class="map-wrap"><canvas id="map" data-image="{e(image)}"></canvas>
+<div class="map-info" id="map-info" hidden></div>
+<div class="map-zoom"><button type="button" id="zoom-in" aria-label="Приблизить">+</button><button type="button" id="zoom-out" aria-label="Отдалить">−</button></div></div>
+{hint}"""
+    return layout(ctx, "Карта", body, script="map.js")
+
+
+def _server_select(ctx, current):
+    servers = ctx.cfg.servers
+    if len(servers) <= 1:
+        return ""
+    opts = "".join(f'<option value="{e(k)}"{" selected" if k == current else ""}>{e(s.name)}</option>'
+                   for k, s in servers.items())
+    return f'<label>Сервер<select name="server" required>{opts}</select></label>'
+
+
+def donate(ctx, name="", server="", coins=0, contact="", error=""):
+    cfg = ctx.cfg
+    rate = cfg.donate_rub_per_coin
+    rows = "".join(f'<tr><td>{e(t)}<div class="muted">{e(d)}</div></td><td class="num"><b>{c}</b> мон.</td>'
+                   f'<td class="num">{rub(c * rate)}</td></tr>' for t, c, d in DONATE_ITEMS)
+    err = f'<div class="error">{e(error)}</div>' if error else ""
+    coins = coins or 300
+    body = f"""<div class="page-head"><div><h1>Донат</h1>
+<p class="muted">Монеты зачисляются на игровой аккаунт. В игре их можно потратить через меню доната.</p></div></div>
+<div class="donate-grid">
+<section class="card"><h3>Что можно купить</h3>
+<table class="list price"><tr><th>Услуга</th><th class="num">Монеты</th><th class="num">Цена</th></tr>{rows}</table>
+<p class="muted">1 монета = {rub(rate) if rate >= 1 else f"{rate:g} ₽"}. Минимум {cfg.donate_min_coins} монет.</p></section>
+<section class="card"><h3>Пополнить</h3>{err}
+<form method="post" action="/donate" class="donate-form" data-rate="{rate:g}">{csrf_field(ctx)}
+{_server_select(ctx, server)}
+<label>Ник в игре<input name="name" value="{e(name)}" placeholder="Имя_Фамилия" maxlength="40" required></label>
+<label>Сколько монет<input name="coins" type="number" min="{cfg.donate_min_coins}" max="100000" value="{int(coins)}" required></label>
+<label>Как с вами связаться (необязательно)<input name="contact" value="{e(contact)}" placeholder="VK, Telegram или Discord" maxlength="100"></label>
+<div class="donate-total">К оплате: <b id="donate-sum">{rub(coins * rate)}</b></div>
+<div class="form-foot"><button class="btn">Получить реквизиты</button></div></form></section></div>"""
+    return layout(ctx, "Донат", body)
+
+
+def _paragraphs(text):
+    return "".join(f"<p>{e(line)}</p>" for line in text.splitlines() if line.strip())
+
+
+def donate_done(ctx, req):
+    cfg = ctx.cfg
+    pay = (_paragraphs(cfg.donate_payment) if cfg.donate_payment else
+           '<p class="muted">Реквизиты для оплаты пока не указаны. Напишите администрации, она подскажет, куда перевести.</p>')
+    contact = f'<p>Связь с администрацией: <b>{e(cfg.donate_contact)}</b></p>' if cfg.donate_contact else ""
+    srv = cfg.servers.get(req["server"])
+    body = f"""<section class="card narrow wide"><h1>Заявка №{req["id"]}</h1>
+<table class="kv"><tr><th>Ник</th><td>{e(req["name"])}</td></tr>
+<tr><th>Сервер</th><td>{e(srv.name if srv else req["server"])}</td></tr>
+<tr><th>Монеты</th><td>{req["coins"]}</td></tr><tr><th>К оплате</th><td><b>{rub(req["rub"])}</b></td></tr></table>
+<h3 style="margin-top:18px">Как оплатить</h3>{pay}
+<p>В комментарии к переводу напишите: <b class="mono">№{req["id"]} {e(req["name"])}</b></p>{contact}
+<p class="muted">Монеты выдаёт администратор после проверки оплаты, обычно в течение дня.</p>
+<a class="btn ghost" href="/">На главную</a></section>"""
+    return layout(ctx, "Заявка на донат", body)
+
+
+def donate_requests(ctx, rows):
+    srv = ctx.cfg.servers
+
+    def actions(r):
+        if r["status"] != "new":
+            return f'<span class="muted">{e(rp(r["handled_by"]))} · {when(r["handled"])}</span>'
+        return (f'<form method="post" action="/donate/requests/{r["id"]}" class="inline">{csrf_field(ctx)}'
+                f'<button class="btn small st-approved" name="status" value="done">Выдано</button> '
+                f'<button class="btn small danger" name="status" value="rejected">Отклонить</button></form>')
+    body = "".join(
+        f'<tr><td>№{r["id"]}</td><td>{when(r["created"])}</td><td class="mono">{e(r["name"])}</td>'
+        f'<td>{e(srv[r["server"]].name if r["server"] in srv else r["server"])}</td><td>{r["coins"]}</td><td>{rub(r["rub"])}</td>'
+        f'<td>{e(r["contact"])}</td><td>{e(DONATE_STATUSES.get(r["status"], r["status"]))}</td><td>{actions(r)}</td></tr>'
+        for r in rows) or '<tr><td colspan="9" class="empty">Заявок пока нет</td></tr>'
+    return layout(ctx, "Заявки доната", f"""<div class="page-head"><div><h1>Заявки доната</h1>
+<p class="muted">Проверь перевод, выдай монеты в игре командой <span class="mono">/givedonate</span> и нажми «Выдано».</p></div></div>
+<section class="card table-scroll"><table class="list"><tr><th>№</th><th>Когда</th><th>Ник</th><th>Сервер</th><th>Монеты</th>
+<th>Сумма</th><th>Связь</th><th>Статус</th><th></th></tr>{body}</table></section>""")
