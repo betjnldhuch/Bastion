@@ -1037,6 +1037,13 @@ stock Factions_GetSpawn(playerid, &Float:x, &Float:y, &Float:z, &Float:a)
 stock Jail_PutInCell(playerid)
 {
 	if (Prison_TryPutInCell(playerid)) return;     // большой срок Ч в федеральную тюрьму (prison.inc)
+	if (Place_First(PL_KPZ) != -1)                 // камеры  ѕ«, которые админ поставил сам (/place kpz)
+	{
+		Place_Teleport(playerid, Place_Random(PL_KPZ));
+		ResetPlayerWeapons(playerid);
+		Player[playerid][pHouseInside] = -1;
+		return;
+	}
 	SetPlayerInterior(playerid, JAIL_INTERIOR);
 	SetPlayerVirtualWorld(playerid, 0);
 	// две камеры с решЄтками (law.inc): заключЄнных делим между ними
@@ -1135,6 +1142,10 @@ stock Factions_OnMinute()
 		}
 		// ”шЄл от камеры Ч возвращаем (кроме случа€, когда дверь открыл полицейский или вз€та вз€тка, law.inc)
 		if (Prison_OnMinute(i)) { }     // заключЄнный федеральной тюрьмы (prison.inc)
+		else if (Place_First(PL_KPZ) != -1)
+		{
+			if (Place_Nearby(i, PL_KPZ, 15.0) == -1 && !Law_MayLeaveCell(i)) Jail_PutInCell(i);
+		}
 		else if (!Law_MayLeaveCell(i) && (GetPlayerInterior(i) != JAIL_INTERIOR || !IsPlayerInRangeOfPoint(i, 15.0, JAIL_X, JAIL_Y, JAIL_Z)))
 		{
 			Jail_PutInCell(i);

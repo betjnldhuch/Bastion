@@ -35,26 +35,27 @@ enum
 	PL_CLINIC,      // стойка больницы: лечение, страховка, медкарта
 	PL_CHURCH,      // церковь: свадьба, развод
 	PL_LOTTERY,     // ларёк лотереи
+	PL_KPZ,         // камера КПЗ в LSPD (короткие сроки); нет ни одной — старые камеры из кода
 	PL_KINDS
 }
 static const gPlaceKey[PL_KINDS][] =
 {
 	"dealer", "fish", "field", "barn", "bin", "dump", "vault", "car",
-	"cell", "pwork", "escape", "release", "pguard", "clinic", "church", "lottery"
+	"cell", "pwork", "escape", "release", "pguard", "clinic", "church", "lottery", "kpz"
 };
 static const gPlaceName[PL_KINDS][] =
 {
 	"Торговец наркотиками", "Место рыбалки", "Грядка фермы", "Амбар фермы", "Мусорный бак", "Свалка",
 	"Хранилище банка", "Рабочая машина", "Камера тюрьмы", "Работа в тюрьме", "Лаз для побега",
-	"Выход из тюрьмы", "Пост охраны тюрьмы", "Стойка больницы", "Церковь", "Лотерея"
+	"Выход из тюрьмы", "Пост охраны тюрьмы", "Стойка больницы", "Церковь", "Лотерея", "Камера КПЗ"
 };
 // Нужен ли значок с надписью (остальные точки видны только как метка задания)
 static const bool:gPlaceMarker[PL_KINDS] =
 {
 	true, false, false, true, false, true, true, false,
-	false, false, false, false, true, true, true, true
+	false, false, false, false, true, true, true, true, false
 };
-static const gPlaceModel[PL_KINDS] = { 0, 0, 0, 1318, 0, 1318, 1274, 0, 0, 0, 0, 0, 1247, 1240, 1239, 1274, };
+static const gPlaceModel[PL_KINDS] = { 0, 0, 0, 1318, 0, 1318, 1274, 0, 0, 0, 0, 0, 1247, 1240, 1239, 1274, 0 };
 
 enum E_PLACE
 {

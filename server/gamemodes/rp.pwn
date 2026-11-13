@@ -67,6 +67,7 @@
 #include "bastion/dev.inc"         // разработка в игре: /pos, /dev, маппинг /mo
 #include "bastion/textures.inc"    // перекраска объектов маппинга: /mt
 #include "bastion/doors.inc"       // входы в здани€: LSPD
+#include "bastion/places.inc"     // точки новых систем, которые ставит админ: /place
 #include "bastion/factions.inc"   // после admin.inc: использует Admin_Check
 #include "bastion/law.inc"        // метка задержани€, дверь участка, вз€тка
 #include "bastion/turfs.inc"
@@ -81,7 +82,6 @@
 #include "bastion/families.inc"   // семьи: организации игроков
 #include "bastion/wounded.inc"    // ранение вместо смерти, /revive, /aid
 #include "bastion/robbery.inc"    // /rob Ч ограбление магазинов
-#include "bastion/places.inc"     // точки новых систем, которые ставит админ: /place
 #include "bastion/drugs.inc"      // наркотики: кусты, торговец, эффекты, ломка
 #include "bastion/worklife.inc"   // работы: рыбак, фермер, инкассатор, мусорщик
 #include "bastion/casino.inc"     // казино и лотере€

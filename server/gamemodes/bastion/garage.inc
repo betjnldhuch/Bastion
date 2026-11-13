@@ -4,8 +4,9 @@
 //  СТО: заехать на точку за рулём и нажать H (или /tune).
 //    Ремонт — любой машине. Покраска, нитро, гидравлика и диски —
 //    только своей личной машине, тюнинг сохраняется в базе.
-//  Штрафстоянка: полицейский на смене эвакуирует личную машину рядом:
-//    /impound [штраф]. Машина пропадает и ждёт хозяина на штрафстоянке:
+//  Штрафстоянка: полицейский на смене цепляет личную машину служебным эвакуатором
+//    (H за рулём Towtruck фракции), везёт на штрафстоянку и там вводит /impound [штраф].
+//    Машина пропадает и ждёт хозяина на штрафстоянке:
 //    там ALT (или /unimpound) — заплатить штраф и забрать.
 //
 //  Точки хранятся в таблице garages. Стартовые координаты примерные,
@@ -369,40 +370,96 @@ stock Garage_GetImpound(playerid)
 	return gImpoundFine[playerid];
 }
 
-// Личная машина рядом с игроком (INVALID_VEHICLE_ID = нет), её владелец — в owner
-static Garage_FindPersonalNear(playerid, &owner)
+// ---------------------------------------------------------------------
+//  Эвакуатор полиции: H за рулём служебного Towtruck (525) — зацепить машину
+//  сзади или отцепить. На штрафстоянке: /impound [штраф] [причина].
+// ---------------------------------------------------------------------
+#define TOW_MODEL           525
+#define TOW_RANGE           8.0         // как близко должна стоять машина, чтобы зацепить
+#define IMPOUND_LOT_RANGE   20.0        // как близко к штрафстоянке сдавать машину
+
+static bool:Garage_IsPoliceTow(v)
 {
-	new Float:x, Float:y, Float:z;
+	return v != 0 && GetVehicleModel(v) == TOW_MODEL && Faction_IsLaw(gVehFaction[v]);
+}
+
+// Чья личная машина v (INVALID_PLAYER_ID — не личная)
+static Garage_PersonalOwner(v)
+{
+	for (new i = 0; i < MAX_PLAYERS; i++)
+		if (IsPlayerConnected(i) && gPlayerVeh[i] == v) return i;
+	return INVALID_PLAYER_ID;
+}
+
+// Из keys.inc (H в машине). 1 — сработало
+stock Garage_TryTow(playerid)
+{
+	new tow = GetPlayerVehicleID(playerid);
+	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER || !Garage_IsPoliceTow(tow)) return 0;
+	if (!Faction_IsLaw(Player[playerid][pFaction]) || !Player[playerid][pDuty])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Эвакуатором пользуется полиция на смене.");
+		return 1;
+	}
+	if (IsTrailerAttachedToVehicle(tow))
+	{
+		DetachTrailerFromVehicle(tow);
+		SendClientMessage(playerid, COLOR_WHITE, "Машина отцеплена.");
+		return 1;
+	}
+	new Float:tx, Float:ty, Float:tz, Float:ta;
+	GetVehiclePos(tow, tx, ty, tz);
+	GetVehicleZAngle(tow, ta);
+	// точка за эвакуатором
+	tx -= 5.0 * floatsin(-ta, degrees);
+	ty -= 5.0 * floatcos(-ta, degrees);
+	new best = INVALID_VEHICLE_ID, Float:bd = TOW_RANGE;
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!IsPlayerConnected(i)) continue;
 		new v = gPlayerVeh[i];
-		if (v == INVALID_VEHICLE_ID) continue;
-		GetVehiclePos(v, x, y, z);
-		if (IsPlayerInRangeOfPoint(playerid, 5.0, x, y, z))
+		if (v == INVALID_VEHICLE_ID || v == tow) continue;
+		new Float:d = GetVehicleDistanceFromPoint(v, tx, ty, tz);
+		if (d < bd) { bd = d; best = v; }
+	}
+	if (best == INVALID_VEHICLE_ID)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Сзади нет личной машины. Подъедь задом вплотную (до %d м).", floatround(TOW_RANGE));
+		return 1;
+	}
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && GetPlayerVehicleID(i) == best)
 		{
-			owner = i;
-			return v;
+			SendClientMessage(playerid, COLOR_GREY, "В машине кто-то сидит.");
+			return 1;
 		}
 	}
-	return INVALID_VEHICLE_ID;
+	AttachTrailerToVehicle(best, tow);
+	new owner = Garage_PersonalOwner(best);
+	SendClientMessage(playerid, COLOR_GREEN, "Машина %s зацеплена. Вези на штрафстоянку и введи /impound [штраф] [причина]. Отцепить: H.",
+		(owner != INVALID_PLAYER_ID) ? GetRPName(owner) : "-");
+	return 1;
 }
 
 stock bool:Cmd_Impound(playerid, const params[])
 {
 	if (!Faction_NeedLaw(playerid)) return true;
-	if (IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Выйди из машины и подойди к той, которую эвакуируешь.");
+	new tow = GetPlayerVehicleID(playerid);
+	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER || !Garage_IsPoliceTow(tow))
+		return SendClientMessage(playerid, COLOR_GREY, "Машину увозят служебным эвакуатором: зацепи её (H за рулём эвакуатора) и привези на штрафстоянку.");
 	new pos = 0, fine, reason[64];
 	if (!NextIntParam(params, pos, fine) || fine < IMPOUND_FINE_MIN || fine > IMPOUND_FINE_MAX)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /impound [штраф $%d-%d] [причина] (стоя у личной машины)", IMPOUND_FINE_MIN, IMPOUND_FINE_MAX);
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /impound [штраф $%d-%d] [причина] (на штрафстоянке, с машиной на крюке)", IMPOUND_FINE_MIN, IMPOUND_FINE_MAX);
 	if (!RestParam(params, pos, reason)) strcat(reason, "не указана");
-
-	new owner = INVALID_PLAYER_ID;
-	new v = Garage_FindPersonalNear(playerid, owner);
-	if (v == INVALID_VEHICLE_ID) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет личной машины.");
+	if (!IsTrailerAttachedToVehicle(tow)) return SendClientMessage(playerid, COLOR_GREY, "На крюке нет машины. Зацепить: H.");
+	if (Garage_GetNearby(playerid, GARAGE_IMPOUND, IMPOUND_LOT_RANGE) == -1) return SendClientMessage(playerid, COLOR_GREY, "Ты не на штрафстоянке (у LSPD, /gps).");
+	new v = GetVehicleTrailer(tow);
+	new owner = Garage_PersonalOwner(v);
+	if (owner == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Это не личная машина.");
 	if (owner == playerid) return SendClientMessage(playerid, COLOR_GREY, "Нельзя эвакуировать свою машину.");
 
-	// всех, кто внутри, высаживаем
+	DetachTrailerFromVehicle(tow);
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (IsPlayerConnected(i) && GetPlayerVehicleID(i) == v) RemovePlayerFromVehicle(i);
@@ -415,11 +472,9 @@ stock bool:Cmd_Impound(playerid, const params[])
 	GiveMoney(playerid, IMPOUND_REWARD, "премия за эвакуацию");
 	Account_Save(playerid);
 
-	new msg[144];
-	format(msg, sizeof msg, "%s вызывает эвакуатор.", GetRPName(playerid));
-	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	SendClientMessage(owner, COLOR_RED, "Твою машину эвакуировал %s. Причина: %s. Штраф $%d, забрать: штрафстоянка у LSPD (ALT).", GetRPName(playerid), reason, fine);
-	SendClientMessage(playerid, COLOR_GREEN, "Машина %s отправлена на штрафстоянку. Премия $%d.", GetRPName(owner), IMPOUND_REWARD);
+	SendClientMessage(playerid, COLOR_GREEN, "Машина %s сдана на штрафстоянку. Премия $%d.", GetRPName(owner), IMPOUND_REWARD);
+	new msg[144];
 	format(msg, sizeof msg, "[Диспетчер] %s эвакуировал машину %s (штраф $%d).", GetRPName(playerid), GetRPName(owner), fine);
 	Faction_MessageLaw(msg);
 	return true;

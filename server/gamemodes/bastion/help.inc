@@ -238,7 +238,8 @@ static const gHelp[][E_HELP] =
 	{ HT_POLICE, "/arrest [id]", "посадить в тюрьму (у участка)" },
 	{ HT_POLICE, "/drag [id]", "вести задержанного или раненого (/drag Ч отпустить)" },
 	{ HT_POLICE, "/m [текст]", "мегафон" },
-	{ HT_POLICE, "/impound [штраф] [причина]", "эвакуировать личную машину на штрафсто€нку" },
+	{ HT_POLICE, "H в эвакуаторе", "служебный Towtruck: зацепить личную машину сзади / отцепить" },
+	{ HT_POLICE, "/impound [штраф] [причина]", "на штрафсто€нке: сдать машину с крюка эвакуатора" },
 	{ HT_POLICE, "/mark [id]", "метка задержани€ на 10 мин: выйдет из игры Ч деморган" },
 	{ HT_POLICE, "/fine [id] [сумма] [причина]", "выписать штраф (игрок платит в банкомате)" },
 	{ HT_POLICE, "/celldoor", "открыть дверь участка заключЄнным на 30 сек" },
@@ -423,6 +424,7 @@ static const gHelp[][E_HELP] =
 
 	// --- –азработка
 	{ HT_DEV, "/place [вид]", "dealer fish field barn bin dump vault cell pwork escape release pguard clinic church lottery" },
+	{ HT_DEV, "/place kpz", "сво€ камера  ѕ« в LSPD (можно несколько)" },
 	{ HT_DEV, "/place car [работа]", "в машине: рабоча€ машина fisher|farmer|collector|garbage" },
 	{ HT_DEV, "/places, /unplace, /gotoplace [є]", "список точек, удалить ближайшую, телепорт" },
 	{ HT_DEV, "/pos [название]", "координаты; с названием Ч сохранить точку (scriptfiles/bastion_points.txt)" },
