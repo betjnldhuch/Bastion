@@ -176,6 +176,7 @@ enum
 	DIALOG_DONATE,
 	DIALOG_DONATE_MONEY,
 	DIALOG_DONATE_INPUT,
+	DIALOG_DONATE_UI,            // HTML-окно доната (ui.inc)
 
 	// --- Аренда мопедов (rental.inc)
 	DIALOG_RENTAL
