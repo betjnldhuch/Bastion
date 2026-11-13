@@ -8,7 +8,8 @@
 //  dialogid. ѕлагины на сервере не нужны.
 //
 //   то умеет окна: клиент Bastion добавл€ет "-bui" к версии
-//  (GetPlayerVersion, например "0.3.7-bui1"). ќстальным показываем
+//  (GetPlayerVersion, например "0.3.7-bui1"). ѕ -плагин bastion_ui.asi
+//  шлЄт скрытую команду /__bui при первом диалоге. ќстальным показываем
 //  прежние диалоги Ч провер€й UI_Has(playerid) перед UI_Show.
 // =====================================================================
 
@@ -23,6 +24,17 @@ stock UI_OnConnect(playerid)
 	GetPlayerVersion(playerid, version, sizeof version);
 	gUiSupported[playerid] = (strfind(version, UI_CLIENT_TAG) != -1);
 	if (gUiSupported[playerid]) printf("[ui] id=%d HTML-окна включены (%s)", playerid, version);
+}
+
+// ѕ -клиент с bastion_ui.asi: команда /__bui (из OnPlayerCommandText).
+// ќкно входа уже показано обычным диалогом Ч показываем его заново HTML-окном.
+stock UI_OnPcHello(playerid)
+{
+	if (gUiSupported[playerid]) return 1;
+	gUiSupported[playerid] = true;
+	printf("[ui] id=%d HTML-окна включены (ѕ , bastion_ui.asi)", playerid);
+	if (!Player[playerid][pLogged]) Account_ShowAuth(playerid);
+	return 1;
 }
 
 stock UI_OnDisconnect(playerid)
