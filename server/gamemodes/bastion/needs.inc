@@ -1,32 +1,32 @@
 // =====================================================================
-//  needs.inc вЂ” РіРѕР»РѕРґ Рё РёРЅРІРµРЅС‚Р°СЂСЊ.
+//  needs.inc — голод и инвентарь.
 //
-//  РЎС‹С‚РѕСЃС‚СЊ: РѕС‚ 0 РґРѕ 100%. РљР°Р¶РґС‹Рµ HUNGER_MINUTES РјРёРЅСѓС‚ РёРіСЂС‹ РїР°РґР°РµС‚ РЅР° 1%
-//  (РѕС‚ РїРѕР»РЅРѕР№ РґРѕ РЅСѓР»СЏ РїСЂРёРјРµСЂРЅРѕ Р·Р° 10 С‡Р°СЃРѕРІ РёРіСЂС‹). РќРёР¶Рµ HUNGER_WARN% вЂ”
-//  РЅР°РїРѕРјРёРЅР°РЅРёРµ РїРѕРµСЃС‚СЊ, РЅР° РЅСѓР»Рµ РєР°Р¶РґСѓСЋ РјРёРЅСѓС‚Сѓ РѕС‚РЅРёРјР°РµС‚СЃСЏ HUNGER_DAMAGE HP
-//  (РЅРѕ РЅРµ РЅРёР¶Рµ 20 HP вЂ” РѕС‚ РіРѕР»РѕРґР° РЅРµ СѓРјРёСЂР°СЋС‚, РїСЂРѕСЃС‚Рѕ СЃС‚Р°РЅРѕРІРёС‚СЃСЏ РїР»РѕС…Рѕ).
-//  РџРѕСЃР»Рµ Р±РѕР»СЊРЅРёС†С‹ СЃС‹С‚РѕСЃС‚СЊ РЅРµ РЅРёР¶Рµ 50%.
-//  РџРѕРµСЃС‚СЊ: Р±Р°СЂ (СЃСЂР°Р·Сѓ) РёР»Рё РµРґР° РёР· РёРЅРІРµРЅС‚Р°СЂСЏ. РҐСЂР°РЅРёС‚СЃСЏ РІ accounts.hunger.
+//  Сытость: от 0 до 100%. Каждые HUNGER_MINUTES минут игры падает на 1%
+//  (от полной до нуля примерно за 10 часов игры). Ниже HUNGER_WARN% —
+//  напоминание поесть, на нуле каждую минуту отнимается HUNGER_DAMAGE HP
+//  (но не ниже 20 HP — от голода не умирают, просто становится плохо).
+//  После больницы сытость не ниже 50%.
+//  Поесть: бар (сразу) или еда из инвентаря. Хранится в accounts.hunger.
 //
-//  РРЅРІРµРЅС‚Р°СЂСЊ (СЃСѓРјРєР°): РІРµС‰Рё РёР· РјР°РіР°Р·РёРЅРѕРІ 24/7 вЂ” РµРґР°, РІРѕРґР°, РїРёРІРѕ, СЃРёРіР°СЂРµС‚С‹,
-//  Р°РїС‚РµС‡РєРё, Р±РёРЅС‚С‹, СЂРµРјРєРѕРјРїР»РµРєС‚С‹, С†РІРµС‚С‹, РєРѕСЃС‚Рё, РјР°СЃРєР°.
-//  /inv (РёР»Рё /i) вЂ” РѕС‚РєСЂС‹С‚СЊ: РІС‹Р±СЂР°С‚СЊ РІРµС‰СЊ, РїРѕС‚РѕРј РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ / РїРµСЂРµРґР°С‚СЊ / РІС‹Р±СЂРѕСЃРёС‚СЊ.
-//  Р’С‹Р±СЂРѕС€РµРЅРЅР°СЏ РІРµС‰СЊ Р»РµР¶РёС‚ РЅР° Р·РµРјР»Рµ DROP_MINUTES РјРёРЅСѓС‚, РїРѕРґРЅСЏС‚СЊ вЂ” ALT РёР»Рё /pickup.
-//  РњР°СЃРєР° РїСЂСЏС‡РµС‚ РЅРёРє РЅР°Рґ РіРѕР»РѕРІРѕР№ (СЃРЅРёРјР°РµС‚СЃСЏ РІ СЃСѓРјРєРµ РёР»Рё РїСЂРё СЃРјРµСЂС‚Рё).
-//  РҐСЂР°РЅРёС‚СЃСЏ РІ С‚Р°Р±Р»РёС†Рµ inventory (owner, item, amount), Сѓ РєР°Р¶РґРѕР№ РІРµС‰Рё СЃРІРѕР№
-//  РјР°РєСЃРёРјСѓРј (gInvMax).
-//  РћРґРµР¶РґР°: РєСѓРїР»РµРЅРЅР°СЏ РІ РјР°РіР°Р·РёРЅРµ РѕРґРµР¶РґС‹ Р»РѕР¶РёС‚СЃСЏ РІ СЃСѓРјРєСѓ (РґРѕ MAX_OUTFITS С€С‚СѓРє),
-//  РЅР°РґРµС‚СЊ вЂ” РёР· /inv, СЃРЅСЏС‚Р°СЏ РѕРґРµР¶РґР° РІРѕР·РІСЂР°С‰Р°РµС‚СЃСЏ РІ СЃСѓРјРєСѓ. РўР°Р±Р»РёС†Р° outfits.
-//  РђРґРјРёРЅС‹ (4+): /givefood [id] вЂ” РЅР°РєРѕСЂРјРёС‚СЊ, /giveitem [id] [РІРµС‰СЊ] [РєРѕР»-РІРѕ].
+//  Инвентарь (сумка): вещи из магазинов 24/7 — еда, вода, пиво, сигареты,
+//  аптечки, бинты, ремкомплекты, цветы, кости, маска.
+//  /inv (или /i) — открыть: выбрать вещь, потом использовать / передать / выбросить.
+//  Выброшенная вещь лежит на земле DROP_MINUTES минут, поднять — ALT или /pickup.
+//  Маска прячет ник над головой (снимается в сумке или при смерти).
+//  Хранится в таблице inventory (owner, item, amount), у каждой вещи свой
+//  максимум (gInvMax).
+//  Одежда: купленная в магазине одежды ложится в сумку (до MAX_OUTFITS штук),
+//  надеть — из /inv, снятая одежда возвращается в сумку. Таблица outfits.
+//  Админы (4+): /givefood [id] — накормить, /giveitem [id] [вещь] [кол-во].
 // =====================================================================
 
 #define HUNGER_MINUTES      6
 #define HUNGER_WARN         20
 #define HUNGER_DAMAGE       2
-#define INV_MAX_STACK       5       // РґР»СЏ СЃС‚Р°СЂРѕРіРѕ РєРѕРґР°: РјР°РєСЃРёРјСѓРј РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
-#define MAX_DROPS           100     // РІРµС‰РµР№ РЅР° Р·РµРјР»Рµ РѕРґРЅРѕРІСЂРµРјРµРЅРЅРѕ
+#define INV_MAX_STACK       5       // для старого кода: максимум по умолчанию
+#define MAX_DROPS           100     // вещей на земле одновременно
 #define DROP_MINUTES        10
-#define DROP_MODEL          1575    // РјР°Р»РµРЅСЊРєРёР№ СЃРІС‘СЂС‚РѕРє
+#define DROP_MODEL          1575    // маленький свёрток
 
 
 enum
@@ -44,18 +44,18 @@ enum
 	INV_FLOWERS,
 	INV_DICE,
 	INV_MASK,
-	INV_MATS,           // РјР°С‚РµСЂРёР°Р»С‹: РёР· РЅРёС… РґРµР»Р°СЋС‚ РѕСЂСѓР¶РёРµ (factions.inc)
-	INV_SEEDS,          // СЃРµРјРµРЅР° РєРѕРЅРѕРїР»Рё: РїРѕСЃР°РґРёС‚СЊ (drugs.inc)
-	INV_WEED,           // РјР°СЂРёС…СѓР°РЅР°, РіСЂР°РјРјС‹ (drugs.inc)
-	INV_COCAINE,        // РєРѕРєР°РёРЅ, РіСЂР°РјРјС‹ (drugs.inc)
-	INV_FISH,           // СЂС‹Р±Р°: СЃРґР°С‚СЊ РЅР° СЂР°Р±РѕС‚Рµ СЂС‹Р±Р°РєР° (worklife.inc)
+	INV_MATS,           // материалы: из них делают оружие (factions.inc)
+	INV_SEEDS,          // семена конопли: посадить (drugs.inc)
+	INV_WEED,           // марихуана, граммы (drugs.inc)
+	INV_COCAINE,        // кокаин, граммы (drugs.inc)
+	INV_FISH,           // рыба: сдать на работе рыбака (worklife.inc)
 	INV_TYPES
 }
-// РќРѕРјРµСЂР° РІРµС‰РµР№ (РґР»СЏ /giveitem): 1 Р±СѓСЂРіРµСЂ, 2 С…РѕС‚-РґРѕРі, 3 Р°РїС‚РµС‡РєР°, 4 СЂРµРјРєРѕРјРїР»РµРєС‚, 5 РїРёС†С†Р°, 6 РІРѕРґР°,
-// 7 РїРёРІРѕ, 8 СЃРёРіР°СЂРµС‚С‹, 9 Р±РёРЅС‚, 10 С†РІРµС‚С‹, 11 РєРѕСЃС‚Рё, 12 РјР°СЃРєР°, 13 РјР°С‚РµСЂРёР°Р»С‹,
-// 14 СЃРµРјРµРЅР° РєРѕРЅРѕРїР»Рё, 15 РјР°СЂРёС…СѓР°РЅР°, 16 РєРѕРєР°РёРЅ, 17 СЂС‹Р±Р°
-static const gInvNames[INV_TYPES][] = { "", "Р‘СѓСЂРіРµСЂ", "РҐРѕС‚-РґРѕРі", "РђРїС‚РµС‡РєР°", "Р РµРјРєРѕРјРїР»РµРєС‚", "РџРёС†С†Р°", "Р’РѕРґР°", "РџРёРІРѕ", "РЎРёРіР°СЂРµС‚С‹", "Р‘РёРЅС‚", "Р¦РІРµС‚С‹", "РРіСЂР°Р»СЊРЅС‹Рµ РєРѕСЃС‚Рё", "РњР°СЃРєР°", "РњР°С‚РµСЂРёР°Р»С‹", "РЎРµРјРµРЅР° РєРѕРЅРѕРїР»Рё", "РњР°СЂРёС…СѓР°РЅР°", "РљРѕРєР°РёРЅ", "Р С‹Р±Р°" };
-static const gInvHints[INV_TYPES][] = { "", "+40% СЃС‹С‚РѕСЃС‚Рё", "+25% СЃС‹С‚РѕСЃС‚Рё", "+50 HP", "С‡РёРЅРёС‚ РјР°С€РёРЅСѓ СЂСЏРґРѕРј", "+60% СЃС‹С‚РѕСЃС‚Рё", "+10% СЃС‹С‚РѕСЃС‚Рё, +5 HP", "+5 HP, РїСЊСЏРЅРёС‚", "РїРѕРєСѓСЂРёС‚СЊ", "+20 HP", "Р±СѓРєРµС‚ РІ СЂСѓРєРё", "Р±СЂРѕСЃРёС‚СЊ РєРѕСЃС‚Рё (RP)", "РїСЂСЏС‡РµС‚ РЅРёРє", "СЃРґРµР»Р°С‚СЊ РѕСЂСѓР¶РёРµ", "РїРѕСЃР°РґРёС‚СЊ РєСѓСЃС‚", "РїРѕРєСѓСЂРёС‚СЊ (СЌС„С„РµРєС‚, +HP)", "СѓРїРѕС‚СЂРµР±РёС‚СЊ (СЌС„С„РµРєС‚, Р±СЂРѕРЅСЊ)", "СЃРґР°С‚СЊ СЂС‹Р±Р°РєСѓ" };
+// Номера вещей (для /giveitem): 1 бургер, 2 хот-дог, 3 аптечка, 4 ремкомплект, 5 пицца, 6 вода,
+// 7 пиво, 8 сигареты, 9 бинт, 10 цветы, 11 кости, 12 маска, 13 материалы,
+// 14 семена конопли, 15 марихуана, 16 кокаин, 17 рыба
+static const gInvNames[INV_TYPES][] = { "", "Бургер", "Хот-дог", "Аптечка", "Ремкомплект", "Пицца", "Вода", "Пиво", "Сигареты", "Бинт", "Цветы", "Игральные кости", "Маска", "Материалы", "Семена конопли", "Марихуана", "Кокаин", "Рыба" };
+static const gInvHints[INV_TYPES][] = { "", "+40% сытости", "+25% сытости", "+50 HP", "чинит машину рядом", "+60% сытости", "+10% сытости, +5 HP", "+5 HP, пьянит", "покурить", "+20 HP", "букет в руки", "бросить кости (RP)", "прячет ник", "сделать оружие", "посадить куст", "покурить (эффект, +HP)", "употребить (эффект, бронь)", "сдать рыбаку" };
 static const gInvMax[INV_TYPES] = { 0, 5, 5, 3, 3, 3, 5, 5, 20, 5, 3, 1, 1, 500, 10, 50, 20, 30 };
 
 enum E_DROP
@@ -74,13 +74,13 @@ static bool:gMasked[MAX_PLAYERS];
 static gHunger[MAX_PLAYERS];
 static gHungerTick[MAX_PLAYERS];
 static gInv[MAX_PLAYERS][INV_TYPES];
-#define MAX_OUTFITS         5       // РѕРґРµР¶РґС‹ РІ СЃСѓРјРєРµ (РЅРµ СЃС‡РёС‚Р°СЏ РЅР°РґРµС‚РѕР№)
-#define INV_OUTFIT          100     // РІ РјРµРЅСЋ Рё РЅР° Р·РµРјР»Рµ: РѕРґРµР¶РґР° (100 + СЃР»РѕС‚ / СЃРєРёРЅ РІ drAmount)
+#define MAX_OUTFITS         5       // одежды в сумке (не считая надетой)
+#define INV_OUTFIT          100     // в меню и на земле: одежда (100 + слот / скин в drAmount)
 static gInvMenu[MAX_PLAYERS][INV_TYPES + MAX_OUTFITS + 1];
-static gOutfit[MAX_PLAYERS][MAX_OUTFITS];     // СЃРєРёРЅС‹ РІ СЃСѓРјРєРµ, -1 = РїСѓСЃС‚Рѕ
+static gOutfit[MAX_PLAYERS][MAX_OUTFITS];     // скины в сумке, -1 = пусто
 
 // ---------------------------------------------------------------------
-//  Р—Р°РіСЂСѓР·РєР° Рё СЃРѕС…СЂР°РЅРµРЅРёРµ
+//  Загрузка и сохранение
 // ---------------------------------------------------------------------
 stock Needs_Init()
 {
@@ -89,7 +89,7 @@ stock Needs_Init()
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS outfits (id INTEGER PRIMARY KEY AUTOINCREMENT, owner INTEGER NOT NULL, skin INTEGER NOT NULL)"));
 }
 
-// РџРѕСЃР»Рµ РІС…РѕРґР° РІ Р°РєРєР°СѓРЅС‚ (РёР· Vehicles_LoadForPlayer)
+// После входа в аккаунт (из Vehicles_LoadForPlayer)
 stock Needs_LoadPlayer(playerid)
 {
 	gHunger[playerid] = 100;
@@ -147,7 +147,7 @@ static Inv_Save(playerid, item)
 }
 
 // ---------------------------------------------------------------------
-//  РЎС‹С‚РѕСЃС‚СЊ
+//  Сытость
 // ---------------------------------------------------------------------
 stock Needs_GetHunger(playerid) { return gHunger[playerid]; }
 
@@ -159,13 +159,13 @@ stock Needs_Feed(playerid, amount)
 	Needs_SaveHunger(playerid);
 }
 
-// РР· OnPlayerSpawn РїРѕСЃР»Рµ СЃРјРµСЂС‚Рё: РІ Р±РѕР»СЊРЅРёС†Рµ РїРѕРєРѕСЂРјРёР»Рё
+// Из OnPlayerSpawn после смерти: в больнице покормили
 stock Needs_OnHospital(playerid)
 {
 	if (gHunger[playerid] < 50) Needs_Feed(playerid, 50 - gHunger[playerid]);
 }
 
-// Р Р°Р· РІ РјРёРЅСѓС‚Сѓ (РёР· OnMinuteTimer)
+// Раз в минуту (из OnMinuteTimer)
 stock Needs_OnMinute()
 {
 	Inv_DropsTick();
@@ -181,7 +181,7 @@ stock Needs_OnMinute()
 				gHunger[i]--;
 				Needs_SaveHunger(i);
 				if (gHunger[i] == HUNGER_WARN || gHunger[i] == HUNGER_WARN / 2)
-					SendClientMessage(i, COLOR_ORANGE, "РўС‹ РїСЂРѕРіРѕР»РѕРґР°Р»СЃСЏ (СЃС‹С‚РѕСЃС‚СЊ %d%%). РџРѕРµС€СЊ РІ Р±Р°СЂРµ РёР»Рё РґРѕСЃС‚Р°РЅСЊ РµРґСѓ: /inv", gHunger[i]);
+					SendClientMessage(i, COLOR_ORANGE, "Ты проголодался (сытость %d%%). Поешь в баре или достань еду: /inv", gHunger[i]);
 			}
 		}
 
@@ -202,12 +202,12 @@ stock Needs_OnMinute()
 
 stock bool:Cmd_Hunger(playerid)
 {
-	SendClientMessage(playerid, COLOR_WHITE, "РЎС‹С‚РѕСЃС‚СЊ: %d%%. РџРѕРµСЃС‚СЊ: Р±Р°СЂ, РёР»Рё РµРґР° РёР· РёРЅРІРµРЅС‚Р°СЂСЏ (/inv).", gHunger[playerid]);
+	SendClientMessage(playerid, COLOR_WHITE, "Сытость: %d%%. Поесть: бар, или еда из инвентаря (/inv).", gHunger[playerid]);
 	return true;
 }
 
 // ---------------------------------------------------------------------
-//  РРЅРІРµРЅС‚Р°СЂСЊ
+//  Инвентарь
 // ---------------------------------------------------------------------
 stock Inv_GetName(item)
 {
@@ -222,14 +222,14 @@ stock Inv_Count(playerid, item)
 	return gInv[playerid][item];
 }
 
-// РЎРєРѕР»СЊРєРѕ С€С‚СѓРє СЌС‚РѕР№ РІРµС‰Рё РїРѕРјРµС‰Р°РµС‚СЃСЏ РІ СЃСѓРјРєСѓ
+// Сколько штук этой вещи помещается в сумку
 stock Inv_GetMax(item)
 {
 	if (item <= INV_NONE || item >= INV_TYPES) return 0;
 	return gInvMax[item];
 }
 
-// Р”РѕР±Р°РІРёС‚СЊ РІРµС‰СЊ. Р’РѕР·РІСЂР°С‰Р°РµС‚ false, РµСЃР»Рё РјРµСЃС‚Р° РЅРµС‚.
+// Добавить вещь. Возвращает false, если места нет.
 stock bool:Inv_Add(playerid, item, amount = 1)
 {
 	if (item <= INV_NONE || item >= INV_TYPES) return false;
@@ -246,7 +246,7 @@ static Inv_Take(playerid, item, amount)
 	Inv_Save(playerid, item);
 }
 
-// Р—Р°Р±СЂР°С‚СЊ РЅРµСЃРєРѕР»СЊРєРѕ С€С‚СѓРє (РґР»СЏ РјР°С‚РµСЂРёР°Р»РѕРІ). false вЂ” СЃС‚РѕР»СЊРєРѕ РЅРµС‚
+// Забрать несколько штук (для материалов). false — столько нет
 stock bool:Inv_Remove(playerid, item, amount)
 {
 	if (item <= INV_NONE || item >= INV_TYPES || amount < 1 || gInv[playerid][item] < amount) return false;
@@ -254,7 +254,7 @@ stock bool:Inv_Remove(playerid, item, amount)
 	return true;
 }
 
-// Р—Р°Р±СЂР°С‚СЊ РѕРґРЅСѓ РІРµС‰СЊ РёР· СЃСѓРјРєРё. false вЂ” С‚Р°РєРѕР№ РІРµС‰Рё РЅРµС‚
+// Забрать одну вещь из сумки. false — такой вещи нет
 stock bool:Inv_TakeOne(playerid, item)
 {
 	if (item <= INV_NONE || item >= INV_TYPES || gInv[playerid][item] <= 0) return false;
@@ -263,7 +263,7 @@ stock bool:Inv_TakeOne(playerid, item)
 }
 
 // ---------------------------------------------------------------------
-//  РћРґРµР¶РґР° РІ СЃСѓРјРєРµ
+//  Одежда в сумке
 // ---------------------------------------------------------------------
 stock Outfit_FreeSlots(playerid)
 {
@@ -272,7 +272,7 @@ stock Outfit_FreeSlots(playerid)
 	return n;
 }
 
-// РџРѕР»РѕР¶РёС‚СЊ РѕРґРµР¶РґСѓ РІ СЃСѓРјРєСѓ. false вЂ” СЃСѓРјРєР° РїРѕР»РЅР°СЏ
+// Положить одежду в сумку. false — сумка полная
 stock bool:Outfit_Add(playerid, skin)
 {
 	for (new i = 0; i < MAX_OUTFITS; i++)
@@ -293,13 +293,13 @@ static Outfit_Remove(playerid, slot)
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM outfits WHERE id = (SELECT id FROM outfits WHERE owner = %d AND skin = %d LIMIT 1)", Player[playerid][pDbId], skin));
 }
 
-// РќР°РґРµС‚СЊ РѕРґРµР¶РґСѓ РёР· СЃСѓРјРєРё, СЃРЅСЏС‚Р°СЏ Р»РѕР¶РёС‚СЃСЏ РЅР° РµС‘ РјРµСЃС‚Рѕ
+// Надеть одежду из сумки, снятая ложится на её место
 static Outfit_Wear(playerid, slot)
 {
 	new skin = gOutfit[playerid][slot];
 	if (skin == -1) return 0;
-	if (Player[playerid][pDuty]) { SendClientMessage(playerid, COLOR_GREY, "РЎРЅР°С‡Р°Р»Р° СЃРЅРёРјРё СЂР°Р±РѕС‡СѓСЋ С„РѕСЂРјСѓ (/duty)."); return 0; }
-	if (IsPlayerInAnyVehicle(playerid)) { SendClientMessage(playerid, COLOR_GREY, "РџРµСЂРµРѕРґРµС‚СЊСЃСЏ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ РїРµС€РєРѕРј."); return 0; }
+	if (Player[playerid][pDuty]) { SendClientMessage(playerid, COLOR_GREY, "Сначала сними рабочую форму (/duty)."); return 0; }
+	if (IsPlayerInAnyVehicle(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Переодеться можно только пешком."); return 0; }
 
 	new old = Player[playerid][pSkin];
 	Outfit_Remove(playerid, slot);
@@ -311,15 +311,15 @@ static Outfit_Wear(playerid, slot)
 	Account_Save(playerid);
 	Account_SetNormalSpawn(playerid);
 	new msg[96];
-	format(msg, sizeof msg, "%s РїРµСЂРµРѕРґРµРІР°РµС‚СЃСЏ.", GetRPName(playerid));
+	format(msg, sizeof msg, "%s переодевается.", GetRPName(playerid));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	return 1;
 }
 
-// РЎСѓРјРєР° СЃРїРёСЃРєРѕРј (РЅР° С‚РµР»РµС„РѕРЅРµ, /invlist)
+// Сумка списком (на телефоне, /invlist)
 stock bool:Inv_ShowList(playerid)
 {
-	new list[1200] = "Р’РµС‰СЊ\tРљРѕР»-РІРѕ\tР§С‚Рѕ РґР°С‘С‚\n", line[96], n = 0;
+	new list[1200] = "Вещь\tКол-во\tЧто даёт\n", line[96], n = 0;
 	for (new item = 1; item < INV_TYPES; item++)
 	{
 		if (gInv[playerid][item] <= 0) continue;
@@ -330,34 +330,34 @@ stock bool:Inv_ShowList(playerid)
 	new canister = Fuel_GetCanister(playerid);
 	if (canister > 0)
 	{
-		format(line, sizeof line, "РљР°РЅРёСЃС‚СЂР° Р±РµРЅР·РёРЅР°\t%d\t/canister Сѓ РјР°С€РёРЅС‹\n", canister);
+		format(line, sizeof line, "Канистра бензина\t%d\t/canister у машины\n", canister);
 		strcat(list, line);
 		gInvMenu[playerid][n++] = INV_NONE;
 	}
 	for (new i = 0; i < MAX_OUTFITS; i++)
 	{
 		if (gOutfit[playerid][i] == -1) continue;
-		format(line, sizeof line, "РћРґРµР¶РґР°: СЃРєРёРЅ %d\t1\tРЅР°РґРµС‚СЊ\n", gOutfit[playerid][i]);
+		format(line, sizeof line, "Одежда: скин %d\t1\tнадеть\n", gOutfit[playerid][i]);
 		strcat(list, line);
 		gInvMenu[playerid][n++] = INV_OUTFIT + i;
 	}
-	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "РЎСѓРјРєР° РїСѓСЃС‚Р°. Р•РґСѓ, РІРѕРґСѓ, Р°РїС‚РµС‡РєРё Рё РґСЂСѓРіРёРµ РІРµС‰Рё РїСЂРѕРґР°СЋС‚ РІ РјР°РіР°Р·РёРЅР°С… 24/7, РѕРґРµР¶РґСѓ вЂ” РІ РјР°РіР°Р·РёРЅР°С… РѕРґРµР¶РґС‹.");
+	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "Сумка пуста. Еду, воду, аптечки и другие вещи продают в магазинах 24/7, одежду — в магазинах одежды.");
 	for (new i = n; i < sizeof (gInvMenu[]); i++) gInvMenu[playerid][i] = -1;
 
 	new title[48];
-	format(title, sizeof title, "РЎСѓРјРєР° (СЃС‹С‚РѕСЃС‚СЊ %d%%)", gHunger[playerid]);
-	ShowPlayerDialog(playerid, DIALOG_INVENTORY, DIALOG_STYLE_TABLIST_HEADERS, title, "%s", "Р’С‹Р±СЂР°С‚СЊ", "Р—Р°РєСЂС‹С‚СЊ", list);
+	format(title, sizeof title, "Сумка (сытость %d%%)", gHunger[playerid]);
+	ShowPlayerDialog(playerid, DIALOG_INVENTORY, DIALOG_STYLE_TABLIST_HEADERS, title, "%s", "Выбрать", "Закрыть", list);
 	return true;
 }
 
-// РЎСѓРјРєР°: РѕРєРЅРѕ СЃ РјРѕРґРµР»СЏРјРё РІРµС‰РµР№ (СЃРїРёСЃРєРѕРј вЂ” /invlist)
+// Сумка: окно с моделями вещей (списком — /invlist)
 stock bool:Cmd_Inv(playerid)
 {
 	if (Inv_ShowUI(playerid)) return true;
 	return Inv_ShowList(playerid);
 }
 
-// РњР°СЃРєР°: РЅРёРє РЅР°Рґ РіРѕР»РѕРІРѕР№ РЅРµ РІРёРґРµРЅ
+// Маска: ник над головой не виден
 stock bool:Inv_IsMasked(playerid) { return gMasked[playerid]; }
 
 static Inv_SetMask(playerid, bool:on)
@@ -367,16 +367,16 @@ static Inv_SetMask(playerid, bool:on)
 	{
 		if (i != playerid && IsPlayerConnected(i)) ShowPlayerNameTagForPlayer(i, playerid, !on);
 	}
-	Faction_UpdateColor(playerid);      // С‚РѕС‡РєР° РЅР° РєР°СЂС‚Рµ РїСЂРѕРїР°РґР°РµС‚ Рё РІРѕР·РІСЂР°С‰Р°РµС‚СЃСЏ РІРјРµСЃС‚Рµ СЃ РЅРёРєРѕРј (factions.inc)
+	Faction_UpdateColor(playerid);      // точка на карте пропадает и возвращается вместе с ником (factions.inc)
 }
 
-// РР· OnPlayerStreamIn: РЅРѕРІС‹Р№ РёРіСЂРѕРє СЂСЏРґРѕРј РЅРµ РґРѕР»Р¶РµРЅ РІРёРґРµС‚СЊ РЅРёРє РІ РјР°СЃРєРµ
+// Из OnPlayerStreamIn: новый игрок рядом не должен видеть ник в маске
 stock Inv_OnStreamIn(playerid, forplayerid)
 {
 	if (gMasked[playerid]) ShowPlayerNameTagForPlayer(forplayerid, playerid, false);
 }
 
-// РР· OnPlayerDeath Рё РїСЂРё РІС‹С…РѕРґРµ: РјР°СЃРєР° СЃР»РµС‚Р°РµС‚
+// Из OnPlayerDeath и при выходе: маска слетает
 stock Inv_ResetMask(playerid)
 {
 	if (gMasked[playerid]) Inv_SetMask(playerid, false);
@@ -394,60 +394,60 @@ static Inv_Heal(playerid, Float:amount)
 static Inv_Use(playerid, item)
 {
 	if (gInv[playerid][item] <= 0) return;
-	if (item >= INV_SEEDS) { Drugs_UseItem(playerid, item); return; }    // СЃРµРјРµРЅР°, РЅР°СЂРєРѕС‚РёРєРё, СЂС‹Р±Р° (drugs.inc)
+	if (item >= INV_SEEDS) { Drugs_UseItem(playerid, item); return; }    // семена, наркотики, рыба (drugs.inc)
 	new msg[128];
 	new bool:consume = true;
 	switch (item)
 	{
 		case INV_BURGER, INV_HOTDOG, INV_PIZZA:
 		{
-			if (gHunger[playerid] >= 100) { SendClientMessage(playerid, COLOR_GREY, "РўС‹ РЅРµ РіРѕР»РѕРґРµРЅ."); return; }
+			if (gHunger[playerid] >= 100) { SendClientMessage(playerid, COLOR_GREY, "Ты не голоден."); return; }
 			new feed = 25;
 			if (item == INV_BURGER) feed = 40;
 			else if (item == INV_PIZZA) feed = 60;
 			Needs_Feed(playerid, feed);
 			ApplyAnimation(playerid, "FOOD", "EAT_Burger", 4.1, false, false, false, false, 0);
-			format(msg, sizeof msg, "%s РµСЃС‚: %s.", GetRPName(playerid), gInvNames[item]);
+			format(msg, sizeof msg, "%s ест: %s.", GetRPName(playerid), gInvNames[item]);
 		}
 		case INV_WATER:
 		{
 			Needs_Feed(playerid, 10);
 			Inv_Heal(playerid, 5.0);
 			ApplyAnimation(playerid, "VENDING", "VEND_Drink2_P", 4.1, false, false, false, false, 0);
-			format(msg, sizeof msg, "%s РїСЊС‘С‚ РІРѕРґСѓ.", GetRPName(playerid));
+			format(msg, sizeof msg, "%s пьёт воду.", GetRPName(playerid));
 		}
 		case INV_BEER:
 		{
 			Inv_Heal(playerid, 5.0);
 			SetPlayerDrunkLevel(playerid, GetPlayerDrunkLevel(playerid) + 2000);
 			ApplyAnimation(playerid, "VENDING", "VEND_Drink2_P", 4.1, false, false, false, false, 0);
-			format(msg, sizeof msg, "%s РѕС‚РєСЂС‹РІР°РµС‚ Р±СѓС‚С‹Р»РєСѓ РїРёРІР° Рё РґРµР»Р°РµС‚ РіР»РѕС‚РѕРє.", GetRPName(playerid));
+			format(msg, sizeof msg, "%s открывает бутылку пива и делает глоток.", GetRPName(playerid));
 		}
 		case INV_CIGARETTES:
 		{
-			if (IsPlayerInAnyVehicle(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Р’С‹Р№РґРё РёР· РјР°С€РёРЅС‹."); return; }
+			if (IsPlayerInAnyVehicle(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Выйди из машины."); return; }
 			SetPlayerSpecialAction(playerid, SPECIAL_ACTION_SMOKE_CIGGY);
-			format(msg, sizeof msg, "%s РґРѕСЃС‚Р°С‘С‚ СЃРёРіР°СЂРµС‚Сѓ Рё Р·Р°РєСѓСЂРёРІР°РµС‚.", GetRPName(playerid));
+			format(msg, sizeof msg, "%s достаёт сигарету и закуривает.", GetRPName(playerid));
 		}
 		case INV_MEDKIT, INV_BANDAGE:
 		{
 			new Float:hp;
 			GetPlayerHealth(playerid, hp);
-			if (hp >= 100.0) { SendClientMessage(playerid, COLOR_GREY, "РўС‹ Рё С‚Р°Рє Р·РґРѕСЂРѕРІ."); return; }
+			if (hp >= 100.0) { SendClientMessage(playerid, COLOR_GREY, "Ты и так здоров."); return; }
 			if (item == INV_MEDKIT)
 			{
 				Inv_Heal(playerid, 50.0);
-				format(msg, sizeof msg, "%s РґРѕСЃС‚Р°С‘С‚ Р°РїС‚РµС‡РєСѓ Рё РѕР±СЂР°Р±Р°С‚С‹РІР°РµС‚ СЂР°РЅС‹.", GetRPName(playerid));
+				format(msg, sizeof msg, "%s достаёт аптечку и обрабатывает раны.", GetRPName(playerid));
 			}
 			else
 			{
 				Inv_Heal(playerid, 20.0);
-				format(msg, sizeof msg, "%s РїРµСЂРµРІСЏР·С‹РІР°РµС‚ СЂР°РЅСѓ Р±РёРЅС‚РѕРј.", GetRPName(playerid));
+				format(msg, sizeof msg, "%s перевязывает рану бинтом.", GetRPName(playerid));
 			}
 		}
 		case INV_REPAIRKIT:
 		{
-			if (IsPlayerInAnyVehicle(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Р’С‹Р№РґРё РёР· РјР°С€РёРЅС‹ Рё РІСЃС‚Р°РЅСЊ СЂСЏРґРѕРј СЃ РЅРµР№."); return; }
+			if (IsPlayerInAnyVehicle(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Выйди из машины и встань рядом с ней."); return; }
 			new Float:px, Float:py, Float:pz, v = INVALID_VEHICLE_ID, Float:best = 5.0;
 			GetPlayerPos(playerid, px, py, pz);
 			for (new i = 1; i < MAX_VEHICLES; i++)
@@ -456,31 +456,31 @@ static Inv_Use(playerid, item)
 				new Float:d = GetVehicleDistanceFromPoint(i, px, py, pz);
 				if (d < best) { best = d; v = i; }
 			}
-			if (v == INVALID_VEHICLE_ID) { SendClientMessage(playerid, COLOR_GREY, "Р СЏРґРѕРј РЅРµС‚ РјР°С€РёРЅС‹."); return; }
+			if (v == INVALID_VEHICLE_ID) { SendClientMessage(playerid, COLOR_GREY, "Рядом нет машины."); return; }
 			RepairVehicle(v);
 			ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
-			format(msg, sizeof msg, "%s С‡РёРЅРёС‚ РјР°С€РёРЅСѓ СЂРµРјРєРѕРјРїР»РµРєС‚РѕРј.", GetRPName(playerid));
+			format(msg, sizeof msg, "%s чинит машину ремкомплектом.", GetRPName(playerid));
 		}
 		case INV_FLOWERS:
 		{
 			GivePlayerWeapon(playerid, WEAPON_FLOWER, 1);
-			format(msg, sizeof msg, "%s РґРѕСЃС‚Р°С‘С‚ Р±СѓРєРµС‚ С†РІРµС‚РѕРІ.", GetRPName(playerid));
+			format(msg, sizeof msg, "%s достаёт букет цветов.", GetRPName(playerid));
 		}
 		case INV_DICE:
 		{
 			consume = false;
-			format(msg, sizeof msg, "%s Р±СЂРѕСЃР°РµС‚ РєРѕСЃС‚Рё: РІС‹РїР°Р»Рѕ %d Рё %d.", GetRPName(playerid), random(6) + 1, random(6) + 1);
+			format(msg, sizeof msg, "%s бросает кости: выпало %d и %d.", GetRPName(playerid), random(6) + 1, random(6) + 1);
 		}
 		case INV_MASK:
 		{
 			consume = false;
 			Inv_SetMask(playerid, !gMasked[playerid]);
-			if (gMasked[playerid]) format(msg, sizeof msg, "%s РЅР°РґРµРІР°РµС‚ РјР°СЃРєСѓ.", GetRPName(playerid));
-			else format(msg, sizeof msg, "%s СЃРЅРёРјР°РµС‚ РјР°СЃРєСѓ.", GetRPName(playerid));
+			if (gMasked[playerid]) format(msg, sizeof msg, "%s надевает маску.", GetRPName(playerid));
+			else format(msg, sizeof msg, "%s снимает маску.", GetRPName(playerid));
 		}
 		case INV_MATS:
 		{
-			Craft_Show(playerid);   // РІС‹Р±РѕСЂ, С‡С‚Рѕ Рё СЃРєРѕР»СЊРєРѕ СЃРґРµР»Р°С‚СЊ (factions.inc)
+			Craft_Show(playerid);   // выбор, что и сколько сделать (factions.inc)
 			return;
 		}
 		default: return;
@@ -490,7 +490,7 @@ static Inv_Use(playerid, item)
 }
 
 // ---------------------------------------------------------------------
-//  РџРµСЂРµРґР°С‚СЊ Рё РІС‹Р±СЂРѕСЃРёС‚СЊ
+//  Передать и выбросить
 // ---------------------------------------------------------------------
 static Inv_Give(playerid, item, const input[])
 {
@@ -499,28 +499,28 @@ static Inv_Give(playerid, item, const input[])
 	NextIntParam(input, pos, amount);
 	if (target == INVALID_PLAYER_ID || target == playerid || !Player[target][pLogged])
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РќСѓР¶РЅРѕ РІРІРµСЃС‚Рё id РёРіСЂРѕРєР°, РЅР°РїСЂРёРјРµСЂ: 5 РёР»Рё 5 2");
+		SendClientMessage(playerid, COLOR_GREY, "Нужно ввести id игрока, например: 5 или 5 2");
 		return 0;
 	}
 	if (amount < 1 || amount > gInv[playerid][item])
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ С‚РѕР»СЊРєРѕ %d С€С‚.", gInv[playerid][item]);
+		SendClientMessage(playerid, COLOR_GREY, "У тебя только %d шт.", gInv[playerid][item]);
 		return 0;
 	}
 	if (!IsPlayerNearPlayer(playerid, target, 3.0))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Р±Р»РёР¶Рµ Рє РёРіСЂРѕРєСѓ.");
+		SendClientMessage(playerid, COLOR_GREY, "Подойди ближе к игроку.");
 		return 0;
 	}
 	if (item == INV_MASK && gMasked[playerid] && amount >= gInv[playerid][item]) Inv_SetMask(playerid, false);
 	if (!Inv_Add(target, item, amount))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РЈ %s РЅРµС‚ РјРµСЃС‚Р° РІ СЃСѓРјРєРµ.", GetRPName(target));
+		SendClientMessage(playerid, COLOR_GREY, "У %s нет места в сумке.", GetRPName(target));
 		return 0;
 	}
 	Inv_Take(playerid, item, amount);
 	new msg[128];
-	format(msg, sizeof msg, "%s РїРµСЂРµРґР°С‘С‚ %s: %s x%d.", GetRPName(playerid), GetRPName(target), gInvNames[item], amount);
+	format(msg, sizeof msg, "%s передаёт %s: %s x%d.", GetRPName(playerid), GetRPName(target), gInvNames[item], amount);
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	return 1;
 }
@@ -529,12 +529,12 @@ static Inv_Drop(playerid, item, amount)
 {
 	if (amount < 1 || amount > gInv[playerid][item])
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ С‚РѕР»СЊРєРѕ %d С€С‚.", gInv[playerid][item]);
+		SendClientMessage(playerid, COLOR_GREY, "У тебя только %d шт.", gInv[playerid][item]);
 		return 0;
 	}
 	if (GetPlayerVirtualWorld(playerid) != 0 || GetPlayerInterior(playerid) != 0 || IsPlayerInAnyVehicle(playerid))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Р’С‹Р±СЂРѕСЃРёС‚СЊ РІРµС‰СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ РЅР° СѓР»РёС†Рµ Рё РїРµС€РєРѕРј.");
+		SendClientMessage(playerid, COLOR_GREY, "Выбросить вещь можно только на улице и пешком.");
 		return 0;
 	}
 	new d = -1;
@@ -544,7 +544,7 @@ static Inv_Drop(playerid, item, amount)
 	}
 	if (d == -1)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РќР° Р·РµРјР»Рµ Рё С‚Р°Рє СЃР»РёС€РєРѕРј РјРЅРѕРіРѕ РІРµС‰РµР№. РџРѕРїСЂРѕР±СѓР№ РїРѕР·Р¶Рµ.");
+		SendClientMessage(playerid, COLOR_GREY, "На земле и так слишком много вещей. Попробуй позже.");
 		return 0;
 	}
 	if (item == INV_MASK && gMasked[playerid] && amount >= gInv[playerid][item]) Inv_SetMask(playerid, false);
@@ -558,12 +558,12 @@ static Inv_Drop(playerid, item, amount)
 	gDrop[d][drZ] = z;
 	gDrop[d][drMinutes] = DROP_MINUTES;
 	gDrop[d][drObject] = CreateObject(DROP_MODEL, x, y, z - 0.95, 0.0, 0.0, 0.0, 50.0);
-	gDrop[d][drLabel] = Create3DTextLabel("{FFFFFF}%s x%d\n{AFAFAF}ALT вЂ” РїРѕРґРЅСЏС‚СЊ", COLOR_WHITE, x, y, z - 0.6, 8.0, 0, true, gInvNames[item], amount);
+	gDrop[d][drLabel] = Create3DTextLabel("{FFFFFF}%s x%d\n{AFAFAF}ALT — поднять", COLOR_WHITE, x, y, z - 0.6, 8.0, 0, true, gInvNames[item], amount);
 
 	Inv_Take(playerid, item, amount);
 	ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
 	new msg[128];
-	format(msg, sizeof msg, "%s РєР»Р°РґС‘С‚ РЅР° Р·РµРјР»СЋ: %s x%d.", GetRPName(playerid), gInvNames[item], amount);
+	format(msg, sizeof msg, "%s кладёт на землю: %s x%d.", GetRPName(playerid), gInvNames[item], amount);
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	return 1;
 }
@@ -576,7 +576,7 @@ static Inv_RemoveDrop(d)
 	gDrop[d][drItem] = INV_NONE;
 }
 
-// ALT РїРµС€РєРѕРј (keys.inc) РёР»Рё /pickup: РїРѕРґРЅСЏС‚СЊ РІРµС‰СЊ СЃ Р·РµРјР»Рё. 1 вЂ” С‡С‚Рѕ-С‚Рѕ Р±С‹Р»Рѕ СЂСЏРґРѕРј
+// ALT пешком (keys.inc) или /pickup: поднять вещь с земли. 1 — что-то было рядом
 stock Inv_TryPickup(playerid)
 {
 	if (GetPlayerVirtualWorld(playerid) != 0 || IsPlayerInAnyVehicle(playerid)) return 0;
@@ -590,13 +590,13 @@ stock Inv_TryPickup(playerid)
 			new skin = gDrop[d][drAmount];
 			if (!Outfit_Add(playerid, skin))
 			{
-				SendClientMessage(playerid, COLOR_GREY, "Р’ СЃСѓРјРєРµ РЅРµС‚ РјРµСЃС‚Р° РґР»СЏ РѕРґРµР¶РґС‹ (РјР°РєСЃРёРјСѓРј %d).", MAX_OUTFITS);
+				SendClientMessage(playerid, COLOR_GREY, "В сумке нет места для одежды (максимум %d).", MAX_OUTFITS);
 				return 1;
 			}
 			Inv_RemoveDrop(d);
 			ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
 			new omsg[128];
-			format(omsg, sizeof omsg, "%s РїРѕРґРЅРёРјР°РµС‚ СЃ Р·РµРјР»Рё РѕРґРµР¶РґСѓ.", GetRPName(playerid));
+			format(omsg, sizeof omsg, "%s поднимает с земли одежду.", GetRPName(playerid));
 			SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, omsg);
 			return 1;
 		}
@@ -605,7 +605,7 @@ stock Inv_TryPickup(playerid)
 		new space = gInvMax[item] - gInv[playerid][item];
 		if (space <= 0)
 		{
-			SendClientMessage(playerid, COLOR_GREY, "Р’ СЃСѓРјРєРµ РЅРµС‚ РјРµСЃС‚Р° РґР»СЏ: %s (РјР°РєСЃРёРјСѓРј %d).", gInvNames[item], gInvMax[item]);
+			SendClientMessage(playerid, COLOR_GREY, "В сумке нет места для: %s (максимум %d).", gInvNames[item], gInvMax[item]);
 			return 1;
 		}
 		if (amount > space) amount = space;
@@ -614,11 +614,11 @@ stock Inv_TryPickup(playerid)
 		if (gDrop[d][drAmount] <= 0) Inv_RemoveDrop(d);
 		else
 		{
-			Update3DTextLabelText(gDrop[d][drLabel], COLOR_WHITE, "{FFFFFF}%s x%d\n{AFAFAF}ALT вЂ” РїРѕРґРЅСЏС‚СЊ", gInvNames[item], gDrop[d][drAmount]);
+			Update3DTextLabelText(gDrop[d][drLabel], COLOR_WHITE, "{FFFFFF}%s x%d\n{AFAFAF}ALT — поднять", gInvNames[item], gDrop[d][drAmount]);
 		}
 		ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
 		new msg[128];
-		format(msg, sizeof msg, "%s РїРѕРґРЅРёРјР°РµС‚ СЃ Р·РµРјР»Рё: %s x%d.", GetRPName(playerid), gInvNames[item], amount);
+		format(msg, sizeof msg, "%s поднимает с земли: %s x%d.", GetRPName(playerid), gInvNames[item], amount);
 		SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 		return 1;
 	}
@@ -627,11 +627,11 @@ stock Inv_TryPickup(playerid)
 
 stock bool:Cmd_Pickup(playerid)
 {
-	if (!Inv_TryPickup(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Р СЏРґРѕРј РЅР° Р·РµРјР»Рµ РЅРёС‡РµРіРѕ РЅРµС‚.");
+	if (!Inv_TryPickup(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Рядом на земле ничего нет.");
 	return true;
 }
 
-// Р Р°Р· РІ РјРёРЅСѓС‚Сѓ (РёР· Needs_OnMinute): СЃС‚Р°СЂС‹Рµ РІРµС‰Рё РЅР° Р·РµРјР»Рµ РёСЃС‡РµР·Р°СЋС‚
+// Раз в минуту (из Needs_OnMinute): старые вещи на земле исчезают
 static Inv_DropsTick()
 {
 	for (new d = 0; d < MAX_DROPS; d++)
@@ -645,15 +645,15 @@ static Outfit_ShowActions(playerid, slot)
 {
 	gInvSelected[playerid] = INV_OUTFIT + slot;
 	new title[48];
-	format(title, sizeof title, "РћРґРµР¶РґР°: СЃРєРёРЅ %d", gOutfit[playerid][slot]);
-	ShowPlayerDialog(playerid, DIALOG_INV_ACTION, DIALOG_STYLE_LIST, title, "РќР°РґРµС‚СЊ\nРџРµСЂРµРґР°С‚СЊ РёРіСЂРѕРєСѓ\nР’С‹Р±СЂРѕСЃРёС‚СЊ", "Р’С‹Р±СЂР°С‚СЊ", "РќР°Р·Р°Рґ");
+	format(title, sizeof title, "Одежда: скин %d", gOutfit[playerid][slot]);
+	ShowPlayerDialog(playerid, DIALOG_INV_ACTION, DIALOG_STYLE_LIST, title, "Надеть\nПередать игроку\nВыбросить", "Выбрать", "Назад");
 }
 
 static Outfit_Drop(playerid, slot)
 {
 	if (GetPlayerVirtualWorld(playerid) != 0 || GetPlayerInterior(playerid) != 0 || IsPlayerInAnyVehicle(playerid))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Р’С‹Р±СЂРѕСЃРёС‚СЊ РІРµС‰СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ РЅР° СѓР»РёС†Рµ Рё РїРµС€РєРѕРј.");
+		SendClientMessage(playerid, COLOR_GREY, "Выбросить вещь можно только на улице и пешком.");
 		return 0;
 	}
 	new d = -1;
@@ -663,7 +663,7 @@ static Outfit_Drop(playerid, slot)
 	}
 	if (d == -1)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РќР° Р·РµРјР»Рµ Рё С‚Р°Рє СЃР»РёС€РєРѕРј РјРЅРѕРіРѕ РІРµС‰РµР№. РџРѕРїСЂРѕР±СѓР№ РїРѕР·Р¶Рµ.");
+		SendClientMessage(playerid, COLOR_GREY, "На земле и так слишком много вещей. Попробуй позже.");
 		return 0;
 	}
 	new skin = gOutfit[playerid][slot];
@@ -676,10 +676,10 @@ static Outfit_Drop(playerid, slot)
 	gDrop[d][drZ] = z;
 	gDrop[d][drMinutes] = DROP_MINUTES;
 	gDrop[d][drObject] = CreateObject(DROP_MODEL, x, y, z - 0.95, 0.0, 0.0, 0.0, 50.0);
-	gDrop[d][drLabel] = Create3DTextLabel("{FFFFFF}РћРґРµР¶РґР° (СЃРєРёРЅ %d)\n{AFAFAF}ALT вЂ” РїРѕРґРЅСЏС‚СЊ", COLOR_WHITE, x, y, z - 0.6, 8.0, 0, true, skin);
+	gDrop[d][drLabel] = Create3DTextLabel("{FFFFFF}Одежда (скин %d)\n{AFAFAF}ALT — поднять", COLOR_WHITE, x, y, z - 0.6, 8.0, 0, true, skin);
 	Outfit_Remove(playerid, slot);
 	new msg[96];
-	format(msg, sizeof msg, "%s РєР»Р°РґС‘С‚ РЅР° Р·РµРјР»СЋ РѕРґРµР¶РґСѓ.", GetRPName(playerid));
+	format(msg, sizeof msg, "%s кладёт на землю одежду.", GetRPName(playerid));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	return 1;
 }
@@ -690,23 +690,23 @@ static Outfit_Give(playerid, slot, const input[])
 	new target = NextPlayerParam(input, pos);
 	if (target == INVALID_PLAYER_ID || target == playerid || !Player[target][pLogged])
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РќСѓР¶РЅРѕ РІРІРµСЃС‚Рё id РёРіСЂРѕРєР°.");
+		SendClientMessage(playerid, COLOR_GREY, "Нужно ввести id игрока.");
 		return 0;
 	}
 	if (!IsPlayerNearPlayer(playerid, target, 3.0))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Р±Р»РёР¶Рµ Рє РёРіСЂРѕРєСѓ.");
+		SendClientMessage(playerid, COLOR_GREY, "Подойди ближе к игроку.");
 		return 0;
 	}
 	new skin = gOutfit[playerid][slot];
 	if (!Outfit_Add(target, skin))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РЈ %s РЅРµС‚ РјРµСЃС‚Р° РґР»СЏ РѕРґРµР¶РґС‹.", GetRPName(target));
+		SendClientMessage(playerid, COLOR_GREY, "У %s нет места для одежды.", GetRPName(target));
 		return 0;
 	}
 	Outfit_Remove(playerid, slot);
 	new msg[128];
-	format(msg, sizeof msg, "%s РїРµСЂРµРґР°С‘С‚ %s РѕРґРµР¶РґСѓ.", GetRPName(playerid), GetRPName(target));
+	format(msg, sizeof msg, "%s передаёт %s одежду.", GetRPName(playerid), GetRPName(target));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	return 1;
 }
@@ -727,8 +727,8 @@ static Outfit_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			switch (listitem)
 			{
 				case 0: Outfit_Wear(playerid, slot);
-				case 1: ShowPlayerDialog(playerid, DIALOG_INV_GIVE, DIALOG_STYLE_INPUT, "РџРµСЂРµРґР°С‚СЊ РѕРґРµР¶РґСѓ",
-					"{FFFFFF}Р’РІРµРґРё id РёРіСЂРѕРєР°, РєРѕС‚РѕСЂРѕРјСѓ РїРµСЂРµРґР°С‚СЊ РѕРґРµР¶РґСѓ (СЃРєРёРЅ %d).", "РџРµСЂРµРґР°С‚СЊ", "РќР°Р·Р°Рґ", gOutfit[playerid][slot]);
+				case 1: ShowPlayerDialog(playerid, DIALOG_INV_GIVE, DIALOG_STYLE_INPUT, "Передать одежду",
+					"{FFFFFF}Введи id игрока, которому передать одежду (скин %d).", "Передать", "Назад", gOutfit[playerid][slot]);
 				case 2: Outfit_Drop(playerid, slot);
 			}
 		}
@@ -741,13 +741,13 @@ static Inv_ShowActions(playerid, item)
 {
 	gInvSelected[playerid] = item;
 	new title[48];
-	format(title, sizeof title, "%s (%d С€С‚.)", gInvNames[item], gInv[playerid][item]);
+	format(title, sizeof title, "%s (%d шт.)", gInvNames[item], gInv[playerid][item]);
 	new use[24];
-	if (item == INV_MASK && gMasked[playerid]) strcat(use, "РЎРЅСЏС‚СЊ РјР°СЃРєСѓ");
-	else if (item == INV_MASK) strcat(use, "РќР°РґРµС‚СЊ РјР°СЃРєСѓ");
-	else if (item == INV_DICE) strcat(use, "Р‘СЂРѕСЃРёС‚СЊ РєРѕСЃС‚Рё");
-	else strcat(use, "РСЃРїРѕР»СЊР·РѕРІР°С‚СЊ");
-	ShowPlayerDialog(playerid, DIALOG_INV_ACTION, DIALOG_STYLE_LIST, title, "%s\nРџРµСЂРµРґР°С‚СЊ РёРіСЂРѕРєСѓ\nР’С‹Р±СЂРѕСЃРёС‚СЊ", "Р’С‹Р±СЂР°С‚СЊ", "РќР°Р·Р°Рґ", use);
+	if (item == INV_MASK && gMasked[playerid]) strcat(use, "Снять маску");
+	else if (item == INV_MASK) strcat(use, "Надеть маску");
+	else if (item == INV_DICE) strcat(use, "Бросить кости");
+	else strcat(use, "Использовать");
+	ShowPlayerDialog(playerid, DIALOG_INV_ACTION, DIALOG_STYLE_LIST, title, "%s\nПередать игроку\nВыбросить", "Выбрать", "Назад", use);
 }
 
 stock Needs_OnDialog(playerid, dialogid, response, listitem, const inputtext[] = "")
@@ -765,7 +765,7 @@ stock Needs_OnDialog(playerid, dialogid, response, listitem, const inputtext[] =
 		}
 		if (item == INV_NONE)
 		{
-			SendClientMessage(playerid, COLOR_GREY, "РљР°РЅРёСЃС‚СЂСѓ Р·Р°Р»РёРІР°СЋС‚ РєРѕРјР°РЅРґРѕР№ /canister, СЃС‚РѕСЏ Сѓ РјР°С€РёРЅС‹.");
+			SendClientMessage(playerid, COLOR_GREY, "Канистру заливают командой /canister, стоя у машины.");
 			return 1;
 		}
 		if (item > INV_NONE && item < INV_TYPES) Inv_ShowActions(playerid, item);
@@ -789,13 +789,13 @@ stock Needs_OnDialog(playerid, dialogid, response, listitem, const inputtext[] =
 			switch (listitem)
 			{
 				case 0: Inv_Use(playerid, item);
-				case 1: ShowPlayerDialog(playerid, DIALOG_INV_GIVE, DIALOG_STYLE_INPUT, "РџРµСЂРµРґР°С‚СЊ",
-					"{FFFFFF}РљРѕРјСѓ РїРµСЂРµРґР°С‚СЊ: %s?\nР’РІРµРґРё id РёРіСЂРѕРєР° Рё, РµСЃР»Рё РЅСѓР¶РЅРѕ, РєРѕР»РёС‡РµСЃС‚РІРѕ (Сѓ С‚РµР±СЏ %d С€С‚.).\nРќР°РїСЂРёРјРµСЂ: {FFFF00}5{FFFFFF} РёР»Рё {FFFF00}5 2", "РџРµСЂРµРґР°С‚СЊ", "РќР°Р·Р°Рґ", gInvNames[item], gInv[playerid][item]);
+				case 1: ShowPlayerDialog(playerid, DIALOG_INV_GIVE, DIALOG_STYLE_INPUT, "Передать",
+					"{FFFFFF}Кому передать: %s?\nВведи id игрока и, если нужно, количество (у тебя %d шт.).\nНапример: {FFFF00}5{FFFFFF} или {FFFF00}5 2", "Передать", "Назад", gInvNames[item], gInv[playerid][item]);
 				case 2:
 				{
 					if (gInv[playerid][item] == 1) Inv_Drop(playerid, item, 1);
-					else ShowPlayerDialog(playerid, DIALOG_INV_DROP, DIALOG_STYLE_INPUT, "Р’С‹Р±СЂРѕСЃРёС‚СЊ",
-						"{FFFFFF}РЎРєРѕР»СЊРєРѕ РІС‹Р±СЂРѕСЃРёС‚СЊ: %s? (Сѓ С‚РµР±СЏ %d С€С‚.)", "Р’С‹Р±СЂРѕСЃРёС‚СЊ", "РќР°Р·Р°Рґ", gInvNames[item], gInv[playerid][item]);
+					else ShowPlayerDialog(playerid, DIALOG_INV_DROP, DIALOG_STYLE_INPUT, "Выбросить",
+						"{FFFFFF}Сколько выбросить: %s? (у тебя %d шт.)", "Выбросить", "Назад", gInvNames[item], gInv[playerid][item]);
 				}
 			}
 		}
@@ -806,18 +806,18 @@ stock Needs_OnDialog(playerid, dialogid, response, listitem, const inputtext[] =
 }
 
 // ---------------------------------------------------------------------
-//  РђРґРјРёРЅР°Рј
+//  Админам
 // ---------------------------------------------------------------------
 stock bool:Cmd_GiveFood(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID || !Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /givefood [id]");
+	if (target == INVALID_PLAYER_ID || !Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Использование: /givefood [id]");
 	Needs_Feed(target, 100);
 	Admin_Log(playerid, "givefood", target);
-	SendClientMessage(target, COLOR_ADMIN, "РђРґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ С‚РµР±СЏ РЅР°РєРѕСЂРјРёР».");
-	SendClientMessage(playerid, COLOR_ADMIN, "%s РЅР°РєРѕСЂРјР»РµРЅ.", GetRPName(target));
+	SendClientMessage(target, COLOR_ADMIN, "Администратор тебя накормил.");
+	SendClientMessage(playerid, COLOR_ADMIN, "%s накормлен.", GetRPName(target));
 	return true;
 }
 
@@ -827,27 +827,27 @@ stock bool:Cmd_GiveItem(playerid, const params[])
 	new pos = 0, item, amount = 1;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !Player[target][pLogged] || !NextIntParam(params, pos, item) || item <= INV_NONE || item >= INV_TYPES)
-		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /giveitem [id] [РІРµС‰СЊ 1-13] [РєРѕР»-РІРѕ]. 1 Р±СѓСЂРіРµСЂ 2 С…РѕС‚-РґРѕРі 3 Р°РїС‚РµС‡РєР° 4 СЂРµРјРєРѕРјРїР»РµРєС‚ 5 РїРёС†С†Р° 6 РІРѕРґР° 7 РїРёРІРѕ 8 СЃРёРіР°СЂРµС‚С‹ 9 Р±РёРЅС‚ 10 С†РІРµС‚С‹ 11 РєРѕСЃС‚Рё 12 РјР°СЃРєР° 13 РјР°С‚РµСЂРёР°Р»С‹");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /giveitem [id] [вещь 1-13] [кол-во]. 1 бургер 2 хот-дог 3 аптечка 4 ремкомплект 5 пицца 6 вода 7 пиво 8 сигареты 9 бинт 10 цветы 11 кости 12 маска 13 материалы");
 	NextIntParam(params, pos, amount);
 	if (amount < 1) amount = 1;
-	if (!Inv_Add(target, item, amount)) return SendClientMessage(playerid, COLOR_GREY, "РќРµ РїРѕРјРµС‰Р°РµС‚СЃСЏ (РјР°РєСЃРёРјСѓРј %d С€С‚СѓРє).", gInvMax[item]);
+	if (!Inv_Add(target, item, amount)) return SendClientMessage(playerid, COLOR_GREY, "Не помещается (максимум %d штук).", gInvMax[item]);
 	Admin_Log(playerid, "giveitem", target, gInvNames[item], amount);
-	SendClientMessage(target, COLOR_ADMIN, "РђРґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ РІС‹РґР°Р» С‚РµР±Рµ: %s x%d.", gInvNames[item], amount);
-	SendClientMessage(playerid, COLOR_ADMIN, "Р’С‹РґР°РЅРѕ %s: %s x%d.", GetRPName(target), gInvNames[item], amount);
+	SendClientMessage(target, COLOR_ADMIN, "Администратор выдал тебе: %s x%d.", gInvNames[item], amount);
+	SendClientMessage(playerid, COLOR_ADMIN, "Выдано %s: %s x%d.", GetRPName(target), gInvNames[item], amount);
 	return true;
 }
 
 
 // ---------------------------------------------------------------------
-//  РЎСѓРјРєР° РЅР° СЌРєСЂР°РЅРµ: СЃРµС‚РєР° 6x3 СЃ 3D-РјРѕРґРµР»СЏРјРё РІРµС‰РµР№ Рё РїСѓСЃС‚С‹РјРё СЏС‡РµР№РєР°РјРё,
-//  СЃРїСЂР°РІР° РєР°СЂС‚РѕС‡РєР° РІС‹Р±СЂР°РЅРЅРѕР№ РІРµС‰Рё Рё РєРЅРѕРїРєРё USE / GIVE / DROP.
-//  РљР»РёРє РїРѕ СЏС‡РµР№РєРµ вЂ” РІС‹Р±СЂР°С‚СЊ, РєРЅРѕРїРєР° вЂ” РґРµР№СЃС‚РІРёРµ, РєСЂРµСЃС‚РёРє РёР»Рё ESC вЂ” Р·Р°РєСЂС‹С‚СЊ.
-//  РќР°РґРїРёСЃРё Р»Р°С‚РёРЅРёС†РµР№: СЃС‚Р°РЅРґР°СЂС‚РЅС‹Р№ С€СЂРёС„С‚ С‚РµРєСЃС‚РґСЂР°РІРѕРІ РЅРµ Р·РЅР°РµС‚ РєРёСЂРёР»Р»РёС†Сѓ.
+//  Сумка на экране: сетка 6x3 с 3D-моделями вещей и пустыми ячейками,
+//  справа карточка выбранной вещи и кнопки USE / GIVE / DROP.
+//  Клик по ячейке — выбрать, кнопка — действие, крестик или ESC — закрыть.
+//  Надписи латиницей: стандартный шрифт текстдравов не знает кириллицу.
 // ---------------------------------------------------------------------
 #define INV_UI_CELLS        18
 #define INV_UI_COLS         6
 
-// РћРєРЅРѕ
+// Окно
 #define INV_UI_X            120.0
 #define INV_UI_Y            112.0
 #define INV_UI_R            520.0
@@ -855,7 +855,7 @@ stock bool:Cmd_GiveItem(playerid, const params[])
 #define INV_UI_STEP         47.0
 #define INV_UI_GRID_X       127.0
 #define INV_UI_GRID_Y       138.0
-#define INV_UI_INFO_X       414.0       // РєР°СЂС‚РѕС‡РєР° РІРµС‰Рё СЃРїСЂР°РІР°
+#define INV_UI_INFO_X       414.0       // карточка вещи справа
 #define INV_UI_INFO_R       514.0
 
 #define INV_UI_COL_BG       0x0E1218E6
@@ -868,12 +868,12 @@ stock bool:Cmd_GiveItem(playerid, const params[])
 #define INV_UI_COL_BTN_OFF  0x1C222BFF
 #define INV_UI_COL_LABEL    0x9AA4B2FF
 
-// РњРѕРґРµР»Рё РІРµС‰РµР№ РґР»СЏ РѕРєРЅР° (РїРѕ INV_*)
+// Модели вещей для окна (по INV_*)
 static const gInvModels[INV_TYPES] = { 0, 2703, 19346, 11738, 19921, 2702, 19570, 1544, 19896, 11747, 325, 1851, 19801, 1271, 1577, 1578, 1575, 19630 };
 static const gInvNamesEn[INV_TYPES][] = { "", "Burger", "Hot dog", "Medkit", "Repair kit", "Pizza", "Water", "Beer", "Cigarettes", "Bandage", "Flowers", "Dice", "Mask", "Materials", "Weed seeds", "Marijuana", "Cocaine", "Fish" };
 static const gInvHintsEn[INV_TYPES][] = { "", "+40% food", "+25% food", "+50 HP", "Repairs a car nearby", "+60% food", "+10% food, +5 HP", "+5 HP, makes you drunk", "Have a smoke", "+20 HP", "Bouquet in your hands", "Roll the dice (RP)", "Hides your nickname", "Craft a weapon", "Plant a bush", "Smoke: effect, +HP", "Use: effect, armour", "Sell at the fishing job" };
 
-// РџРѕСЃС‚РѕСЏРЅРЅС‹Рµ С‚РµРєСЃС‚РґСЂР°РІС‹ РѕРєРЅР°
+// Постоянные текстдравы окна
 enum
 {
 	IUI_BG,
@@ -897,12 +897,12 @@ enum
 
 static bool:gInvUiOpen[MAX_PLAYERS];
 static PlayerText:gInvUiTD[MAX_PLAYERS][IUI_TD_COUNT];
-static PlayerText:gInvUiCell[MAX_PLAYERS][INV_UI_CELLS];     // РІСЃРµ 18 СЏС‡РµРµРє (РїСѓСЃС‚С‹Рµ С‚РѕР¶Рµ)
+static PlayerText:gInvUiCell[MAX_PLAYERS][INV_UI_CELLS];     // все 18 ячеек (пустые тоже)
 static PlayerText:gInvUiCount[MAX_PLAYERS][INV_UI_CELLS];
-static gInvUiItem[MAX_PLAYERS][INV_UI_CELLS];                // INV_*, INV_NONE = РєР°РЅРёСЃС‚СЂР°, INV_OUTFIT + СЃР»РѕС‚
+static gInvUiItem[MAX_PLAYERS][INV_UI_CELLS];                // INV_*, INV_NONE = канистра, INV_OUTFIT + слот
 static gInvUiModel[MAX_PLAYERS][INV_UI_CELLS];
 static gInvUiAmount[MAX_PLAYERS][INV_UI_CELLS];
-static gInvUiCells[MAX_PLAYERS];                             // СЃРєРѕР»СЊРєРѕ СЏС‡РµРµРє Р·Р°РЅСЏС‚С‹
+static gInvUiCells[MAX_PLAYERS];                             // сколько ячеек заняты
 static gInvUiSel[MAX_PLAYERS] = { -1, ... };
 
 static PlayerText:InvUi_Box(playerid, Float:x, Float:y, Float:x2, Float:lines, colour)
@@ -931,7 +931,7 @@ static PlayerText:InvUi_Text(playerid, Float:x, Float:y, const text[], TEXT_DRAW
 	return td;
 }
 
-// РљРЅРѕРїРєР°: С‚РµРєСЃС‚ РїРѕ С†РµРЅС‚СЂСѓ РЅР° РїР»Р°С€РєРµ, РєР»РёРєР°Р±РµР»СЊРЅР°СЏ
+// Кнопка: текст по центру на плашке, кликабельная
 static PlayerText:InvUi_Button(playerid, Float:cx, Float:y, const text[])
 {
 	new PlayerText:td = CreatePlayerTextDraw(playerid, cx, y, text);
@@ -944,7 +944,7 @@ static PlayerText:InvUi_Button(playerid, Float:cx, Float:y, const text[])
 	PlayerTextDrawSetProportional(playerid, td, true);
 	PlayerTextDrawUseBox(playerid, td, true);
 	PlayerTextDrawBoxColour(playerid, td, INV_UI_COL_BTN);
-	PlayerTextDrawTextSize(playerid, td, 10.0, INV_UI_INFO_R - INV_UI_INFO_X - 12.0);   // РїРѕ С†РµРЅС‚СЂСѓ: РІС‹СЃРѕС‚Р°, С€РёСЂРёРЅР°
+	PlayerTextDrawTextSize(playerid, td, 10.0, INV_UI_INFO_R - INV_UI_INFO_X - 12.0);   // по центру: высота, ширина
 	PlayerTextDrawSetSelectable(playerid, td, true);
 	PlayerTextDrawShow(playerid, td);
 	return td;
@@ -959,7 +959,7 @@ static InvUi_SetButton(playerid, idx, const text[], bool:enabled)
 	PlayerTextDrawShow(playerid, td);
 }
 
-// РљР°СЂС‚РѕС‡РєР° СЃРїСЂР°РІР°: РІС‹Р±СЂР°РЅРЅР°СЏ РІРµС‰СЊ РёР»Рё РїРѕРґСЃРєР°Р·РєР° В«РІС‹Р±РµСЂРё РІРµС‰СЊВ»
+// Карточка справа: выбранная вещь или подсказка «выбери вещь»
 static InvUi_ShowInfo(playerid)
 {
 	new sel = gInvUiSel[playerid];
@@ -1033,7 +1033,7 @@ static InvUi_HighlightCell(playerid, cell, bool:on)
 	if (gInvUiCount[playerid][cell] != INVALID_PLAYER_TEXT_DRAW) PlayerTextDrawShow(playerid, gInvUiCount[playerid][cell]);
 }
 
-// РЈРґР°Р»РёС‚СЊ С‚РµРєСЃС‚РґСЂР°РІС‹ РѕРєРЅР°, РЅРµ СЃРЅРёРјР°СЏ РєСѓСЂСЃРѕСЂ (РґР»СЏ РїРµСЂРµСЂРёСЃРѕРІРєРё)
+// Удалить текстдравы окна, не снимая курсор (для перерисовки)
 static InvUi_Destroy(playerid)
 {
 	for (new i = 0; i < IUI_TD_COUNT; i++) PlayerTextDrawDestroy(playerid, gInvUiTD[playerid][i]);
@@ -1046,7 +1046,7 @@ static InvUi_Destroy(playerid)
 	gInvUiCells[playerid] = 0;
 }
 
-// РћС‚РєСЂС‹С‚СЊ РѕРєРЅРѕ. keepItem вЂ” РїРѕСЃР»Рµ РґРµР№СЃС‚РІРёСЏ РѕСЃС‚Р°РІРёС‚СЊ РІС‹Р±СЂР°РЅРЅРѕР№ С‚Сѓ Р¶Рµ РІРµС‰СЊ
+// Открыть окно. keepItem — после действия оставить выбранной ту же вещь
 stock Inv_ShowUI(playerid, keepItem = -1)
 {
 	if (gInvUiOpen[playerid]) InvUi_Destroy(playerid);
@@ -1085,7 +1085,7 @@ stock Inv_ShowUI(playerid, keepItem = -1)
 	}
 
 	new buf[48];
-	// Р¤РѕРЅ, С€Р°РїРєР°, РїРѕР»РѕСЃРєР°-Р°РєС†РµРЅС‚
+	// Фон, шапка, полоска-акцент
 	gInvUiTD[playerid][IUI_BG]     = InvUi_Box(playerid, INV_UI_X, INV_UI_Y, INV_UI_R, 23.6, INV_UI_COL_BG);
 	gInvUiTD[playerid][IUI_HEAD]   = InvUi_Box(playerid, INV_UI_X, INV_UI_Y, INV_UI_R, 1.9, INV_UI_COL_HEAD);
 	gInvUiTD[playerid][IUI_ACCENT] = InvUi_Box(playerid, INV_UI_X, INV_UI_Y + 20.0, INV_UI_R, -0.3, INV_UI_COL_ACCENT);
@@ -1095,7 +1095,7 @@ stock Inv_ShowUI(playerid, keepItem = -1)
 	format(buf, sizeof buf, "FOOD ~%c~%d%%", gHunger[playerid] <= 20 ? 'r' : (gHunger[playerid] <= 50 ? 'y' : 'g'), gHunger[playerid]);
 	gInvUiTD[playerid][IUI_FOOD]   = InvUi_Text(playerid, INV_UI_R - 22.0, INV_UI_Y + 6.0, buf, TEXT_DRAW_FONT_2, 0.18, 0.85, 0xFFFFFFFF, TEXT_DRAW_ALIGN_RIGHT);
 
-	// РљСЂРµСЃС‚РёРє
+	// Крестик
 	new PlayerText:td = InvUi_Text(playerid, INV_UI_R - 13.0, INV_UI_Y + 3.0, "X", TEXT_DRAW_FONT_1, 0.35, 1.3, 0xFF6347FF);
 	PlayerTextDrawTextSize(playerid, td, INV_UI_R - 2.0, 14.0);
 	PlayerTextDrawSetSelectable(playerid, td, true);
@@ -1105,7 +1105,7 @@ stock Inv_ShowUI(playerid, keepItem = -1)
 	gInvUiTD[playerid][IUI_FOOTER] = InvUi_Text(playerid, (INV_UI_X + INV_UI_R) / 2.0, INV_UI_Y + 196.0,
 		"Click an item, then an action. ESC - close. List: /invlist", TEXT_DRAW_FONT_1, 0.17, 0.8, INV_UI_COL_LABEL, TEXT_DRAW_ALIGN_CENTER);
 
-	// РЇС‡РµР№РєРё: Р·Р°РЅСЏС‚С‹Рµ вЂ” 3D-РјРѕРґРµР»СЊ, РїСѓСЃС‚С‹Рµ вЂ” С‚С‘РјРЅР°СЏ РїР»Р°С€РєР°
+	// Ячейки: занятые — 3D-модель, пустые — тёмная плашка
 	for (new i = 0; i < INV_UI_CELLS; i++)
 	{
 		new Float:x = INV_UI_GRID_X + float(i % INV_UI_COLS) * INV_UI_STEP;
@@ -1126,7 +1126,7 @@ stock Inv_ShowUI(playerid, keepItem = -1)
 		}
 		else
 		{
-			// РїСѓСЃС‚Р°СЏ СЏС‡РµР№РєР°: РјРѕРґРµР»СЊ-РїСѓСЃС‚С‹С€РєР° РЅР° С‚С‘РјРЅРѕРј С„РѕРЅРµ
+			// пустая ячейка: модель-пустышка на тёмном фоне
 			PlayerTextDrawBackgroundColour(playerid, td, INV_UI_COL_EMPTY);
 			PlayerTextDrawSetPreviewModel(playerid, td, 19300);
 		}
@@ -1141,7 +1141,7 @@ stock Inv_ShowUI(playerid, keepItem = -1)
 		}
 	}
 
-	// РљР°СЂС‚РѕС‡РєР° РІРµС‰Рё СЃРїСЂР°РІР°
+	// Карточка вещи справа
 	new Float:cx = (INV_UI_INFO_X + INV_UI_INFO_R) / 2.0;
 	gInvUiTD[playerid][IUI_INFO_BG] = InvUi_Box(playerid, INV_UI_INFO_X, INV_UI_GRID_Y, INV_UI_INFO_R, 20.1, INV_UI_COL_HEAD);
 	td = CreatePlayerTextDraw(playerid, INV_UI_INFO_X + 15.0, INV_UI_GRID_Y + 2.0, "_");
@@ -1155,7 +1155,7 @@ stock Inv_ShowUI(playerid, keepItem = -1)
 	gInvUiTD[playerid][IUI_NAME]  = InvUi_Text(playerid, cx, INV_UI_GRID_Y + 70.0, "_", TEXT_DRAW_FONT_2, 0.20, 1.0, 0xFFFFFFFF, TEXT_DRAW_ALIGN_CENTER);
 	gInvUiTD[playerid][IUI_COUNT] = InvUi_Text(playerid, cx, INV_UI_GRID_Y + 82.0, "_", TEXT_DRAW_FONT_1, 0.20, 0.9, INV_UI_COL_ACCENT, TEXT_DRAW_ALIGN_CENTER);
 	gInvUiTD[playerid][IUI_HINT]  = InvUi_Text(playerid, cx, INV_UI_GRID_Y + 93.0, "_", TEXT_DRAW_FONT_1, 0.17, 0.8, INV_UI_COL_LABEL, TEXT_DRAW_ALIGN_CENTER);
-	PlayerTextDrawTextSize(playerid, gInvUiTD[playerid][IUI_HINT], 0.0, INV_UI_INFO_R - INV_UI_INFO_X - 6.0);    // РїРµСЂРµРЅРѕСЃ СЃС‚СЂРѕРє РїРѕ С€РёСЂРёРЅРµ РєР°СЂС‚РѕС‡РєРё
+	PlayerTextDrawTextSize(playerid, gInvUiTD[playerid][IUI_HINT], 0.0, INV_UI_INFO_R - INV_UI_INFO_X - 6.0);    // перенос строк по ширине карточки
 	gInvUiTD[playerid][IUI_BTN_USE]  = InvUi_Button(playerid, cx, INV_UI_GRID_Y + 116.0, "USE");
 	gInvUiTD[playerid][IUI_BTN_GIVE] = InvUi_Button(playerid, cx, INV_UI_GRID_Y + 134.0, "GIVE");
 	gInvUiTD[playerid][IUI_BTN_DROP] = InvUi_Button(playerid, cx, INV_UI_GRID_Y + 152.0, "DROP");
@@ -1178,7 +1178,7 @@ stock Inv_CloseUI(playerid)
 	CancelSelectTextDraw(playerid);
 }
 
-// РџСЂРё РІС‹С…РѕРґРµ РёРіСЂРѕРєР°: С‚РµРєСЃС‚РґСЂР°РІС‹ СѓРґР°Р»СЏРµС‚ СЃРµСЂРІРµСЂ, С‚РѕР»СЊРєРѕ СЃР±СЂРѕСЃРёС‚СЊ С„Р»Р°Рі
+// При выходе игрока: текстдравы удаляет сервер, только сбросить флаг
 stock Inv_UiReset(playerid)
 {
 	gInvUiOpen[playerid] = false;
@@ -1186,7 +1186,7 @@ stock Inv_UiReset(playerid)
 	gInvUiSel[playerid] = -1;
 }
 
-// РљРЅРѕРїРєРё РєР°СЂС‚РѕС‡РєРё
+// Кнопки карточки
 static InvUi_DoAction(playerid, action)
 {
 	new sel = gInvUiSel[playerid];
@@ -1195,7 +1195,7 @@ static InvUi_DoAction(playerid, action)
 
 	if (item == INV_NONE)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РљР°РЅРёСЃС‚СЂСѓ Р·Р°Р»РёРІР°СЋС‚ РєРѕРјР°РЅРґРѕР№ /canister, СЃС‚РѕСЏ Сѓ РјР°С€РёРЅС‹.");
+		SendClientMessage(playerid, COLOR_GREY, "Канистру заливают командой /canister, стоя у машины.");
 		return;
 	}
 	if (item >= INV_OUTFIT)
@@ -1209,8 +1209,8 @@ static InvUi_DoAction(playerid, action)
 			case 1:
 			{
 				Inv_CloseUI(playerid);
-				ShowPlayerDialog(playerid, DIALOG_INV_GIVE, DIALOG_STYLE_INPUT, "РџРµСЂРµРґР°С‚СЊ РѕРґРµР¶РґСѓ",
-					"{FFFFFF}Р’РІРµРґРё id РёРіСЂРѕРєР°, РєРѕС‚РѕСЂРѕРјСѓ РїРµСЂРµРґР°С‚СЊ РѕРґРµР¶РґСѓ (СЃРєРёРЅ %d).", "РџРµСЂРµРґР°С‚СЊ", "РќР°Р·Р°Рґ", gOutfit[playerid][slot]);
+				ShowPlayerDialog(playerid, DIALOG_INV_GIVE, DIALOG_STYLE_INPUT, "Передать одежду",
+					"{FFFFFF}Введи id игрока, которому передать одежду (скин %d).", "Передать", "Назад", gOutfit[playerid][slot]);
 			}
 			case 2: { Outfit_Drop(playerid, slot); Inv_ShowUI(playerid); }
 		}
@@ -1224,8 +1224,8 @@ static InvUi_DoAction(playerid, action)
 		case 1:
 		{
 			Inv_CloseUI(playerid);
-			ShowPlayerDialog(playerid, DIALOG_INV_GIVE, DIALOG_STYLE_INPUT, "РџРµСЂРµРґР°С‚СЊ",
-				"{FFFFFF}РљРѕРјСѓ РїРµСЂРµРґР°С‚СЊ: %s?\nР’РІРµРґРё id РёРіСЂРѕРєР° Рё, РµСЃР»Рё РЅСѓР¶РЅРѕ, РєРѕР»РёС‡РµСЃС‚РІРѕ (Сѓ С‚РµР±СЏ %d С€С‚.).\nРќР°РїСЂРёРјРµСЂ: {FFFF00}5{FFFFFF} РёР»Рё {FFFF00}5 2", "РџРµСЂРµРґР°С‚СЊ", "РќР°Р·Р°Рґ", gInvNames[item], gInv[playerid][item]);
+			ShowPlayerDialog(playerid, DIALOG_INV_GIVE, DIALOG_STYLE_INPUT, "Передать",
+				"{FFFFFF}Кому передать: %s?\nВведи id игрока и, если нужно, количество (у тебя %d шт.).\nНапример: {FFFF00}5{FFFFFF} или {FFFF00}5 2", "Передать", "Назад", gInvNames[item], gInv[playerid][item]);
 		}
 		case 2:
 		{
@@ -1233,14 +1233,14 @@ static InvUi_DoAction(playerid, action)
 			else
 			{
 				Inv_CloseUI(playerid);
-				ShowPlayerDialog(playerid, DIALOG_INV_DROP, DIALOG_STYLE_INPUT, "Р’С‹Р±СЂРѕСЃРёС‚СЊ",
-					"{FFFFFF}РЎРєРѕР»СЊРєРѕ РІС‹Р±СЂРѕСЃРёС‚СЊ: %s? (Сѓ С‚РµР±СЏ %d С€С‚.)", "Р’С‹Р±СЂРѕСЃРёС‚СЊ", "РќР°Р·Р°Рґ", gInvNames[item], gInv[playerid][item]);
+				ShowPlayerDialog(playerid, DIALOG_INV_DROP, DIALOG_STYLE_INPUT, "Выбросить",
+					"{FFFFFF}Сколько выбросить: %s? (у тебя %d шт.)", "Выбросить", "Назад", gInvNames[item], gInv[playerid][item]);
 			}
 		}
 	}
 }
 
-// РР· OnPlayerClickPlayerTextDraw
+// Из OnPlayerClickPlayerTextDraw
 stock Inv_OnClickPlayerTD(playerid, PlayerText:td)
 {
 	if (!gInvUiOpen[playerid]) return 0;
@@ -1267,7 +1267,7 @@ stock Inv_OnClickPlayerTD(playerid, PlayerText:td)
 	return 1;
 }
 
-// РР· OnPlayerClickTextDraw: ESC РІРѕ РІСЂРµРјСЏ РІС‹Р±РѕСЂР° РјС‹С€СЊСЋ
+// Из OnPlayerClickTextDraw: ESC во время выбора мышью
 stock Inv_OnClickTD(playerid, Text:td)
 {
 	if (td != INVALID_TEXT_DRAW || !gInvUiOpen[playerid]) return 0;

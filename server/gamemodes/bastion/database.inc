@@ -1,12 +1,12 @@
 // =====================================================================
-//  database.inc вЂ” Р±Р°Р·Р° РґР°РЅРЅС‹С… SQLite.
-//  Р¤Р°Р№Р» scriptfiles/rp.db СЃРѕР·РґР°С‘С‚СЃСЏ СЃР°Рј РїСЂРё РїРµСЂРІРѕРј Р·Р°РїСѓСЃРєРµ.
-//  РћС‚РєСЂС‹С‚СЊ РµРіРѕ РјРѕР¶РЅРѕ РїСЂРѕРіСЂР°РјРјРѕР№ "DB Browser for SQLite".
+//  database.inc — база данных SQLite.
+//  Файл scriptfiles/rp.db создаётся сам при первом запуске.
+//  Открыть его можно программой "DB Browser for SQLite".
 //
-//  РљР°Рє РїРёСЃР°С‚СЊ Р·Р°РїСЂРѕСЃС‹:
+//  Как писать запросы:
 //    DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET money = %d WHERE id = %d", 100, 5));
-//  %d вЂ” С†РµР»РѕРµ С‡РёСЃР»Рѕ, %f вЂ” РґСЂРѕР±РЅРѕРµ, %q вЂ” С‚РµРєСЃС‚ (СЌРєСЂР°РЅРёСЂСѓРµС‚СЃСЏ, Р·Р°С‰РёС‚Р° РѕС‚ SQL-РёРЅСЉРµРєС†РёР№).
-//  DB_FreeResultSet РѕР±СЏР·Р°С‚РµР»РµРЅ вЂ” РёРЅР°С‡Рµ СѓС‚РµС‡РєР° РїР°РјСЏС‚Рё.
+//  %d — целое число, %f — дробное, %q — текст (экранируется, защита от SQL-инъекций).
+//  DB_FreeResultSet обязателен — иначе утечка памяти.
 // =====================================================================
 
 new DB:gDB;
@@ -20,19 +20,19 @@ stock DB_Init()
 		return 0;
 	}
 
-	// Р‘Р°Р·Сѓ С‡РёС‚Р°РµС‚ РµС‰С‘ Рё С„РѕСЂСѓРј. Р•СЃР»Рё РѕРЅР° РЅР° РјРіРЅРѕРІРµРЅРёРµ Р·Р°РЅСЏС‚Р° вЂ” Р¶РґС‘Рј РґРѕ 3 СЃРµРєСѓРЅРґ, Р° РЅРµ С‚РµСЂСЏРµРј Р·Р°РїРёСЃСЊ
+	// Базу читает ещё и форум. Если она на мгновение занята — ждём до 3 секунд, а не теряем запись
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "PRAGMA busy_timeout = 3000"));
 
-	// РђРєРєР°СѓРЅС‚С‹ РёРіСЂРѕРєРѕРІ
+	// Аккаунты игроков
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, password TEXT NOT NULL, salt TEXT NOT NULL, money INTEGER DEFAULT 0, level INTEGER DEFAULT 1, exp INTEGER DEFAULT 0, skin INTEGER DEFAULT 60, admin INTEGER DEFAULT 0, job INTEGER DEFAULT 0, reg_date INTEGER DEFAULT 0)"));
 
-	// Р”РѕРјР°
+	// Дома
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS houses (id INTEGER PRIMARY KEY AUTOINCREMENT, owner INTEGER DEFAULT 0, price INTEGER NOT NULL, x REAL, y REAL, z REAL, ix REAL, iy REAL, iz REAL, interior INTEGER, locked INTEGER DEFAULT 0)"));
 
-	// Р›РёС‡РЅС‹Рµ РјР°С€РёРЅС‹ (РѕРґРЅР° РЅР° РёРіСЂРѕРєР°)
+	// Личные машины (одна на игрока)
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS vehicles (id INTEGER PRIMARY KEY AUTOINCREMENT, owner INTEGER NOT NULL UNIQUE, model INTEGER, x REAL, y REAL, z REAL, a REAL, c1 INTEGER, c2 INTEGER, locked INTEGER DEFAULT 0)"));
 
-	// РќРѕРІС‹Рµ РїРѕР»СЏ Р°РєРєР°СѓРЅС‚Р° РґР»СЏ С„СЂР°РєС†РёР№ (СЃС‚Р°СЂР°СЏ Р±Р°Р·Р° РґРѕРїРѕР»РЅСЏРµС‚СЃСЏ СЃР°РјР°)
+	// Новые поля аккаунта для фракций (старая база дополняется сама)
 	DB_AddColumn("accounts", "faction", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "frank", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "wanted", "INTEGER DEFAULT 0");
@@ -40,17 +40,17 @@ stock DB_Init()
 	DB_AddColumn("accounts", "bank", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "phone", "INTEGER DEFAULT 0");
 
-	// Р‘Р°РЅС‹, СЂР°Р№РѕРЅС‹ Р±Р°РЅРґ, Р±Р°РЅРєРѕРјР°С‚С‹, Р±РёР·РЅРµСЃС‹
+	// Баны, районы банд, банкоматы, бизнесы
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS bans (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, reason TEXT, admin TEXT, date INTEGER DEFAULT 0)"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS turfs (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, minx REAL, miny REAL, maxx REAL, maxy REAL, owner INTEGER DEFAULT 0)"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS gates (id INTEGER PRIMARY KEY AUTOINCREMENT, faction INTEGER DEFAULT 0, type INTEGER, x REAL, y REAL, z REAL, a REAL)"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS atms (id INTEGER PRIMARY KEY AUTOINCREMENT, x REAL, y REAL, z REAL)"));
-	DB_AddColumn("atms", "a", "REAL DEFAULT -1.0");   // СѓРіРѕР» Р°РїРїР°СЂР°С‚Р°; -1 вЂ” С‚РѕР»СЊРєРѕ Р·РЅР°С‡РѕРє
+	DB_AddColumn("atms", "a", "REAL DEFAULT -1.0");   // угол аппарата; -1 — только значок
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS bank_log (id INTEGER PRIMARY KEY AUTOINCREMENT, account INTEGER NOT NULL, type INTEGER, amount INTEGER, other INTEGER DEFAULT 0, date INTEGER DEFAULT 0)"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE INDEX IF NOT EXISTS bank_log_account ON bank_log (account, id)"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS businesses (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, type INTEGER, owner INTEGER DEFAULT 0, price INTEGER, x REAL, y REAL, z REAL, till INTEGER DEFAULT 0)"));
 
-	// Р‘Р°Р·С‹ С„СЂР°РєС†РёР№ (СЃРїР°РІРЅ Рё СЂР°Р·РґРµРІР°Р»РєР°) Рё РјР°С€РёРЅС‹ С„СЂР°РєС†РёР№
+	// Базы фракций (спавн и раздевалка) и машины фракций
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS factions (id INTEGER PRIMARY KEY, sx REAL, sy REAL, sz REAL, sa REAL, dx REAL, dy REAL, dz REAL)"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS fvehicles (id INTEGER PRIMARY KEY AUTOINCREMENT, faction INTEGER NOT NULL, model INTEGER, x REAL, y REAL, z REAL, a REAL, c1 INTEGER, c2 INTEGER)"));
 
@@ -58,7 +58,7 @@ stock DB_Init()
 	return 1;
 }
 
-// Р”РѕР±Р°РІРёС‚СЊ РєРѕР»РѕРЅРєСѓ РІ С‚Р°Р±Р»РёС†Сѓ, РµСЃР»Рё РµС‘ РµС‰С‘ РЅРµС‚
+// Добавить колонку в таблицу, если её ещё нет
 stock DB_AddColumn(const table[], const column[], const definition[])
 {
 	new exists = 0;
@@ -84,8 +84,8 @@ stock DB_Shutdown()
 	}
 }
 
-// Р’РµСЂСЃРёСЏ Р±Р°Р·С‹ (PRAGMA user_version): РїРѕ РЅРµР№ СЂР°Р·РѕРІС‹Рµ РїРµСЂРµРґРµР»РєРё РґР°РЅРЅС‹С… РІС‹РїРѕР»РЅСЏСЋС‚СЃСЏ РѕРґРёРЅ СЂР°Р·.
-// 1 вЂ” Р°РґРјРёРЅРєР° 7 СѓСЂРѕРІРЅРµР№ (admin.inc), 2 вЂ” 10 СЂР°РЅРіРѕРІ РІРѕ С„СЂР°РєС†РёСЏС… (factions.inc)
+// Версия базы (PRAGMA user_version): по ней разовые переделки данных выполняются один раз.
+// 1 — админка 7 уровней (admin.inc), 2 — 10 рангов во фракциях (factions.inc)
 stock DB_GetVersion()
 {
 	new version = 0;
@@ -98,7 +98,7 @@ stock DB_GetVersion()
 	return version;
 }
 
-// РќРѕРјРµСЂ РїРѕСЃР»РµРґРЅРµР№ РІСЃС‚Р°РІР»РµРЅРЅРѕР№ СЃС‚СЂРѕРєРё (РїРѕСЃР»Рµ INSERT)
+// Номер последней вставленной строки (после INSERT)
 stock DB_LastInsertId()
 {
 	new id = 0;

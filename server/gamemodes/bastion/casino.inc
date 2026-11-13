@@ -1,15 +1,15 @@
 // =====================================================================
-//  casino.inc вЂ” РєР°Р·РёРЅРѕ Рё Р»РѕС‚РµСЂРµСЏ С€С‚Р°С‚Р°.
+//  casino.inc — казино и лотерея штата.
 //
-//  РљР°Р·РёРЅРѕ вЂ” Р±РёР·РЅРµСЃ С‚РёРїР° 5 (/createbiz 5 [С†РµРЅР°] [РЅР°Р·РІР°РЅРёРµ]). Р’РЅСѓС‚СЂРё ALT (РёР»Рё /buy):
-//    СЂСѓР»РµС‚РєР° РЅР° С†РІРµС‚ (x2), СЂСѓР»РµС‚РєР° РЅР° С‡РёСЃР»Рѕ 0-36 (x36), РєРѕСЃС‚Рё РїСЂРѕС‚РёРІ РєСЂСѓРїСЊРµ (x2).
-//  РЎС‚Р°РІРєР° РѕС‚ CASINO_MIN_BET РґРѕ CASINO_MAX_BET. РЎ РєР°Р¶РґРѕР№ РїСЂРѕРёРіСЂР°РЅРЅРѕР№ СЃС‚Р°РІРєРё
-//  CASINO_OWNER_PCT% РёРґС‘С‚ РІР»Р°РґРµР»СЊС†Сѓ РІ РєР°СЃСЃСѓ (Р±РµР· РІР»Р°РґРµР»СЊС†Р° вЂ” РІ РєР°Р·РЅСѓ С€С‚Р°С‚Р°).
+//  Казино — бизнес типа 5 (/createbiz 5 [цена] [название]). Внутри ALT (или /buy):
+//    рулетка на цвет (x2), рулетка на число 0-36 (x36), кости против крупье (x2).
+//  Ставка от CASINO_MIN_BET до CASINO_MAX_BET. С каждой проигранной ставки
+//  CASINO_OWNER_PCT% идёт владельцу в кассу (без владельца — в казну штата).
 //
-//  Р›РѕС‚РµСЂРµСЏ вЂ” Р»Р°СЂС‘Рє (/place lottery), ALT: Р±РёР»РµС‚ Р·Р° LOTTO_PRICE СЃ С‡РёСЃР»РѕРј 1-LOTTO_MAX.
-//  Р РѕР·С‹РіСЂС‹С€ РєР°Р¶РґС‹Р№ РґРµРЅСЊ РІ LOTTO_HOUR:00. РЈРіР°РґР°РІС€РёРµ РґРµР»СЏС‚ РґР¶РµРєРїРѕС‚ (РґРµРЅСЊРіРё РЅР° СЃС‡С‘С‚
-//  РІ Р±Р°РЅРєРµ, РґР°Р¶Рµ РµСЃР»Рё РЅРµ РІ РёРіСЂРµ). РќРёРєС‚Рѕ РЅРµ СѓРіР°РґР°Р» вЂ” РґР¶РµРєРїРѕС‚ РєРѕРїРёС‚СЃСЏ.
-//  /lotto вЂ” РґР¶РµРєРїРѕС‚ Рё С‚РІРѕРё Р±РёР»РµС‚С‹.
+//  Лотерея — ларёк (/place lottery), ALT: билет за LOTTO_PRICE с числом 1-LOTTO_MAX.
+//  Розыгрыш каждый день в LOTTO_HOUR:00. Угадавшие делят джекпот (деньги на счёт
+//  в банке, даже если не в игре). Никто не угадал — джекпот копится.
+//  /lotto — джекпот и твои билеты.
 // =====================================================================
 
 #define CASINO_MIN_BET      100
@@ -19,26 +19,26 @@
 
 #define LOTTO_PRICE         200
 #define LOTTO_MAX           50
-#define LOTTO_TICKETS       5           // Р±РёР»РµС‚РѕРІ РЅР° РѕРґРЅРѕРіРѕ РёРіСЂРѕРєР° РІ СЂРѕР·С‹РіСЂС‹С€
+#define LOTTO_TICKETS       5           // билетов на одного игрока в розыгрыш
 #define LOTTO_HOUR          20
-#define LOTTO_JACKPOT_PCT   80          // % С†РµРЅС‹ Р±РёР»РµС‚Р° РІ РґР¶РµРєРїРѕС‚, РѕСЃС‚Р°Р»СЊРЅРѕРµ вЂ” РІ РєР°Р·РЅСѓ
-#define LOTTO_START         10000       // СЃС‚Р°СЂС‚РѕРІС‹Р№ РґР¶РµРєРїРѕС‚
+#define LOTTO_JACKPOT_PCT   80          // % цены билета в джекпот, остальное — в казну
+#define LOTTO_START         10000       // стартовый джекпот
 
 enum
 {
 	CG_NONE,
-	CG_COLOR,       // СЂСѓР»РµС‚РєР° РЅР° С†РІРµС‚
-	CG_NUMBER,      // СЂСѓР»РµС‚РєР° РЅР° С‡РёСЃР»Рѕ
-	CG_DICE         // РєРѕСЃС‚Рё
+	CG_COLOR,       // рулетка на цвет
+	CG_NUMBER,      // рулетка на число
+	CG_DICE         // кости
 }
 
 static gCasBiz[MAX_PLAYERS] = { -1, ... };
 static gCasGame[MAX_PLAYERS];
 static gCasBet[MAX_PLAYERS];
-static gCasPick[MAX_PLAYERS];           // С†РІРµС‚ (0 РєСЂР°СЃРЅРѕРµ, 1 С‡С‘СЂРЅРѕРµ) РёР»Рё С‡РёСЃР»Рѕ
-static gCasSpin[MAX_PLAYERS];           // СЃРµРєСѓРЅРґ РґРѕ СЂРµР·СѓР»СЊС‚Р°С‚Р°
+static gCasPick[MAX_PLAYERS];           // цвет (0 красное, 1 чёрное) или число
+static gCasSpin[MAX_PLAYERS];           // секунд до результата
 static gLottoJackpot = LOTTO_START;
-static gLottoDraw = 1;                  // РЅРѕРјРµСЂ С‚РµРєСѓС‰РµРіРѕ СЂРѕР·С‹РіСЂС‹С€Р°
+static gLottoDraw = 1;                  // номер текущего розыгрыша
 static gLottoLastDay = -1;
 
 static const gRouletteRed[] = { 1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36 };
@@ -68,21 +68,21 @@ static Lotto_Save()
 }
 
 // ---------------------------------------------------------------------
-//  РљР°Р·РёРЅРѕ
+//  Казино
 // ---------------------------------------------------------------------
 stock bool:Casino_Show(playerid, b)
 {
-	if (gCasSpin[playerid] > 0) return SendClientMessage(playerid, COLOR_GREY, "Р”РѕР¶РґРёСЃСЊ СЂРµР·СѓР»СЊС‚Р°С‚Р°.");
+	if (gCasSpin[playerid] > 0) return SendClientMessage(playerid, COLOR_GREY, "Дождись результата.");
 	gCasBiz[playerid] = b;
 	ShowPlayerDialog(playerid, DIALOG_CASINO, DIALOG_STYLE_TABLIST_HEADERS, Biz[b][bName],
-		"РРіСЂР°\tР’С‹РёРіСЂС‹С€\nР СѓР»РµС‚РєР°: РєСЂР°СЃРЅРѕРµ / С‡С‘СЂРЅРѕРµ\tx2\nР СѓР»РµС‚РєР°: С‡РёСЃР»Рѕ 0-36\tx36\nРљРѕСЃС‚Рё РїСЂРѕС‚РёРІ РєСЂСѓРїСЊРµ\tx2", "РРіСЂР°С‚СЊ", "РЈР№С‚Рё");
+		"Игра\tВыигрыш\nРулетка: красное / чёрное\tx2\nРулетка: число 0-36\tx36\nКости против крупье\tx2", "Играть", "Уйти");
 	return true;
 }
 
 static Casino_AskBet(playerid)
 {
-	ShowPlayerDialog(playerid, DIALOG_CASINO_BET, DIALOG_STYLE_INPUT, "РЎС‚Р°РІРєР°",
-		"{FFFFFF}РЎРєРѕР»СЊРєРѕ СЃС‚Р°РІРёС€СЊ? РћС‚ $%d РґРѕ $%d.\nРќР°Р»РёС‡РЅС‹С…: $%d", "РЎС‚Р°РІРєР°", "РќР°Р·Р°Рґ", CASINO_MIN_BET, CASINO_MAX_BET, GetMoney(playerid));
+	ShowPlayerDialog(playerid, DIALOG_CASINO_BET, DIALOG_STYLE_INPUT, "Ставка",
+		"{FFFFFF}Сколько ставишь? От $%d до $%d.\nНаличных: $%d", "Ставка", "Назад", CASINO_MIN_BET, CASINO_MAX_BET, GetMoney(playerid));
 }
 
 static bool:Casino_IsRed(n)
@@ -91,7 +91,7 @@ static bool:Casino_IsRed(n)
 	return false;
 }
 
-// Р”РµРЅСЊРіРё РїСЂРѕРёРіСЂР°РІС€РµРіРѕ: С‡Р°СЃС‚СЊ РІР»Р°РґРµР»СЊС†Сѓ, Р±РµР· РІР»Р°РґРµР»СЊС†Р° вЂ” РІ РєР°Р·РЅСѓ
+// Деньги проигравшего: часть владельцу, без владельца — в казну
 static Casino_HouseWins(b, bet)
 {
 	new share = bet * CASINO_OWNER_PCT / 100;
@@ -108,7 +108,7 @@ static Casino_Result(playerid)
 	new b = gCasBiz[playerid], bet = gCasBet[playerid], win = 0;
 	if (b < 0 || !Biz_IsInside(playerid, b) && Biz_GetNearby(playerid) != b)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РўС‹ СѓС€С‘Р» РѕС‚ СЃС‚РѕР»Р°: СЃС‚Р°РІРєР° СЃРіРѕСЂРµР»Р°.");
+		SendClientMessage(playerid, COLOR_GREY, "Ты ушёл от стола: ставка сгорела.");
 		Casino_HouseWins(b, bet);
 		return;
 	}
@@ -119,33 +119,33 @@ static Casino_Result(playerid)
 		{
 			new n = random(37);
 			new col[16];
-			if (n == 0) strcat(col, "Р·РµСЂРѕ");
-			else if (Casino_IsRed(n)) strcat(col, "РєСЂР°СЃРЅРѕРµ");
-			else strcat(col, "С‡С‘СЂРЅРѕРµ");
+			if (n == 0) strcat(col, "зеро");
+			else if (Casino_IsRed(n)) strcat(col, "красное");
+			else strcat(col, "чёрное");
 			if (gCasGame[playerid] == CG_COLOR && n != 0 && (Casino_IsRed(n) == (gCasPick[playerid] == 0))) win = bet * 2;
 			if (gCasGame[playerid] == CG_NUMBER && n == gCasPick[playerid]) win = bet * 36;
-			format(msg, sizeof msg, "РљСЂСѓРїСЊРµ: С€Р°СЂРёРє РѕСЃС‚Р°РЅРѕРІРёР»СЃСЏ РЅР° %d (%s).", n, col);
+			format(msg, sizeof msg, "Крупье: шарик остановился на %d (%s).", n, col);
 		}
 		case CG_DICE:
 		{
 			new p1 = random(6) + 1, p2 = random(6) + 1, d1 = random(6) + 1, d2 = random(6) + 1;
 			if (p1 + p2 > d1 + d2) win = bet * 2;
-			else if (p1 + p2 == d1 + d2) win = bet;     // РЅРёС‡СЊСЏ вЂ” СЃС‚Р°РІРєР° РІРѕР·РІСЂР°С‰Р°РµС‚СЃСЏ
-			format(msg, sizeof msg, "РљРѕСЃС‚Рё: Сѓ С‚РµР±СЏ %d+%d=%d, Сѓ РєСЂСѓРїСЊРµ %d+%d=%d.", p1, p2, p1 + p2, d1, d2, d1 + d2);
+			else if (p1 + p2 == d1 + d2) win = bet;     // ничья — ставка возвращается
+			format(msg, sizeof msg, "Кости: у тебя %d+%d=%d, у крупье %d+%d=%d.", p1, p2, p1 + p2, d1, d2, d1 + d2);
 		}
 	}
 	SendClientMessage(playerid, COLOR_WHITE, "%s", msg);
 	if (win > 0)
 	{
-		GiveMoney(playerid, win, "РІС‹РёРіСЂС‹С€ РІ РєР°Р·РёРЅРѕ");
+		GiveMoney(playerid, win, "выигрыш в казино");
 		if (win > bet) GameTextForPlayer(playerid, "~g~WIN!", 2000, 1);
-		SendClientMessage(playerid, COLOR_GREEN, (win == bet) ? ("РќРёС‡СЊСЏ: СЃС‚Р°РІРєР° $%d РІРѕР·РІСЂР°С‰РµРЅР°.") : ("Р’С‹РёРіСЂС‹С€: $%d!"), win);
+		SendClientMessage(playerid, COLOR_GREEN, (win == bet) ? ("Ничья: ставка $%d возвращена.") : ("Выигрыш: $%d!"), win);
 	}
 	else
 	{
 		Casino_HouseWins(b, bet);
 		GameTextForPlayer(playerid, "~r~lose", 1500, 1);
-		SendClientMessage(playerid, COLOR_GREY, "РЎС‚Р°РІРєР° $%d РїСЂРѕРёРіСЂР°РЅР°. Р•С‰С‘ СЂР°Р·: ALT.", bet);
+		SendClientMessage(playerid, COLOR_GREY, "Ставка $%d проиграна. Ещё раз: ALT.", bet);
 	}
 	Account_Save(playerid);
 }
@@ -153,18 +153,18 @@ static Casino_Result(playerid)
 static Casino_Start(playerid)
 {
 	new bet = gCasBet[playerid];
-	if (GetMoney(playerid) < bet) return SendClientMessage(playerid, COLOR_GREY, "РќРµ С…РІР°С‚Р°РµС‚ РЅР°Р»РёС‡РЅС‹С….");
-	GiveMoney(playerid, -bet, "СЃС‚Р°РІРєР° РІ РєР°Р·РёРЅРѕ");
+	if (GetMoney(playerid) < bet) return SendClientMessage(playerid, COLOR_GREY, "Не хватает наличных.");
+	GiveMoney(playerid, -bet, "ставка в казино");
 	gCasSpin[playerid] = CASINO_SPIN_SEC;
 	new msg[96];
 	if (gCasGame[playerid] == CG_DICE)
 	{
-		format(msg, sizeof msg, "%s Р±СЂРѕСЃР°РµС‚ РєРѕСЃС‚Рё, СЃС‚Р°РІРєР° $%d.", GetRPName(playerid), bet);
+		format(msg, sizeof msg, "%s бросает кости, ставка $%d.", GetRPName(playerid), bet);
 		GameTextForPlayer(playerid, "~y~rolling...", CASINO_SPIN_SEC * 1000, 4);
 	}
 	else
 	{
-		format(msg, sizeof msg, "%s РґРµР»Р°РµС‚ СЃС‚Р°РІРєСѓ $%d. РљСЂСѓРїСЊРµ Р·Р°РїСѓСЃРєР°РµС‚ СЂСѓР»РµС‚РєСѓ.", GetRPName(playerid), bet);
+		format(msg, sizeof msg, "%s делает ставку $%d. Крупье запускает рулетку.", GetRPName(playerid), bet);
 		GameTextForPlayer(playerid, "~y~spinning...", CASINO_SPIN_SEC * 1000, 4);
 	}
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
@@ -183,7 +183,7 @@ public Casino_OnSecond()
 }
 
 // ---------------------------------------------------------------------
-//  Р›РѕС‚РµСЂРµСЏ
+//  Лотерея
 // ---------------------------------------------------------------------
 static Lotto_MyTickets(playerid, list[], size)
 {
@@ -209,8 +209,8 @@ stock bool:Cmd_Lotto(playerid)
 {
 	new list[64];
 	new n = Lotto_MyTickets(playerid, list, sizeof list);
-	SendClientMessage(playerid, COLOR_YELLOW, "Р›РѕС‚РµСЂРµСЏ: РґР¶РµРєРїРѕС‚ $%d, СЂРѕР·С‹РіСЂС‹С€ РєР°Р¶РґС‹Р№ РґРµРЅСЊ РІ %d:00. Р‘РёР»РµС‚ $%d вЂ” Сѓ Р»Р°СЂСЊРєР° Р»РѕС‚РµСЂРµРё.", gLottoJackpot, LOTTO_HOUR, LOTTO_PRICE);
-	if (n > 0) SendClientMessage(playerid, COLOR_WHITE, "РўРІРѕРё Р±РёР»РµС‚С‹: %s", list);
+	SendClientMessage(playerid, COLOR_YELLOW, "Лотерея: джекпот $%d, розыгрыш каждый день в %d:00. Билет $%d — у ларька лотереи.", gLottoJackpot, LOTTO_HOUR, LOTTO_PRICE);
+	if (n > 0) SendClientMessage(playerid, COLOR_WHITE, "Твои билеты: %s", list);
 	return true;
 }
 
@@ -219,29 +219,29 @@ static bool:Lotto_TryAlt(playerid)
 	if (Place_Nearby(playerid, PL_LOTTERY, 2.5) == -1) return false;
 	new list[64];
 	new n = Lotto_MyTickets(playerid, list, sizeof list);
-	if (n == 0) strcat(list, "РЅРµС‚");
-	ShowPlayerDialog(playerid, DIALOG_LOTTO, DIALOG_STYLE_INPUT, "Р›РѕС‚РµСЂРµСЏ С€С‚Р°С‚Р°",
-		"{FFFFFF}Р”Р¶РµРєРїРѕС‚: {33AA33}$%d{FFFFFF}\nР РѕР·С‹РіСЂС‹С€ РєР°Р¶РґС‹Р№ РґРµРЅСЊ РІ %d:00.\nРўРІРѕРё Р±РёР»РµС‚С‹: %s\n\nР’РІРµРґРё С‡РёСЃР»Рѕ РѕС‚ 1 РґРѕ %d. Р‘РёР»РµС‚ СЃС‚РѕРёС‚ $%d.",
-		"РљСѓРїРёС‚СЊ", "Р—Р°РєСЂС‹С‚СЊ", gLottoJackpot, LOTTO_HOUR, list, LOTTO_MAX, LOTTO_PRICE);
+	if (n == 0) strcat(list, "нет");
+	ShowPlayerDialog(playerid, DIALOG_LOTTO, DIALOG_STYLE_INPUT, "Лотерея штата",
+		"{FFFFFF}Джекпот: {33AA33}$%d{FFFFFF}\nРозыгрыш каждый день в %d:00.\nТвои билеты: %s\n\nВведи число от 1 до %d. Билет стоит $%d.",
+		"Купить", "Закрыть", gLottoJackpot, LOTTO_HOUR, list, LOTTO_MAX, LOTTO_PRICE);
 	return true;
 }
 
 static Lotto_Buy(playerid, const input[])
 {
-	if (!IsNumeric(input)) return SendClientMessage(playerid, COLOR_GREY, "РќСѓР¶РЅРѕ РІРІРµСЃС‚Рё С‡РёСЃР»Рѕ.");
+	if (!IsNumeric(input)) return SendClientMessage(playerid, COLOR_GREY, "Нужно ввести число.");
 	new num = strval(input);
-	if (num < 1 || num > LOTTO_MAX) return SendClientMessage(playerid, COLOR_GREY, "Р§РёСЃР»Рѕ РѕС‚ 1 РґРѕ %d.", LOTTO_MAX);
+	if (num < 1 || num > LOTTO_MAX) return SendClientMessage(playerid, COLOR_GREY, "Число от 1 до %d.", LOTTO_MAX);
 	new list[64];
-	if (Lotto_MyTickets(playerid, list, sizeof list) >= LOTTO_TICKETS) return SendClientMessage(playerid, COLOR_GREY, "РќРµ Р±РѕР»СЊС€Рµ %d Р±РёР»РµС‚РѕРІ РЅР° СЂРѕР·С‹РіСЂС‹С€.", LOTTO_TICKETS);
-	if (GetMoney(playerid) < LOTTO_PRICE) return SendClientMessage(playerid, COLOR_GREY, "РќРµ С…РІР°С‚Р°РµС‚ РґРµРЅРµРі.");
-	GiveMoney(playerid, -LOTTO_PRICE, "Р»РѕС‚РµСЂРµР№РЅС‹Р№ Р±РёР»РµС‚");
+	if (Lotto_MyTickets(playerid, list, sizeof list) >= LOTTO_TICKETS) return SendClientMessage(playerid, COLOR_GREY, "Не больше %d билетов на розыгрыш.", LOTTO_TICKETS);
+	if (GetMoney(playerid) < LOTTO_PRICE) return SendClientMessage(playerid, COLOR_GREY, "Не хватает денег.");
+	GiveMoney(playerid, -LOTTO_PRICE, "лотерейный билет");
 	Account_Save(playerid);
 	new jp = LOTTO_PRICE * LOTTO_JACKPOT_PCT / 100;
 	gLottoJackpot += jp;
 	Econ_ToTreasury(LOTTO_PRICE - jp);
 	Lotto_Save();
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO lottery_tickets (draw, owner, number) VALUES (%d, %d, %d)", gLottoDraw, Player[playerid][pDbId], num));
-	return SendClientMessage(playerid, COLOR_GREEN, "Р‘РёР»РµС‚ СЃ С‡РёСЃР»РѕРј %d РєСѓРїР»РµРЅ. Р РѕР·С‹РіСЂС‹С€ РІ %d:00, РґР¶РµРєРїРѕС‚ СѓР¶Рµ $%d.", num, LOTTO_HOUR, gLottoJackpot);
+	return SendClientMessage(playerid, COLOR_GREEN, "Билет с числом %d куплен. Розыгрыш в %d:00, джекпот уже $%d.", num, LOTTO_HOUR, gLottoJackpot);
 }
 
 static Lotto_Draw()
@@ -258,7 +258,7 @@ static Lotto_Draw()
 	new msg[144];
 	if (n == 0)
 	{
-		format(msg, sizeof msg, "[Р›РѕС‚РµСЂРµСЏ] Р’С‹РїР°Р»Рѕ С‡РёСЃР»Рѕ %d. РќРёРєС‚Рѕ РЅРµ СѓРіР°РґР°Р», РґР¶РµРєРїРѕС‚ $%d РїРµСЂРµС…РѕРґРёС‚ РЅР° Р·Р°РІС‚СЂР°.", num, gLottoJackpot);
+		format(msg, sizeof msg, "[Лотерея] Выпало число %d. Никто не угадал, джекпот $%d переходит на завтра.", num, gLottoJackpot);
 		SendClientMessageToAll(COLOR_YELLOW, msg);
 	}
 	else
@@ -271,12 +271,12 @@ static Lotto_Draw()
 			{
 				Player[online][pBank] += prize;
 				Account_Save(online);
-				SendClientMessage(online, COLOR_GREEN, "РўРІРѕР№ Р±РёР»РµС‚ РІС‹РёРіСЂР°Р» РІ Р»РѕС‚РµСЂРµСЋ! $%d Р·Р°С‡РёСЃР»РµРЅС‹ РЅР° СЃС‡С‘С‚.", prize);
+				SendClientMessage(online, COLOR_GREEN, "Твой билет выиграл в лотерею! $%d зачислены на счёт.", prize);
 			}
 			else DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET bank = bank + %d WHERE id = %d", prize, owners[i]));
 			Bank_Log(owners[i], BANKLOG_TRANSFER_IN, prize);
 		}
-		format(msg, sizeof msg, "[Р›РѕС‚РµСЂРµСЏ] Р’С‹РїР°Р»Рѕ С‡РёСЃР»Рѕ %d! РџРѕР±РµРґРёС‚РµР»РµР№: %d, РєР°Р¶РґС‹Р№ РїРѕР»СѓС‡Р°РµС‚ $%d.", num, n, prize);
+		format(msg, sizeof msg, "[Лотерея] Выпало число %d! Победителей: %d, каждый получает $%d.", num, n, prize);
 		SendClientMessageToAll(COLOR_YELLOW, msg);
 		gLottoJackpot = LOTTO_START;
 	}
@@ -285,7 +285,7 @@ static Lotto_Draw()
 	Lotto_Save();
 }
 
-// Р Р°Р· РІ РјРёРЅСѓС‚Сѓ (РёР· OnMinuteTimer)
+// Раз в минуту (из OnMinuteTimer)
 stock Casino_OnMinute()
 {
 	new hour, minute, year, month, day;
@@ -297,7 +297,7 @@ stock Casino_OnMinute()
 		Lotto_Draw();
 	}
 	else if (hour == LOTTO_HOUR - 1 && minute == 30)
-		SendClientMessageToAll(COLOR_YELLOW, "[Р›РѕС‚РµСЂРµСЏ] Р§РµСЂРµР· 30 РјРёРЅСѓС‚ СЂРѕР·С‹РіСЂС‹С€! Р‘РёР»РµС‚С‹ вЂ” РІ Р»Р°СЂСЊРєРµ Р»РѕС‚РµСЂРµРё (/gps), РґР¶РµРєРїРѕС‚: /lotto");
+		SendClientMessageToAll(COLOR_YELLOW, "[Лотерея] Через 30 минут розыгрыш! Билеты — в ларьке лотереи (/gps), джекпот: /lotto");
 }
 
 // ---------------------------------------------------------------------
@@ -310,9 +310,9 @@ stock Casino_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			if (!response) return 1;
 			gCasGame[playerid] = listitem + 1;
 			if (gCasGame[playerid] == CG_COLOR)
-				ShowPlayerDialog(playerid, DIALOG_CASINO_PICK, DIALOG_STYLE_LIST, "РќР° С‡С‚Рѕ СЃС‚Р°РІРёС€СЊ?", "{FF4040}РљСЂР°СЃРЅРѕРµ\n{AAAAAA}Р§С‘СЂРЅРѕРµ", "Р”Р°Р»СЊС€Рµ", "РќР°Р·Р°Рґ");
+				ShowPlayerDialog(playerid, DIALOG_CASINO_PICK, DIALOG_STYLE_LIST, "На что ставишь?", "{FF4040}Красное\n{AAAAAA}Чёрное", "Дальше", "Назад");
 			else if (gCasGame[playerid] == CG_NUMBER)
-				ShowPlayerDialog(playerid, DIALOG_CASINO_PICK, DIALOG_STYLE_INPUT, "РќР° РєР°РєРѕРµ С‡РёСЃР»Рѕ?", "{FFFFFF}Р§РёСЃР»Рѕ РѕС‚ 0 РґРѕ 36:", "Р”Р°Р»СЊС€Рµ", "РќР°Р·Р°Рґ");
+				ShowPlayerDialog(playerid, DIALOG_CASINO_PICK, DIALOG_STYLE_INPUT, "На какое число?", "{FFFFFF}Число от 0 до 36:", "Дальше", "Назад");
 			else Casino_AskBet(playerid);
 			return 1;
 		}
@@ -324,7 +324,7 @@ stock Casino_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			{
 				if (!IsNumeric(inputtext) || strval(inputtext) < 0 || strval(inputtext) > 36)
 				{
-					SendClientMessage(playerid, COLOR_GREY, "Р§РёСЃР»Рѕ РѕС‚ 0 РґРѕ 36.");
+					SendClientMessage(playerid, COLOR_GREY, "Число от 0 до 36.");
 					return 1;
 				}
 				gCasPick[playerid] = strval(inputtext);
@@ -335,9 +335,9 @@ stock Casino_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		case DIALOG_CASINO_BET:
 		{
 			if (!response) return Casino_Show(playerid, gCasBiz[playerid]);
-			if (!IsNumeric(inputtext)) { SendClientMessage(playerid, COLOR_GREY, "РќСѓР¶РЅРѕ РІРІРµСЃС‚Рё С‡РёСЃР»Рѕ."); return 1; }
+			if (!IsNumeric(inputtext)) { SendClientMessage(playerid, COLOR_GREY, "Нужно ввести число."); return 1; }
 			new bet = strval(inputtext);
-			if (bet < CASINO_MIN_BET || bet > CASINO_MAX_BET) { SendClientMessage(playerid, COLOR_GREY, "РЎС‚Р°РІРєР° РѕС‚ $%d РґРѕ $%d.", CASINO_MIN_BET, CASINO_MAX_BET); return 1; }
+			if (bet < CASINO_MIN_BET || bet > CASINO_MAX_BET) { SendClientMessage(playerid, COLOR_GREY, "Ставка от $%d до $%d.", CASINO_MIN_BET, CASINO_MAX_BET); return 1; }
 			gCasBet[playerid] = bet;
 			Casino_Start(playerid);
 			return 1;

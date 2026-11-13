@@ -1,16 +1,16 @@
 // =====================================================================
-//  hospital.inc вЂ” Р±РѕР»СЊРЅРёС†Р°: РїР»Р°С‚РЅРѕРµ Р»РµС‡РµРЅРёРµ, СЃС‚СЂР°С…РѕРІРєР°, РјРµРґРєР°СЂС‚Р°.
+//  hospital.inc — больница: платное лечение, страховка, медкарта.
 //
-//  Р РµРіРёСЃС‚СЂР°С‚СѓСЂР° (/place clinic, ALT СЂСЏРґРѕРј):
-//    Р»РµС‡РµРЅРёРµ РґРѕ 100 HP вЂ” HOSP_TREAT_PRICE (СЃРѕ СЃС‚СЂР°С…РѕРІРєРѕР№ HOSP_TREAT_INSURED);
-//    СЃС‚СЂР°С…РѕРІРєР° РЅР° HOSP_INSURE_DAYS РґРЅРµР№ вЂ” HOSP_INSURE_PRICE: СЃС‡С‘С‚ Р±РѕР»СЊРЅРёС†С‹ РїРѕСЃР»Рµ
-//      СЃРјРµСЂС‚Рё РЅРµ Р±РµСЂСѓС‚, Р»РµС‡РµРЅРёРµ РґРµС€РµРІР»Рµ;
-//    РјРµРґРєР°СЂС‚Р° РЅР° HOSP_MEDCARD_DAYS РґРЅРµР№ вЂ” HOSP_MEDCARD_PRICE: РЅСѓР¶РЅР° РґР»СЏ Р»РёС†РµРЅР·РёРё
-//      РЅР° РѕСЂСѓР¶РёРµ. РЎ РЅР°СЂРєРѕР·Р°РІРёСЃРёРјРѕСЃС‚СЊСЋ РјРµРґРєР°СЂС‚Сѓ РЅРµ РґР°СЋС‚;
-//    Р»РµС‡РµРЅРёРµ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё вЂ” HOSP_REHAB_PRICE.
-//  Р”РµРЅСЊРіРё РёРґСѓС‚ РІ РѕР±С‰Р°Рє Р±РѕР»СЊРЅРёС†С‹ (С„СЂР°РєС†РёСЏ 2).
-//  РњРµРґРёРє РЅР° СЃРјРµРЅРµ (СЂР°РЅРі 3+): /givemedcard [id] вЂ” РІС‹РїРёСЃР°С‚СЊ РјРµРґРєР°СЂС‚Сѓ, РґРµРЅСЊРіРё РµРјСѓ.
-//  Р’СЃРµ: /medcard вЂ” СЃРІРѕСЏ РјРµРґРєР°СЂС‚Р° Рё СЃС‚СЂР°С…РѕРІРєР°, /showmedcard [id] вЂ” РїРѕРєР°Р·Р°С‚СЊ.
+//  Регистратура (/place clinic, ALT рядом):
+//    лечение до 100 HP — HOSP_TREAT_PRICE (со страховкой HOSP_TREAT_INSURED);
+//    страховка на HOSP_INSURE_DAYS дней — HOSP_INSURE_PRICE: счёт больницы после
+//      смерти не берут, лечение дешевле;
+//    медкарта на HOSP_MEDCARD_DAYS дней — HOSP_MEDCARD_PRICE: нужна для лицензии
+//      на оружие. С наркозависимостью медкарту не дают;
+//    лечение зависимости — HOSP_REHAB_PRICE.
+//  Деньги идут в общак больницы (фракция 2).
+//  Медик на смене (ранг 3+): /givemedcard [id] — выписать медкарту, деньги ему.
+//  Все: /medcard — своя медкарта и страховка, /showmedcard [id] — показать.
 // =====================================================================
 
 #define HOSP_TREAT_PRICE        300
@@ -20,10 +20,10 @@
 #define HOSP_MEDCARD_PRICE      600
 #define HOSP_MEDCARD_DAYS       30
 #define HOSP_REHAB_PRICE        1500
-#define HOSP_MEDIC_MEDCARD      400     // РјРµРґРёРє РІС‹РїРёСЃС‹РІР°РµС‚ РјРµРґРєР°СЂС‚Сѓ: СЃС‚РѕР»СЊРєРѕ РїР»Р°С‚РёС‚ РїР°С†РёРµРЅС‚ (РјРµРґРёРєСѓ)
+#define HOSP_MEDIC_MEDCARD      400     // медик выписывает медкарту: столько платит пациент (медику)
 
-static gInsured[MAX_PLAYERS];           // РґРѕ РєР°РєРѕРіРѕ РІСЂРµРјРµРЅРё (gettime) РґРµР№СЃС‚РІСѓРµС‚ СЃС‚СЂР°С…РѕРІРєР°
-static gMedcard[MAX_PLAYERS];           // РґРѕ РєР°РєРѕРіРѕ РІСЂРµРјРµРЅРё РґРµР№СЃС‚РІСѓРµС‚ РјРµРґРєР°СЂС‚Р°
+static gInsured[MAX_PLAYERS];           // до какого времени (gettime) действует страховка
+static gMedcard[MAX_PLAYERS];           // до какого времени действует медкарта
 
 stock Hospital_Init()
 {
@@ -61,7 +61,7 @@ static Hospital_DaysLeft(until)
 	return left / 86400 + 1;
 }
 
-// Р”РµРЅСЊРіРё Р±РѕР»СЊРЅРёС†Рµ: РІ РѕР±С‰Р°Рє РјРµРґРёРєРѕРІ
+// Деньги больнице: в общак медиков
 static Hospital_Income(amount)
 {
 	if (Faction_IsValid(FACTION_EMS))
@@ -72,42 +72,42 @@ static Hospital_Income(amount)
 	else Econ_ToTreasury(amount);
 }
 
-// РџРѕСЃР»Рµ СЃРјРµСЂС‚Рё (РёР· OnPlayerSpawn): СЃС‡С‘С‚ Р±РѕР»СЊРЅРёС†С‹
+// После смерти (из OnPlayerSpawn): счёт больницы
 stock Hospital_Bill(playerid)
 {
 	if (Hospital_IsInsured(playerid))
 	{
-		SendClientMessage(playerid, COLOR_WHITE, "РўРµР±СЏ РІС‹Р»РµС‡РёР»Рё РІ Р±РѕР»СЊРЅРёС†Рµ. Р›РµС‡РµРЅРёРµ РѕРїР»Р°С‚РёР»Р° СЃС‚СЂР°С…РѕРІРєР°.");
+		SendClientMessage(playerid, COLOR_WHITE, "Тебя вылечили в больнице. Лечение оплатила страховка.");
 		return;
 	}
-	GiveMoney(playerid, -HOSPITAL_FEE, "СЃС‡С‘С‚ Р±РѕР»СЊРЅРёС†С‹");
+	GiveMoney(playerid, -HOSPITAL_FEE, "счёт больницы");
 	Hospital_Income(HOSPITAL_FEE);
-	SendClientMessage(playerid, COLOR_WHITE, "РўРµР±СЏ РІС‹Р»РµС‡РёР»Рё РІ Р±РѕР»СЊРЅРёС†Рµ. РЎС‡С‘С‚ Р·Р° Р»РµС‡РµРЅРёРµ: $%d. РЎС‚СЂР°С…РѕРІРєР° вЂ” РІ СЂРµРіРёСЃС‚СЂР°С‚СѓСЂРµ.", HOSPITAL_FEE);
+	SendClientMessage(playerid, COLOR_WHITE, "Тебя вылечили в больнице. Счёт за лечение: $%d. Страховка — в регистратуре.", HOSPITAL_FEE);
 }
 
 // ---------------------------------------------------------------------
-//  Р РµРіРёСЃС‚СЂР°С‚СѓСЂР°
+//  Регистратура
 // ---------------------------------------------------------------------
 static Hospital_ShowDesk(playerid)
 {
 	new list[512], line[128];
-	strcat(list, "РЈСЃР»СѓРіР°\tР¦РµРЅР°\n");
-	format(line, sizeof line, "Р›РµС‡РµРЅРёРµ (РґРѕ 100 HP)\t$%d\n", Hospital_IsInsured(playerid) ? HOSP_TREAT_INSURED : HOSP_TREAT_PRICE);
+	strcat(list, "Услуга\tЦена\n");
+	format(line, sizeof line, "Лечение (до 100 HP)\t$%d\n", Hospital_IsInsured(playerid) ? HOSP_TREAT_INSURED : HOSP_TREAT_PRICE);
 	strcat(list, line);
-	if (Hospital_IsInsured(playerid)) format(line, sizeof line, "РџСЂРѕРґР»РёС‚СЊ СЃС‚СЂР°С…РѕРІРєСѓ (+%d РґРЅ., СЃРµР№С‡Р°СЃ РµС‰С‘ %d РґРЅ.)\t$%d\n", HOSP_INSURE_DAYS, Hospital_DaysLeft(gInsured[playerid]), HOSP_INSURE_PRICE);
-	else format(line, sizeof line, "РЎС‚СЂР°С…РѕРІРєР° РЅР° %d РґРЅ.\t$%d\n", HOSP_INSURE_DAYS, HOSP_INSURE_PRICE);
+	if (Hospital_IsInsured(playerid)) format(line, sizeof line, "Продлить страховку (+%d дн., сейчас ещё %d дн.)\t$%d\n", HOSP_INSURE_DAYS, Hospital_DaysLeft(gInsured[playerid]), HOSP_INSURE_PRICE);
+	else format(line, sizeof line, "Страховка на %d дн.\t$%d\n", HOSP_INSURE_DAYS, HOSP_INSURE_PRICE);
 	strcat(list, line);
-	if (Hospital_HasMedcard(playerid)) format(line, sizeof line, "РњРµРґРєР°СЂС‚Р° (РµСЃС‚СЊ, РµС‰С‘ %d РґРЅ.) вЂ” РїСЂРѕРґР»РёС‚СЊ\t$%d\n", Hospital_DaysLeft(gMedcard[playerid]), HOSP_MEDCARD_PRICE);
-	else format(line, sizeof line, "РњРµРґРєР°СЂС‚Р° РЅР° %d РґРЅ. (РЅСѓР¶РЅР° РґР»СЏ РѕСЂСѓР¶РёСЏ)\t$%d\n", HOSP_MEDCARD_DAYS, HOSP_MEDCARD_PRICE);
+	if (Hospital_HasMedcard(playerid)) format(line, sizeof line, "Медкарта (есть, ещё %d дн.) — продлить\t$%d\n", Hospital_DaysLeft(gMedcard[playerid]), HOSP_MEDCARD_PRICE);
+	else format(line, sizeof line, "Медкарта на %d дн. (нужна для оружия)\t$%d\n", HOSP_MEDCARD_DAYS, HOSP_MEDCARD_PRICE);
 	strcat(list, line);
-	format(line, sizeof line, "Р›РµС‡РµРЅРёРµ РѕС‚ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё (СЃРµР№С‡Р°СЃ %d%%)\t$%d\n", Drugs_GetAddict(playerid), HOSP_REHAB_PRICE);
+	format(line, sizeof line, "Лечение от зависимости (сейчас %d%%)\t$%d\n", Drugs_GetAddict(playerid), HOSP_REHAB_PRICE);
 	strcat(list, line);
-	ShowPlayerDialog(playerid, DIALOG_HOSPITAL, DIALOG_STYLE_TABLIST_HEADERS, "Р РµРіРёСЃС‚СЂР°С‚СѓСЂР° Р±РѕР»СЊРЅРёС†С‹", "%s", "Р’С‹Р±СЂР°С‚СЊ", "Р—Р°РєСЂС‹С‚СЊ", list);
+	ShowPlayerDialog(playerid, DIALOG_HOSPITAL, DIALOG_STYLE_TABLIST_HEADERS, "Регистратура больницы", "%s", "Выбрать", "Закрыть", list);
 }
 
 static bool:Hospital_Pay(playerid, price, const reason[])
 {
-	if (GetMoney(playerid) < price) { SendClientMessage(playerid, COLOR_GREY, "РќРµ С…РІР°С‚Р°РµС‚ РґРµРЅРµРі. РќСѓР¶РЅРѕ $%d.", price); return false; }
+	if (GetMoney(playerid) < price) { SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", price); return false; }
 	GiveMoney(playerid, -price, reason);
 	Hospital_Income(price);
 	Account_Save(playerid);
@@ -124,45 +124,45 @@ static Hospital_OnPick(playerid, listitem)
 		{
 			new Float:hp;
 			GetPlayerHealth(playerid, hp);
-			if (hp >= 100.0) { SendClientMessage(playerid, COLOR_GREY, "РўС‹ Р·РґРѕСЂРѕРІ."); return; }
-			if (!Hospital_Pay(playerid, Hospital_IsInsured(playerid) ? HOSP_TREAT_INSURED : HOSP_TREAT_PRICE, "Р»РµС‡РµРЅРёРµ РІ Р±РѕР»СЊРЅРёС†Рµ")) return;
+			if (hp >= 100.0) { SendClientMessage(playerid, COLOR_GREY, "Ты здоров."); return; }
+			if (!Hospital_Pay(playerid, Hospital_IsInsured(playerid) ? HOSP_TREAT_INSURED : HOSP_TREAT_PRICE, "лечение в больнице")) return;
 			SetPlayerHealth(playerid, 100.0);
-			SendClientMessage(playerid, COLOR_GREEN, "Р’СЂР°С‡ РѕСЃРјРѕС‚СЂРµР» С‚РµР±СЏ Рё РѕР±СЂР°Р±РѕС‚Р°Р» СЂР°РЅС‹. Р—РґРѕСЂРѕРІСЊРµ: 100.");
+			SendClientMessage(playerid, COLOR_GREEN, "Врач осмотрел тебя и обработал раны. Здоровье: 100.");
 		}
 		case 1:
 		{
-			if (!Hospital_Pay(playerid, HOSP_INSURE_PRICE, "РјРµРґРёС†РёРЅСЃРєР°СЏ СЃС‚СЂР°С…РѕРІРєР°")) return;
+			if (!Hospital_Pay(playerid, HOSP_INSURE_PRICE, "медицинская страховка")) return;
 			gInsured[playerid] = ((gInsured[playerid] > now) ? gInsured[playerid] : now) + HOSP_INSURE_DAYS * 86400;
 			Hospital_Save(playerid);
-			SendClientMessage(playerid, COLOR_GREEN, "РЎС‚СЂР°С…РѕРІРєР° РѕС„РѕСЂРјР»РµРЅР°: РµС‰С‘ %d РґРЅ.", Hospital_DaysLeft(gInsured[playerid]));
+			SendClientMessage(playerid, COLOR_GREEN, "Страховка оформлена: ещё %d дн.", Hospital_DaysLeft(gInsured[playerid]));
 		}
 		case 2:
 		{
-			if (Drugs_GetAddict(playerid) >= ADDICT_WITHDRAW) { SendClientMessage(playerid, COLOR_RED, "Р’СЂР°С‡: В«РќРµ РіРѕРґРµРЅ. РЎРЅР°С‡Р°Р»Р° РІС‹Р»РµС‡Рё Р·Р°РІРёСЃРёРјРѕСЃС‚СЊВ»."); return; }
-			if (!Hospital_Pay(playerid, HOSP_MEDCARD_PRICE, "РјРµРґРєР°СЂС‚Р°")) return;
+			if (Drugs_GetAddict(playerid) >= ADDICT_WITHDRAW) { SendClientMessage(playerid, COLOR_RED, "Врач: «Не годен. Сначала вылечи зависимость»."); return; }
+			if (!Hospital_Pay(playerid, HOSP_MEDCARD_PRICE, "медкарта")) return;
 			gMedcard[playerid] = ((gMedcard[playerid] > now) ? gMedcard[playerid] : now) + HOSP_MEDCARD_DAYS * 86400;
 			Hospital_Save(playerid);
-			SendClientMessage(playerid, COLOR_GREEN, "РњРµРґРѕСЃРјРѕС‚СЂ РїСЂРѕР№РґРµРЅ, РјРµРґРєР°СЂС‚Р° РґРµР№СЃС‚РІСѓРµС‚ РµС‰С‘ %d РґРЅ.", Hospital_DaysLeft(gMedcard[playerid]));
+			SendClientMessage(playerid, COLOR_GREEN, "Медосмотр пройден, медкарта действует ещё %d дн.", Hospital_DaysLeft(gMedcard[playerid]));
 		}
 		case 3:
 		{
-			if (Drugs_GetAddict(playerid) <= 0) { SendClientMessage(playerid, COLOR_GREY, "Р—Р°РІРёСЃРёРјРѕСЃС‚Рё РЅРµС‚."); return; }
-			if (!Hospital_Pay(playerid, HOSP_REHAB_PRICE, "Р»РµС‡РµРЅРёРµ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё")) return;
+			if (Drugs_GetAddict(playerid) <= 0) { SendClientMessage(playerid, COLOR_GREY, "Зависимости нет."); return; }
+			if (!Hospital_Pay(playerid, HOSP_REHAB_PRICE, "лечение зависимости")) return;
 			Drugs_Cure(playerid);
-			SendClientMessage(playerid, COLOR_GREEN, "РљСѓСЂСЃ РєР°РїРµР»СЊРЅРёС† РїСЂРѕР№РґРµРЅ: Р·Р°РІРёСЃРёРјРѕСЃС‚СЊ СЃРЅСЏС‚Р°.");
+			SendClientMessage(playerid, COLOR_GREEN, "Курс капельниц пройден: зависимость снята.");
 		}
 	}
 }
 
 // ---------------------------------------------------------------------
-//  РљРѕРјР°РЅРґС‹
+//  Команды
 // ---------------------------------------------------------------------
 stock bool:Cmd_Medcard(playerid)
 {
-	if (Hospital_HasMedcard(playerid)) SendClientMessage(playerid, COLOR_WHITE, "РњРµРґРєР°СЂС‚Р°: РґРµР№СЃС‚РІСѓРµС‚ РµС‰С‘ %d РґРЅ.", Hospital_DaysLeft(gMedcard[playerid]));
-	else SendClientMessage(playerid, COLOR_GREY, "РњРµРґРєР°СЂС‚С‹ РЅРµС‚. Р•С‘ РІС‹РґР°СЋС‚ РІ СЂРµРіРёСЃС‚СЂР°С‚СѓСЂРµ Р±РѕР»СЊРЅРёС†С‹ РёР»Рё РјРµРґРёРєРё.");
-	if (Hospital_IsInsured(playerid)) SendClientMessage(playerid, COLOR_WHITE, "РЎС‚СЂР°С…РѕРІРєР°: РµС‰С‘ %d РґРЅ.", Hospital_DaysLeft(gInsured[playerid]));
-	else SendClientMessage(playerid, COLOR_GREY, "РЎС‚СЂР°С…РѕРІРєРё РЅРµС‚.");
+	if (Hospital_HasMedcard(playerid)) SendClientMessage(playerid, COLOR_WHITE, "Медкарта: действует ещё %d дн.", Hospital_DaysLeft(gMedcard[playerid]));
+	else SendClientMessage(playerid, COLOR_GREY, "Медкарты нет. Её выдают в регистратуре больницы или медики.");
+	if (Hospital_IsInsured(playerid)) SendClientMessage(playerid, COLOR_WHITE, "Страховка: ещё %d дн.", Hospital_DaysLeft(gInsured[playerid]));
+	else SendClientMessage(playerid, COLOR_GREY, "Страховки нет.");
 	return true;
 }
 
@@ -170,37 +170,37 @@ stock bool:Cmd_ShowMedcard(playerid, const params[])
 {
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /showmedcard [id]");
-	if (!IsPlayerNearPlayer(playerid, target, 4.0)) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Р±Р»РёР¶Рµ.");
-	if (!Hospital_HasMedcard(playerid)) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ РјРµРґРєР°СЂС‚С‹.");
-	SendClientMessage(target, COLOR_WHITE, "%s РїРѕРєР°Р·С‹РІР°РµС‚ РјРµРґРєР°СЂС‚Сѓ: РіРѕРґРµРЅ, РґРµР№СЃС‚РІСѓРµС‚ РµС‰С‘ %d РґРЅ.", GetRPName(playerid), Hospital_DaysLeft(gMedcard[playerid]));
+	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /showmedcard [id]");
+	if (!IsPlayerNearPlayer(playerid, target, 4.0)) return SendClientMessage(playerid, COLOR_GREY, "Подойди ближе.");
+	if (!Hospital_HasMedcard(playerid)) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет медкарты.");
+	SendClientMessage(target, COLOR_WHITE, "%s показывает медкарту: годен, действует ещё %d дн.", GetRPName(playerid), Hospital_DaysLeft(gMedcard[playerid]));
 	new msg[96];
-	format(msg, sizeof msg, "%s РїРѕРєР°Р·С‹РІР°РµС‚ РјРµРґРєР°СЂС‚Сѓ %s.", GetRPName(playerid), GetRPName(target));
+	format(msg, sizeof msg, "%s показывает медкарту %s.", GetRPName(playerid), GetRPName(target));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	return true;
 }
 
 stock bool:Cmd_GiveMedcard(playerid, const params[])
 {
-	if (!Faction_IsMedic(Player[playerid][pFaction]) || !Player[playerid][pDuty]) return SendClientMessage(playerid, COLOR_GREY, "РњРµРґРєР°СЂС‚Сѓ РІС‹РїРёСЃС‹РІР°РµС‚ РјРµРґРёРє РЅР° СЃРјРµРЅРµ.");
-	if (Player[playerid][pRank] < 3) return SendClientMessage(playerid, COLOR_GREY, "РњРµРґРєР°СЂС‚С‹ РІС‹РїРёСЃС‹РІР°СЋС‚ СЃ СЂР°РЅРіР° 3.");
+	if (!Faction_IsMedic(Player[playerid][pFaction]) || !Player[playerid][pDuty]) return SendClientMessage(playerid, COLOR_GREY, "Медкарту выписывает медик на смене.");
+	if (Player[playerid][pRank] < 3) return SendClientMessage(playerid, COLOR_GREY, "Медкарты выписывают с ранга 3.");
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /givemedcard [id]  (РїР°С†РёРµРЅС‚ РїР»Р°С‚РёС‚ $%d)", HOSP_MEDIC_MEDCARD);
-	if (!IsPlayerNearPlayer(playerid, target, 3.0)) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Р±Р»РёР¶Рµ.");
-	if (Drugs_GetAddict(target) >= ADDICT_WITHDRAW) return SendClientMessage(playerid, COLOR_ORANGE, "РђРЅР°Р»РёР·С‹ РїРѕРєР°Р·С‹РІР°СЋС‚ РЅР°СЂРєРѕС‚РёРєРё: РїР°С†РёРµРЅС‚ РЅРµ РіРѕРґРµРЅ.");
-	if (GetMoney(target) < HOSP_MEDIC_MEDCARD) return SendClientMessage(playerid, COLOR_GREY, "РЈ РїР°С†РёРµРЅС‚Р° РЅРµ С…РІР°С‚Р°РµС‚ РґРµРЅРµРі ($%d).", HOSP_MEDIC_MEDCARD);
-	GiveMoney(target, -HOSP_MEDIC_MEDCARD, "РјРµРґРєР°СЂС‚Р° Сѓ РјРµРґРёРєР°");
-	GiveMoney(playerid, HOSP_MEDIC_MEDCARD, "РІС‹РїРёСЃР°Р» РјРµРґРєР°СЂС‚Сѓ");
+	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /givemedcard [id]  (пациент платит $%d)", HOSP_MEDIC_MEDCARD);
+	if (!IsPlayerNearPlayer(playerid, target, 3.0)) return SendClientMessage(playerid, COLOR_GREY, "Подойди ближе.");
+	if (Drugs_GetAddict(target) >= ADDICT_WITHDRAW) return SendClientMessage(playerid, COLOR_ORANGE, "Анализы показывают наркотики: пациент не годен.");
+	if (GetMoney(target) < HOSP_MEDIC_MEDCARD) return SendClientMessage(playerid, COLOR_GREY, "У пациента не хватает денег ($%d).", HOSP_MEDIC_MEDCARD);
+	GiveMoney(target, -HOSP_MEDIC_MEDCARD, "медкарта у медика");
+	GiveMoney(playerid, HOSP_MEDIC_MEDCARD, "выписал медкарту");
 	new now = gettime();
 	gMedcard[target] = ((gMedcard[target] > now) ? gMedcard[target] : now) + HOSP_MEDCARD_DAYS * 86400;
 	Hospital_Save(target);
 	Account_Save(target);
 	Account_Save(playerid);
 	new msg[128];
-	format(msg, sizeof msg, "%s РїСЂРѕРІРѕРґРёС‚ РјРµРґРѕСЃРјРѕС‚СЂ %s Рё РІС‹РїРёСЃС‹РІР°РµС‚ РјРµРґРєР°СЂС‚Сѓ.", GetRPName(playerid), GetRPName(target));
+	format(msg, sizeof msg, "%s проводит медосмотр %s и выписывает медкарту.", GetRPName(playerid), GetRPName(target));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
-	SendClientMessage(target, COLOR_GREEN, "РњРµРґРєР°СЂС‚Р° РІС‹РґР°РЅР° РЅР° %d РґРЅ. (-$%d).", HOSP_MEDCARD_DAYS, HOSP_MEDIC_MEDCARD);
+	SendClientMessage(target, COLOR_GREEN, "Медкарта выдана на %d дн. (-$%d).", HOSP_MEDCARD_DAYS, HOSP_MEDIC_MEDCARD);
 	return true;
 }
 

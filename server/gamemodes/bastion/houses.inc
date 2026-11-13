@@ -1,81 +1,81 @@
 // =====================================================================
-//  houses.inc вЂ” РґРѕРјР°: РїРѕРєСѓРїРєР°, РїСЂРѕРґР°Р¶Р°, РІС…РѕРґ/РІС‹С…РѕРґ, Р·Р°РјРѕРє,
-//  РЅР°Р»РѕРі, Р°СЂРµРЅРґР° РєРѕРјРЅР°С‚, С€РєР°С„ СЃ РѕСЂСѓР¶РёРµРј Рё СЃРµР№С„.
+//  houses.inc — дома: покупка, продажа, вход/выход, замок,
+//  налог, аренда комнат, шкаф с оружием и сейф.
 //
-//  Р”РѕРјР° С…СЂР°РЅСЏС‚СЃСЏ РІ С‚Р°Р±Р»РёС†Рµ houses. РџСЂРё РїРµСЂРІРѕРј Р·Р°РїСѓСЃРєРµ СЃРѕР·РґР°СЋС‚СЃСЏ
-//  РЅРµСЃРєРѕР»СЊРєРѕ РґРѕРјРѕРІ РЅР° Grove Street. РђРґРјРёРЅ (4+) РјРѕР¶РµС‚ РґРѕР±Р°РІРёС‚СЊ РґРѕРј
-//  С‚Р°Рј, РіРґРµ СЃС‚РѕРёС‚: /createhouse [С†РµРЅР°] [С‚РёРї РёРЅС‚РµСЂСЊРµСЂР° 1-5]
-//  Р’С…РѕРґ РјРѕР¶РЅРѕ СЃС‚Р°РІРёС‚СЊ Рё РІРЅСѓС‚СЂРё Р·РґР°РЅРёСЏ (РѕР±С‰РµР¶РёС‚РёРµ: РґРІРµСЂРё РєРѕРјРЅР°С‚ РІ РєРѕСЂРёРґРѕСЂРµ РёРЅС‚РµСЂСЊРµСЂР°).
-//  /sethouseint [в„–] вЂ” СЃРІРѕСЏ С‚РѕС‡РєР° РІРЅСѓС‚СЂРё РґРѕРјР° (СЃС‚РѕСЏ РІ РЅСѓР¶РЅРѕРј РёРЅС‚РµСЂСЊРµСЂРµ),
-//  /delhouse [в„–] вЂ” СЃРЅРµСЃС‚Рё РґРѕРј (Р±РµР· РЅРѕРјРµСЂР° вЂ” С‚РѕС‚, С‡С‚Рѕ СЂСЏРґРѕРј), /gotohouse [в„–] вЂ” С‚РµР»РµРїРѕСЂС‚ Рє РґРѕРјСѓ.
+//  Дома хранятся в таблице houses. При первом запуске создаются
+//  несколько домов на Grove Street. Админ (4+) может добавить дом
+//  там, где стоит: /createhouse [цена] [тип интерьера 1-5]
+//  Вход можно ставить и внутри здания (общежитие: двери комнат в коридоре интерьера).
+//  /sethouseint [№] — своя точка внутри дома (стоя в нужном интерьере),
+//  /delhouse [№] — снести дом (без номера — тот, что рядом), /gotohouse [№] — телепорт к дому.
 //
-//  РЎС‡С‘С‚ РґРѕРјР° (houses.balance): СЃ РЅРµРіРѕ РєР°Р¶РґС‹Р№ PayDay СЃРїРёСЃС‹РІР°РµС‚СЃСЏ РЅР°Р»РѕРі
-//  (0.1% С†РµРЅС‹, РЅРµ РјРµРЅСЊС€Рµ HOUSE_TAX_MIN), РЅР° РЅРµРіРѕ Р¶Рµ РїСЂРёС…РѕРґРёС‚ РїР»Р°С‚Р°
-//  Р¶РёР»СЊС†РѕРІ. РџРѕРїРѕР»РЅРёС‚СЊ: /housepay [СЃСѓРјРјР°] РѕС‚РєСѓРґР° СѓРіРѕРґРЅРѕ. Р•СЃР»Рё РґРѕР»Рі
-//  Р±РѕР»СЊС€Рµ РЅР°Р»РѕРіР° Р·Р° HOUSE_DEBT_HOURS С‡Р°СЃРѕРІ вЂ” РґРѕРј СѓС…РѕРґРёС‚ РіРѕСЃСѓРґР°СЂСЃС‚РІСѓ.
+//  Счёт дома (houses.balance): с него каждый PayDay списывается налог
+//  (0.1% цены, не меньше HOUSE_TAX_MIN), на него же приходит плата
+//  жильцов. Пополнить: /housepay [сумма] откуда угодно. Если долг
+//  больше налога за HOUSE_DEBT_HOURS часов — дом уходит государству.
 //
-//  РђСЂРµРЅРґР°: РІР»Р°РґРµР»РµС† СЃС‚Р°РІРёС‚ С†РµРЅСѓ /setrent [СЃСѓРјРјР° РІ С‡Р°СЃ] (0 вЂ” Р·Р°РєСЂС‹С‚СЊ),
-//  РёРіСЂРѕРє Сѓ РґРІРµСЂРё РїРёС€РµС‚ /rent. Р–РёР»РµС† РїР»Р°С‚РёС‚ РєР°Р¶РґС‹Р№ PayDay, РїРѕРєР° РѕРЅ
-//  РІ РёРіСЂРµ, РјРѕР¶РµС‚ РІС…РѕРґРёС‚СЊ РІ Р·Р°РєСЂС‹С‚С‹Р№ РґРѕРј Рё РїРѕСЏРІР»СЏРµС‚СЃСЏ Сѓ РЅРµРіРѕ.
-//  /unrent вЂ” СЃСЉРµС…Р°С‚СЊ, РІР»Р°РґРµР»СЊС†Сѓ: /tenants /evict [id] /evictall.
+//  Аренда: владелец ставит цену /setrent [сумма в час] (0 — закрыть),
+//  игрок у двери пишет /rent. Жилец платит каждый PayDay, пока он
+//  в игре, может входить в закрытый дом и появляется у него.
+//  /unrent — съехать, владельцу: /tenants /evict [id] /evictall.
 //
-//  РњРµРЅСЋ РґРѕРјР°: /house РёР»Рё ALT РІРЅСѓС‚СЂРё РґРѕРјР° (РЅРµ Сѓ РґРІРµСЂРё). РЁРєР°С„ РЅР°
-//  HOUSE_WEAPON_SLOTS РѕСЂСѓР¶РёР№ Рё СЃРµР№С„ СЃ РґРµРЅСЊРіР°РјРё вЂ” С‚РѕР»СЊРєРѕ РІР»Р°РґРµР»СЊС†Сѓ.
+//  Меню дома: /house или ALT внутри дома (не у двери). Шкаф на
+//  HOUSE_WEAPON_SLOTS оружий и сейф с деньгами — только владельцу.
 // =====================================================================
 
 #define MAX_HOUSES          200
-#define HOUSE_WORLD_OFFSET  1000    // РІРёСЂС‚. РјРёСЂ РёРЅС‚РµСЂСЊРµСЂР° = 1000 + РЅРѕРјРµСЂ РґРѕРјР°
+#define HOUSE_WORLD_OFFSET  1000    // вирт. мир интерьера = 1000 + номер дома
 
-#define HOUSE_TAX_MIN       20      // РЅР°Р»РѕРі РІ С‡Р°СЃ РЅРµ РјРµРЅСЊС€Рµ СЌС‚РѕР№ СЃСѓРјРјС‹
-#define HOUSE_DEBT_HOURS    168     // СЃРєРѕР»СЊРєРѕ С‡Р°СЃРѕРІ РґРѕР»РіР° С‚РµСЂРїРёС‚ РіРѕСЃСѓРґР°СЂСЃС‚РІРѕ (7 РґРЅРµР№)
-#define HOUSE_RENT_MAX      1000    // РјР°РєСЃРёРјР°Р»СЊРЅР°СЏ Р°СЂРµРЅРґР° РІ С‡Р°СЃ
-#define HOUSE_WEAPON_SLOTS  5       // РјРµСЃС‚ РІ С€РєР°С„Сѓ
-#define HOUSE_SAFE_MAX      500000  // РјР°РєСЃРёРјСѓРј РґРµРЅРµРі РІ СЃРµР№С„Рµ
-#define HOUSE_STORE_RANGE   1.5     // РєР°Рє Р±Р»РёР·РєРѕ Рє С€РєР°С„Сѓ РѕС‚РєСЂС‹РІР°СЋС‚СЃСЏ С€РєР°С„ Рё СЃРµР№С„
+#define HOUSE_TAX_MIN       20      // налог в час не меньше этой суммы
+#define HOUSE_DEBT_HOURS    168     // сколько часов долга терпит государство (7 дней)
+#define HOUSE_RENT_MAX      1000    // максимальная аренда в час
+#define HOUSE_WEAPON_SLOTS  5       // мест в шкафу
+#define HOUSE_SAFE_MAX      500000  // максимум денег в сейфе
+#define HOUSE_STORE_RANGE   1.5     // как близко к шкафу открываются шкаф и сейф
 
 
 enum E_HOUSE
 {
 	hDbId,
-	hOwner,                     // id Р°РєРєР°СѓРЅС‚Р° РІР»Р°РґРµР»СЊС†Р° (0 = РїСЂРѕРґР°С‘С‚СЃСЏ)
+	hOwner,                     // id аккаунта владельца (0 = продаётся)
 	hOwnerName[MAX_PLAYER_NAME],
 	hPrice,
-	Float:hX, Float:hY, Float:hZ,       // РІС…РѕРґ СЃ СѓР»РёС†С‹
-	Float:hIX, Float:hIY, Float:hIZ,    // С‚РѕС‡РєР° РІРЅСѓС‚СЂРё
+	Float:hX, Float:hY, Float:hZ,       // вход с улицы
+	Float:hIX, Float:hIY, Float:hIZ,    // точка внутри
 	hInterior,
-	hOutInt, hOutWorld,                 // РіРґРµ СЃС‚РѕРёС‚ РІС…РѕРґ (0, 0 вЂ” СѓР»РёС†Р°; РёРЅР°С‡Рµ РєРѕСЂРёРґРѕСЂ РѕР±С‰РµР¶РёС‚РёСЏ Рё С‚.Рї.)
+	hOutInt, hOutWorld,                 // где стоит вход (0, 0 — улица; иначе коридор общежития и т.п.)
 	bool:hLocked,
-	hRent,                      // Р°СЂРµРЅРґР° РІ С‡Р°СЃ (0 = РЅРµ СЃРґР°С‘С‚СЃСЏ)
-	hBalance,                   // СЃС‡С‘С‚ РґРѕРјР° (РјРѕР¶РµС‚ Р±С‹С‚СЊ РІ РјРёРЅСѓСЃРµ вЂ” РґРѕР»Рі РїРѕ РЅР°Р»РѕРіСѓ)
-	hSafe,                      // РґРµРЅСЊРіРё РІ СЃРµР№С„Рµ
-	hMarker,                    // РјР°СЂРєРµСЂ РІС…РѕРґР° (markers.inc)
-	bool:hHasStore,             // С€РєР°С„ РїРѕСЃС‚Р°РІР»РµРЅ (/makestorage)
-	Float:hSX, Float:hSY, Float:hSZ,    // РіРґРµ СЃС‚РѕРёС‚ С€РєР°С„ (РІРЅСѓС‚СЂРё РґРѕРјР°)
-	Text3D:hStoreLabel          // РЅР°РґРїРёСЃСЊ В«РЁРєР°С„В» РЅР°Рґ РЅРёРј
+	hRent,                      // аренда в час (0 = не сдаётся)
+	hBalance,                   // счёт дома (может быть в минусе — долг по налогу)
+	hSafe,                      // деньги в сейфе
+	hMarker,                    // маркер входа (markers.inc)
+	bool:hHasStore,             // шкаф поставлен (/makestorage)
+	Float:hSX, Float:hSY, Float:hSZ,    // где стоит шкаф (внутри дома)
+	Text3D:hStoreLabel          // надпись «Шкаф» над ним
 }
 new House[MAX_HOUSES][E_HOUSE];
 
-forward bool:Doors_Try(playerid);     // doors.inc РїРѕРґРєР»СЋС‡С‘РЅ РїРѕР·Р¶Рµ
+forward bool:Doors_Try(playerid);     // doors.inc подключён позже
 forward bool:Biz_TryDoor(playerid);
-forward bool:House_AtStore(playerid, h);   // business.inc: РІС…РѕРґ Рё РІС‹С…РѕРґ РёР· РёРЅС‚РµСЂСЊРµСЂР° Р±РёР·РЅРµСЃР°
+forward bool:House_AtStore(playerid, h);   // business.inc: вход и выход из интерьера бизнеса
 new gHouseCount = 0;
 
-static gRentHouse[MAX_PLAYERS] = { -1, ... };          // РєР°РєРѕР№ РґРѕРј СЃРЅРёРјР°РµС‚ РёРіСЂРѕРє (-1 = РЅРµС‚)
-static gHouseGunSlot[MAX_PLAYERS][HOUSE_WEAPON_SLOTS];  // РїСѓРЅРєС‚С‹ СЃРїРёСЃРєР° "РІР·СЏС‚СЊ РѕСЂСѓР¶РёРµ"
+static gRentHouse[MAX_PLAYERS] = { -1, ... };          // какой дом снимает игрок (-1 = нет)
+static gHouseGunSlot[MAX_PLAYERS][HOUSE_WEAPON_SLOTS];  // пункты списка "взять оружие"
 
-// Р“РѕС‚РѕРІС‹Рµ РёРЅС‚РµСЂСЊРµСЂС‹ РґР»СЏ /createhouse (РЅРѕРјРµСЂ РёРЅС‚РµСЂСЊРµСЂР° Рё РєРѕРѕСЂРґРёРЅР°С‚С‹ РІРЅСѓС‚СЂРё)
+// Готовые интерьеры для /createhouse (номер интерьера и координаты внутри)
 static const gHouseIntId[] = { 1, 2, 3, 5, 8 };
 static const Float:gHouseIntPos[][3] =
 {
-	{ 223.0731, 1287.0825, 1082.1406 },     // 1: РјР°Р»РµРЅСЊРєРёР№ РґРѕРј
-	{ 2468.8411, -1698.2228, 1013.5078 },   // 2: РґРѕРј Р Р°Р№РґРµСЂР°
-	{ 2496.0549, -1693.9263, 1014.7422 },   // 3: РґРѕРј CJ
-	{ 2233.8032, -1115.2614, 1050.8828 },   // 4: РєРІР°СЂС‚РёСЂР°
-	{ 2365.2183, -1135.5964, 1050.8826 }    // 5: Р±РѕР»СЊС€РѕР№ РґРѕРј
+	{ 223.0731, 1287.0825, 1082.1406 },     // 1: маленький дом
+	{ 2468.8411, -1698.2228, 1013.5078 },   // 2: дом Райдера
+	{ 2496.0549, -1693.9263, 1014.7422 },   // 3: дом CJ
+	{ 2233.8032, -1115.2614, 1050.8828 },   // 4: квартира
+	{ 2365.2183, -1135.5964, 1050.8826 }    // 5: большой дом
 };
 
 // ---------------------------------------------------------------------
-//  РќРѕРІС‹Рµ РїРѕР»СЏ Р±Р°Р·С‹ (СЃС‚Р°СЂР°СЏ Р±Р°Р·Р° РґРѕРїРѕР»РЅСЏРµС‚СЃСЏ СЃР°РјР°)
+//  Новые поля базы (старая база дополняется сама)
 // ---------------------------------------------------------------------
 static Houses_Init()
 {
@@ -97,7 +97,7 @@ stock Houses_Load()
 {
 	Houses_Init();
 
-	// Р•СЃР»Рё РґРѕРјРѕРІ РЅРµС‚ СЃРѕРІСЃРµРј вЂ” СЃРѕР·РґР°С‘Рј СЃС‚Р°СЂС‚РѕРІС‹Рµ
+	// Если домов нет совсем — создаём стартовые
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT COUNT(*) FROM houses");
 	new count = 0;
 	if (r != DBResult:0)
@@ -107,8 +107,8 @@ stock Houses_Load()
 	}
 	if (count == 0)
 	{
-		Houses_InsertDefault(2495.3, -1690.9, 14.77, 50000, 3);   // РґРѕРј CJ
-		Houses_InsertDefault(2459.4, -1691.0, 13.55, 35000, 2);   // РґРѕРј Р Р°Р№РґРµСЂР°
+		Houses_InsertDefault(2495.3, -1690.9, 14.77, 50000, 3);   // дом CJ
+		Houses_InsertDefault(2459.4, -1691.0, 13.55, 35000, 2);   // дом Райдера
 		Houses_InsertDefault(2514.3, -1691.6, 14.05, 25000, 1);
 		print("[Houses] Default houses created.");
 	}
@@ -162,7 +162,7 @@ stock Houses_InsertDefault(Float:x, Float:y, Float:z, price, type)
 		price, x, y, z, gHouseIntPos[t][0], gHouseIntPos[t][1], gHouseIntPos[t][2], gHouseIntId[t]));
 }
 
-// РќРѕРјРµСЂ РґРѕРјР° РІ РјР°СЃСЃРёРІРµ РїРѕ id РІ Р±Р°Р·Рµ (-1 = РЅРµС‚)
+// Номер дома в массиве по id в базе (-1 = нет)
 static House_FindByDbId(dbid)
 {
 	if (dbid <= 0) return -1;
@@ -173,7 +173,7 @@ static House_FindByDbId(dbid)
 	return -1;
 }
 
-// Р”Р»СЏ doors.inc: РјРёСЂ РёРЅС‚РµСЂСЊРµСЂР° РґРѕРјР° РїРѕ id РІ Р±Р°Р·Рµ (-1 = РґРѕРјР° РЅРµС‚) Рё РґРѕРј РїРѕ РјРёСЂСѓ (-1 = СЌС‚Рѕ РЅРµ РґРѕРј)
+// Для doors.inc: мир интерьера дома по id в базе (-1 = дома нет) и дом по миру (-1 = это не дом)
 stock House_WorldByDbId(dbid)
 {
 	new h = House_FindByDbId(dbid);
@@ -191,7 +191,7 @@ stock House_ByWorld(world)
 	return (h >= 0 && h < gHouseCount) ? h : -1;
 }
 
-// РРіСЂРѕРє РѕРЅР»Р°Р№РЅ СЃ СЌС‚РёРј Р°РєРєР°СѓРЅС‚РѕРј (INVALID_PLAYER_ID = РЅРµС‚)
+// Игрок онлайн с этим аккаунтом (INVALID_PLAYER_ID = нет)
 static House_FindOnline(accountId)
 {
 	if (accountId <= 0) return INVALID_PLAYER_ID;
@@ -202,7 +202,7 @@ static House_FindOnline(accountId)
 	return INVALID_PLAYER_ID;
 }
 
-// РќР°Р»РѕРі РІ С‡Р°СЃ
+// Налог в час
 stock House_GetTax(h)
 {
 	new tax = House[h][hPrice] / 1000;
@@ -210,33 +210,33 @@ stock House_GetTax(h)
 	return tax;
 }
 
-// РџРµСЂРµСЃРѕР·РґР°С‚СЊ РёРєРѕРЅРєСѓ Рё РЅР°РґРїРёСЃСЊ РЅР°Рґ РґРѕРјРѕРј (РїРѕСЃР»Рµ РїРѕРєСѓРїРєРё/РїСЂРѕРґР°Р¶Рё)
+// Пересоздать иконку и надпись над домом (после покупки/продажи)
 stock House_Refresh(h)
 {
 	new text[MK_TEXT_LEN], model;
 	if (House[h][hOwner] == 0)
 	{
-		model = 1273;   // Р·РµР»С‘РЅС‹Р№ РґРѕРјРёРє (РїСЂРѕРґР°С‘С‚СЃСЏ)
-		format(text, sizeof text, "{33AA33}Р”РѕРј в„–%d РїСЂРѕРґР°С‘С‚СЃСЏ\n{FFFFFF}Р¦РµРЅР°: ${FFFF00}%d\n{FFFFFF}РќР°Р»РѕРі: $%d РІ С‡Р°СЃ\nALT вЂ” РєСѓРїРёС‚СЊ",
+		model = 1273;   // зелёный домик (продаётся)
+		format(text, sizeof text, "{33AA33}Дом №%d продаётся\n{FFFFFF}Цена: ${FFFF00}%d\n{FFFFFF}Налог: $%d в час\nALT — купить",
 			House[h][hDbId], House[h][hPrice], House_GetTax(h));
 	}
 	else if (House[h][hRent] > 0)
 	{
-		model = 1272;   // СЃРёРЅРёР№ РґРѕРјРёРє (Р·Р°РЅСЏС‚)
-		format(text, sizeof text, "{33CCFF}Р”РѕРј в„–%d\n{FFFFFF}Р’Р»Р°РґРµР»РµС†: %s\n{FFFF00}РЎРґР°СЋС‚СЃСЏ РєРѕРјРЅР°С‚С‹: $%d РІ С‡Р°СЃ (/rent)\n{FFFFFF}ALT вЂ” РІРѕР№С‚Рё",
+		model = 1272;   // синий домик (занят)
+		format(text, sizeof text, "{33CCFF}Дом №%d\n{FFFFFF}Владелец: %s\n{FFFF00}Сдаются комнаты: $%d в час (/rent)\n{FFFFFF}ALT — войти",
 			House[h][hDbId], House[h][hOwnerName], House[h][hRent]);
 	}
 	else
 	{
 		model = 1272;
-		format(text, sizeof text, "{33CCFF}Р”РѕРј в„–%d\n{FFFFFF}Р’Р»Р°РґРµР»РµС†: %s\nALT вЂ” РІРѕР№С‚Рё",
+		format(text, sizeof text, "{33CCFF}Дом №%d\n{FFFFFF}Владелец: %s\nALT — войти",
 			House[h][hDbId], House[h][hOwnerName]);
 	}
 
 	if (House[h][hMarker] == -1)
 	{
 		new name[32];
-		format(name, sizeof name, "Р”РѕРј в„–%d", House[h][hDbId]);
+		format(name, sizeof name, "Дом №%d", House[h][hDbId]);
 		House[h][hMarker] = Marker_Create(MK_HOUSE, House[h][hDbId], name, model, House[h][hX], House[h][hY], House[h][hZ],
 			House[h][hOutWorld], House[h][hOutInt]);
 	}
@@ -244,7 +244,7 @@ stock House_Refresh(h)
 	Marker_SetLabel(House[h][hMarker], text);
 }
 
-// РђРґРјРёРЅ РїРµСЂРµРЅС‘СЃ РјР°СЂРєРµСЂ РґРѕРјР° (/markers)
+// Админ перенёс маркер дома (/markers)
 stock House_OnMarkerMoved(dbid, Float:x, Float:y, Float:z)
 {
 	for (new h = 0; h < gHouseCount; h++)
@@ -257,7 +257,7 @@ stock House_OnMarkerMoved(dbid, Float:x, Float:y, Float:z)
 	}
 }
 
-// Р”РѕРј СЂСЏРґРѕРј СЃ РёРіСЂРѕРєРѕРј РЅР° СѓР»РёС†Рµ (-1 = РЅРµС‚)
+// Дом рядом с игроком на улице (-1 = нет)
 stock House_GetNearby(playerid, Float:range = 2.5)
 {
 	new world = GetPlayerVirtualWorld(playerid), interior = GetPlayerInterior(playerid);
@@ -269,7 +269,7 @@ stock House_GetNearby(playerid, Float:range = 2.5)
 	return -1;
 }
 
-// Р”РѕРј, РєРѕС‚РѕСЂС‹Рј РІР»Р°РґРµРµС‚ РёРіСЂРѕРє (-1 = РЅРµС‚)
+// Дом, которым владеет игрок (-1 = нет)
 stock House_GetOwned(playerid)
 {
 	if (Player[playerid][pDbId] == 0) return -1;
@@ -280,37 +280,37 @@ stock House_GetOwned(playerid)
 	return -1;
 }
 
-// РРіСЂРѕРє РЅР° СЃР°РјРѕРј РґРµР»Рµ СЃС‚РѕРёС‚ РІРЅСѓС‚СЂРё РґРѕРјР° h. РћС‚РјРµС‚РєР° pHouseInside РѕРґРЅР° РЅРµ РіРѕРґРёС‚СЃСЏ: РїРѕСЃР»Рµ Р±РѕР»СЊРЅРёС†С‹,
-// С‚СЋСЂСЊРјС‹ РёР»Рё С‚РµР»РµРїРѕСЂС‚Р° Р°РґРјРёРЅРѕРј РѕРЅР° РѕСЃС‚Р°С‘С‚СЃСЏ, Рё РјРµРЅСЋ РґРѕРјР° (СЃРµР№С„, С€РєР°С„) РѕС‚РєСЂС‹РІР°Р»РѕСЃСЊ Р±С‹ РѕС‚РєСѓРґР° СѓРіРѕРґРЅРѕ
+// Игрок на самом деле стоит внутри дома h. Отметка pHouseInside одна не годится: после больницы,
+// тюрьмы или телепорта админом она остаётся, и меню дома (сейф, шкаф) открывалось бы откуда угодно
 stock bool:House_IsInside(playerid, h)
 {
 	if (h == -1 || Player[playerid][pHouseInside] != h) return false;
 	return (GetPlayerVirtualWorld(playerid) == HOUSE_WORLD_OFFSET + h);
 }
 
-// Р”РѕРј, РєРѕС‚РѕСЂС‹Р№ СЃРЅРёРјР°РµС‚ РёРіСЂРѕРє (-1 = РЅРµС‚)
+// Дом, который снимает игрок (-1 = нет)
 stock House_GetRented(playerid)
 {
 	return gRentHouse[playerid];
 }
 
-// Р”Р»СЏ СЃРїР°РІРЅР° Сѓ РґРѕРјР° (РІС‹Р·С‹РІР°РµС‚СЃСЏ РёР· accounts.inc): СЃРІРѕР№ РґРѕРј РІР°Р¶РЅРµРµ СЃСЉС‘РјРЅРѕРіРѕ
+// Для спавна у дома (вызывается из accounts.inc): свой дом важнее съёмного
 stock Houses_GetSpawn(playerid, &Float:x, &Float:y, &Float:z, &Float:a)
 {
 	new h = House_GetOwned(playerid);
-	if (h == -1) h = Family_SpouseHouse(playerid);     // РґРѕРј СЃСѓРїСЂСѓРіР° (marriage.inc)
+	if (h == -1) h = Family_SpouseHouse(playerid);     // дом супруга (marriage.inc)
 	if (h == -1) h = gRentHouse[playerid];
-	if (h == -1) h = Family_HouseOf(playerid);         // СЃРµРјРµР№РЅС‹Р№ РґРѕРј (families.inc)
+	if (h == -1) h = Family_HouseOf(playerid);         // семейный дом (families.inc)
 	if (h == -1) return 0;
 	x = House[h][hX];
-	if (House[h][hOutInt] == 0) x += 1.0;      // РЅР° СѓР»РёС†Рµ вЂ” РЅР° С€Р°Рі РѕС‚ Р·РЅР°С‡РєР°; РІ РєРѕСЂРёРґРѕСЂРµ СЂСЏРґРѕРј РјРѕР¶РµС‚ Р±С‹С‚СЊ СЃС‚РµРЅР°
+	if (House[h][hOutInt] == 0) x += 1.0;      // на улице — на шаг от значка; в коридоре рядом может быть стена
 	y = House[h][hY];
 	z = House[h][hZ];
 	a = 0.0;
 	return 1;
 }
 
-// РР· OnPlayerSpawn: РґРѕРј СЃС‚РѕРёС‚ РІРЅСѓС‚СЂРё Р·РґР°РЅРёСЏ (РѕР±С‰РµР¶РёС‚РёРµ) вЂ” РІРµСЂРЅСѓС‚СЊ РёРіСЂРѕРєСѓ РёРЅС‚РµСЂСЊРµСЂ Рё РјРёСЂ
+// Из OnPlayerSpawn: дом стоит внутри здания (общежитие) — вернуть игроку интерьер и мир
 stock Houses_OnSpawn(playerid)
 {
 	new h = House_GetOwned(playerid);
@@ -323,7 +323,7 @@ stock Houses_OnSpawn(playerid)
 	SetPlayerVirtualWorld(playerid, House[h][hOutWorld]);
 }
 
-// Р’С‹РІРµСЃС‚Рё РёРіСЂРѕРєР° РёР· РґРѕРјР° Рє РµРіРѕ РІС…РѕРґСѓ
+// Вывести игрока из дома к его входу
 static House_PutOutside(playerid, h)
 {
 	SetPlayerInterior(playerid, House[h][hOutInt]);
@@ -333,7 +333,7 @@ static House_PutOutside(playerid, h)
 	Player[playerid][pHouseInside] = -1;
 }
 
-// Р’СЃРµС…, РєС‚Рѕ РІРЅСѓС‚СЂРё РґРѕРјР°, вЂ” Рє РІС…РѕРґСѓ (РґРѕРј СЃРЅРѕСЃСЏС‚ РёР»Рё РјРµРЅСЏСЋС‚ РёРЅС‚РµСЂСЊРµСЂ)
+// Всех, кто внутри дома, — к входу (дом сносят или меняют интерьер)
 static House_EmptyInside(h)
 {
 	for (new i = 0; i < MAX_PLAYERS; i++)
@@ -348,7 +348,7 @@ stock House_Save(h)
 		House[h][hOwner], House[h][hLocked] ? 1 : 0, House[h][hRent], House[h][hBalance], House[h][hSafe], House[h][hDbId]));
 }
 
-// РџРѕСЃР»Рµ РІС…РѕРґР° РІ Р°РєРєР°СѓРЅС‚ (РёР· Vehicles_LoadForPlayer): РєР°РєРѕР№ РґРѕРј СЃРЅРёРјР°РµС‚
+// После входа в аккаунт (из Vehicles_LoadForPlayer): какой дом снимает
 stock Houses_LoadPlayer(playerid)
 {
 	gRentHouse[playerid] = -1;
@@ -368,7 +368,7 @@ stock Houses_LoadPlayer(playerid)
 	gRentHouse[playerid] = h;
 }
 
-// Р—Р°РїРёСЃР°С‚СЊ, РєР°РєРѕР№ РґРѕРј СЃРЅРёРјР°РµС‚ РёРіСЂРѕРє (-1 = СЃСЉРµС…Р°Р»)
+// Записать, какой дом снимает игрок (-1 = съехал)
 static House_SetRent(playerid, h)
 {
 	gRentHouse[playerid] = h;
@@ -377,7 +377,7 @@ static House_SetRent(playerid, h)
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET rent_house = %d WHERE id = %d", dbid, Player[playerid][pDbId]));
 }
 
-// Р’С‹СЃРµР»РёС‚СЊ РІСЃРµС… Р¶РёР»СЊС†РѕРІ РґРѕРјР° (Рё РѕРЅР»Р°Р№РЅ, Рё РѕС„С„Р»Р°Р№РЅ)
+// Выселить всех жильцов дома (и онлайн, и оффлайн)
 static House_EvictAll(h, const reason[])
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET rent_house = 0 WHERE rent_house = %d", House[h][hDbId]));
@@ -385,12 +385,12 @@ static House_EvictAll(h, const reason[])
 	{
 		if (!IsPlayerConnected(i) || gRentHouse[i] != h) continue;
 		gRentHouse[i] = -1;
-		SendClientMessage(i, COLOR_ORANGE, "РўС‹ Р±РѕР»СЊС€Рµ РЅРµ СЃРЅРёРјР°РµС€СЊ РєРѕРјРЅР°С‚Сѓ РІ РґРѕРјРµ в„–%d: %s", House[h][hDbId], reason);
+		SendClientMessage(i, COLOR_ORANGE, "Ты больше не снимаешь комнату в доме №%d: %s", House[h][hDbId], reason);
 		Account_SetNormalSpawn(i);
 	}
 }
 
-// РћС‚РґР°С‚СЊ РѕСЂСѓР¶РёРµ РёР· С€РєР°С„Р° РёРіСЂРѕРєСѓ (РїСЂРё РїСЂРѕРґР°Р¶Рµ РґРѕРјР°)
+// Отдать оружие из шкафа игроку (при продаже дома)
 static House_GiveStoredWeapons(h, playerid)
 {
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT weapon, ammo FROM house_weapons WHERE house = %d", House[h][hDbId]);
@@ -407,10 +407,10 @@ static House_GiveStoredWeapons(h, playerid)
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM house_weapons WHERE house = %d", House[h][hDbId]));
 }
 
-// РћСЃРІРѕР±РѕРґРёС‚СЊ РґРѕРј (РїСЂРѕРґР°Р¶Р° РёР»Рё РґРѕР»Рі): РІР»Р°РґРµР»СЊС†Р° РЅРµС‚, РІСЃС‘ РѕР±РЅСѓР»РµРЅРѕ
+// Освободить дом (продажа или долг): владельца нет, всё обнулено
 static House_Free(h)
 {
-	House_EvictAll(h, "РґРѕРј СЃРјРµРЅРёР» РІР»Р°РґРµР»СЊС†Р°.");
+	House_EvictAll(h, "дом сменил владельца.");
 	House[h][hOwner] = 0;
 	House[h][hOwnerName][0] = '\0';
 	House[h][hLocked] = false;
@@ -422,7 +422,7 @@ static House_Free(h)
 }
 
 // ---------------------------------------------------------------------
-//  PayDay (РёР· rp.pwn): Р°СЂРµРЅРґР° СЃ Р¶РёР»СЊС†РѕРІ РѕРЅР»Р°Р№РЅ, РїРѕС‚РѕРј РЅР°Р»РѕРі СЃРѕ РІСЃРµС… РґРѕРјРѕРІ
+//  PayDay (из rp.pwn): аренда с жильцов онлайн, потом налог со всех домов
 // ---------------------------------------------------------------------
 stock Houses_PayDay()
 {
@@ -435,13 +435,13 @@ stock Houses_PayDay()
 		{
 			House_SetRent(i, -1);
 			Account_SetNormalSpawn(i);
-			SendClientMessage(i, COLOR_RED, "РќРµС‡РµРј РїР»Р°С‚РёС‚СЊ Р·Р° Р°СЂРµРЅРґСѓ ($%d). РўРµР±СЏ РІС‹СЃРµР»РёР»Рё РёР· РґРѕРјР° в„–%d.", rent, House[h][hDbId]);
+			SendClientMessage(i, COLOR_RED, "Нечем платить за аренду ($%d). Тебя выселили из дома №%d.", rent, House[h][hDbId]);
 			continue;
 		}
-		GiveMoney(i, -rent, "Р°СЂРµРЅРґР° РєРѕРјРЅР°С‚С‹");
+		GiveMoney(i, -rent, "аренда комнаты");
 		House[h][hBalance] += rent;
 		Account_Save(i);
-		SendClientMessage(i, COLOR_WHITE, "РђСЂРµРЅРґР° РєРѕРјРЅР°С‚С‹ РІ РґРѕРјРµ в„–%d: -$%d.", House[h][hDbId], rent);
+		SendClientMessage(i, COLOR_WHITE, "Аренда комнаты в доме №%d: -$%d.", House[h][hDbId], rent);
 	}
 
 	for (new h = 0; h < gHouseCount; h++)
@@ -449,14 +449,14 @@ stock Houses_PayDay()
 		if (House[h][hOwner] == 0) continue;
 		new tax = House_GetTax(h);
 		House[h][hBalance] -= tax;
-		Econ_ToTreasury(tax);           // РЅР°Р»РѕРі РІ РєР°Р·РЅСѓ (economy.inc)
+		Econ_ToTreasury(tax);           // налог в казну (economy.inc)
 		new owner = House_FindOnline(House[h][hOwner]);
 
 		if (House[h][hBalance] < -tax * HOUSE_DEBT_HOURS)
 		{
 			DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM house_weapons WHERE house = %d", House[h][hDbId]));
 			if (owner != INVALID_PLAYER_ID)
-				SendClientMessage(owner, COLOR_RED, "Р”РѕР»Рі РїРѕ РЅР°Р»РѕРіСѓ РЅР° РґРѕРј в„–%d СЃР»РёС€РєРѕРј Р±РѕР»СЊС€РѕР№. Р”РѕРј Р·Р°Р±СЂР°Р»Рѕ РіРѕСЃСѓРґР°СЂСЃС‚РІРѕ.", House[h][hDbId]);
+				SendClientMessage(owner, COLOR_RED, "Долг по налогу на дом №%d слишком большой. Дом забрало государство.", House[h][hDbId]);
 			printf("[Houses] House %d seized for tax debt (owner %d).", House[h][hDbId], House[h][hOwner]);
 			House_Free(h);
 			if (owner != INVALID_PLAYER_ID) Account_SetNormalSpawn(owner);
@@ -466,27 +466,27 @@ stock Houses_PayDay()
 
 		if (owner == INVALID_PLAYER_ID) continue;
 		if (House[h][hBalance] < 0)
-			SendClientMessage(owner, COLOR_ORANGE, "РќР°Р»РѕРі РЅР° РґРѕРј: -$%d. Р”РѕР»Рі $%d. РћРїР»Р°С‚Рё: /housepay [СЃСѓРјРјР°], РёРЅР°С‡Рµ С‡РµСЂРµР· %d С‡. РґРѕРј Р·Р°Р±РµСЂСѓС‚.",
+			SendClientMessage(owner, COLOR_ORANGE, "Налог на дом: -$%d. Долг $%d. Оплати: /housepay [сумма], иначе через %d ч. дом заберут.",
 				tax, -House[h][hBalance], (House[h][hBalance] + tax * HOUSE_DEBT_HOURS) / tax);
 		else
-			SendClientMessage(owner, COLOR_WHITE, "РќР°Р»РѕРі РЅР° РґРѕРј: -$%d. РќР° СЃС‡С‘С‚Рµ РґРѕРјР° $%d.", tax, House[h][hBalance]);
+			SendClientMessage(owner, COLOR_WHITE, "Налог на дом: -$%d. На счёте дома $%d.", tax, House[h][hBalance]);
 	}
 }
 
 // ---------------------------------------------------------------------
-//  РљРѕРјР°РЅРґС‹
+//  Команды
 // ---------------------------------------------------------------------
 stock bool:Cmd_BuyHouse(playerid)
 {
-	if (Debts_BlockBuy(playerid)) return true;      // Р±РѕР»СЊС€РѕР№ РґРѕР»Рі С€С‚Р°С‚Сѓ (debts.inc)
+	if (Debts_BlockBuy(playerid)) return true;      // большой долг штату (debts.inc)
 	new h = House_GetNearby(playerid);
-	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Р СЏРґРѕРј РЅРµС‚ РґРѕРјР°. РџРѕРґРѕР№РґРё Рє Р·РµР»С‘РЅРѕРјСѓ РґРѕРјРёРєСѓ.");
-	if (House[h][hOwner] != 0) return SendClientMessage(playerid, COLOR_GREY, "Р­С‚РѕС‚ РґРѕРј СѓР¶Рµ РєСѓРїР»РµРЅ.");
-	if (House_GetOwned(playerid) != -1) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ СѓР¶Рµ РµСЃС‚СЊ РґРѕРј. РЎРЅР°С‡Р°Р»Р° РїСЂРѕРґР°Р№ РµРіРѕ: /sellhouse");
-	if (GetMoney(playerid) < House[h][hPrice]) return SendClientMessage(playerid, COLOR_GREY, "РќРµ С…РІР°С‚Р°РµС‚ РґРµРЅРµРі. РќСѓР¶РЅРѕ $%d.", House[h][hPrice]);
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет дома. Подойди к зелёному домику.");
+	if (House[h][hOwner] != 0) return SendClientMessage(playerid, COLOR_GREY, "Этот дом уже куплен.");
+	if (House_GetOwned(playerid) != -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя уже есть дом. Сначала продай его: /sellhouse");
+	if (GetMoney(playerid) < House[h][hPrice]) return SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", House[h][hPrice]);
 
-	GiveMoney(playerid, -House[h][hPrice], "РїРѕРєСѓРїРєР° РґРѕРјР°");
-	if (gRentHouse[playerid] != -1) House_SetRent(playerid, -1);   // СЃСЉРµР·Р¶Р°РµС‚ СЃРѕ СЃСЉС‘РјРЅРѕР№ РєРѕРјРЅР°С‚С‹
+	GiveMoney(playerid, -House[h][hPrice], "покупка дома");
+	if (gRentHouse[playerid] != -1) House_SetRent(playerid, -1);   // съезжает со съёмной комнаты
 	House[h][hOwner] = Player[playerid][pDbId];
 	House[h][hLocked] = false;
 	House[h][hRent] = 0;
@@ -496,44 +496,44 @@ stock bool:Cmd_BuyHouse(playerid)
 	House_Save(h);
 	House_Refresh(h);
 	Account_Save(playerid);
-	Account_SetNormalSpawn(playerid);   // С‚РµРїРµСЂСЊ СЃРїР°РІРЅ Сѓ РґРѕРјР°
+	Account_SetNormalSpawn(playerid);   // теперь спавн у дома
 
-	SendClientMessage(playerid, COLOR_GREEN, "РџРѕР·РґСЂР°РІР»СЏРµРј! РўС‹ РєСѓРїРёР» РґРѕРј в„–%d Р·Р° $%d. Р’РѕР№С‚Рё: /enter, Р·Р°РјРѕРє: /lock, РјРµРЅСЋ: /house", House[h][hDbId], House[h][hPrice]);
-	SendClientMessage(playerid, COLOR_WHITE, "РќР°Р»РѕРі $%d РІ С‡Р°СЃ СЃРїРёСЃС‹РІР°РµС‚СЃСЏ СЃРѕ СЃС‡С‘С‚Р° РґРѕРјР°. РџРѕРїРѕР»РЅРёС‚СЊ: /housepay [СЃСѓРјРјР°]", House_GetTax(h));
+	SendClientMessage(playerid, COLOR_GREEN, "Поздравляем! Ты купил дом №%d за $%d. Войти: /enter, замок: /lock, меню: /house", House[h][hDbId], House[h][hPrice]);
+	SendClientMessage(playerid, COLOR_WHITE, "Налог $%d в час списывается со счёта дома. Пополнить: /housepay [сумма]", House_GetTax(h));
 	return true;
 }
 
 stock bool:Cmd_SellHouse(playerid)
 {
 	new h = House_GetOwned(playerid);
-	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ РґРѕРјР°.");
-	if (House_GetNearby(playerid) != h) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Рє СЃРІРѕРµРјСѓ РґРѕРјСѓ.");
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
+	if (House_GetNearby(playerid) != h) return SendClientMessage(playerid, COLOR_GREY, "Подойди к своему дому.");
 
-	// РїРѕР»РѕРІРёРЅР° С†РµРЅС‹ + СЃРµР№С„ + РѕСЃС‚Р°С‚РѕРє РЅР° СЃС‡С‘С‚Рµ (РёР»Рё РјРёРЅСѓСЃ РґРѕР»Рі РїРѕ РЅР°Р»РѕРіСѓ)
+	// половина цены + сейф + остаток на счёте (или минус долг по налогу)
 	new refund = House[h][hPrice] / 2 + House[h][hSafe] + House[h][hBalance];
 	if (refund < 0) refund = 0;
 	House_GiveStoredWeapons(h, playerid);
-	GiveMoney(playerid, refund, "РїСЂРѕРґР°Р¶Р° РґРѕРјР°");
+	GiveMoney(playerid, refund, "продажа дома");
 	House_Free(h);
 	Account_Save(playerid);
 	Account_SetNormalSpawn(playerid);
 
-	SendClientMessage(playerid, COLOR_GREEN, "РўС‹ РїСЂРѕРґР°Р» РґРѕРј РіРѕСЃСѓРґР°СЂСЃС‚РІСѓ. РџРѕР»СѓС‡РµРЅРѕ $%d (РїРѕР»РѕРІРёРЅР° С†РµРЅС‹, СЃРµР№С„ Рё СЃС‡С‘С‚ РґРѕРјР°). РћСЂСѓР¶РёРµ РёР· С€РєР°С„Р° Сѓ С‚РµР±СЏ.", refund);
+	SendClientMessage(playerid, COLOR_GREEN, "Ты продал дом государству. Получено $%d (половина цены, сейф и счёт дома). Оружие из шкафа у тебя.", refund);
 	return true;
 }
 
 stock bool:Cmd_Enter(playerid)
 {
-	if (Doors_Try(playerid)) return true;     // Р·РґР°РЅРёСЏ СЃ РёРЅС‚РµСЂСЊРµСЂРѕРј (doors.inc)
-	if (Biz_TryDoor(playerid)) return true;   // РёРЅС‚РµСЂСЊРµСЂ Р±РёР·РЅРµСЃР°
+	if (Doors_Try(playerid)) return true;     // здания с интерьером (doors.inc)
+	if (Biz_TryDoor(playerid)) return true;   // интерьер бизнеса
 	new h = House_GetNearby(playerid);
-	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Р СЏРґРѕРј РЅРµС‚ РІС…РѕРґР°.");
-	if (House[h][hOwner] == 0) return SendClientMessage(playerid, COLOR_GREY, "Р”РѕРј РїСЂРѕРґР°С‘С‚СЃСЏ Рё Р·Р°РєСЂС‹С‚. РљСѓРїРёС‚СЊ: /buyhouse");
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет входа.");
+	if (House[h][hOwner] == 0) return SendClientMessage(playerid, COLOR_GREY, "Дом продаётся и закрыт. Купить: /buyhouse");
 	if (House[h][hLocked] && House[h][hOwner] != Player[playerid][pDbId] && gRentHouse[playerid] != h && !Family_IsSpouseOf(playerid, House[h][hOwner]) && !Family_IsHouseMember(playerid, h))
 	{
 		if (House[h][hRent] > 0)
-			return SendClientMessage(playerid, COLOR_GREY, "Р”РІРµСЂСЊ Р·Р°РїРµСЂС‚Р°. Р—РґРµСЃСЊ СЃРґР°СЋС‚СЃСЏ РєРѕРјРЅР°С‚С‹: /rent ($%d РІ С‡Р°СЃ).", House[h][hRent]);
-		return SendClientMessage(playerid, COLOR_GREY, "Р”РІРµСЂСЊ Р·Р°РїРµСЂС‚Р°.");
+			return SendClientMessage(playerid, COLOR_GREY, "Дверь заперта. Здесь сдаются комнаты: /rent ($%d в час).", House[h][hRent]);
+		return SendClientMessage(playerid, COLOR_GREY, "Дверь заперта.");
 	}
 
 	SetPlayerInterior(playerid, House[h][hInterior]);
@@ -542,25 +542,25 @@ stock bool:Cmd_Enter(playerid)
 	SetCameraBehindPlayer(playerid);
 	Player[playerid][pHouseInside] = h;
 	if (House[h][hOwner] == Player[playerid][pDbId])
-		SendClientMessage(playerid, COLOR_WHITE, "Р’С‹Р№С‚Рё: /exit Сѓ РґРІРµСЂРё. РЁРєР°С„ Рё СЃРµР№С„: ALT Сѓ С€РєР°С„Р° (/makestorage). РќР°Р»РѕРі Рё Р°СЂРµРЅРґР°: /house");
+		SendClientMessage(playerid, COLOR_WHITE, "Выйти: /exit у двери. Шкаф и сейф: ALT у шкафа (/makestorage). Налог и аренда: /house");
 	else
-		SendClientMessage(playerid, COLOR_WHITE, "Р’С‹Р№С‚Рё РёР· РґРѕРјР°: /exit (СЃС‚РѕСЏ Сѓ РґРІРµСЂРё)");
+		SendClientMessage(playerid, COLOR_WHITE, "Выйти из дома: /exit (стоя у двери)");
 	return true;
 }
 
 stock bool:Cmd_Exit(playerid)
 {
-	if (Doors_Try(playerid)) return true;     // Р·РґР°РЅРёСЏ СЃ РёРЅС‚РµСЂСЊРµСЂРѕРј (doors.inc)
-	if (Biz_TryDoor(playerid)) return true;   // РёРЅС‚РµСЂСЊРµСЂ Р±РёР·РЅРµСЃР°
+	if (Doors_Try(playerid)) return true;     // здания с интерьером (doors.inc)
+	if (Biz_TryDoor(playerid)) return true;   // интерьер бизнеса
 	new h = Player[playerid][pHouseInside];
-	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РЅРµ РІ РґРѕРјРµ.");
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Ты не в доме.");
 	if (!House_IsInside(playerid, h))
 	{
-		Player[playerid][pHouseInside] = -1;    // РѕС‚РјРµС‚РєР° РѕСЃС‚Р°Р»Р°СЃСЊ РїРѕСЃР»Рµ С‚РµР»РµРїРѕСЂС‚Р° РёР»Рё Р±РѕР»СЊРЅРёС†С‹
-		return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РЅРµ РІ РґРѕРјРµ.");
+		Player[playerid][pHouseInside] = -1;    // отметка осталась после телепорта или больницы
+		return SendClientMessage(playerid, COLOR_GREY, "Ты не в доме.");
 	}
 	if (!IsPlayerInRangeOfPoint(playerid, 3.0, House[h][hIX], House[h][hIY], House[h][hIZ]))
-		return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Рє РґРІРµСЂРё (С‚СѓРґР°, РіРґРµ С‚С‹ РїРѕСЏРІРёР»СЃСЏ).");
+		return SendClientMessage(playerid, COLOR_GREY, "Подойди к двери (туда, где ты появился).");
 
 	House_PutOutside(playerid, h);
 	return true;
@@ -568,61 +568,61 @@ stock bool:Cmd_Exit(playerid)
 
 stock bool:Cmd_Lock(playerid)
 {
-	// РЎРЅР°С‡Р°Р»Р° РїСЂРѕР±СѓРµРј РґРѕРј, РїРѕС‚РѕРј РјР°С€РёРЅСѓ (vehicles.inc)
+	// Сначала пробуем дом, потом машину (vehicles.inc)
 	new h = House_GetOwned(playerid);
-	if (h == -1) h = Family_SpouseHouse(playerid);     // РѕР±С‰РёР№ РґРѕРј СЃСѓРїСЂСѓРіРѕРІ (marriage.inc)
-	if (h == -1 || (House_GetNearby(playerid) != h && !House_IsInside(playerid, h))) { new fh = Family_HouseOf(playerid); if (fh != -1) h = fh; }   // СЃРµРјРµР№РЅС‹Р№ РґРѕРј
+	if (h == -1) h = Family_SpouseHouse(playerid);     // общий дом супругов (marriage.inc)
+	if (h == -1 || (House_GetNearby(playerid) != h && !House_IsInside(playerid, h))) { new fh = Family_HouseOf(playerid); if (fh != -1) h = fh; }   // семейный дом
 	if (h != -1 && (House_GetNearby(playerid) == h || House_IsInside(playerid, h)))
 	{
 		House[h][hLocked] = !House[h][hLocked];
 		House_Save(h);
-		if (House[h][hLocked]) SendClientMessage(playerid, COLOR_WHITE, "Р”РѕРј {FF6347}Р·Р°РєСЂС‹С‚{FFFFFF}.");
-		else SendClientMessage(playerid, COLOR_WHITE, "Р”РѕРј {33AA33}РѕС‚РєСЂС‹С‚{FFFFFF}.");
+		if (House[h][hLocked]) SendClientMessage(playerid, COLOR_WHITE, "Дом {FF6347}закрыт{FFFFFF}.");
+		else SendClientMessage(playerid, COLOR_WHITE, "Дом {33AA33}открыт{FFFFFF}.");
 		return true;
 	}
 	return Vehicles_ToggleLock(playerid);
 }
 
 // ---------------------------------------------------------------------
-//  РќР°Р»РѕРі Рё Р°СЂРµРЅРґР°
+//  Налог и аренда
 // ---------------------------------------------------------------------
 static bool:House_Deposit(playerid, h, amount)
 {
-	if (amount < 1 || amount > 1000000) return SendClientMessage(playerid, COLOR_GREY, "РЎСѓРјРјР° РѕС‚ $1 РґРѕ $1000000.");
-	if (GetMoney(playerid) < amount) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ СЃС‚РѕР»СЊРєРѕ РґРµРЅРµРі.");
-	GiveMoney(playerid, -amount, "РЅР° СЃС‡С‘С‚ РґРѕРјР°");
+	if (amount < 1 || amount > 1000000) return SendClientMessage(playerid, COLOR_GREY, "Сумма от $1 до $1000000.");
+	if (GetMoney(playerid) < amount) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет столько денег.");
+	GiveMoney(playerid, -amount, "на счёт дома");
 	House[h][hBalance] += amount;
 	House_Save(h);
 	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_GREEN, "РЎС‡С‘С‚ РґРѕРјР° РїРѕРїРѕР»РЅРµРЅ РЅР° $%d. РўРµРїРµСЂСЊ РЅР° СЃС‡С‘С‚Рµ $%d (С…РІР°С‚РёС‚ РїСЂРёРјРµСЂРЅРѕ РЅР° %d С‡.).",
+	SendClientMessage(playerid, COLOR_GREEN, "Счёт дома пополнен на $%d. Теперь на счёте $%d (хватит примерно на %d ч.).",
 		amount, House[h][hBalance], House[h][hBalance] > 0 ? House[h][hBalance] / House_GetTax(h) : 0);
 	return true;
 }
 
 static bool:House_SetRentPrice(playerid, h, price)
 {
-	if (price < 0 || price > HOUSE_RENT_MAX) return SendClientMessage(playerid, COLOR_GREY, "РђСЂРµРЅРґР° РѕС‚ $0 (РЅРµ СЃРґР°РІР°С‚СЊ) РґРѕ $%d РІ С‡Р°СЃ.", HOUSE_RENT_MAX);
+	if (price < 0 || price > HOUSE_RENT_MAX) return SendClientMessage(playerid, COLOR_GREY, "Аренда от $0 (не сдавать) до $%d в час.", HOUSE_RENT_MAX);
 	House[h][hRent] = price;
 	House_Save(h);
 	House_Refresh(h);
 	if (price == 0)
 	{
-		House_EvictAll(h, "РІР»Р°РґРµР»РµС† Р±РѕР»СЊС€Рµ РЅРµ СЃРґР°С‘С‚ РєРѕРјРЅР°С‚С‹.");
-		SendClientMessage(playerid, COLOR_WHITE, "РљРѕРјРЅР°С‚С‹ Р±РѕР»СЊС€Рµ РЅРµ СЃРґР°СЋС‚СЃСЏ, Р¶РёР»СЊС†С‹ РІС‹СЃРµР»РµРЅС‹.");
+		House_EvictAll(h, "владелец больше не сдаёт комнаты.");
+		SendClientMessage(playerid, COLOR_WHITE, "Комнаты больше не сдаются, жильцы выселены.");
 	}
-	else SendClientMessage(playerid, COLOR_GREEN, "РљРѕРјРЅР°С‚С‹ СЃРґР°СЋС‚СЃСЏ Р·Р° $%d РІ С‡Р°СЃ. РџР»Р°С‚Р° РёРґС‘С‚ РЅР° СЃС‡С‘С‚ РґРѕРјР°.", price);
+	else SendClientMessage(playerid, COLOR_GREEN, "Комнаты сдаются за $%d в час. Плата идёт на счёт дома.", price);
 	return true;
 }
 
 stock bool:Cmd_HousePay(playerid, const params[])
 {
 	new h = House_GetOwned(playerid);
-	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ РґРѕРјР°.");
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
 	new pos = 0, amount;
 	if (!NextIntParam(params, pos, amount) || amount < 1)
 	{
-		SendClientMessage(playerid, COLOR_WHITE, "РЎС‡С‘С‚ РґРѕРјР° в„–%d: $%d. РќР°Р»РѕРі $%d РІ С‡Р°СЃ.", House[h][hDbId], House[h][hBalance], House_GetTax(h));
-		return SendClientMessage(playerid, COLOR_GREY, "РџРѕРїРѕР»РЅРёС‚СЊ: /housepay [СЃСѓРјРјР°]");
+		SendClientMessage(playerid, COLOR_WHITE, "Счёт дома №%d: $%d. Налог $%d в час.", House[h][hDbId], House[h][hBalance], House_GetTax(h));
+		return SendClientMessage(playerid, COLOR_GREY, "Пополнить: /housepay [сумма]");
 	}
 	return House_Deposit(playerid, h, amount);
 }
@@ -630,56 +630,56 @@ stock bool:Cmd_HousePay(playerid, const params[])
 stock bool:Cmd_SetRent(playerid, const params[])
 {
 	new h = House_GetOwned(playerid);
-	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ РґРѕРјР°.");
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
 	new pos = 0, price;
-	if (!NextIntParam(params, pos, price)) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /setrent [СЃСѓРјРјР° РІ С‡Р°СЃ] (0 вЂ” РЅРµ СЃРґР°РІР°С‚СЊ)");
+	if (!NextIntParam(params, pos, price)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /setrent [сумма в час] (0 — не сдавать)");
 	return House_SetRentPrice(playerid, h, price);
 }
 
 stock bool:Cmd_Rent(playerid)
 {
 	new h = House_GetNearby(playerid);
-	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Рє РґРІРµСЂРё РґРѕРјР°, РіРґРµ СЃРґР°СЋС‚СЃСЏ РєРѕРјРЅР°С‚С‹.");
-	if (House[h][hOwner] == 0 || House[h][hRent] <= 0) return SendClientMessage(playerid, COLOR_GREY, "Р’ СЌС‚РѕРј РґРѕРјРµ РєРѕРјРЅР°С‚С‹ РЅРµ СЃРґР°СЋС‚СЃСЏ.");
-	if (House[h][hOwner] == Player[playerid][pDbId]) return SendClientMessage(playerid, COLOR_GREY, "Р­С‚Рѕ С‚РІРѕР№ РґРѕРј.");
-	if (House_GetOwned(playerid) != -1) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РµСЃС‚СЊ СЃРІРѕР№ РґРѕРј.");
-	if (gRentHouse[playerid] == h) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ СѓР¶Рµ СЃРЅРёРјР°РµС€СЊ Р·РґРµСЃСЊ РєРѕРјРЅР°С‚Сѓ.");
-	if (GetMoney(playerid) < House[h][hRent]) return SendClientMessage(playerid, COLOR_GREY, "РќСѓР¶РЅРѕ $%d Р·Р° РїРµСЂРІС‹Р№ С‡Р°СЃ.", House[h][hRent]);
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Подойди к двери дома, где сдаются комнаты.");
+	if (House[h][hOwner] == 0 || House[h][hRent] <= 0) return SendClientMessage(playerid, COLOR_GREY, "В этом доме комнаты не сдаются.");
+	if (House[h][hOwner] == Player[playerid][pDbId]) return SendClientMessage(playerid, COLOR_GREY, "Это твой дом.");
+	if (House_GetOwned(playerid) != -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя есть свой дом.");
+	if (gRentHouse[playerid] == h) return SendClientMessage(playerid, COLOR_GREY, "Ты уже снимаешь здесь комнату.");
+	if (GetMoney(playerid) < House[h][hRent]) return SendClientMessage(playerid, COLOR_GREY, "Нужно $%d за первый час.", House[h][hRent]);
 
-	GiveMoney(playerid, -House[h][hRent], "Р°СЂРµРЅРґР° РєРѕРјРЅР°С‚С‹");
+	GiveMoney(playerid, -House[h][hRent], "аренда комнаты");
 	House[h][hBalance] += House[h][hRent];
 	House_Save(h);
 	House_SetRent(playerid, h);
 	Account_Save(playerid);
 	Account_SetNormalSpawn(playerid);
-	SendClientMessage(playerid, COLOR_GREEN, "РўС‹ СЃРЅСЏР» РєРѕРјРЅР°С‚Сѓ РІ РґРѕРјРµ в„–%d Р·Р° $%d РІ С‡Р°СЃ (РѕРїР»Р°С‚Р° РєР°Р¶РґС‹Р№ PayDay). РЎСЉРµС…Р°С‚СЊ: /unrent", House[h][hDbId], House[h][hRent]);
+	SendClientMessage(playerid, COLOR_GREEN, "Ты снял комнату в доме №%d за $%d в час (оплата каждый PayDay). Съехать: /unrent", House[h][hDbId], House[h][hRent]);
 
 	new owner = House_FindOnline(House[h][hOwner]);
-	if (owner != INVALID_PLAYER_ID) SendClientMessage(owner, COLOR_BLUE, "%s СЃРЅСЏР» РєРѕРјРЅР°С‚Сѓ РІ С‚РІРѕС‘Рј РґРѕРјРµ.", GetRPName(playerid));
+	if (owner != INVALID_PLAYER_ID) SendClientMessage(owner, COLOR_BLUE, "%s снял комнату в твоём доме.", GetRPName(playerid));
 	return true;
 }
 
 stock bool:Cmd_Unrent(playerid)
 {
 	new h = gRentHouse[playerid];
-	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РЅРµ СЃРЅРёРјР°РµС€СЊ РєРѕРјРЅР°С‚Сѓ.");
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Ты не снимаешь комнату.");
 	House_SetRent(playerid, -1);
 	Account_SetNormalSpawn(playerid);
-	SendClientMessage(playerid, COLOR_WHITE, "РўС‹ СЃСЉРµС…Р°Р» РёР· РґРѕРјР° в„–%d.", House[h][hDbId]);
+	SendClientMessage(playerid, COLOR_WHITE, "Ты съехал из дома №%d.", House[h][hDbId]);
 	return true;
 }
 
 stock bool:Cmd_Tenants(playerid)
 {
 	new h = House_GetOwned(playerid);
-	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ РґРѕРјР°.");
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT name FROM accounts WHERE rent_house = %d ORDER BY name LIMIT 20", House[h][hDbId]);
 	if (r == DBResult:0) return true;
 	new rows = DB_GetRowCount(r);
-	if (rows == 0) SendClientMessage(playerid, COLOR_WHITE, "Р–РёР»СЊС†РѕРІ РЅРµС‚. РђСЂРµРЅРґР°: $%d РІ С‡Р°СЃ (/setrent).", House[h][hRent]);
+	if (rows == 0) SendClientMessage(playerid, COLOR_WHITE, "Жильцов нет. Аренда: $%d в час (/setrent).", House[h][hRent]);
 	else
 	{
-		SendClientMessage(playerid, COLOR_YELLOW, "Р–РёР»СЊС†С‹ РґРѕРјР° в„–%d (Р°СЂРµРЅРґР° $%d РІ С‡Р°СЃ):", House[h][hDbId], House[h][hRent]);
+		SendClientMessage(playerid, COLOR_YELLOW, "Жильцы дома №%d (аренда $%d в час):", House[h][hDbId], House[h][hRent]);
 		new name[MAX_PLAYER_NAME];
 		for (new i = 0; i < rows; i++)
 		{
@@ -687,7 +687,7 @@ stock bool:Cmd_Tenants(playerid)
 			SendClientMessage(playerid, COLOR_WHITE, " %s", name);
 			DB_SelectNextRow(r);
 		}
-		SendClientMessage(playerid, COLOR_GREY, "Р’С‹СЃРµР»РёС‚СЊ: /evict [id] (РѕРЅР»Р°Р№РЅ) РёР»Рё /evictall (РІСЃРµС…).");
+		SendClientMessage(playerid, COLOR_GREY, "Выселить: /evict [id] (онлайн) или /evictall (всех).");
 	}
 	DB_FreeResultSet(r);
 	return true;
@@ -696,50 +696,50 @@ stock bool:Cmd_Tenants(playerid)
 stock bool:Cmd_Evict(playerid, const params[])
 {
 	new h = House_GetOwned(playerid);
-	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ РґРѕРјР°.");
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /evict [id]   Р’СЃРµС… СЃСЂР°Р·Сѓ: /evictall");
-	if (gRentHouse[target] != h) return SendClientMessage(playerid, COLOR_GREY, "Р­С‚РѕС‚ РёРіСЂРѕРє РЅРµ Р¶РёРІС‘С‚ РІ С‚РІРѕС‘Рј РґРѕРјРµ.");
+	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /evict [id]   Всех сразу: /evictall");
+	if (gRentHouse[target] != h) return SendClientMessage(playerid, COLOR_GREY, "Этот игрок не живёт в твоём доме.");
 	House_SetRent(target, -1);
 	Account_SetNormalSpawn(target);
-	SendClientMessage(target, COLOR_ORANGE, "Р’Р»Р°РґРµР»РµС† РІС‹СЃРµР»РёР» С‚РµР±СЏ РёР· РґРѕРјР° в„–%d.", House[h][hDbId]);
-	SendClientMessage(playerid, COLOR_WHITE, "%s РІС‹СЃРµР»РµРЅ.", GetRPName(target));
+	SendClientMessage(target, COLOR_ORANGE, "Владелец выселил тебя из дома №%d.", House[h][hDbId]);
+	SendClientMessage(playerid, COLOR_WHITE, "%s выселен.", GetRPName(target));
 	return true;
 }
 
 stock bool:Cmd_EvictAll(playerid)
 {
 	new h = House_GetOwned(playerid);
-	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ РґРѕРјР°.");
-	House_EvictAll(h, "РІР»Р°РґРµР»РµС† РІС‹СЃРµР»РёР» РІСЃРµС… Р¶РёР»СЊС†РѕРІ.");
-	SendClientMessage(playerid, COLOR_WHITE, "Р’СЃРµ Р¶РёР»СЊС†С‹ РІС‹СЃРµР»РµРЅС‹.");
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
+	House_EvictAll(h, "владелец выселил всех жильцов.");
+	SendClientMessage(playerid, COLOR_WHITE, "Все жильцы выселены.");
 	return true;
 }
 
 // ---------------------------------------------------------------------
-//  РњРµРЅСЋ РґРѕРјР°: С€РєР°С„, СЃРµР№С„, СЃС‡С‘С‚, Р°СЂРµРЅРґР°
+//  Меню дома: шкаф, сейф, счёт, аренда
 // ---------------------------------------------------------------------
 stock bool:Cmd_House(playerid)
 {
 	new h = House_GetOwned(playerid);
-	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ РґРѕРјР°.");
-	if (!House_IsInside(playerid, h)) return SendClientMessage(playerid, COLOR_GREY, "РњРµРЅСЋ РґРѕРјР° РѕС‚РєСЂС‹РІР°РµС‚СЃСЏ РІРЅСѓС‚СЂРё С‚РІРѕРµРіРѕ РґРѕРјР°.");
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
+	if (!House_IsInside(playerid, h)) return SendClientMessage(playerid, COLOR_GREY, "Меню дома открывается внутри твоего дома.");
 
-	ShowPlayerDialog(playerid, DIALOG_HOUSE_MENU, DIALOG_STYLE_LIST, "Р”РѕРј",
-		"РЁРєР°С„: РїРѕР»РѕР¶РёС‚СЊ РѕСЂСѓР¶РёРµ РёР· СЂСѓРє\nРЁРєР°С„: РІР·СЏС‚СЊ РѕСЂСѓР¶РёРµ\nРЎРµР№С„: РїРѕР»РѕР¶РёС‚СЊ РґРµРЅСЊРіРё (СЃРµР№С‡Р°СЃ $%d)\nРЎРµР№С„: РІР·СЏС‚СЊ РґРµРЅСЊРіРё\nРЎС‡С‘С‚ РґРѕРјР°: РїРѕРїРѕР»РЅРёС‚СЊ (СЃРµР№С‡Р°СЃ $%d, РЅР°Р»РѕРі $%d/С‡Р°СЃ)\nРЎС‡С‘С‚ РґРѕРјР°: СЃРЅСЏС‚СЊ РґРµРЅСЊРіРё\nРђСЂРµРЅРґР°: РёР·РјРµРЅРёС‚СЊ С†РµРЅСѓ (СЃРµР№С‡Р°СЃ $%d/С‡Р°СЃ)\nР–РёР»СЊС†С‹",
-		"Р’С‹Р±СЂР°С‚СЊ", "Р—Р°РєСЂС‹С‚СЊ", House[h][hSafe], House[h][hBalance], House_GetTax(h), House[h][hRent]);
+	ShowPlayerDialog(playerid, DIALOG_HOUSE_MENU, DIALOG_STYLE_LIST, "Дом",
+		"Шкаф: положить оружие из рук\nШкаф: взять оружие\nСейф: положить деньги (сейчас $%d)\nСейф: взять деньги\nСчёт дома: пополнить (сейчас $%d, налог $%d/час)\nСчёт дома: снять деньги\nАренда: изменить цену (сейчас $%d/час)\nЖильцы",
+		"Выбрать", "Закрыть", House[h][hSafe], House[h][hBalance], House_GetTax(h), House[h][hRent]);
 	return true;
 }
 
-// ALT РІРЅСѓС‚СЂРё РґРѕРјР° (keys.inc): РјРµРЅСЋ РѕС‚РєСЂС‹РІР°РµС‚СЃСЏ С‚РѕР»СЊРєРѕ Сѓ С€РєР°С„Р°. 1 вЂ” СЃСЂР°Р±РѕС‚Р°Р»Рѕ
+// ALT внутри дома (keys.inc): меню открывается только у шкафа. 1 — сработало
 stock House_TryMenu(playerid)
 {
 	new h = Player[playerid][pHouseInside];
 	if (!House_IsInside(playerid, h) || House[h][hOwner] != Player[playerid][pDbId]) return 0;
 	if (!House[h][hHasStore])
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РЁРєР°С„Р° РІ РґРѕРјРµ РµС‰С‘ РЅРµС‚. Р’СЃС‚Р°РЅСЊ, РіРґРµ РѕРЅ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ, Рё РІРІРµРґРё /makestorage.");
+		SendClientMessage(playerid, COLOR_GREY, "Шкафа в доме ещё нет. Встань, где он должен быть, и введи /makestorage.");
 		return 1;
 	}
 	if (!House_AtStore(playerid, h)) return 0;
@@ -747,14 +747,14 @@ stock House_TryMenu(playerid)
 	return 1;
 }
 
-// РРіСЂРѕРє СЃС‚РѕРёС‚ Сѓ С€РєР°С„Р° СЃРІРѕРµРіРѕ РґРѕРјР° h
+// Игрок стоит у шкафа своего дома h
 stock bool:House_AtStore(playerid, h)
 {
 	if (!House[h][hHasStore]) return false;
 	return IsPlayerInRangeOfPoint(playerid, HOUSE_STORE_RANGE, House[h][hSX], House[h][hSY], House[h][hSZ]);
 }
 
-// РќР°РґРїРёСЃСЊ РЅР°Рґ С€РєР°С„РѕРј (РїРµСЂРµСЃРѕР·РґР°С‘С‚СЃСЏ, РєРѕРіРґР° С€РєР°С„ РїРµСЂРµСЃС‚Р°РІРёР»Рё РёР»Рё РґРѕРј СЃРјРµРЅРёР» РјРёСЂ)
+// Надпись над шкафом (пересоздаётся, когда шкаф переставили или дом сменил мир)
 stock House_BuildStore(h)
 {
 	if (House[h][hStoreLabel] != Text3D:INVALID_3DTEXT_ID)
@@ -763,44 +763,44 @@ stock House_BuildStore(h)
 		House[h][hStoreLabel] = Text3D:INVALID_3DTEXT_ID;
 	}
 	if (!House[h][hHasStore]) return;
-	House[h][hStoreLabel] = Create3DTextLabel("{FFFF66}РЁРєР°С„\n{FFFFFF}ALT вЂ” С€РєР°С„ Рё СЃРµР№С„", COLOR_WHITE,
+	House[h][hStoreLabel] = Create3DTextLabel("{FFFF66}Шкаф\n{FFFFFF}ALT — шкаф и сейф", COLOR_WHITE,
 		House[h][hSX], House[h][hSY], House[h][hSZ] + 0.3, 6.0, HOUSE_WORLD_OFFSET + h, true);
 }
 
-// /makestorage вЂ” РїРѕСЃС‚Р°РІРёС‚СЊ С€РєР°С„ (СЃ СЃРµР№С„РѕРј) С‚Р°Рј, РіРґРµ СЃС‚РѕРёС€СЊ. Р’Р»Р°РґРµР»РµС† вЂ” РІ СЃРІРѕС‘Рј РґРѕРјРµ, Р°РґРјРёРЅ 4+ вЂ” РІ Р»СЋР±РѕРј
+// /makestorage — поставить шкаф (с сейфом) там, где стоишь. Владелец — в своём доме, админ 4+ — в любом
 stock bool:Cmd_MakeStorage(playerid)
 {
 	new h = Player[playerid][pHouseInside];
-	if (!House_IsInside(playerid, h)) return SendClientMessage(playerid, COLOR_GREY, "Р’СЃС‚Р°РЅСЊ РІРЅСѓС‚СЂРё РґРѕРјР° С‚Р°Рј, РіРґРµ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ С€РєР°С„.");
+	if (!House_IsInside(playerid, h)) return SendClientMessage(playerid, COLOR_GREY, "Встань внутри дома там, где должен быть шкаф.");
 	if (House[h][hOwner] != Player[playerid][pDbId] && Player[playerid][pAdmin] < 4)
-		return SendClientMessage(playerid, COLOR_GREY, "РЁРєР°С„ СЃС‚Р°РІРёС‚ С‚РѕР»СЊРєРѕ РІР»Р°РґРµР»РµС† РґРѕРјР°.");
+		return SendClientMessage(playerid, COLOR_GREY, "Шкаф ставит только владелец дома.");
 	GetPlayerPos(playerid, House[h][hSX], House[h][hSY], House[h][hSZ]);
 	House[h][hHasStore] = true;
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE houses SET has_st = 1, stx = %f, sty = %f, stz = %f WHERE id = %d",
 		House[h][hSX], House[h][hSY], House[h][hSZ], House[h][hDbId]));
 	House_BuildStore(h);
-	SendClientMessage(playerid, COLOR_GREEN, "РЁРєР°С„ РїРѕСЃС‚Р°РІР»РµРЅ Р·РґРµСЃСЊ. РЁРєР°С„ Рё СЃРµР№С„ РѕС‚РєСЂС‹РІР°СЋС‚СЃСЏ ALT СЂСЏРґРѕРј СЃ РЅРёРј, РѕСЃС‚Р°Р»СЊРЅРѕРµ РјРµРЅСЋ РґРѕРјР°: /house.");
+	SendClientMessage(playerid, COLOR_GREEN, "Шкаф поставлен здесь. Шкаф и сейф открываются ALT рядом с ним, остальное меню дома: /house.");
 	return true;
 }
 
-// РЁРєР°С„ Рё СЃРµР№С„ РІС‹Р±СЂР°РЅС‹ РІ /house РЅРµ Сѓ С€РєР°С„Р°
+// Шкаф и сейф выбраны в /house не у шкафа
 stock House_StoreFar(playerid)
 {
-	return SendClientMessage(playerid, COLOR_GREY, "РЁРєР°С„ Рё СЃРµР№С„ РѕС‚РєСЂС‹РІР°СЋС‚СЃСЏ С‚РѕР»СЊРєРѕ Сѓ С€РєР°С„Р° (РЅР°РґРїРёСЃСЊ В«РЁРєР°С„В»). РќРµС‚ С€РєР°С„Р°: /makestorage.");
+	return SendClientMessage(playerid, COLOR_GREY, "Шкаф и сейф открываются только у шкафа (надпись «Шкаф»). Нет шкафа: /makestorage.");
 }
 
 static House_PutGun(playerid, h)
 {
 	if (Player[playerid][pDuty])
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РЎР»СѓР¶РµР±РЅРѕРµ РѕСЂСѓР¶РёРµ РІ С€РєР°С„ РєР»Р°СЃС‚СЊ РЅРµР»СЊР·СЏ. РЎРЅР°С‡Р°Р»Р° СЃРЅРёРјРё С„РѕСЂРјСѓ.");
+		SendClientMessage(playerid, COLOR_GREY, "Служебное оружие в шкаф класть нельзя. Сначала сними форму.");
 		return 0;
 	}
 	new WEAPON:weapon = GetPlayerWeapon(playerid);
 	new ammo = GetPlayerAmmo(playerid);
 	if (weapon == WEAPON:0 || ammo <= 0)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Р’РѕР·СЊРјРё РѕСЂСѓР¶РёРµ РІ СЂСѓРєРё (РєРѕР»РµСЃРѕ РјС‹С€Рё), РїРѕС‚РѕРј РІС‹Р±РµСЂРё СЌС‚РѕС‚ РїСѓРЅРєС‚.");
+		SendClientMessage(playerid, COLOR_GREY, "Возьми оружие в руки (колесо мыши), потом выбери этот пункт.");
 		return 0;
 	}
 
@@ -824,7 +824,7 @@ static House_PutGun(playerid, h)
 	}
 	if (slot == -1)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РЁРєР°С„ РїРѕР»РЅС‹Р№ (%d РјРµСЃС‚).", HOUSE_WEAPON_SLOTS);
+		SendClientMessage(playerid, COLOR_GREY, "Шкаф полный (%d мест).", HOUSE_WEAPON_SLOTS);
 		return 0;
 	}
 
@@ -833,7 +833,7 @@ static House_PutGun(playerid, h)
 		House[h][hDbId], slot, _:weapon, ammo));
 	new name[32];
 	GetWeaponName(weapon, name, sizeof name);
-	SendClientMessage(playerid, COLOR_GREEN, "%s (%d РїР°С‚СЂ.) СѓР±СЂР°РЅ РІ С€РєР°С„.", name, ammo);
+	SendClientMessage(playerid, COLOR_GREEN, "%s (%d патр.) убран в шкаф.", name, ammo);
 	return 1;
 }
 
@@ -845,7 +845,7 @@ static House_ShowGuns(playerid, h)
 	if (rows == 0)
 	{
 		DB_FreeResultSet(r);
-		SendClientMessage(playerid, COLOR_GREY, "Р’ С€РєР°С„Сѓ РїСѓСЃС‚Рѕ.");
+		SendClientMessage(playerid, COLOR_GREY, "В шкафу пусто.");
 		return 0;
 	}
 	new list[256], line[48], name[32];
@@ -853,12 +853,12 @@ static House_ShowGuns(playerid, h)
 	{
 		gHouseGunSlot[playerid][i] = DB_GetFieldInt(r, 0);
 		GetWeaponName(WEAPON:DB_GetFieldInt(r, 1), name, sizeof name);
-		format(line, sizeof line, "%s (%d РїР°С‚СЂ.)\n", name, DB_GetFieldInt(r, 2));
+		format(line, sizeof line, "%s (%d патр.)\n", name, DB_GetFieldInt(r, 2));
 		strcat(list, line);
 		DB_SelectNextRow(r);
 	}
 	DB_FreeResultSet(r);
-	ShowPlayerDialog(playerid, DIALOG_HOUSE_TAKEGUN, DIALOG_STYLE_LIST, "РЁРєР°С„", "%s", "Р’Р·СЏС‚СЊ", "РќР°Р·Р°Рґ", list);
+	ShowPlayerDialog(playerid, DIALOG_HOUSE_TAKEGUN, DIALOG_STYLE_LIST, "Шкаф", "%s", "Взять", "Назад", list);
 	return 1;
 }
 
@@ -879,11 +879,11 @@ static House_TakeGun(playerid, h, listitem)
 	GivePlayerWeapon(playerid, weapon, ammo);
 	new name[32];
 	GetWeaponName(weapon, name, sizeof name);
-	SendClientMessage(playerid, COLOR_GREEN, "РўС‹ РІР·СЏР» РёР· С€РєР°С„Р° %s (%d РїР°С‚СЂ.).", name, ammo);
+	SendClientMessage(playerid, COLOR_GREEN, "Ты взял из шкафа %s (%d патр.).", name, ammo);
 	return 1;
 }
 
-// РћС‚РІРµС‚С‹ РЅР° РѕРєРЅР° РґРѕРјР° (РёР· OnDialogResponse)
+// Ответы на окна дома (из OnDialogResponse)
 stock Houses_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
 	if (dialogid < DIALOG_HOUSE_MENU || dialogid > DIALOG_HOUSE_RENT) return 0;
@@ -897,11 +897,11 @@ stock Houses_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		{
 			case 0: { if (House_AtStore(playerid, h)) House_PutGun(playerid, h); else House_StoreFar(playerid); }
 			case 1: { if (House_AtStore(playerid, h)) House_ShowGuns(playerid, h); else House_StoreFar(playerid); }
-			case 2: if (!House_AtStore(playerid, h)) House_StoreFar(playerid); else ShowPlayerDialog(playerid, DIALOG_HOUSE_SAFE_IN, DIALOG_STYLE_INPUT, "РЎРµР№С„", "{FFFFFF}РЎРєРѕР»СЊРєРѕ РїРѕР»РѕР¶РёС‚СЊ РІ СЃРµР№С„?\nР’ СЃРµР№С„Рµ: $%d, Сѓ С‚РµР±СЏ: $%d", "РџРѕР»РѕР¶РёС‚СЊ", "РќР°Р·Р°Рґ", House[h][hSafe], GetMoney(playerid));
-			case 3: if (!House_AtStore(playerid, h)) House_StoreFar(playerid); else ShowPlayerDialog(playerid, DIALOG_HOUSE_SAFE_OUT, DIALOG_STYLE_INPUT, "РЎРµР№С„", "{FFFFFF}РЎРєРѕР»СЊРєРѕ РІР·СЏС‚СЊ РёР· СЃРµР№С„Р°?\nР’ СЃРµР№С„Рµ: $%d", "Р’Р·СЏС‚СЊ", "РќР°Р·Р°Рґ", House[h][hSafe]);
-			case 4: ShowPlayerDialog(playerid, DIALOG_HOUSE_PAY, DIALOG_STYLE_INPUT, "РЎС‡С‘С‚ РґРѕРјР°", "{FFFFFF}РЎ СЌС‚РѕРіРѕ СЃС‡С‘С‚Р° РїР»Р°С‚РёС‚СЃСЏ РЅР°Р»РѕРі $%d РІ С‡Р°СЃ, СЃСЋРґР° Р¶Рµ РїСЂРёС…РѕРґРёС‚ Р°СЂРµРЅРґР°.\nРќР° СЃС‡С‘С‚Рµ: $%d\n\nРЎРєРѕР»СЊРєРѕ РїРѕР»РѕР¶РёС‚СЊ?", "РџРѕРїРѕР»РЅРёС‚СЊ", "РќР°Р·Р°Рґ", House_GetTax(h), House[h][hBalance]);
-			case 5: ShowPlayerDialog(playerid, DIALOG_HOUSE_WITHDRAW, DIALOG_STYLE_INPUT, "РЎС‡С‘С‚ РґРѕРјР°", "{FFFFFF}РќР° СЃС‡С‘С‚Рµ: $%d\n\nРЎРєРѕР»СЊРєРѕ СЃРЅСЏС‚СЊ?", "РЎРЅСЏС‚СЊ", "РќР°Р·Р°Рґ", House[h][hBalance]);
-			case 6: ShowPlayerDialog(playerid, DIALOG_HOUSE_RENT, DIALOG_STYLE_INPUT, "РђСЂРµРЅРґР°", "{FFFFFF}Р¦РµРЅР° РєРѕРјРЅР°С‚С‹ РІ С‡Р°СЃ (0 вЂ” РЅРµ СЃРґР°РІР°С‚СЊ, РјР°РєСЃРёРјСѓРј $%d).\nРЎРµР№С‡Р°СЃ: $%d", "Р“РѕС‚РѕРІРѕ", "РќР°Р·Р°Рґ", HOUSE_RENT_MAX, House[h][hRent]);
+			case 2: if (!House_AtStore(playerid, h)) House_StoreFar(playerid); else ShowPlayerDialog(playerid, DIALOG_HOUSE_SAFE_IN, DIALOG_STYLE_INPUT, "Сейф", "{FFFFFF}Сколько положить в сейф?\nВ сейфе: $%d, у тебя: $%d", "Положить", "Назад", House[h][hSafe], GetMoney(playerid));
+			case 3: if (!House_AtStore(playerid, h)) House_StoreFar(playerid); else ShowPlayerDialog(playerid, DIALOG_HOUSE_SAFE_OUT, DIALOG_STYLE_INPUT, "Сейф", "{FFFFFF}Сколько взять из сейфа?\nВ сейфе: $%d", "Взять", "Назад", House[h][hSafe]);
+			case 4: ShowPlayerDialog(playerid, DIALOG_HOUSE_PAY, DIALOG_STYLE_INPUT, "Счёт дома", "{FFFFFF}С этого счёта платится налог $%d в час, сюда же приходит аренда.\nНа счёте: $%d\n\nСколько положить?", "Пополнить", "Назад", House_GetTax(h), House[h][hBalance]);
+			case 5: ShowPlayerDialog(playerid, DIALOG_HOUSE_WITHDRAW, DIALOG_STYLE_INPUT, "Счёт дома", "{FFFFFF}На счёте: $%d\n\nСколько снять?", "Снять", "Назад", House[h][hBalance]);
+			case 6: ShowPlayerDialog(playerid, DIALOG_HOUSE_RENT, DIALOG_STYLE_INPUT, "Аренда", "{FFFFFF}Цена комнаты в час (0 — не сдавать, максимум $%d).\nСейчас: $%d", "Готово", "Назад", HOUSE_RENT_MAX, House[h][hRent]);
 			case 7: Cmd_Tenants(playerid);
 		}
 		return 1;
@@ -923,40 +923,40 @@ stock Houses_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 	{
 		case DIALOG_HOUSE_SAFE_IN:
 		{
-			if (amount < 1 || GetMoney(playerid) < amount) SendClientMessage(playerid, COLOR_GREY, "РќРµРІРµСЂРЅР°СЏ СЃСѓРјРјР°.");
-			else if (House[h][hSafe] + amount > HOUSE_SAFE_MAX) SendClientMessage(playerid, COLOR_GREY, "Р’ СЃРµР№С„ РїРѕРјРµС‰Р°РµС‚СЃСЏ РЅРµ Р±РѕР»СЊС€Рµ $%d.", HOUSE_SAFE_MAX);
+			if (amount < 1 || GetMoney(playerid) < amount) SendClientMessage(playerid, COLOR_GREY, "Неверная сумма.");
+			else if (House[h][hSafe] + amount > HOUSE_SAFE_MAX) SendClientMessage(playerid, COLOR_GREY, "В сейф помещается не больше $%d.", HOUSE_SAFE_MAX);
 			else
 			{
-				GiveMoney(playerid, -amount, "РІ СЃРµР№С„ РґРѕРјР°");
+				GiveMoney(playerid, -amount, "в сейф дома");
 				House[h][hSafe] += amount;
 				House_Save(h);
 				Account_Save(playerid);
-				SendClientMessage(playerid, COLOR_GREEN, "РўС‹ РїРѕР»РѕР¶РёР» РІ СЃРµР№С„ $%d. Р’ СЃРµР№С„Рµ $%d.", amount, House[h][hSafe]);
+				SendClientMessage(playerid, COLOR_GREEN, "Ты положил в сейф $%d. В сейфе $%d.", amount, House[h][hSafe]);
 			}
 		}
 		case DIALOG_HOUSE_SAFE_OUT:
 		{
-			if (amount < 1 || amount > House[h][hSafe]) SendClientMessage(playerid, COLOR_GREY, "РќРµРІРµСЂРЅР°СЏ СЃСѓРјРјР°.");
+			if (amount < 1 || amount > House[h][hSafe]) SendClientMessage(playerid, COLOR_GREY, "Неверная сумма.");
 			else
 			{
 				House[h][hSafe] -= amount;
-				GiveMoney(playerid, amount, "РёР· СЃРµР№С„Р° РґРѕРјР°");
+				GiveMoney(playerid, amount, "из сейфа дома");
 				House_Save(h);
 				Account_Save(playerid);
-				SendClientMessage(playerid, COLOR_GREEN, "РўС‹ РІР·СЏР» РёР· СЃРµР№С„Р° $%d. РћСЃС‚Р°Р»РѕСЃСЊ $%d.", amount, House[h][hSafe]);
+				SendClientMessage(playerid, COLOR_GREEN, "Ты взял из сейфа $%d. Осталось $%d.", amount, House[h][hSafe]);
 			}
 		}
 		case DIALOG_HOUSE_PAY: House_Deposit(playerid, h, amount);
 		case DIALOG_HOUSE_WITHDRAW:
 		{
-			if (amount < 1 || amount > House[h][hBalance]) SendClientMessage(playerid, COLOR_GREY, "РќРµРІРµСЂРЅР°СЏ СЃСѓРјРјР° (РЅР° СЃС‡С‘С‚Рµ $%d).", House[h][hBalance]);
+			if (amount < 1 || amount > House[h][hBalance]) SendClientMessage(playerid, COLOR_GREY, "Неверная сумма (на счёте $%d).", House[h][hBalance]);
 			else
 			{
 				House[h][hBalance] -= amount;
-				GiveMoney(playerid, amount, "СЃРѕ СЃС‡С‘С‚Р° РґРѕРјР°");
+				GiveMoney(playerid, amount, "со счёта дома");
 				House_Save(h);
 				Account_Save(playerid);
-				SendClientMessage(playerid, COLOR_GREEN, "РўС‹ СЃРЅСЏР» СЃРѕ СЃС‡С‘С‚Р° РґРѕРјР° $%d. РћСЃС‚Р°Р»РѕСЃСЊ $%d.", amount, House[h][hBalance]);
+				SendClientMessage(playerid, COLOR_GREEN, "Ты снял со счёта дома $%d. Осталось $%d.", amount, House[h][hBalance]);
 			}
 		}
 		case DIALOG_HOUSE_RENT: House_SetRentPrice(playerid, h, amount);
@@ -968,11 +968,11 @@ stock bool:Cmd_CreateHouse(playerid, const params[])
 {
 	new pos = 0, price, type;
 	if (!NextIntParam(params, pos, price) || !NextIntParam(params, pos, type) || type < 1 || type > sizeof (gHouseIntId) || price < 1)
-		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /createhouse [С†РµРЅР°] [С‚РёРї 1-5]");
-	if (gHouseCount >= MAX_HOUSES) return SendClientMessage(playerid, COLOR_GREY, "Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ РґРѕРјРѕРІ (MAX_HOUSES).");
-	// РІС…РѕРґ РјРѕР¶РЅРѕ СЃС‚Р°РІРёС‚СЊ Рё РІРЅСѓС‚СЂРё Р·РґР°РЅРёСЏ (РєРѕСЂРёРґРѕСЂ РѕР±С‰РµР¶РёС‚РёСЏ), РЅРѕ РЅРµ РІРЅСѓС‚СЂРё РґСЂСѓРіРѕРіРѕ РґРѕРјР° РёР»Рё Р±РёР·РЅРµСЃР°
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /createhouse [цена] [тип 1-5]");
+	if (gHouseCount >= MAX_HOUSES) return SendClientMessage(playerid, COLOR_GREY, "Достигнут лимит домов (MAX_HOUSES).");
+	// вход можно ставить и внутри здания (коридор общежития), но не внутри другого дома или бизнеса
 	new oint = GetPlayerInterior(playerid), oworld = GetPlayerVirtualWorld(playerid);
-	if (oworld >= HOUSE_WORLD_OFFSET) return SendClientMessage(playerid, COLOR_GREY, "Р—РґРµСЃСЊ РЅРµР»СЊР·СЏ: С‚С‹ РІРЅСѓС‚СЂРё РґРѕРјР° РёР»Рё Р±РёР·РЅРµСЃР°.");
+	if (oworld >= HOUSE_WORLD_OFFSET) return SendClientMessage(playerid, COLOR_GREY, "Здесь нельзя: ты внутри дома или бизнеса.");
 
 	new Float:x, Float:y, Float:z;
 	GetPlayerPos(playerid, x, y, z);
@@ -1003,11 +1003,11 @@ stock bool:Cmd_CreateHouse(playerid, const params[])
 	House[h][hMarker] = -1;
 	House_Refresh(h);
 
-	SendClientMessage(playerid, COLOR_GREEN, "Р”РѕРј в„–%d СЃРѕР·РґР°РЅ. Р¦РµРЅР° $%d, РёРЅС‚РµСЂСЊРµСЂ %d. РЎРІРѕР№ РёРЅС‚РµСЂСЊРµСЂ: /sethouseint %d, СЃРЅРµСЃС‚Рё: /delhouse %d", House[h][hDbId], price, type, House[h][hDbId], House[h][hDbId]);
+	SendClientMessage(playerid, COLOR_GREEN, "Дом №%d создан. Цена $%d, интерьер %d. Свой интерьер: /sethouseint %d, снести: /delhouse %d", House[h][hDbId], price, type, House[h][hDbId], House[h][hDbId]);
 	return true;
 }
 
-// Р”РѕРј РїРѕ РЅРѕРјРµСЂСѓ РёР· РєРѕРјР°РЅРґС‹; Р±РµР· РЅРѕРјРµСЂР° вЂ” С‚РѕС‚, Сѓ РІС…РѕРґР° РёР»Рё РІРЅСѓС‚СЂРё РєРѕС‚РѕСЂРѕРіРѕ СЃС‚РѕРёС‚ Р°РґРјРёРЅ (-1 = РЅРµС‚)
+// Дом по номеру из команды; без номера — тот, у входа или внутри которого стоит админ (-1 = нет)
 static House_FromParam(playerid, const params[])
 {
 	new pos = 0, dbid;
@@ -1017,14 +1017,14 @@ static House_FromParam(playerid, const params[])
 	return h;
 }
 
-// /delhouse [в„–] вЂ” СЃРЅРµСЃС‚Рё РґРѕРј (СѓСЂРѕРІРµРЅСЊ Р°РґРјРёРЅР° РїСЂРѕРІРµСЂСЏРµС‚СЃСЏ РІ commands.inc)
+// /delhouse [№] — снести дом (уровень админа проверяется в commands.inc)
 stock bool:Cmd_DelHouse(playerid, const params[])
 {
 	new h = House_FromParam(playerid, params);
-	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /delhouse [в„– РґРѕРјР°] (Р±РµР· РЅРѕРјРµСЂР° вЂ” РґРѕРј, Сѓ РІС…РѕРґР° РєРѕС‚РѕСЂРѕРіРѕ С‚С‹ СЃС‚РѕРёС€СЊ)");
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Использование: /delhouse [№ дома] (без номера — дом, у входа которого ты стоишь)");
 	new dbid = House[h][hDbId];
 
-	// РІР»Р°РґРµР»СЊС†Сѓ РІРѕР·РІСЂР°С‰Р°РµС‚СЃСЏ РїРѕР»РЅР°СЏ С†РµРЅР°, СЃРµР№С„ Рё РѕСЃС‚Р°С‚РѕРє СЃС‡С‘С‚Р°
+	// владельцу возвращается полная цена, сейф и остаток счёта
 	if (House[h][hOwner] != 0)
 	{
 		new refund = House[h][hPrice] + House[h][hSafe];
@@ -1033,24 +1033,24 @@ stock bool:Cmd_DelHouse(playerid, const params[])
 		if (owner != INVALID_PLAYER_ID)
 		{
 			House_GiveStoredWeapons(h, owner);
-			GiveMoney(owner, refund, "РґРѕРј СЃРЅРµСЃС‘РЅ Р°РґРјРёРЅРёСЃС‚СЂР°С†РёРµР№");
+			GiveMoney(owner, refund, "дом снесён администрацией");
 			Account_Save(owner);
-			SendClientMessage(owner, COLOR_ORANGE, "РђРґРјРёРЅРёСЃС‚СЂР°С†РёСЏ СЃРЅРµСЃР»Р° С‚РІРѕР№ РґРѕРј в„–%d. Р’РѕР·РІСЂР°С‰РµРЅРѕ $%d, РѕСЂСѓР¶РёРµ РёР· С€РєР°С„Р° Сѓ С‚РµР±СЏ.", dbid, refund);
+			SendClientMessage(owner, COLOR_ORANGE, "Администрация снесла твой дом №%d. Возвращено $%d, оружие из шкафа у тебя.", dbid, refund);
 		}
 		else DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET bank = bank + %d WHERE id = %d", refund, House[h][hOwner]));
-		SendClientMessage(playerid, COLOR_ADMIN, "Р’Р»Р°РґРµР»СЊС†Сѓ (%s) РІРѕР·РІСЂР°С‰РµРЅРѕ $%d.", House[h][hOwnerName], refund);
+		SendClientMessage(playerid, COLOR_ADMIN, "Владельцу (%s) возвращено $%d.", House[h][hOwnerName], refund);
 	}
 	new ownerId = House[h][hOwner];
 
 	House_EmptyInside(h);
-	House_EvictAll(h, "РґРѕРј СЃРЅРµСЃС‘РЅ.");
+	House_EvictAll(h, "дом снесён.");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM house_weapons WHERE house = %d", dbid));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM houses WHERE id = %d", dbid));
 	Marker_Destroy(House[h][hMarker], true);
 	House[h][hHasStore] = false;
-	House_BuildStore(h);    // СѓР±СЂР°С‚СЊ РЅР°РґРїРёСЃСЊ С€РєР°С„Р°
+	House_BuildStore(h);    // убрать надпись шкафа
 
-	// РїРѕСЃР»РµРґРЅРёР№ РґРѕРј РїРµСЂРµРµР·Р¶Р°РµС‚ РЅР° РѕСЃРІРѕР±РѕРґРёРІС€РµРµСЃСЏ РјРµСЃС‚Рѕ: РјРёСЂ РµРіРѕ РёРЅС‚РµСЂСЊРµСЂР° РјРµРЅСЏРµС‚СЃСЏ
+	// последний дом переезжает на освободившееся место: мир его интерьера меняется
 	new last = gHouseCount - 1;
 	if (h != last)
 	{
@@ -1060,46 +1060,46 @@ stock bool:Cmd_DelHouse(playerid, const params[])
 		{
 			if (gRentHouse[i] == last) gRentHouse[i] = h;
 		}
-		House_BuildStore(h);    // РЅР°РґРїРёСЃСЊ С€РєР°С„Р° вЂ” РІ РЅРѕРІРѕРј РјРёСЂРµ РёРЅС‚РµСЂСЊРµСЂР°
+		House_BuildStore(h);    // надпись шкафа — в новом мире интерьера
 	}
 	gHouseCount--;
-	PDoors_Rebuild();       // РІС…РѕРґС‹ РёР· /adddoor РІРЅСѓС‚СЂРё РґРѕРјРѕРІ С‚РѕР¶Рµ РїРµСЂРµРµР·Р¶Р°СЋС‚ РІ РЅРѕРІС‹Р№ РјРёСЂ
+	PDoors_Rebuild();       // входы из /adddoor внутри домов тоже переезжают в новый мир
 
 	new owner = House_FindOnline(ownerId);
 	if (owner != INVALID_PLAYER_ID) Account_SetNormalSpawn(owner);
-	SendClientMessage(playerid, COLOR_ADMIN, "Р”РѕРј в„–%d СЃРЅРµСЃС‘РЅ.", dbid);
+	SendClientMessage(playerid, COLOR_ADMIN, "Дом №%d снесён.", dbid);
 	return true;
 }
 
-// /sethouseint [в„–] вЂ” С‚РѕС‡РєР° РІРЅСѓС‚СЂРё РґРѕРјР° С‚Р°Рј, РіРґРµ СЃС‚РѕРёС‚ Р°РґРјРёРЅ (РІ РёРЅС‚РµСЂСЊРµСЂРµ)
+// /sethouseint [№] — точка внутри дома там, где стоит админ (в интерьере)
 stock bool:Cmd_SetHouseInt(playerid, const params[])
 {
 	new pos = 0, dbid;
 	if (!NextIntParam(params, pos, dbid))
-		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /sethouseint [в„– РґРѕРјР°] вЂ” СЃС‚РѕСЏ РІ РЅСѓР¶РЅРѕРј РёРЅС‚РµСЂСЊРµСЂРµ Сѓ РґРІРµСЂРё (РїРѕРїР°СЃС‚СЊ: /gotoint РёР»Рё /gotocoord)");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /sethouseint [№ дома] — стоя в нужном интерьере у двери (попасть: /gotoint или /gotocoord)");
 	new h = House_FindByDbId(dbid);
-	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Р”РѕРјР° СЃ С‚Р°РєРёРј РЅРѕРјРµСЂРѕРј РЅРµС‚.");
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Дома с таким номером нет.");
 	new interior = GetPlayerInterior(playerid);
-	if (interior == 0) return SendClientMessage(playerid, COLOR_GREY, "Р’СЃС‚Р°РЅСЊ РІРЅСѓС‚СЂРё РёРЅС‚РµСЂСЊРµСЂР° Сѓ РґРІРµСЂРё.");
+	if (interior == 0) return SendClientMessage(playerid, COLOR_GREY, "Встань внутри интерьера у двери.");
 
 	House_EmptyInside(h);
 	GetPlayerPos(playerid, House[h][hIX], House[h][hIY], House[h][hIZ]);
 	House[h][hInterior] = interior;
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE houses SET ix = %f, iy = %f, iz = %f, interior = %d WHERE id = %d",
 		House[h][hIX], House[h][hIY], House[h][hIZ], interior, dbid));
-	SendClientMessage(playerid, COLOR_ADMIN, "Р”РѕРј в„–%d: РІС…РѕРґ С‚РµРїРµСЂСЊ РІРµРґС‘С‚ СЃСЋРґР° (РёРЅС‚РµСЂСЊРµСЂ %d).", dbid, interior);
+	SendClientMessage(playerid, COLOR_ADMIN, "Дом №%d: вход теперь ведёт сюда (интерьер %d).", dbid, interior);
 	return true;
 }
 
-// /gotohouse [в„–] вЂ” С‚РµР»РµРїРѕСЂС‚ РєРѕ РІС…РѕРґСѓ РґРѕРјР°
+// /gotohouse [№] — телепорт ко входу дома
 stock bool:Cmd_GotoHouse(playerid, const params[])
 {
 	new pos = 0, dbid;
-	if (!NextIntParam(params, pos, dbid)) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /gotohouse [в„– РґРѕРјР°]");
+	if (!NextIntParam(params, pos, dbid)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /gotohouse [№ дома]");
 	new h = House_FindByDbId(dbid);
-	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Р”РѕРјР° СЃ С‚Р°РєРёРј РЅРѕРјРµСЂРѕРј РЅРµС‚.");
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Дома с таким номером нет.");
 	if (IsPlayerInAnyVehicle(playerid)) RemovePlayerFromVehicle(playerid);
 	House_PutOutside(playerid, h);
-	SendClientMessage(playerid, COLOR_ADMIN, "РўС‹ Сѓ РґРѕРјР° в„–%d.", dbid);
+	SendClientMessage(playerid, COLOR_ADMIN, "Ты у дома №%d.", dbid);
 	return true;
 }

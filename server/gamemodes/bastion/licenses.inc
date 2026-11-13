@@ -1,23 +1,23 @@
 // =====================================================================
-//  licenses.inc вЂ” Р»РёС†РµРЅР·РёРё Рё Р°РІС‚РѕС€РєРѕР»Р°.
+//  licenses.inc — лицензии и автошкола.
 //
-//  Р›РёС†РµРЅР·РёРё: Р°РІС‚Рѕ, РјРѕС‚Рѕ, Р»РѕРґРєРё, РѕСЂСѓР¶РёРµ. РҐСЂР°РЅСЏС‚СЃСЏ РІ accounts
-//  (РєРѕР»РѕРЅРєРё lic_car, lic_moto, lic_boat, lic_gun).
+//  Лицензии: авто, мото, лодки, оружие. Хранятся в accounts
+//  (колонки lic_car, lic_moto, lic_boat, lic_gun).
 //
-//  РђРІС‚РѕС€РєРѕР»Р° (Р·РЅР°С‡РѕРє Сѓ РјСЌСЂРёРё Р›РѕСЃ-РЎР°РЅС‚РѕСЃР°, ALT РёР»Рё /exam):
-//    1. РўРµРѕСЂРёСЏ вЂ” LIC_THEORY_QUESTIONS РІРѕРїСЂРѕСЃРѕРІ Рѕ РїСЂР°РІРёР»Р°С…, РЅСѓР¶РЅРѕ РѕС‚РІРµС‚РёС‚СЊ
-//       Р±РµР· РѕС€РёР±РѕРє С…РѕС‚СЏ Р±С‹ РЅР° LIC_THEORY_PASS.
-//    2. РџСЂР°РєС‚РёРєР° (Р°РІС‚Рѕ Рё РјРѕС‚Рѕ) вЂ” РїСЂРѕРµС…Р°С‚СЊ РјР°СЂС€СЂСѓС‚ РїРѕ С‡РµРєРїРѕРёРЅС‚Р°Рј РЅР°
-//       СѓС‡РµР±РЅРѕР№ РјР°С€РёРЅРµ, РЅРµ СЂР°Р·Р±РёРІ РµС‘ (Р·РґРѕСЂРѕРІСЊРµ РјР°С€РёРЅС‹ РЅРµ РЅРёР¶Рµ LIC_EXAM_MIN_HP).
-//       Р’С‹С€РµР» РёР· РјР°С€РёРЅС‹ РёР»Рё РїСЂРѕС€Р»Рѕ LIC_EXAM_TIME СЃРµРєСѓРЅРґ вЂ” СЌРєР·Р°РјРµРЅ РїСЂРѕРІР°Р»РµРЅ.
-//    Р›РѕРґРєРё Рё РѕСЂСѓР¶РёРµ вЂ” С‚РѕР»СЊРєРѕ С‚РµРѕСЂРёСЏ (РѕСЂСѓР¶РёРµ СЃ LIC_GUN_MIN_LEVEL СѓСЂРѕРІРЅСЏ).
+//  Автошкола (значок у мэрии Лос-Сантоса, ALT или /exam):
+//    1. Теория — LIC_THEORY_QUESTIONS вопросов о правилах, нужно ответить
+//       без ошибок хотя бы на LIC_THEORY_PASS.
+//    2. Практика (авто и мото) — проехать маршрут по чекпоинтам на
+//       учебной машине, не разбив её (здоровье машины не ниже LIC_EXAM_MIN_HP).
+//       Вышел из машины или прошло LIC_EXAM_TIME секунд — экзамен провален.
+//    Лодки и оружие — только теория (оружие с LIC_GUN_MIN_LEVEL уровня).
 //
-//  Р‘РµР· РїСЂР°РІ РµР·РґРёС‚СЊ РјРѕР¶РЅРѕ, РЅРѕ РїРѕР»РёС†РёСЏ РїСЂРѕРІРµСЂСЏРµС‚ РёС… (/checklic) Рё РјРѕР¶РµС‚
-//  Р·Р°Р±СЂР°С‚СЊ (/takelic). РћСЂСѓР¶РёРµ РІ РѕСЂСѓР¶РµР№РЅРѕРј РјР°РіР°Р·РёРЅРµ РїСЂРѕРґР°СЋС‚ С‚РѕР»СЊРєРѕ СЃ Р»РёС†РµРЅР·РёРµР№.
+//  Без прав ездить можно, но полиция проверяет их (/checklic) и может
+//  забрать (/takelic). Оружие в оружейном магазине продают только с лицензией.
 //
-//  /licenses вЂ” РјРѕРё Р»РёС†РµРЅР·РёРё. /showlic [id] вЂ” РїРѕРєР°Р·Р°С‚СЊ РёРіСЂРѕРєСѓ СЂСЏРґРѕРј.
-//  РђРґРјРёРЅС‹: /givelic [id] [1-4] (3+), /addexampoint, /clearexam (4+) вЂ”
-//  Р·Р°РїРёСЃР°С‚СЊ СЃРІРѕР№ РјР°СЂС€СЂСѓС‚ СЌРєР·Р°РјРµРЅР°: РїСЂРѕРµРґСЊ РµРіРѕ Рё СЃС‚Р°РІСЊ С‚РѕС‡РєРё РїРѕ РїРѕСЂСЏРґРєСѓ.
+//  /licenses — мои лицензии. /showlic [id] — показать игроку рядом.
+//  Админы: /givelic [id] [1-4] (3+), /addexampoint, /clearexam (4+) —
+//  записать свой маршрут экзамена: проедь его и ставь точки по порядку.
 // =====================================================================
 
 enum
@@ -27,7 +27,7 @@ enum
 	LIC_BOAT,
 	LIC_GUN
 }
-#define LIC_COUNT           5           // 0 РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ
+#define LIC_COUNT           5           // 0 не используется
 
 #define LIC_THEORY_QUESTIONS 5
 #define LIC_THEORY_PASS      4
@@ -36,14 +36,14 @@ enum
 #define LIC_MAX_ROUTE        30
 
 
-static const gLicNames[LIC_COUNT][] = { "", "РђРІС‚Рѕ", "РњРѕС‚Рѕ", "Р›РѕРґРєРё", "РћСЂСѓР¶РёРµ" };
+static const gLicNames[LIC_COUNT][] = { "", "Авто", "Мото", "Лодки", "Оружие" };
 static const gLicColumns[LIC_COUNT][] = { "", "lic_car", "lic_moto", "lic_boat", "lic_gun" };
 static const gLicPrices[LIC_COUNT] = { 0, LIC_PRICE_CAR, LIC_PRICE_MOTO, LIC_PRICE_BOAT, LIC_PRICE_GUN };
 
 static bool:gLic[MAX_PLAYERS][LIC_COUNT];
-static gSchoolMk = -1;                  // РјР°СЂРєРµСЂ Р°РІС‚РѕС€РєРѕР»С‹ (РґРІРёРіР°РµС‚СЃСЏ РІ РёРіСЂРµ: /markers)
-static gExamType[MAX_PLAYERS];          // РєР°РєСѓСЋ Р»РёС†РµРЅР·РёСЋ СЃРґР°С‘С‚ (0 = РЅРµ СЃРґР°С‘С‚)
-static gExamStep[MAX_PLAYERS];          // РЅРѕРјРµСЂ РІРѕРїСЂРѕСЃР° / С‡РµРєРїРѕРёРЅС‚Р°
+static gSchoolMk = -1;                  // маркер автошколы (двигается в игре: /markers)
+static gExamType[MAX_PLAYERS];          // какую лицензию сдаёт (0 = не сдаёт)
+static gExamStep[MAX_PLAYERS];          // номер вопроса / чекпоинта
 static gExamCorrect[MAX_PLAYERS];
 static gExamQuestion[MAX_PLAYERS][LIC_THEORY_QUESTIONS];
 static gExamVehicle[MAX_PLAYERS] = { INVALID_VEHICLE_ID, ... };
@@ -52,32 +52,32 @@ static gExamTime[MAX_PLAYERS];
 static Float:gRoute[LIC_MAX_ROUTE][3];
 static gRouteCount;
 
-// Р’РѕРїСЂРѕСЃС‹ С‚РµРѕСЂРёРё: С‚РµРєСЃС‚, РІР°СЂРёР°РЅС‚С‹ С‡РµСЂРµР· \n, РЅРѕРјРµСЂ РїСЂР°РІРёР»СЊРЅРѕРіРѕ (СЃ 0)
+// Вопросы теории: текст, варианты через \n, номер правильного (с 0)
 static const gTheoryText[][] =
 {
-	"РќР° СЃРІРµС‚РѕС„РѕСЂРµ РіРѕСЂРёС‚ РєСЂР°СЃРЅС‹Р№. Р§С‚Рѕ РґРµР»Р°С‚СЊ?",
-	"РЎ РєР°РєРѕР№ СЃС‚РѕСЂРѕРЅС‹ РґРѕСЂРѕРіРё РµС…Р°С‚СЊ?",
-	"РўРµР±СЏ РѕСЃС‚Р°РЅР°РІР»РёРІР°РµС‚ РїРѕР»РёС†РёСЏ. Р§С‚Рѕ РґРµР»Р°С‚СЊ?",
-	"РЎРєРѕСЂРѕСЃС‚СЊ РІ РіРѕСЂРѕРґРµ?",
-	"РўС‹ Р·Р°РґРµР» РґСЂСѓРіСѓСЋ РјР°С€РёРЅСѓ. Р§С‚Рѕ РґРµР»Р°С‚СЊ?",
-	"РњРѕР¶РЅРѕ Р»Рё СЃР°РґРёС‚СЊСЃСЏ Р·Р° СЂСѓР»СЊ РїСЊСЏРЅС‹Рј?",
-	"Р“РґРµ РјРѕР¶РЅРѕ РїР°СЂРєРѕРІР°С‚СЊСЃСЏ?",
-	"РЎР·Р°РґРё РµРґРµС‚ СЃРєРѕСЂР°СЏ СЃ СЃРёСЂРµРЅРѕР№. Р§С‚Рѕ РґРµР»Р°С‚СЊ?"
+	"На светофоре горит красный. Что делать?",
+	"С какой стороны дороги ехать?",
+	"Тебя останавливает полиция. Что делать?",
+	"Скорость в городе?",
+	"Ты задел другую машину. Что делать?",
+	"Можно ли садиться за руль пьяным?",
+	"Где можно парковаться?",
+	"Сзади едет скорая с сиреной. Что делать?"
 };
 static const gTheoryAnswers[][] =
 {
-	"РџСЂРѕРµС…Р°С‚СЊ, РµСЃР»Рё РЅРёРєРѕРіРѕ РЅРµС‚\nРћСЃС‚Р°РЅРѕРІРёС‚СЊСЃСЏ\nРџРѕСЃРёРіРЅР°Р»РёС‚СЊ Рё РµС…Р°С‚СЊ",
-	"РџРѕ Р»РµРІРѕР№\nРџРѕ С†РµРЅС‚СЂСѓ\nРџРѕ РїСЂР°РІРѕР№",
-	"РћСЃС‚Р°РЅРѕРІРёС‚СЊСЃСЏ Рё РІС‹РїРѕР»РЅСЏС‚СЊ С‚СЂРµР±РѕРІР°РЅРёСЏ\nРЈРµС…Р°С‚СЊ\nР’С‹Р№С‚Рё Рё СѓР±РµР¶Р°С‚СЊ",
-	"РЎРєРѕР»СЊРєРѕ РІС‹Р¶РјРµС‚ РјР°С€РёРЅР°\nРќРµ Р±РѕР»СЊС€Рµ 60 РєРј/С‡\nРќРµ РјРµРЅСЊС€Рµ 100 РєРј/С‡",
-	"РћСЃС‚Р°РЅРѕРІРёС‚СЊСЃСЏ Рё СЂРµС€РёС‚СЊ РІРѕРїСЂРѕСЃ\nРЈРµС…Р°С‚СЊ РєР°Рє РјРѕР¶РЅРѕ Р±С‹СЃС‚СЂРµРµ\nРќРёС‡РµРіРѕ, С‚Р°Рє Р±С‹РІР°РµС‚",
-	"Р”Р°, РµСЃР»Рё РЅРµРґР°Р»РµРєРѕ\nР”Р°, РЅРѕС‡СЊСЋ\nРќРµС‚",
-	"РЈ РѕР±РѕС‡РёРЅС‹, РЅРµ РјРµС€Р°СЏ РґРІРёР¶РµРЅРёСЋ\nРќР° РїРµСЂРµРєСЂС‘СЃС‚РєРµ\nРџРѕСЃСЂРµРґРё РґРѕСЂРѕРіРё",
-	"РЈСЃРєРѕСЂРёС‚СЊСЃСЏ, С‡С‚РѕР±С‹ РЅРµ РјРµС€Р°С‚СЊ\nРџСЂРёР¶Р°С‚СЊСЃСЏ РІРїСЂР°РІРѕ Рё РїСЂРѕРїСѓСЃС‚РёС‚СЊ\nР•С…Р°С‚СЊ РєР°Рє РµС…Р°Р»"
+	"Проехать, если никого нет\nОстановиться\nПосигналить и ехать",
+	"По левой\nПо центру\nПо правой",
+	"Остановиться и выполнять требования\nУехать\nВыйти и убежать",
+	"Сколько выжмет машина\nНе больше 60 км/ч\nНе меньше 100 км/ч",
+	"Остановиться и решить вопрос\nУехать как можно быстрее\nНичего, так бывает",
+	"Да, если недалеко\nДа, ночью\nНет",
+	"У обочины, не мешая движению\nНа перекрёстке\nПосреди дороги",
+	"Ускориться, чтобы не мешать\nПрижаться вправо и пропустить\nЕхать как ехал"
 };
 static const gTheoryRight[] = { 1, 2, 0, 1, 0, 2, 0, 1 };
 
-// РњР°СЂС€СЂСѓС‚ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РІРѕРєСЂСѓРі Pershing Square (РµСЃР»Рё Р°РґРјРёРЅ РЅРµ Р·Р°РїРёСЃР°Р» СЃРІРѕР№)
+// Маршрут по умолчанию вокруг Pershing Square (если админ не записал свой)
 static const Float:gDefaultRoute[][3] =
 {
 	{ 1530.0, -1735.0, 13.4 },
@@ -91,7 +91,7 @@ static const Float:gDefaultRoute[][3] =
 };
 
 // ---------------------------------------------------------------------
-//  Р—Р°РіСЂСѓР·РєР°
+//  Загрузка
 // ---------------------------------------------------------------------
 forward Licenses_OnSecond();
 
@@ -102,8 +102,8 @@ stock Licenses_Init()
 	Licenses_LoadRoute();
 
 	new Float:sx = LIC_SCHOOL_X, Float:sy = LIC_SCHOOL_Y, Float:sz = LIC_SCHOOL_Z;
-	gSchoolMk = Marker_Create(MK_SCHOOL, 0, "РђРІС‚РѕС€РєРѕР»Р°", 1239, sx, sy, sz, 0, 0, GPS_GOV);
-	Marker_SetLabel(gSchoolMk, "{33CCFF}РђРІС‚РѕС€РєРѕР»Р°\n{FFFFFF}ALT вЂ” СЃРґР°С‚СЊ РЅР° РїСЂР°РІР° Рё Р»РёС†РµРЅР·РёРё");
+	gSchoolMk = Marker_Create(MK_SCHOOL, 0, "Автошкола", 1239, sx, sy, sz, 0, 0, GPS_GOV);
+	Marker_SetLabel(gSchoolMk, "{33CCFF}Автошкола\n{FFFFFF}ALT — сдать на права и лицензии");
 	SetTimer("Licenses_OnSecond", 1000, true);
 }
 
@@ -137,7 +137,7 @@ static Licenses_LoadRoute()
 	}
 }
 
-// РџРѕСЃР»Рµ РІС…РѕРґР° РІ Р°РєРєР°СѓРЅС‚ (РёР· Vehicles_LoadForPlayer)
+// После входа в аккаунт (из Vehicles_LoadForPlayer)
 stock Licenses_LoadPlayer(playerid)
 {
 	for (new l = 0; l < LIC_COUNT; l++) gLic[playerid][l] = false;
@@ -166,32 +166,32 @@ static Licenses_Set(playerid, lic, bool:value)
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET %s = %d WHERE id = %d", gLicColumns[lic], value ? 1 : 0, Player[playerid][pDbId]));
 }
 
-// РљР°РєР°СЏ Р»РёС†РµРЅР·РёСЏ РЅСѓР¶РЅР° РґР»СЏ РјРѕРґРµР»Рё: 0 вЂ” РЅРёРєР°РєРѕР№
+// Какая лицензия нужна для модели: 0 — никакой
 stock Licenses_ForModel(model)
 {
 	switch (model)
 	{
-		case 0, 481, 509, 510: return 0;                                         // РІРµР»РѕСЃРёРїРµРґС‹
+		case 0, 481, 509, 510: return 0;                                         // велосипеды
 		case 448, 461, 462, 463, 468, 471, 521, 522, 523, 581, 586: return LIC_MOTO;
 		case 430, 446, 452, 453, 454, 472, 473, 484, 493, 595: return LIC_BOAT;
-		case 417, 425, 447, 460, 469, 476, 487, 488, 497, 511, 512, 513, 519, 520, 548, 553, 563, 577, 592, 593: return 0;   // Р°РІРёР°С†РёСЏ вЂ” РїРѕР·Р¶Рµ
-		case 537, 538, 569, 570, 590: return 0;                                 // РїРѕРµР·РґР°
+		case 417, 425, 447, 460, 469, 476, 487, 488, 497, 511, 512, 513, 519, 520, 548, 553, 563, 577, 592, 593: return 0;   // авиация — позже
+		case 537, 538, 569, 570, 590: return 0;                                 // поезда
 	}
 	return LIC_CAR;
 }
 
-// РР· OnPlayerStateChange, РєРѕРіРґР° РёРіСЂРѕРє СЃРµР» Р·Р° СЂСѓР»СЊ
+// Из OnPlayerStateChange, когда игрок сел за руль
 stock Licenses_OnBecomeDriver(playerid)
 {
 	new v = GetPlayerVehicleID(playerid);
 
-	// Р’ СѓС‡РµР±РЅСѓСЋ РјР°С€РёРЅСѓ СЃР°РґРёС‚СЃСЏ С‚РѕР»СЊРєРѕ СЌРєР·Р°РјРµРЅСѓРµРјС‹Р№
+	// В учебную машину садится только экзаменуемый
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (i != playerid && gExamVehicle[i] == v)
 		{
 			RemovePlayerFromVehicle(playerid);
-			SendClientMessage(playerid, COLOR_GREY, "Р­С‚Рѕ СѓС‡РµР±РЅР°СЏ РјР°С€РёРЅР° Р°РІС‚РѕС€РєРѕР»С‹.");
+			SendClientMessage(playerid, COLOR_GREY, "Это учебная машина автошколы.");
 			return;
 		}
 	}
@@ -199,11 +199,11 @@ stock Licenses_OnBecomeDriver(playerid)
 
 	new lic = Licenses_ForModel(GetVehicleModel(v));
 	if (lic != 0 && !gLic[playerid][lic])
-		SendClientMessage(playerid, COLOR_ORANGE, "РЈ С‚РµР±СЏ РЅРµС‚ Р»РёС†РµРЅР·РёРё (%s). РџРѕР»РёС†РёСЏ РјРѕР¶РµС‚ РѕС€С‚СЂР°С„РѕРІР°С‚СЊ. РђРІС‚РѕС€РєРѕР»Р° вЂ” Сѓ РјСЌСЂРёРё.", gLicNames[lic]);
+		SendClientMessage(playerid, COLOR_ORANGE, "У тебя нет лицензии (%s). Полиция может оштрафовать. Автошкола — у мэрии.", gLicNames[lic]);
 }
 
 // ---------------------------------------------------------------------
-//  РђРІС‚РѕС€РєРѕР»Р°
+//  Автошкола
 // ---------------------------------------------------------------------
 stock bool:Licenses_IsNearSchool(playerid)
 {
@@ -212,17 +212,17 @@ stock bool:Licenses_IsNearSchool(playerid)
 
 stock bool:Cmd_Exam(playerid)
 {
-	if (!Licenses_IsNearSchool(playerid)) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РІ Р°РІС‚РѕС€РєРѕР»Рµ (Сѓ РјСЌСЂРёРё).");
-	if (gExamType[playerid] != 0) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ СѓР¶Рµ СЃРґР°С‘С€СЊ СЌРєР·Р°РјРµРЅ.");
+	if (!Licenses_IsNearSchool(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Ты должен быть в автошколе (у мэрии).");
+	if (gExamType[playerid] != 0) return SendClientMessage(playerid, COLOR_GREY, "Ты уже сдаёшь экзамен.");
 
-	new list[256] = "Р›РёС†РµРЅР·РёСЏ\tР¦РµРЅР°\tРЎС‚Р°С‚СѓСЃ\n", line[64];
+	new list[256] = "Лицензия\tЦена\tСтатус\n", line[64];
 	for (new l = 1; l < LIC_COUNT; l++)
 	{
-		if (gLic[playerid][l]) format(line, sizeof line, "%s\t$%d\t{33AA33}РµСЃС‚СЊ\n", gLicNames[l], gLicPrices[l]);
-		else format(line, sizeof line, "%s\t$%d\t{AFAFAF}РЅРµС‚\n", gLicNames[l], gLicPrices[l]);
+		if (gLic[playerid][l]) format(line, sizeof line, "%s\t$%d\t{33AA33}есть\n", gLicNames[l], gLicPrices[l]);
+		else format(line, sizeof line, "%s\t$%d\t{AFAFAF}нет\n", gLicNames[l], gLicPrices[l]);
 		strcat(list, line);
 	}
-	ShowPlayerDialog(playerid, DIALOG_LIC_MENU, DIALOG_STYLE_TABLIST_HEADERS, "РђРІС‚РѕС€РєРѕР»Р°", "%s", "РЎРґР°РІР°С‚СЊ", "Р—Р°РєСЂС‹С‚СЊ", list);
+	ShowPlayerDialog(playerid, DIALOG_LIC_MENU, DIALOG_STYLE_TABLIST_HEADERS, "Автошкола", "%s", "Сдавать", "Закрыть", list);
 	return true;
 }
 
@@ -230,14 +230,14 @@ static Licenses_AskQuestion(playerid)
 {
 	new q = gExamQuestion[playerid][gExamStep[playerid]];
 	new title[48];
-	format(title, sizeof title, "РўРµРѕСЂРёСЏ: РІРѕРїСЂРѕСЃ %d РёР· %d", gExamStep[playerid] + 1, LIC_THEORY_QUESTIONS);
-	ShowPlayerDialog(playerid, DIALOG_LIC_THEORY, DIALOG_STYLE_LIST, gTheoryText[q], "%s", "РћС‚РІРµС‚РёС‚СЊ", "РЎРґР°С‚СЊСЃСЏ", gTheoryAnswers[q]);
+	format(title, sizeof title, "Теория: вопрос %d из %d", gExamStep[playerid] + 1, LIC_THEORY_QUESTIONS);
+	ShowPlayerDialog(playerid, DIALOG_LIC_THEORY, DIALOG_STYLE_LIST, gTheoryText[q], "%s", "Ответить", "Сдаться", gTheoryAnswers[q]);
 	SendClientMessage(playerid, COLOR_BLUE, "%s: %s", title, gTheoryText[q]);
 }
 
 static Licenses_StartTheory(playerid, lic)
 {
-	// РЎР»СѓС‡Р°Р№РЅС‹Рµ СЂР°Р·РЅС‹Рµ РІРѕРїСЂРѕСЃС‹
+	// Случайные разные вопросы
 	new pool[sizeof (gTheoryText)];
 	for (new i = 0; i < sizeof pool; i++) pool[i] = i;
 	for (new i = sizeof (pool) - 1; i > 0; i--)
@@ -260,8 +260,8 @@ static Licenses_StartPractice(playerid)
 	new v = CreateVehicle(model, LIC_CAR_SPAWN_X, LIC_CAR_SPAWN_Y, LIC_CAR_SPAWN_Z, LIC_CAR_SPAWN_A, 1, 1, -1);
 	if (v == INVALID_VEHICLE_ID)
 	{
-		SendClientMessage(playerid, COLOR_RED, "РќРµС‚ СЃРІРѕР±РѕРґРЅРѕР№ СѓС‡РµР±РЅРѕР№ РјР°С€РёРЅС‹, РїРѕРїСЂРѕР±СѓР№ РїРѕР·Р¶Рµ. Р”РµРЅСЊРіРё РІРѕР·РІСЂР°С‰РµРЅС‹.");
-		GiveMoney(playerid, gLicPrices[gExamType[playerid]], "РІРѕР·РІСЂР°С‚ Р·Р° СЌРєР·Р°РјРµРЅ");
+		SendClientMessage(playerid, COLOR_RED, "Нет свободной учебной машины, попробуй позже. Деньги возвращены.");
+		GiveMoney(playerid, gLicPrices[gExamType[playerid]], "возврат за экзамен");
 		gExamType[playerid] = 0;
 		return;
 	}
@@ -271,7 +271,7 @@ static Licenses_StartPractice(playerid)
 	gExamTime[playerid] = LIC_EXAM_TIME;
 	PutPlayerInVehicle(playerid, v, 0);
 	Licenses_ShowCheckpoint(playerid);
-	SendClientMessage(playerid, COLOR_BLUE, "РџСЂР°РєС‚РёРєР°: РїСЂРѕРµРґСЊ РІСЃРµ С‚РѕС‡РєРё Р·Р° %d РјРёРЅСѓС‚ Рё РЅРµ СЂР°Р·Р±РµР№ РјР°С€РёРЅСѓ. Р—Р°РІРµРґРё РґРІРёРіР°С‚РµР»СЊ: 2.", LIC_EXAM_TIME / 60);
+	SendClientMessage(playerid, COLOR_BLUE, "Практика: проедь все точки за %d минут и не разбей машину. Заведи двигатель: 2.", LIC_EXAM_TIME / 60);
 }
 
 static Licenses_ShowCheckpoint(playerid)
@@ -302,13 +302,13 @@ static Licenses_EndExam(playerid, bool:passed, const reason[] = "")
 	if (passed)
 	{
 		Licenses_Set(playerid, lic, true);
-		SendClientMessage(playerid, COLOR_GREEN, "Р­РєР·Р°РјРµРЅ СЃРґР°РЅ! Р›РёС†РµРЅР·РёСЏ В«%sВ» РїРѕР»СѓС‡РµРЅР°. РџРѕСЃРјРѕС‚СЂРµС‚СЊ: /licenses", gLicNames[lic]);
+		SendClientMessage(playerid, COLOR_GREEN, "Экзамен сдан! Лицензия «%s» получена. Посмотреть: /licenses", gLicNames[lic]);
 		if (v != INVALID_VEHICLE_ID) SetPlayerPos(playerid, LIC_SCHOOL_X, LIC_SCHOOL_Y, LIC_SCHOOL_Z);
 	}
 	else
 	{
-		if (reason[0] != '\0') SendClientMessage(playerid, COLOR_RED, "Р­РєР·Р°РјРµРЅ РЅРµ СЃРґР°РЅ: %s. РњРѕР¶РЅРѕ РїРѕРїСЂРѕР±РѕРІР°С‚СЊ СЃРЅРѕРІР° (РѕРїР»Р°С‚Р° Р·Р°РЅРѕРІРѕ).", reason);
-		else SendClientMessage(playerid, COLOR_RED, "Р­РєР·Р°РјРµРЅ РЅРµ СЃРґР°РЅ. РњРѕР¶РЅРѕ РїРѕРїСЂРѕР±РѕРІР°С‚СЊ СЃРЅРѕРІР° (РѕРїР»Р°С‚Р° Р·Р°РЅРѕРІРѕ).");
+		if (reason[0] != '\0') SendClientMessage(playerid, COLOR_RED, "Экзамен не сдан: %s. Можно попробовать снова (оплата заново).", reason);
+		else SendClientMessage(playerid, COLOR_RED, "Экзамен не сдан. Можно попробовать снова (оплата заново).");
 	}
 }
 
@@ -321,25 +321,25 @@ stock Licenses_OnDialog(playerid, dialogid, response, listitem)
 		if (gExamType[playerid] != 0 || !Licenses_IsNearSchool(playerid)) return 1;
 		if (gLic[playerid][lic])
 		{
-			SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ СѓР¶Рµ РµСЃС‚СЊ СЌС‚Р° Р»РёС†РµРЅР·РёСЏ.");
+			SendClientMessage(playerid, COLOR_GREY, "У тебя уже есть эта лицензия.");
 			return 1;
 		}
 		if (lic == LIC_GUN && Player[playerid][pLevel] < LIC_GUN_MIN_LEVEL)
 		{
-			SendClientMessage(playerid, COLOR_GREY, "Р›РёС†РµРЅР·РёСЋ РЅР° РѕСЂСѓР¶РёРµ РІС‹РґР°СЋС‚ СЃ %d СѓСЂРѕРІРЅСЏ.", LIC_GUN_MIN_LEVEL);
+			SendClientMessage(playerid, COLOR_GREY, "Лицензию на оружие выдают с %d уровня.", LIC_GUN_MIN_LEVEL);
 			return 1;
 		}
 		if (lic == LIC_GUN && !Hospital_HasMedcard(playerid))
 		{
-			SendClientMessage(playerid, COLOR_GREY, "Р”Р»СЏ Р»РёС†РµРЅР·РёРё РЅР° РѕСЂСѓР¶РёРµ РЅСѓР¶РЅР° РјРµРґРєР°СЂС‚Р°: СЂРµРіРёСЃС‚СЂР°С‚СѓСЂР° Р±РѕР»СЊРЅРёС†С‹ (/gps) РёР»Рё РјРµРґРёРє.");
+			SendClientMessage(playerid, COLOR_GREY, "Для лицензии на оружие нужна медкарта: регистратура больницы (/gps) или медик.");
 			return 1;
 		}
 		if (GetMoney(playerid) < gLicPrices[lic])
 		{
-			SendClientMessage(playerid, COLOR_GREY, "РќРµ С…РІР°С‚Р°РµС‚ РґРµРЅРµРі. РќСѓР¶РЅРѕ $%d.", gLicPrices[lic]);
+			SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", gLicPrices[lic]);
 			return 1;
 		}
-		GiveMoney(playerid, -gLicPrices[lic], "СЌРєР·Р°РјРµРЅ РІ Р°РІС‚РѕС€РєРѕР»Рµ");
+		GiveMoney(playerid, -gLicPrices[lic], "экзамен в автошколе");
 		Econ_ToTreasury(gLicPrices[lic]);
 		Account_Save(playerid);
 		Licenses_StartTheory(playerid, lic);
@@ -350,7 +350,7 @@ stock Licenses_OnDialog(playerid, dialogid, response, listitem)
 		if (gExamType[playerid] == 0 || gExamVehicle[playerid] != INVALID_VEHICLE_ID) return 1;
 		if (!response)
 		{
-			Licenses_EndExam(playerid, false, "С‚С‹ РѕС‚РєР°Р·Р°Р»СЃСЏ");
+			Licenses_EndExam(playerid, false, "ты отказался");
 			return 1;
 		}
 		if (listitem == gTheoryRight[gExamQuestion[playerid][gExamStep[playerid]]]) gExamCorrect[playerid]++;
@@ -360,10 +360,10 @@ stock Licenses_OnDialog(playerid, dialogid, response, listitem)
 			Licenses_AskQuestion(playerid);
 			return 1;
 		}
-		SendClientMessage(playerid, COLOR_WHITE, "РўРµРѕСЂРёСЏ: РїСЂР°РІРёР»СЊРЅС‹С… РѕС‚РІРµС‚РѕРІ %d РёР· %d.", gExamCorrect[playerid], LIC_THEORY_QUESTIONS);
+		SendClientMessage(playerid, COLOR_WHITE, "Теория: правильных ответов %d из %d.", gExamCorrect[playerid], LIC_THEORY_QUESTIONS);
 		if (gExamCorrect[playerid] < LIC_THEORY_PASS)
 		{
-			Licenses_EndExam(playerid, false, "РјРЅРѕРіРѕ РѕС€РёР±РѕРє РІ С‚РµРѕСЂРёРё");
+			Licenses_EndExam(playerid, false, "много ошибок в теории");
 			return 1;
 		}
 		if (gExamType[playerid] == LIC_CAR || gExamType[playerid] == LIC_MOTO) Licenses_StartPractice(playerid);
@@ -373,7 +373,7 @@ stock Licenses_OnDialog(playerid, dialogid, response, listitem)
 	return 0;
 }
 
-// РР· OnPlayerEnterRaceCheckpoint
+// Из OnPlayerEnterRaceCheckpoint
 stock Licenses_OnEnterRaceCheckpoint(playerid)
 {
 	new v = gExamVehicle[playerid];
@@ -389,36 +389,36 @@ stock Licenses_OnEnterRaceCheckpoint(playerid)
 	}
 	new Float:hp;
 	GetVehicleHealth(v, hp);
-	if (hp < LIC_EXAM_MIN_HP) Licenses_EndExam(playerid, false, "РјР°С€РёРЅР° СЃРёР»СЊРЅРѕ РїРѕРІСЂРµР¶РґРµРЅР°");
+	if (hp < LIC_EXAM_MIN_HP) Licenses_EndExam(playerid, false, "машина сильно повреждена");
 	else Licenses_EndExam(playerid, true);
 	return 1;
 }
 
-// Р Р°Р· РІ СЃРµРєСѓРЅРґСѓ: РІСЂРµРјСЏ СЌРєР·Р°РјРµРЅР° Рё РїСЂРѕРІРµСЂРєР°, С‡С‚Рѕ РёРіСЂРѕРє РІ СѓС‡РµР±РЅРѕР№ РјР°С€РёРЅРµ
+// Раз в секунду: время экзамена и проверка, что игрок в учебной машине
 public Licenses_OnSecond()
 {
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (gExamVehicle[i] == INVALID_VEHICLE_ID || !IsPlayerConnected(i)) continue;
-		// РїРµСЂРІС‹Рµ СЃРµРєСѓРЅРґС‹ РєР»РёРµРЅС‚ РµС‰С‘ СЃР°РґРёС‚СЃСЏ РІ РјР°С€РёРЅСѓ
+		// первые секунды клиент ещё садится в машину
 		if (gExamTime[i] < LIC_EXAM_TIME - 3 && GetPlayerVehicleID(i) != gExamVehicle[i])
 		{
-			Licenses_EndExam(i, false, "С‚С‹ РІС‹С€РµР» РёР· СѓС‡РµР±РЅРѕР№ РјР°С€РёРЅС‹");
+			Licenses_EndExam(i, false, "ты вышел из учебной машины");
 			continue;
 		}
-		if (--gExamTime[i] <= 0) Licenses_EndExam(i, false, "РІСЂРµРјСЏ РІС‹С€Р»Рѕ");
+		if (--gExamTime[i] <= 0) Licenses_EndExam(i, false, "время вышло");
 	}
 	return 1;
 }
 
-// РР· OnPlayerDisconnect Рё OnPlayerDeath
+// Из OnPlayerDisconnect и OnPlayerDeath
 stock Licenses_Abort(playerid)
 {
-	if (gExamType[playerid] != 0) Licenses_EndExam(playerid, false, "СЌРєР·Р°РјРµРЅ РїСЂРµСЂРІР°РЅ");
+	if (gExamType[playerid] != 0) Licenses_EndExam(playerid, false, "экзамен прерван");
 }
 
 // ---------------------------------------------------------------------
-//  РљРѕРјР°РЅРґС‹
+//  Команды
 // ---------------------------------------------------------------------
 static Licenses_Format(playerid, dest[], size = sizeof (dest))
 {
@@ -429,14 +429,14 @@ static Licenses_Format(playerid, dest[], size = sizeof (dest))
 		if (dest[0] != '\0') strcat(dest, ", ", size);
 		strcat(dest, gLicNames[l], size);
 	}
-	if (dest[0] == '\0') strcat(dest, "РЅРµС‚", size);
+	if (dest[0] == '\0') strcat(dest, "нет", size);
 }
 
 stock bool:Cmd_Licenses(playerid)
 {
 	new text[64];
 	Licenses_Format(playerid, text);
-	SendClientMessage(playerid, COLOR_WHITE, "РўРІРѕРё Р»РёС†РµРЅР·РёРё: %s.", text);
+	SendClientMessage(playerid, COLOR_WHITE, "Твои лицензии: %s.", text);
 	return true;
 }
 
@@ -444,17 +444,17 @@ stock bool:Cmd_ShowLic(playerid, const params[])
 {
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /showlic [id]");
-	if (!IsPlayerNearPlayer(playerid, target, 5.0)) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє СЃР»РёС€РєРѕРј РґР°Р»РµРєРѕ.");
+	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /showlic [id]");
+	if (!IsPlayerNearPlayer(playerid, target, 5.0)) return SendClientMessage(playerid, COLOR_GREY, "Игрок слишком далеко.");
 	new text[64], msg[96];
 	Licenses_Format(playerid, text);
-	SendClientMessage(target, COLOR_WHITE, "%s РїРѕРєР°Р·С‹РІР°РµС‚ С‚РµР±Рµ Р»РёС†РµРЅР·РёРё: %s.", GetRPName(playerid), text);
-	format(msg, sizeof msg, "%s РїРѕРєР°Р·С‹РІР°РµС‚ Р»РёС†РµРЅР·РёРё %s.", GetRPName(playerid), GetRPName(target));
+	SendClientMessage(target, COLOR_WHITE, "%s показывает тебе лицензии: %s.", GetRPName(playerid), text);
+	format(msg, sizeof msg, "%s показывает лицензии %s.", GetRPName(playerid), GetRPName(target));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	return true;
 }
 
-// РџРѕР»РёС†РёСЏ РЅР° СЃРјРµРЅРµ
+// Полиция на смене
 static bool:Licenses_IsCop(playerid)
 {
 	return Faction_IsLaw(Player[playerid][pFaction]) && Player[playerid][pDuty];
@@ -462,31 +462,31 @@ static bool:Licenses_IsCop(playerid)
 
 stock bool:Cmd_CheckLic(playerid, const params[])
 {
-	if (!Licenses_IsCop(playerid)) return SendClientMessage(playerid, COLOR_GREY, "РўРѕР»СЊРєРѕ РґР»СЏ РїРѕР»РёС†РёРё РЅР° СЃРјРµРЅРµ.");
+	if (!Licenses_IsCop(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Только для полиции на смене.");
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /checklic [id]");
-	if (!IsPlayerNearPlayer(playerid, target, 6.0)) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє СЃР»РёС€РєРѕРј РґР°Р»РµРєРѕ.");
+	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /checklic [id]");
+	if (!IsPlayerNearPlayer(playerid, target, 6.0)) return SendClientMessage(playerid, COLOR_GREY, "Игрок слишком далеко.");
 	new text[64];
 	Licenses_Format(target, text);
-	SendClientMessage(playerid, COLOR_BLUE, "Р›РёС†РµРЅР·РёРё %s: %s.", GetRPName(target), text);
-	SendClientMessage(target, COLOR_BLUE, "РћС„РёС†РµСЂ %s РїСЂРѕРІРµСЂРёР» С‚РІРѕРё Р»РёС†РµРЅР·РёРё.", GetRPName(playerid));
+	SendClientMessage(playerid, COLOR_BLUE, "Лицензии %s: %s.", GetRPName(target), text);
+	SendClientMessage(target, COLOR_BLUE, "Офицер %s проверил твои лицензии.", GetRPName(playerid));
 	return true;
 }
 
 stock bool:Cmd_TakeLic(playerid, const params[])
 {
-	if (!Licenses_IsCop(playerid)) return SendClientMessage(playerid, COLOR_GREY, "РўРѕР»СЊРєРѕ РґР»СЏ РїРѕР»РёС†РёРё РЅР° СЃРјРµРЅРµ.");
-	if (Player[playerid][pRank] < LIC_TAKE_MIN_RANK) return SendClientMessage(playerid, COLOR_GREY, "Р—Р°Р±РёСЂР°С‚СЊ Р»РёС†РµРЅР·РёРё РјРѕР¶РЅРѕ СЃ %d СЂР°РЅРіР°.", LIC_TAKE_MIN_RANK);
+	if (!Licenses_IsCop(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Только для полиции на смене.");
+	if (Player[playerid][pRank] < LIC_TAKE_MIN_RANK) return SendClientMessage(playerid, COLOR_GREY, "Забирать лицензии можно с %d ранга.", LIC_TAKE_MIN_RANK);
 	new pos = 0, lic;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, lic) || lic < 1 || lic >= LIC_COUNT)
-		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /takelic [id] [1 Р°РІС‚Рѕ, 2 РјРѕС‚Рѕ, 3 Р»РѕРґРєРё, 4 РѕСЂСѓР¶РёРµ]");
-	if (!IsPlayerNearPlayer(playerid, target, 6.0)) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє СЃР»РёС€РєРѕРј РґР°Р»РµРєРѕ.");
-	if (!gLic[target][lic]) return SendClientMessage(playerid, COLOR_GREY, "РЈ РёРіСЂРѕРєР° РЅРµС‚ СЌС‚РѕР№ Р»РёС†РµРЅР·РёРё.");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /takelic [id] [1 авто, 2 мото, 3 лодки, 4 оружие]");
+	if (!IsPlayerNearPlayer(playerid, target, 6.0)) return SendClientMessage(playerid, COLOR_GREY, "Игрок слишком далеко.");
+	if (!gLic[target][lic]) return SendClientMessage(playerid, COLOR_GREY, "У игрока нет этой лицензии.");
 	Licenses_Set(target, lic, false);
-	SendClientMessage(target, COLOR_RED, "РћС„РёС†РµСЂ %s Р·Р°Р±СЂР°Р» Сѓ С‚РµР±СЏ Р»РёС†РµРЅР·РёСЋ В«%sВ».", GetRPName(playerid), gLicNames[lic]);
-	SendClientMessage(playerid, COLOR_BLUE, "РўС‹ Р·Р°Р±СЂР°Р» Сѓ %s Р»РёС†РµРЅР·РёСЋ В«%sВ».", GetRPName(target), gLicNames[lic]);
+	SendClientMessage(target, COLOR_RED, "Офицер %s забрал у тебя лицензию «%s».", GetRPName(playerid), gLicNames[lic]);
+	SendClientMessage(playerid, COLOR_BLUE, "Ты забрал у %s лицензию «%s».", GetRPName(target), gLicNames[lic]);
 	return true;
 }
 
@@ -496,12 +496,12 @@ stock bool:Cmd_GiveLic(playerid, const params[])
 	new pos = 0, lic;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, lic) || lic < 1 || lic >= LIC_COUNT)
-		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /givelic [id] [1 Р°РІС‚Рѕ, 2 РјРѕС‚Рѕ, 3 Р»РѕРґРєРё, 4 РѕСЂСѓР¶РёРµ]");
-	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє РµС‰С‘ РЅРµ РІРѕС€С‘Р» РІ Р°РєРєР°СѓРЅС‚.");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /givelic [id] [1 авто, 2 мото, 3 лодки, 4 оружие]");
+	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
 	Licenses_Set(target, lic, true);
 	Admin_Log(playerid, "givelic", target, gLicNames[lic], lic);
-	SendClientMessage(target, COLOR_ADMIN, "РђРґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ РІС‹РґР°Р» С‚РµР±Рµ Р»РёС†РµРЅР·РёСЋ В«%sВ».", gLicNames[lic]);
-	SendClientMessage(playerid, COLOR_ADMIN, "Р›РёС†РµРЅР·РёСЏ В«%sВ» РІС‹РґР°РЅР° %s.", gLicNames[lic], GetRPName(target));
+	SendClientMessage(target, COLOR_ADMIN, "Администратор выдал тебе лицензию «%s».", gLicNames[lic]);
+	SendClientMessage(playerid, COLOR_ADMIN, "Лицензия «%s» выдана %s.", gLicNames[lic], GetRPName(target));
 	return true;
 }
 
@@ -519,8 +519,8 @@ stock bool:Cmd_AddExamPoint(playerid)
 		if (DB_GetRowCount(r) > 0) count = DB_GetFieldInt(r, 0);
 		DB_FreeResultSet(r);
 	}
-	if (count < 2) SendClientMessage(playerid, COLOR_ADMIN, "РўРѕС‡РєР° %d Р·Р°РїРёСЃР°РЅР°. РЎРІРѕР№ РјР°СЂС€СЂСѓС‚ РІРєР»СЋС‡РёС‚СЃСЏ СЃРѕ 2-Р№ С‚РѕС‡РєРё (РїРѕРєР° СЂР°Р±РѕС‚Р°РµС‚ РјР°СЂС€СЂСѓС‚ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ).", count);
-	else SendClientMessage(playerid, COLOR_ADMIN, "РўРѕС‡РєР° %d Р·Р°РїРёСЃР°РЅР°. РњР°СЂС€СЂСѓС‚ СЌРєР·Р°РјРµРЅР°: %d С‚РѕС‡РµРє.", count, gRouteCount);
+	if (count < 2) SendClientMessage(playerid, COLOR_ADMIN, "Точка %d записана. Свой маршрут включится со 2-й точки (пока работает маршрут по умолчанию).", count);
+	else SendClientMessage(playerid, COLOR_ADMIN, "Точка %d записана. Маршрут экзамена: %d точек.", count, gRouteCount);
 	return true;
 }
 
@@ -529,6 +529,6 @@ stock bool:Cmd_ClearExam(playerid)
 	if (!Admin_Check(playerid, 4)) return true;
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM exam_route"));
 	Licenses_LoadRoute();
-	SendClientMessage(playerid, COLOR_ADMIN, "РЎРІРѕР№ РјР°СЂС€СЂСѓС‚ СѓРґР°Р»С‘РЅ, СЂР°Р±РѕС‚Р°РµС‚ РјР°СЂС€СЂСѓС‚ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ. РќРѕРІС‹Рµ С‚РѕС‡РєРё: /addexampoint");
+	SendClientMessage(playerid, COLOR_ADMIN, "Свой маршрут удалён, работает маршрут по умолчанию. Новые точки: /addexampoint");
 	return true;
 }

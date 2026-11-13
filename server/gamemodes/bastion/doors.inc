@@ -1,45 +1,45 @@
 // =====================================================================
-//  doors.inc вЂ” РІС…РѕРґС‹ РІ Р·РґР°РЅРёСЏ СЃРѕ СЃС‚Р°РЅРґР°СЂС‚РЅС‹РјРё РёРЅС‚РµСЂСЊРµСЂР°РјРё GTA.
+//  doors.inc — входы в здания со стандартными интерьерами GTA.
 //
-//  РЈ РґРІРµСЂРё СЃРЅР°СЂСѓР¶Рё Рё РІРЅСѓС‚СЂРё вЂ” РјР°СЂРєРµСЂ (СЃС‚СЂРµР»РєР°) Рё РЅР°РґРїРёСЃСЊ.
-//  Р’РѕР№С‚Рё/РІС‹Р№С‚Рё: ALT СЂСЏРґРѕРј СЃ РјР°СЂРєРµСЂРѕРј РёР»Рё /enter, /exit.
-//  РќРѕРІС‹Р№ РІС…РѕРґ вЂ” СЃС‚СЂРѕС‡РєР° РІ РєРѕРЅС†Рµ С‚Р°Р±Р»РёС†С‹ gDoors РЅРёР¶Рµ (РєРѕРѕСЂРґРёРЅР°С‚С‹: /pos).
-//  РњР°СЂРєРµСЂС‹ РјРѕР¶РЅРѕ РґРІРёРіР°С‚СЊ РІ РёРіСЂРµ: /markers (РјРµСЃС‚Рѕ РІС‹С…РѕРґР° вЂ” С€Р°Рі РїРµСЂРµРґ РјР°СЂРєРµСЂРѕРј, РєСѓРґР° РѕРЅ В«СЃРјРѕС‚СЂРёС‚В»).
+//  У двери снаружи и внутри — маркер (стрелка) и надпись.
+//  Войти/выйти: ALT рядом с маркером или /enter, /exit.
+//  Новый вход — строчка в конце таблицы gDoors ниже (координаты: /pos).
+//  Маркеры можно двигать в игре: /markers (место выхода — шаг перед маркером, куда он «смотрит»).
 //
-//  РћР±С‰РёРµ РІС…РѕРґС‹, РєРѕС‚РѕСЂС‹Рµ Р°РґРјРёРЅ (4+) СЃС‚Р°РІРёС‚ РІ РёРіСЂРµ (СЂР°Р·РґРµР» РІ РєРѕРЅС†Рµ С„Р°Р№Р»Р°):
-//    /adddoor [РЅР°Р·РІР°РЅРёРµ] вЂ” РІС…РѕРґ С‚Р°Рј, РіРґРµ СЃС‚РѕРёС€СЊ (Сѓ РґРІРµСЂРё, СЃРїРёРЅРѕР№ Рє РЅРµР№)
-//    /setdoor [в„–]        вЂ” С‚РѕС‡РєР° РІРЅСѓС‚СЂРё С‚Р°Рј, РіРґРµ СЃС‚РѕРёС€СЊ; /setdoor [в„–] out вЂ” РїРµСЂРµСЃС‚Р°РІРёС‚СЊ РІС…РѕРґ
-//    /deldoor [в„–], /doors вЂ” СѓР±СЂР°С‚СЊ РІС…РѕРґ, СЃРїРёСЃРѕРє РІС…РѕРґРѕРІ
-//  РћР±Рµ С‚РѕС‡РєРё РјРѕР¶РЅРѕ СЃС‚Р°РІРёС‚СЊ Рё РІРЅСѓС‚СЂРё РґРѕРјР° РёР»Рё Р±РёР·РЅРµСЃР° (РЅР°РїСЂРёРјРµСЂ, РґРІРµСЂСЊ РёР· РіРѕСЃС‚РёРЅРѕР№ РІ РїРѕРґРІР°Р»).
-//  РўР°Рє РґРµР»Р°РµС‚СЃСЏ, РЅР°РїСЂРёРјРµСЂ, РѕР±С‰РµР¶РёС‚РёРµ: РІС…РѕРґ СЃ СѓР»РёС†С‹ РІ РєРѕСЂРёРґРѕСЂ, Р° РІ РєРѕСЂРёРґРѕСЂРµ вЂ” РґРІРµСЂРё РєРѕРјРЅР°С‚ (/createhouse).
+//  Общие входы, которые админ (4+) ставит в игре (раздел в конце файла):
+//    /adddoor [название] — вход там, где стоишь (у двери, спиной к ней)
+//    /setdoor [№]        — точка внутри там, где стоишь; /setdoor [№] out — переставить вход
+//    /deldoor [№], /doors — убрать вход, список входов
+//  Обе точки можно ставить и внутри дома или бизнеса (например, дверь из гостиной в подвал).
+//  Так делается, например, общежитие: вход с улицы в коридор, а в коридоре — двери комнат (/createhouse).
 // =====================================================================
 
 #define DOOR_RANGE          1.5
-#define DOOR_PICKUP_MODEL   1318    // Р±РµР»Р°СЏ СЃС‚СЂРµР»РєР°
-// РњР°СЂРєРµСЂ СЃС‚РѕРёС‚ РЅР° 1.4 Рј РїРѕР·Р°РґРё С‚РѕС‡РєРё РїРѕСЏРІР»РµРЅРёСЏ (Сѓ СЃР°РјРѕР№ РґРІРµСЂРё), С‡С‚РѕР±С‹ РЅРµ РІРѕР№С‚Рё/РІС‹Р№С‚Рё РґРІР°Р¶РґС‹
+#define DOOR_PICKUP_MODEL   1318    // белая стрелка
+// Маркер стоит на 1.4 м позади точки появления (у самой двери), чтобы не войти/выйти дважды
 #define Door_MarkerOffset   (1.4)
 
 enum E_DOOR
 {
 	dName[32],
-	Float:dOutX, Float:dOutY, Float:dOutZ, Float:dOutA,   // СЃРЅР°СЂСѓР¶Рё Сѓ РґРІРµСЂРё (РєСѓРґР° РІС‹С…РѕРґРёС€СЊ)
-	Float:dInX, Float:dInY, Float:dInZ, Float:dInA,       // РІРЅСѓС‚СЂРё Сѓ РґРІРµСЂРё (РєСѓРґР° РІС…РѕРґРёС€СЊ)
+	Float:dOutX, Float:dOutY, Float:dOutZ, Float:dOutA,   // снаружи у двери (куда выходишь)
+	Float:dInX, Float:dInY, Float:dInZ, Float:dInA,       // внутри у двери (куда входишь)
 	dInterior,
 	dWorld,
-	dOutInterior, dOutWorld                                 // РіРґРµ СЃС‚РѕРёС‚ РІС…РѕРґ (0, 0 вЂ” СѓР»РёС†Р°)
+	dOutInterior, dOutWorld                                 // где стоит вход (0, 0 — улица)
 }
 
 static const gDoors[][E_DOOR] =
 {
-	// РџРѕР»РёС†РёСЏ Р›РѕСЃ-РЎР°РЅС‚РѕСЃР°: РіР»Р°РІРЅС‹Р№ РІС…РѕРґ СЃРѕ СЃС‚РѕСЂРѕРЅС‹ Pershing Square -> РёРЅС‚РµСЂСЊРµСЂ 6
-	{ "РџРѕР»РёС†РёСЏ LSPD", 1553.90, -1675.60, 16.19, 90.0,   246.78, 63.90, 1003.64, 0.0,   6, 0,   0, 0 },
-	// Р”РѕРїСЂРѕСЃРЅР°СЏ LSPD: РІС…РѕРґ РёР· РєРѕСЂРёРґРѕСЂР° СѓС‡Р°СЃС‚РєР° (РєРѕРјРЅР°С‚Р° РІ РјРѕРґРµР»Рё РµСЃС‚СЊ, РЅРѕ Р·Р°РјСѓСЂРѕРІР°РЅР°).
-	// РўРѕС‡РєРё СЃРЅСЏС‚С‹ /pos РІ РёРіСЂРµ: РјР°СЂРєРµСЂ РІ РєРѕСЂРёРґРѕСЂРµ вЂ” 221.54, 66.86; РІРЅСѓС‚СЂРё вЂ” 227.96, 67.70 (РїРѕР» 1005.03).
-	{ "Р”РѕРїСЂРѕСЃРЅР°СЏ", 220.45, 67.74, 1005.03, 51.3,   227.96, 67.70, 1005.03, 253.9,   6, 0,   6, 0 }
+	// Полиция Лос-Сантоса: главный вход со стороны Pershing Square -> интерьер 6
+	{ "Полиция LSPD", 1553.90, -1675.60, 16.19, 90.0,   246.78, 63.90, 1003.64, 0.0,   6, 0,   0, 0 },
+	// Допросная LSPD: вход из коридора участка (комната в модели есть, но замурована).
+	// Точки сняты /pos в игре: маркер в коридоре — 221.54, 66.86; внутри — 227.96, 67.70 (пол 1005.03).
+	{ "Допросная", 220.45, 67.74, 1005.03, 51.3,   227.96, 67.70, 1005.03, 253.9,   6, 0,   6, 0 }
 };
 
 
-static gDoorMk[sizeof gDoors][2];      // РјР°СЂРєРµСЂС‹ РґРІРµСЂРё: [0] СЃРЅР°СЂСѓР¶Рё, [1] РІРЅСѓС‚СЂРё
+static gDoorMk[sizeof gDoors][2];      // маркеры двери: [0] снаружи, [1] внутри
 
 stock Doors_Init()
 {
@@ -50,21 +50,21 @@ stock Doors_Init()
 		Door_OuterMarker(d, x, y);
 		gDoorMk[d][0] = Marker_Create(MK_DOOR, d * 2, gDoors[d][dName], DOOR_PICKUP_MODEL, x, y, z,
 			gDoors[d][dOutWorld], gDoors[d][dOutInterior], gDoors[d][dOutInterior] ? GPS_NONE : GPS_GOV, gDoors[d][dOutA]);
-		format(label, sizeof label, "{FFFF66}%s\n{FFFFFF}ALT вЂ” РІРѕР№С‚Рё", gDoors[d][dName]);
+		format(label, sizeof label, "{FFFF66}%s\n{FFFFFF}ALT — войти", gDoors[d][dName]);
 		Marker_SetLabel(gDoorMk[d][0], label);
 
 		z = gDoors[d][dInZ];
 		Door_InnerMarker(d, x, y);
-		format(name, sizeof name, "%s, РІС‹С…РѕРґ", gDoors[d][dName]);
+		format(name, sizeof name, "%s, выход", gDoors[d][dName]);
 		gDoorMk[d][1] = Marker_Create(MK_DOOR, d * 2 + 1, name, DOOR_PICKUP_MODEL, x, y, z,
 			gDoors[d][dWorld], gDoors[d][dInterior], GPS_NONE, gDoors[d][dInA]);
-		Marker_SetLabel(gDoorMk[d][1], "{FFFFFF}ALT вЂ” РІС‹Р№С‚Рё", COLOR_WHITE, 10.0);
+		Marker_SetLabel(gDoorMk[d][1], "{FFFFFF}ALT — выйти", COLOR_WHITE, 10.0);
 	}
 	printf("[Doors] %d entrances.", sizeof gDoors);
 	PDoors_Load();
 }
 
-// РњР°СЂРєРµСЂ СЃРЅР°СЂСѓР¶Рё вЂ” РЅР° С€Р°Рі Р±Р»РёР¶Рµ Рє РґРІРµСЂРё, С‡РµРј С‚РѕС‡РєР° РІС‹С…РѕРґР° (РїРѕ РЅР°РїСЂР°РІР»РµРЅРёСЋ РІР·РіР»СЏРґР° РЅР°Р·Р°Рґ)
+// Маркер снаружи — на шаг ближе к двери, чем точка выхода (по направлению взгляда назад)
 static Door_OuterMarker(d, &Float:x, &Float:y)
 {
 	x = gDoors[d][dOutX] + Door_MarkerOffset * floatsin(gDoors[d][dOutA], degrees);
@@ -77,10 +77,10 @@ static Door_InnerMarker(d, &Float:x, &Float:y)
 	y = gDoors[d][dInY] - Door_MarkerOffset * floatcos(gDoors[d][dInA], degrees);
 }
 
-// Р’РѕР№С‚Рё РёР»Рё РІС‹Р№С‚Рё, РµСЃР»Рё РёРіСЂРѕРє Сѓ РјР°СЂРєРµСЂР°. true вЂ” СЃСЂР°Р±РѕС‚Р°Р»Рѕ.
-forward bool:Law_CellGateUse(playerid);     // law.inc: РїРѕР»РёС†РµР№СЃРєРёР№ Сѓ СЂРµС€С‘С‚РєРё РєР°РјРµСЂС‹
-forward bool:FDoor_Try(playerid);           // factions.inc: РІС…РѕРґС‹ РІ Р·РґР°РЅРёСЏ С„СЂР°РєС†РёР№ (/setfint)
-forward bool:PDoor_Try(playerid);           // РѕР±С‰РёРµ РІС…РѕРґС‹ РёР· /adddoor (РЅРёР¶Рµ)
+// Войти или выйти, если игрок у маркера. true — сработало.
+forward bool:Law_CellGateUse(playerid);     // law.inc: полицейский у решётки камеры
+forward bool:FDoor_Try(playerid);           // factions.inc: входы в здания фракций (/setfint)
+forward bool:PDoor_Try(playerid);           // общие входы из /adddoor (ниже)
 
 stock bool:Doors_Try(playerid)
 {
@@ -97,8 +97,8 @@ stock bool:Doors_Try(playerid)
 		}
 		if (Marker_InRange(playerid, gDoorMk[d][1], DOOR_RANGE))
 		{
-			// РєР°РјРµСЂР° РІ С‚РѕРј Р¶Рµ Р·РґР°РЅРёРё: Р·Р°РєР»СЋС‡С‘РЅРЅРѕРіРѕ РґРІРµСЂСЊ РІС‹РїСѓСЃРєР°РµС‚, С‚РѕР»СЊРєРѕ РµСЃР»Рё РµС‘ РѕС‚РєСЂС‹Р»
-			// РїРѕР»РёС†РµР№СЃРєРёР№ (/celldoor) РёР»Рё РѕРЅ РґРѕРіРѕРІРѕСЂРёР»СЃСЏ (/bribe) вЂ” law.inc
+			// камера в том же здании: заключённого дверь выпускает, только если её открыл
+			// полицейский (/celldoor) или он договорился (/bribe) — law.inc
 			if (Law_TryLeave(playerid)) Door_SpawnAt(playerid, gDoorMk[d][0]);
 			return true;
 		}
@@ -106,7 +106,7 @@ stock bool:Doors_Try(playerid)
 	return false;
 }
 
-// РџРѕСЃС‚Р°РІРёС‚СЊ РёРіСЂРѕРєР° РЅР° С€Р°Рі РїРµСЂРµРґ РјР°СЂРєРµСЂРѕРј РґРІРµСЂРё, Р»РёС†РѕРј РїРѕ СѓРіР»Сѓ РјР°СЂРєРµСЂР°
+// Поставить игрока на шаг перед маркером двери, лицом по углу маркера
 stock Door_SpawnAt(playerid, m)
 {
 	new Float:x, Float:y, Float:z;
@@ -116,35 +116,35 @@ stock Door_SpawnAt(playerid, m)
 	y += Door_MarkerOffset * floatcos(a, degrees);
 	SetPlayerInterior(playerid, Marker_GetInterior(m));
 	SetPlayerVirtualWorld(playerid, Marker_GetWorld(m));
-	Player[playerid][pHouseInside] = House_ByWorld(Marker_GetWorld(m));   // РІС…РѕРґ РјРѕР¶РµС‚ РІРµСЃС‚Рё РІ РґРѕРј
+	Player[playerid][pHouseInside] = House_ByWorld(Marker_GetWorld(m));   // вход может вести в дом
 	SetPlayerPos(playerid, x, y, z);
 	SetPlayerFacingAngle(playerid, a);
 	SetCameraBehindPlayer(playerid);
 }
 
 // =====================================================================
-//  РћР±С‰РёРµ РІС…РѕРґС‹, РїРѕСЃС‚Р°РІР»РµРЅРЅС‹Рµ РІ РёРіСЂРµ (/adddoor). РҐСЂР°РЅСЏС‚СЃСЏ РІ С‚Р°Р±Р»РёС†Рµ doors.
+//  Общие входы, поставленные в игре (/adddoor). Хранятся в таблице doors.
 // =====================================================================
 #define MAX_PDOORS          60
-#define PDOOR_REF           2000    // ref РјР°СЂРєРµСЂРѕРІ MK_DOOR: 2000 + РЅРѕРјРµСЂ РІС…РѕРґР° * 2 (РІРЅСѓС‚СЂРё: + 1)
-// РњРёСЂ РёРЅС‚РµСЂСЊРµСЂР° РґРѕРјР° Р·Р°РІРёСЃРёС‚ РѕС‚ РµРіРѕ РјРµСЃС‚Р° РІ СЃРїРёСЃРєРµ Рё РјРµРЅСЏРµС‚СЃСЏ, РєРѕРіРґР° РґРѕРј СЃРЅРѕСЃСЏС‚.
-// РџРѕСЌС‚РѕРјСѓ РІ Р±Р°Р·Рµ РґР»СЏ С‚РѕС‡РєРё РІРЅСѓС‚СЂРё РґРѕРјР° С…СЂР°РЅРёС‚СЃСЏ PDOOR_HOUSE_W + РЅРѕРјРµСЂ РґРѕРјР°, Р° РјРёСЂ СЃС‡РёС‚Р°РµС‚СЃСЏ РїСЂРё РїРѕСЃС‚СЂРѕР№РєРµ.
+#define PDOOR_REF           2000    // ref маркеров MK_DOOR: 2000 + номер входа * 2 (внутри: + 1)
+// Мир интерьера дома зависит от его места в списке и меняется, когда дом сносят.
+// Поэтому в базе для точки внутри дома хранится PDOOR_HOUSE_W + номер дома, а мир считается при постройке.
 #define PDOOR_HOUSE_W       1000000
-#define PDOOR_NOWHERE       999999  // РґРѕРј СЃ СЌС‚РёРј РІС…РѕРґРѕРј СЃРЅРµСЃС‘РЅ: РјР°СЂРєРµСЂ РІ РїСѓСЃС‚РѕРј РјРёСЂРµ
+#define PDOOR_NOWHERE       999999  // дом с этим входом снесён: маркер в пустом мире
 
 enum E_PDOOR
 {
 	pdDbId,
 	pdName[32],
 	Float:pdOX, Float:pdOY, Float:pdOZ, Float:pdOA, pdOInt, pdOWorld,
-	bool:pdIn,                  // С‚РѕС‡РєР° РІРЅСѓС‚СЂРё Р·Р°РґР°РЅР°
+	bool:pdIn,                  // точка внутри задана
 	Float:pdIX, Float:pdIY, Float:pdIZ, Float:pdIA, pdIInt, pdIWorld,
 	pdMkOut, pdMkIn
 }
 static gPDoor[MAX_PDOORS][E_PDOOR];
 static gPDoorCount = 0;
 
-// РњРёСЂ РёРіСЂРѕРєР° -> РєР°Рє С…СЂР°РЅРёС‚СЊ; С…СЂР°РЅРёРјРѕРµ -> РЅР°СЃС‚РѕСЏС‰РёР№ РјРёСЂ
+// Мир игрока -> как хранить; хранимое -> настоящий мир
 static PDoor_EncWorld(world)
 {
 	new dbid = House_DbIdByWorld(world);
@@ -166,17 +166,17 @@ static PDoor_Build(d)
 	new Float:x = gPDoor[d][pdOX], Float:y = gPDoor[d][pdOY], Float:z = gPDoor[d][pdOZ];
 	gPDoor[d][pdMkOut] = Marker_Create(MK_DOOR, PDOOR_REF + gPDoor[d][pdDbId] * 2, gPDoor[d][pdName], DOOR_PICKUP_MODEL, x, y, z,
 		PDoor_DecWorld(gPDoor[d][pdOWorld]), gPDoor[d][pdOInt], GPS_NONE, gPDoor[d][pdOA]);
-	if (gPDoor[d][pdIn]) format(label, sizeof label, "{FFFF66}%s\n{FFFFFF}ALT вЂ” РІРѕР№С‚Рё", gPDoor[d][pdName]);
-	else format(label, sizeof label, "{FFFF66}%s\n{AAAAAA}РІС…РѕРґ в„–%d РµС‰С‘ РЅРµ РіРѕС‚РѕРІ: /setdoor %d РІРЅСѓС‚СЂРё", gPDoor[d][pdName], gPDoor[d][pdDbId], gPDoor[d][pdDbId]);
+	if (gPDoor[d][pdIn]) format(label, sizeof label, "{FFFF66}%s\n{FFFFFF}ALT — войти", gPDoor[d][pdName]);
+	else format(label, sizeof label, "{FFFF66}%s\n{AAAAAA}вход №%d ещё не готов: /setdoor %d внутри", gPDoor[d][pdName], gPDoor[d][pdDbId], gPDoor[d][pdDbId]);
 	Marker_SetLabel(gPDoor[d][pdMkOut], label);
 	if (!gPDoor[d][pdIn]) return;
 
 	x = gPDoor[d][pdIX]; y = gPDoor[d][pdIY]; z = gPDoor[d][pdIZ];
 	strcat(name, gPDoor[d][pdName], 22);
-	strcat(name, ", РІС‹С…РѕРґ");
+	strcat(name, ", выход");
 	gPDoor[d][pdMkIn] = Marker_Create(MK_DOOR, PDOOR_REF + gPDoor[d][pdDbId] * 2 + 1, name, DOOR_PICKUP_MODEL, x, y, z,
 		PDoor_DecWorld(gPDoor[d][pdIWorld]), gPDoor[d][pdIInt], GPS_NONE, gPDoor[d][pdIA]);
-	Marker_SetLabel(gPDoor[d][pdMkIn], "{FFFFFF}ALT вЂ” РІС‹Р№С‚Рё", COLOR_WHITE, 10.0);
+	Marker_SetLabel(gPDoor[d][pdMkIn], "{FFFFFF}ALT — выйти", COLOR_WHITE, 10.0);
 }
 
 static PDoor_Save(d)
@@ -188,7 +188,7 @@ static PDoor_Save(d)
 		gPDoor[d][pdDbId]));
 }
 
-// Р—Р°Р±С‹С‚СЊ РїСЂР°РІРєРё РјР°СЂРєРµСЂРѕРІ РёР· /markers: С‚РѕС‡РєСѓ РїРѕСЃС‚Р°РІРёР»Рё Р·Р°РЅРѕРІРѕ РёР»Рё РІС…РѕРґ СѓР±СЂР°Р»Рё
+// Забыть правки маркеров из /markers: точку поставили заново или вход убрали
 static PDoor_ForgetMarkers(dbid)
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM markers WHERE type = %d AND ref IN (%d, %d)",
@@ -239,13 +239,13 @@ stock PDoors_Load()
 	printf("[Doors] %d entrances placed in game.", gPDoorCount);
 }
 
-// Р”РѕРј СЃРЅРµСЃР»Рё, РѕСЃС‚Р°Р»СЊРЅС‹Рµ РґРѕРјР° СЃРјРµРЅРёР»Рё РјРёСЂ: РїРµСЂРµСЃРѕР±СЂР°С‚СЊ РјР°СЂРєРµСЂС‹ РІС…РѕРґРѕРІ
+// Дом снесли, остальные дома сменили мир: пересобрать маркеры входов
 stock PDoors_Rebuild()
 {
 	for (new d = 0; d < gPDoorCount; d++) PDoor_Build(d);
 }
 
-// ALT, /enter, /exit Сѓ РѕР±С‰РµРіРѕ РІС…РѕРґР° (РёР· Doors_Try). true вЂ” СЃСЂР°Р±РѕС‚Р°Р»Рѕ.
+// ALT, /enter, /exit у общего входа (из Doors_Try). true — сработало.
 stock bool:PDoor_Try(playerid)
 {
 	for (new d = 0; d < gPDoorCount; d++)
@@ -271,11 +271,11 @@ stock bool:Cmd_AddDoor(playerid, const params[])
 	new name[32];
 	if (!RestParam(params, 0, name))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /adddoor [РЅР°Р·РІР°РЅРёРµ] вЂ” РІС…РѕРґ РІ Р·РґР°РЅРёРµ С‚Р°Рј, РіРґРµ С‚С‹ СЃС‚РѕРёС€СЊ (Сѓ РґРІРµСЂРё, СЃРїРёРЅРѕР№ Рє РЅРµР№)");
-		SendClientMessage(playerid, COLOR_GREY, "РџРѕС‚РѕРј Р·Р°Р№РґРё РІ РёРЅС‚РµСЂСЊРµСЂ (/gotoint) Рё РїРѕСЃС‚Р°РІСЊ С‚РѕС‡РєСѓ РІРЅСѓС‚СЂРё: /setdoor [в„–]. РЎРїРёСЃРѕРє: /doors");
+		SendClientMessage(playerid, COLOR_GREY, "Использование: /adddoor [название] — вход в здание там, где ты стоишь (у двери, спиной к ней)");
+		SendClientMessage(playerid, COLOR_GREY, "Потом зайди в интерьер (/gotoint) и поставь точку внутри: /setdoor [№]. Список: /doors");
 		return true;
 	}
-	if (gPDoorCount >= MAX_PDOORS) return SendClientMessage(playerid, COLOR_GREY, "Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ РІС…РѕРґРѕРІ (%d).", MAX_PDOORS);
+	if (gPDoorCount >= MAX_PDOORS) return SendClientMessage(playerid, COLOR_GREY, "Достигнут лимит входов (%d).", MAX_PDOORS);
 
 	new d = gPDoorCount++;
 	gPDoor[d][pdName][0] = '\0';
@@ -292,7 +292,7 @@ stock bool:Cmd_AddDoor(playerid, const params[])
 	PDoor_Save(d);
 	PDoor_ForgetMarkers(gPDoor[d][pdDbId]);
 	PDoor_Build(d);
-	SendClientMessage(playerid, COLOR_ADMIN, "Р’С…РѕРґ в„–%d В«%sВ» РїРѕСЃС‚Р°РІР»РµРЅ. РўРµРїРµСЂСЊ Р·Р°Р№РґРё РІ РёРЅС‚РµСЂСЊРµСЂ (/gotoint) Рё РІРІРµРґРё /setdoor %d Сѓ РґРІРµСЂРё, СЃРїРёРЅРѕР№ Рє РЅРµР№.",
+	SendClientMessage(playerid, COLOR_ADMIN, "Вход №%d «%s» поставлен. Теперь зайди в интерьер (/gotoint) и введи /setdoor %d у двери, спиной к ней.",
 		gPDoor[d][pdDbId], name, gPDoor[d][pdDbId]);
 	return true;
 }
@@ -302,14 +302,14 @@ stock bool:Cmd_SetDoor(playerid, const params[])
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, dbid, side[8];
 	if (!NextIntParam(params, pos, dbid))
-		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /setdoor [в„–] вЂ” С‚РѕС‡РєР° РІРЅСѓС‚СЂРё С‚Р°Рј, РіРґРµ С‚С‹ СЃС‚РѕРёС€СЊ; /setdoor [в„–] out вЂ” РїРµСЂРµСЃС‚Р°РІРёС‚СЊ РІС…РѕРґ. РќРѕРјРµСЂР°: /doors");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setdoor [№] — точка внутри там, где ты стоишь; /setdoor [№] out — переставить вход. Номера: /doors");
 	new d = PDoor_FindByDbId(dbid);
-	if (d == -1) return SendClientMessage(playerid, COLOR_GREY, "Р’С…РѕРґР° СЃ С‚Р°РєРёРј РЅРѕРјРµСЂРѕРј РЅРµС‚. РЎРїРёСЃРѕРє: /doors");
+	if (d == -1) return SendClientMessage(playerid, COLOR_GREY, "Входа с таким номером нет. Список: /doors");
 	new bool:outside = false;
 	if (NextParam(params, pos, side))
 	{
 		if (!strcmp(side, "out", true)) outside = true;
-		else if (strcmp(side, "in", true)) return SendClientMessage(playerid, COLOR_GREY, "РЎС‚РѕСЂРѕРЅР°: out (РІС…РѕРґ) РёР»Рё in (С‚РѕС‡РєР° РІРЅСѓС‚СЂРё).");
+		else if (strcmp(side, "in", true)) return SendClientMessage(playerid, COLOR_GREY, "Сторона: out (вход) или in (точка внутри).");
 	}
 	new Float:x, Float:y, Float:z, Float:a;
 	GetPlayerPos(playerid, x, y, z);
@@ -330,8 +330,8 @@ stock bool:Cmd_SetDoor(playerid, const params[])
 	PDoor_Save(d);
 	PDoor_ForgetMarkers(dbid);
 	PDoor_Build(d);
-	if (outside) SendClientMessage(playerid, COLOR_ADMIN, "Р’С…РѕРґ в„–%d В«%sВ»: С‚РѕС‡РєР° СЃРЅР°СЂСѓР¶Рё РїРµСЂРµСЃС‚Р°РІР»РµРЅР°.", dbid, gPDoor[d][pdName]);
-	else SendClientMessage(playerid, COLOR_ADMIN, "Р’С…РѕРґ в„–%d В«%sВ»: С‚РѕС‡РєР° РІРЅСѓС‚СЂРё СЃРѕС…СЂР°РЅРµРЅР°, РІС…РѕРґ СЂР°Р±РѕС‚Р°РµС‚ (ALT Сѓ СЃС‚СЂРµР»РєРё).", dbid, gPDoor[d][pdName]);
+	if (outside) SendClientMessage(playerid, COLOR_ADMIN, "Вход №%d «%s»: точка снаружи переставлена.", dbid, gPDoor[d][pdName]);
+	else SendClientMessage(playerid, COLOR_ADMIN, "Вход №%d «%s»: точка внутри сохранена, вход работает (ALT у стрелки).", dbid, gPDoor[d][pdName]);
 	return true;
 }
 
@@ -339,14 +339,14 @@ stock bool:Cmd_DelDoor(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, dbid;
-	if (!NextIntParam(params, pos, dbid)) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /deldoor [в„–] (РЅРѕРјРµСЂР°: /doors)");
+	if (!NextIntParam(params, pos, dbid)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /deldoor [№] (номера: /doors)");
 	new d = PDoor_FindByDbId(dbid);
-	if (d == -1) return SendClientMessage(playerid, COLOR_GREY, "Р’С…РѕРґР° СЃ С‚Р°РєРёРј РЅРѕРјРµСЂРѕРј РЅРµС‚. РЎРїРёСЃРѕРє: /doors");
+	if (d == -1) return SendClientMessage(playerid, COLOR_GREY, "Входа с таким номером нет. Список: /doors");
 	if (gPDoor[d][pdMkOut] != -1) Marker_Destroy(gPDoor[d][pdMkOut]);
 	if (gPDoor[d][pdMkIn] != -1) Marker_Destroy(gPDoor[d][pdMkIn]);
 	PDoor_ForgetMarkers(dbid);
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM doors WHERE id = %d", dbid));
-	SendClientMessage(playerid, COLOR_ADMIN, "Р’С…РѕРґ в„–%d В«%sВ» СѓР±СЂР°РЅ. Р•СЃР»Рё РІРЅСѓС‚СЂРё СЃС‚РѕСЏС‚ РґРѕРјР°, РїРµСЂРµРЅРµСЃРё РёР»Рё СЃРЅРµСЃРё РёС… (/delhouse).", dbid, gPDoor[d][pdName]);
+	SendClientMessage(playerid, COLOR_ADMIN, "Вход №%d «%s» убран. Если внутри стоят дома, перенеси или снеси их (/delhouse).", dbid, gPDoor[d][pdName]);
 	new last = gPDoorCount - 1;
 	if (d != last) gPDoor[d] = gPDoor[last];
 	gPDoorCount--;
@@ -356,15 +356,15 @@ stock bool:Cmd_DelDoor(playerid, const params[])
 stock bool:Cmd_Doors(playerid)
 {
 	if (!Admin_Check(playerid, 3)) return true;
-	if (gPDoorCount == 0) return SendClientMessage(playerid, COLOR_GREY, "Р’С…РѕРґРѕРІ, РїРѕСЃС‚Р°РІР»РµРЅРЅС‹С… РІ РёРіСЂРµ, РЅРµС‚. Р”РѕР±Р°РІРёС‚СЊ: /adddoor [РЅР°Р·РІР°РЅРёРµ]");
-	SendClientMessage(playerid, COLOR_YELLOW, "Р’С…РѕРґС‹ РІ Р·РґР°РЅРёСЏ (/adddoor):");
+	if (gPDoorCount == 0) return SendClientMessage(playerid, COLOR_GREY, "Входов, поставленных в игре, нет. Добавить: /adddoor [название]");
+	SendClientMessage(playerid, COLOR_YELLOW, "Входы в здания (/adddoor):");
 	for (new d = 0; d < gPDoorCount; d++)
 	{
 		if (gPDoor[d][pdIn])
-			SendClientMessage(playerid, COLOR_WHITE, " в„–%d вЂ” %s (%.0f, %.0f), РІРЅСѓС‚СЂРё РёРЅС‚РµСЂСЊРµСЂ %d, РјРёСЂ %d", gPDoor[d][pdDbId], gPDoor[d][pdName],
+			SendClientMessage(playerid, COLOR_WHITE, " №%d — %s (%.0f, %.0f), внутри интерьер %d, мир %d", gPDoor[d][pdDbId], gPDoor[d][pdName],
 				gPDoor[d][pdOX], gPDoor[d][pdOY], gPDoor[d][pdIInt], gPDoor[d][pdIWorld]);
 		else
-			SendClientMessage(playerid, COLOR_WHITE, " в„–%d вЂ” %s (%.0f, %.0f), С‚РѕС‡РєРё РІРЅСѓС‚СЂРё РµС‰С‘ РЅРµС‚: /setdoor %d", gPDoor[d][pdDbId], gPDoor[d][pdName],
+			SendClientMessage(playerid, COLOR_WHITE, " №%d — %s (%.0f, %.0f), точки внутри ещё нет: /setdoor %d", gPDoor[d][pdDbId], gPDoor[d][pdName],
 				gPDoor[d][pdOX], gPDoor[d][pdOY], gPDoor[d][pdDbId]);
 	}
 	return true;

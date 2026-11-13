@@ -1,30 +1,30 @@
 // =====================================================================
-//  fuel.inc вЂ” С‚РѕРїР»РёРІРѕ, РђР—РЎ Рё РєР°РЅРёСЃС‚СЂС‹.
+//  fuel.inc — топливо, АЗС и канистры.
 //
-//  РЈ РєР°Р¶РґРѕР№ РјР°С€РёРЅС‹ РµСЃС‚СЊ Р±Р°Рє РЅР° FUEL_TANK Р»РёС‚СЂРѕРІ. Р‘РµРЅР·РёРЅ С‚СЂР°С‚РёС‚СЃСЏ, РїРѕРєР°
-//  СЂР°Р±РѕС‚Р°РµС‚ РґРІРёРіР°С‚РµР»СЊ: РЅР° С…РѕР»РѕСЃС‚С‹С… С‡СѓС‚СЊ-С‡СѓС‚СЊ, РЅР° СЃРєРѕСЂРѕСЃС‚Рё Р±РѕР»СЊС€Рµ.
-//  РџСѓСЃС‚РѕР№ Р±Р°Рє вЂ” РґРІРёРіР°С‚РµР»СЊ РіР»РѕС…РЅРµС‚ Рё РЅРµ Р·Р°РІРѕРґРёС‚СЃСЏ.
+//  У каждой машины есть бак на FUEL_TANK литров. Бензин тратится, пока
+//  работает двигатель: на холостых чуть-чуть, на скорости больше.
+//  Пустой бак — двигатель глохнет и не заводится.
 //
-//  РРіСЂРѕРєР°Рј:
-//    H РІ РјР°С€РёРЅРµ РЅР° РђР—РЎ (РёР»Рё /fill) вЂ” Р·Р°РїСЂР°РІРёС‚СЊСЃСЏ (Р·Р°РіР»СѓС€Рё РґРІРёРіР°С‚РµР»СЊ)
-//    ALT РїРµС€РєРѕРј РЅР° РђР—РЎ            вЂ” РєСѓРїРёС‚СЊ РєР°РЅРёСЃС‚СЂСѓ РЅР° FUEL_CANISTER Р»
-//    /canister                     вЂ” Р·Р°Р»РёС‚СЊ РєР°РЅРёСЃС‚СЂСѓ РІ РјР°С€РёРЅСѓ СЂСЏРґРѕРј
-//    /fuel                         вЂ” СЃРєРѕР»СЊРєРѕ Р±РµРЅР·РёРЅР° РІ Р±Р°РєРµ
-//    /speedo                       вЂ” СЃРїСЂСЏС‚Р°С‚СЊ / РїРѕРєР°Р·Р°С‚СЊ СЃРїРёРґРѕРјРµС‚СЂ
-//  РђРґРјРёРЅР°Рј:
-//    /addfuel [С†РµРЅР° Р·Р° Р»РёС‚СЂ] (4+) вЂ” РђР—РЎ С‚Р°Рј, РіРґРµ СЃС‚РѕРёС€СЊ
-//    /delfuel (4+)                вЂ” СѓРґР°Р»РёС‚СЊ Р±Р»РёР¶Р°Р№С€СѓСЋ РђР—РЎ
-//    /setfuel [Р»РёС‚СЂС‹] (3+)        вЂ” Р·Р°РїСЂР°РІРёС‚СЊ РјР°С€РёРЅСѓ, РІ РєРѕС‚РѕСЂРѕР№ СЃРёРґРёС€СЊ
+//  Игрокам:
+//    H в машине на АЗС (или /fill) — заправиться (заглуши двигатель)
+//    ALT пешком на АЗС            — купить канистру на FUEL_CANISTER л
+//    /canister                     — залить канистру в машину рядом
+//    /fuel                         — сколько бензина в баке
+//    /speedo                       — спрятать / показать спидометр
+//  Админам:
+//    /addfuel [цена за литр] (4+) — АЗС там, где стоишь
+//    /delfuel (4+)                — удалить ближайшую АЗС
+//    /setfuel [литры] (3+)        — заправить машину, в которой сидишь
 //
-//  Р›РёС‡РЅР°СЏ РјР°С€РёРЅР° РїРѕРјРЅРёС‚ Р±РµРЅР·РёРЅ РІ С‚Р°Р±Р»РёС†Рµ vehicles (РєРѕР»РѕРЅРєР° fuel),
-//  РєР°РЅРёСЃС‚СЂР° РёРіСЂРѕРєР° вЂ” РІ accounts (РєРѕР»РѕРЅРєР° canister).
+//  Личная машина помнит бензин в таблице vehicles (колонка fuel),
+//  канистра игрока — в accounts (колонка canister).
 // =====================================================================
 
 #define MAX_FUEL_STATIONS   40
-#define FUEL_STATION_RANGE  10.0    // СЂР°РґРёСѓСЃ РђР—РЎ РґР»СЏ Р·Р°РїСЂР°РІРєРё РёР· РјР°С€РёРЅС‹
-#define FUEL_IDLE_PER_SEC   0.003   // Р»РёС‚СЂРѕРІ РІ СЃРµРєСѓРЅРґСѓ РЅР° С…РѕР»РѕСЃС‚С‹С…
-#define FUEL_SPEED_FACTOR   0.0004  // + Р»РёС‚СЂРѕРІ РІ СЃРµРєСѓРЅРґСѓ Р·Р° РєР°Р¶РґС‹Р№ РєРј/С‡
-#define FUEL_LOW_WARNING    8.0     // РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ В«Р±РµРЅР·РёРЅ Р·Р°РєР°РЅС‡РёРІР°РµС‚СЃСЏВ»
+#define FUEL_STATION_RANGE  10.0    // радиус АЗС для заправки из машины
+#define FUEL_IDLE_PER_SEC   0.003   // литров в секунду на холостых
+#define FUEL_SPEED_FACTOR   0.0004  // + литров в секунду за каждый км/ч
+#define FUEL_LOW_WARNING    8.0     // предупреждение «бензин заканчивается»
 
 
 enum E_FUEL_STATION
@@ -35,42 +35,42 @@ enum E_FUEL_STATION
 	Float:fsY,
 	Float:fsZ,
 	fsPrice,
-	fsMarker                    // РјР°СЂРєРµСЂ (markers.inc)
+	fsMarker                    // маркер (markers.inc)
 }
 new FuelStation[MAX_FUEL_STATIONS][E_FUEL_STATION];
 
-static Float:gVehFuel[MAX_VEHICLES] = { -1.0, ... };    // -1 = РїРѕР»РЅС‹Р№ Р±Р°Рє
+static Float:gVehFuel[MAX_VEHICLES] = { -1.0, ... };    // -1 = полный бак
 static bool:gVehFuelWarned[MAX_VEHICLES];
 static gPlayerCanister[MAX_PLAYERS];
-static gFuelStationFor[MAX_PLAYERS] = { -1, ... };      // РђР—РЎ, РЅР° РєРѕС‚РѕСЂРѕР№ РѕС‚РєСЂС‹С‚Рѕ РѕРєРЅРѕ
+static gFuelStationFor[MAX_PLAYERS] = { -1, ... };      // АЗС, на которой открыто окно
 
-// РЎС‚Р°РЅРґР°СЂС‚РЅС‹Рµ РђР—РЎ San Andreas вЂ” СЃРѕР·РґР°СЋС‚СЃСЏ РїСЂРё РїРµСЂРІРѕРј Р·Р°РїСѓСЃРєРµ
+// Стандартные АЗС San Andreas — создаются при первом запуске
 static const Float:gDefaultStations[][3] =
 {
-	{ 1941.6, -1772.9, 13.6 },    // Idlewood, Р›РѕСЃ-РЎР°РЅС‚РѕСЃ
-	{ 1004.0, -939.3, 42.2 },     // Mulholland, Р›РѕСЃ-РЎР°РЅС‚РѕСЃ
+	{ 1941.6, -1772.9, 13.6 },    // Idlewood, Лос-Сантос
+	{ 1004.0, -939.3, 42.2 },     // Mulholland, Лос-Сантос
 	{ -90.5, -1169.4, 2.4 },      // Flint County
 	{ 655.7, -565.2, 16.3 },      // Dillimore
 	{ 1381.9, 459.1, 20.0 },      // Montgomery
 	{ -2244.0, -2560.6, 32.0 },   // Angel Pine
-	{ -1676.0, 414.0, 7.2 },      // Easter Basin, РЎР°РЅ-Р¤РёРµСЂСЂРѕ
-	{ -2410.8, 976.2, 45.3 },     // Juniper Hollow, РЎР°РЅ-Р¤РёРµСЂСЂРѕ
+	{ -1676.0, 414.0, 7.2 },      // Easter Basin, Сан-Фиерро
+	{ -2410.8, 976.2, 45.3 },     // Juniper Hollow, Сан-Фиерро
 	{ -1328.0, 2677.5, 50.0 },    // Tierra Robada
 	{ 70.4, 1218.6, 18.8 },       // Fort Carson
 	{ 611.6, 1694.9, 7.0 },       // Bone County
-	{ 2114.9, 920.0, 10.8 },      // Р›Р°СЃ-Р’РµРЅС‚СѓСЂР°СЃ, СЋРі
-	{ 2640.0, 1106.0, 10.8 },     // Р›Р°СЃ-Р’РµРЅС‚СѓСЂР°СЃ, РІРѕСЃС‚РѕРє
-	{ 2202.2, 2474.3, 10.8 }      // Р›Р°СЃ-Р’РµРЅС‚СѓСЂР°СЃ, Come-A-Lot
+	{ 2114.9, 920.0, 10.8 },      // Лас-Вентурас, юг
+	{ 2640.0, 1106.0, 10.8 },     // Лас-Вентурас, восток
+	{ 2202.2, 2474.3, 10.8 }      // Лас-Вентурас, Come-A-Lot
 };
 
 // ---------------------------------------------------------------------
-//  Р‘Р°Рє РјР°С€РёРЅС‹
+//  Бак машины
 // ---------------------------------------------------------------------
 stock bool:Fuel_VehicleUsesFuel(vehicleid)
 {
 	switch (GetVehicleModel(vehicleid))
 	{
-		case 0, 481, 509, 510: return false;     // РІРµР»РѕСЃРёРїРµРґС‹
+		case 0, 481, 509, 510: return false;     // велосипеды
 	}
 	return true;
 }
@@ -91,7 +91,7 @@ stock Fuel_Set(vehicleid, Float:liters)
 	if (liters > FUEL_LOW_WARNING) gVehFuelWarned[vehicleid] = false;
 }
 
-// Р’С‹Р·С‹РІР°РµС‚СЃСЏ РёР· Vehicle_Clear (vehicles.inc): РЅРѕРІР°СЏ РјР°С€РёРЅР° вЂ” РїРѕР»РЅС‹Р№ Р±Р°Рє
+// Вызывается из Vehicle_Clear (vehicles.inc): новая машина — полный бак
 stock Fuel_ResetVehicle(vehicleid)
 {
 	if (vehicleid < 1 || vehicleid >= MAX_VEHICLES) return;
@@ -104,10 +104,10 @@ stock bool:Fuel_IsEmpty(vehicleid)
 	return Fuel_VehicleUsesFuel(vehicleid) && Fuel_Get(vehicleid) < 0.1;
 }
 
-// РР· OnVehicleSpawn: РѕР±С‰РёРµ РјР°С€РёРЅС‹ РїРѕСЏРІР»СЏСЋС‚СЃСЏ СЃ РЅРµРїРѕР»РЅС‹Рј Р±Р°РєРѕРј
+// Из OnVehicleSpawn: общие машины появляются с неполным баком
 stock Fuel_OnVehicleSpawn(vehicleid)
 {
-	if (gVehOwner[vehicleid] != 0) return;      // Р»РёС‡РЅР°СЏ РјР°С€РёРЅР° РїРѕРјРЅРёС‚ СЃРІРѕР№ Р±РµРЅР·РёРЅ
+	if (gVehOwner[vehicleid] != 0) return;      // личная машина помнит свой бензин
 	if (gVehFaction[vehicleid] != 0 || gVehAdmin[vehicleid] || Jobs_GetVehicleJob(vehicleid) != JOB_NONE) Fuel_ResetVehicle(vehicleid);
 	else Fuel_Set(vehicleid, float(FUEL_TANK / 2 + random(FUEL_TANK / 2 + 1)));
 }
@@ -120,7 +120,7 @@ stock Fuel_SavePersonal(playerid)
 		Fuel_Get(v), Player[playerid][pDbId]));
 }
 
-// РР· Vehicles_LoadForPlayer: Р±РµРЅР·РёРЅ Р»РёС‡РЅРѕР№ РјР°С€РёРЅС‹ Рё РєР°РЅРёСЃС‚СЂР°
+// Из Vehicles_LoadForPlayer: бензин личной машины и канистра
 stock Fuel_LoadPlayer(playerid)
 {
 	gPlayerCanister[playerid] = 0;
@@ -155,12 +155,12 @@ static Fuel_SaveCanister(playerid)
 }
 
 // ---------------------------------------------------------------------
-//  РђР—РЎ
+//  АЗС
 // ---------------------------------------------------------------------
 static Fuel_UpdateLabel(s)
 {
 	new text[MK_TEXT_LEN];
-	format(text, sizeof text, "{FFCC00}РђР—РЎ\n{FFFFFF}Р‘РµРЅР·РёРЅ: ${FFFF00}%d{FFFFFF} Р·Р° Р»РёС‚СЂ\nH РІ РјР°С€РёРЅРµ РёР»Рё /fill вЂ” Р·Р°РїСЂР°РІРєР°\nALT вЂ” РєР°РЅРёСЃС‚СЂР° (%d Р»)",
+	format(text, sizeof text, "{FFCC00}АЗС\n{FFFFFF}Бензин: ${FFFF00}%d{FFFFFF} за литр\nH в машине или /fill — заправка\nALT — канистра (%d л)",
 		FuelStation[s][fsPrice], FUEL_CANISTER);
 	Marker_SetLabel(FuelStation[s][fsMarker], text, COLOR_WHITE, 25.0, 0.8);
 }
@@ -176,7 +176,7 @@ static Fuel_AddStation(dbid, Float:x, Float:y, Float:z, price)
 		FuelStation[s][fsY] = y;
 		FuelStation[s][fsZ] = z;
 		FuelStation[s][fsPrice] = price;
-		FuelStation[s][fsMarker] = Marker_Create(MK_FUEL, dbid, "РђР—РЎ", 1650, FuelStation[s][fsX], FuelStation[s][fsY], FuelStation[s][fsZ], 0, 0, GPS_FUEL);    // РєР°РЅРёСЃС‚СЂР°
+		FuelStation[s][fsMarker] = Marker_Create(MK_FUEL, dbid, "АЗС", 1650, FuelStation[s][fsX], FuelStation[s][fsY], FuelStation[s][fsZ], 0, 0, GPS_FUEL);    // канистра
 		Fuel_UpdateLabel(s);
 		return s;
 	}
@@ -194,7 +194,7 @@ stock Fuel_GetNearbyStation(playerid, Float:range = FUEL_STATION_RANGE)
 	return -1;
 }
 
-// РђРґРјРёРЅ РїРµСЂРµРЅС‘СЃ РјР°СЂРєРµСЂ РђР—РЎ (/markers)
+// Админ перенёс маркер АЗС (/markers)
 stock Fuel_OnMarkerMoved(dbid, Float:x, Float:y, Float:z)
 {
 	for (new s = 0; s < MAX_FUEL_STATIONS; s++)
@@ -244,7 +244,7 @@ stock Fuel_Init()
 		DB_FreeResultSet(r);
 	}
 
-	// РњР°С€РёРЅС‹, СЃРѕР·РґР°РЅРЅС‹Рµ РґРѕ РЅР°СЃ (РѕР±С‰РµСЃС‚РІРµРЅРЅС‹Рµ, С„СЂР°РєС†РёРѕРЅРЅС‹Рµ), РїРѕР»СѓС‡Р°СЋС‚ Р±РµРЅР·РёРЅ
+	// Машины, созданные до нас (общественные, фракционные), получают бензин
 	for (new v = 1; v < MAX_VEHICLES; v++)
 	{
 		if (IsValidVehicle(v)) Fuel_OnVehicleSpawn(v);
@@ -252,7 +252,7 @@ stock Fuel_Init()
 	SetTimer("Fuel_OnSecond", 1000, true);
 }
 
-// РџСЂРё РІС‹РєР»СЋС‡РµРЅРёРё СЃРµСЂРІРµСЂР° вЂ” СЃРѕС…СЂР°РЅРёС‚СЊ Р±РµРЅР·РёРЅ Р»РёС‡РЅС‹С… РјР°С€РёРЅ
+// При выключении сервера — сохранить бензин личных машин
 stock Fuel_Exit()
 {
 	for (new i = 0; i < MAX_PLAYERS; i++)
@@ -262,16 +262,16 @@ stock Fuel_Exit()
 }
 
 // ---------------------------------------------------------------------
-//  РЎРїРёРґРѕРјРµС‚СЂ Рё СЂР°СЃС…РѕРґ (СЂР°Р· РІ СЃРµРєСѓРЅРґСѓ)
+//  Спидометр и расход (раз в секунду)
 // ---------------------------------------------------------------------
 stock Fuel_GetSpeed(vehicleid)
 {
 	new Float:vx, Float:vy, Float:vz;
 	GetVehicleVelocity(vehicleid, vx, vy, vz);
-	return floatround(floatsqroot(vx * vx + vy * vy + vz * vz) * 180.0);    // РєРј/С‡
+	return floatround(floatsqroot(vx * vx + vy * vy + vz * vz) * 180.0);    // км/ч
 }
 
-// РР· OnPlayerDisconnect: textdraw РёРіСЂРѕРєР° СѓРґР°Р»СЏРµС‚СЃСЏ СЃР°Рј, СЃР±СЂР°СЃС‹РІР°РµРј СЃСЃС‹Р»РєСѓ
+// Из OnPlayerDisconnect: textdraw игрока удаляется сам, сбрасываем ссылку
 stock Fuel_OnDisconnect(playerid)
 {
 	gFuelStationFor[playerid] = -1;
@@ -303,27 +303,27 @@ public Fuel_OnSecond()
 				{
 					SetVehicleParamsEx(v, 0, 0, alarm, doors, bonnet, boot, objective);
 					GameTextForPlayer(i, "~r~Out of fuel", 3000, 3);
-					SendClientMessage(i, COLOR_RED, "Р‘РµРЅР·РёРЅ Р·Р°РєРѕРЅС‡РёР»СЃСЏ, РґРІРёРіР°С‚РµР»СЊ Р·Р°РіР»РѕС…. РќСѓР¶РЅР° РєР°РЅРёСЃС‚СЂР° (/canister) РёР»Рё СЌРІР°РєСѓР°С‚РѕСЂ.");
+					SendClientMessage(i, COLOR_RED, "Бензин закончился, двигатель заглох. Нужна канистра (/canister) или эвакуатор.");
 				}
 				else if (fuel < FUEL_LOW_WARNING && !gVehFuelWarned[v])
 				{
 					gVehFuelWarned[v] = true;
-					SendClientMessage(i, COLOR_ORANGE, "Р‘РµРЅР·РёРЅ Р·Р°РєР°РЅС‡РёРІР°РµС‚СЃСЏ (%d Р»). Р—Р°РїСЂР°РІСЊСЃСЏ РЅР° Р±Р»РёР¶Р°Р№С€РµР№ РђР—РЎ.", floatround(fuel, floatround_ceil));
+					SendClientMessage(i, COLOR_ORANGE, "Бензин заканчивается (%d л). Заправься на ближайшей АЗС.", floatround(fuel, floatround_ceil));
 				}
 			}
 		}
 
-		// РЎРїРёРґРѕРјРµС‚СЂ СЂРёСЃСѓРµС‚ hud.inc
+		// Спидометр рисует hud.inc
 	}
 	return 1;
 }
 
 // ---------------------------------------------------------------------
-//  Р—Р°РїСЂР°РІРєР°
+//  Заправка
 // ---------------------------------------------------------------------
 forward bool:Cmd_Fill(playerid);
 
-// H РІ РјР°С€РёРЅРµ (keys.inc). Р’РѕР·РІСЂР°С‰Р°РµС‚ true, РµСЃР»Рё РёРіСЂРѕРє РЅР° РђР—РЎ.
+// H в машине (keys.inc). Возвращает true, если игрок на АЗС.
 stock bool:Fuel_TryFill(playerid)
 {
 	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER) return false;
@@ -336,41 +336,41 @@ stock bool:Fuel_TryFill(playerid)
 stock bool:Cmd_Fill(playerid)
 {
 	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER)
-		return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РґРѕР»Р¶РµРЅ СЃРёРґРµС‚СЊ Р·Р° СЂСѓР»С‘Рј.");
+		return SendClientMessage(playerid, COLOR_GREY, "Ты должен сидеть за рулём.");
 	new s = Fuel_GetNearbyStation(playerid);
-	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "Р СЏРґРѕРј РЅРµС‚ РђР—РЎ.");
+	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет АЗС.");
 
 	new v = GetPlayerVehicleID(playerid);
-	if (!Fuel_VehicleUsesFuel(v)) return SendClientMessage(playerid, COLOR_GREY, "Р­С‚РѕРјСѓ С‚СЂР°РЅСЃРїРѕСЂС‚Сѓ Р±РµРЅР·РёРЅ РЅРµ РЅСѓР¶РµРЅ.");
+	if (!Fuel_VehicleUsesFuel(v)) return SendClientMessage(playerid, COLOR_GREY, "Этому транспорту бензин не нужен.");
 
 	new engine, lights, alarm, doors, bonnet, boot, objective;
 	GetVehicleParamsEx(v, engine, lights, alarm, doors, bonnet, boot, objective);
-	if (engine == 1) return SendClientMessage(playerid, COLOR_GREY, "РЎРЅР°С‡Р°Р»Р° Р·Р°РіР»СѓС€Рё РґРІРёРіР°С‚РµР»СЊ (2).");
+	if (engine == 1) return SendClientMessage(playerid, COLOR_GREY, "Сначала заглуши двигатель (2).");
 
 	new have = floatround(Fuel_Get(v), floatround_floor);
 	new need = FUEL_TANK - have;
-	if (need <= 0) return SendClientMessage(playerid, COLOR_GREY, "Р‘Р°Рє СѓР¶Рµ РїРѕР»РЅС‹Р№.");
+	if (need <= 0) return SendClientMessage(playerid, COLOR_GREY, "Бак уже полный.");
 
 	gFuelStationFor[playerid] = s;
-	ShowPlayerDialog(playerid, DIALOG_FUEL_FILL, DIALOG_STYLE_INPUT, "РђР—РЎ",
-		"{FFFFFF}Р’ Р±Р°РєРµ: {FFFF00}%d{FFFFFF} РёР· %d Р».\nР¦РµРЅР°: ${FFFF00}%d{FFFFFF} Р·Р° Р»РёС‚СЂ. РџРѕР»РЅС‹Р№ Р±Р°Рє: ${FFFF00}%d\n\nРЎРєРѕР»СЊРєРѕ Р»РёС‚СЂРѕРІ Р·Р°Р»РёС‚СЊ? (РїСѓСЃС‚Рѕ вЂ” РїРѕР»РЅС‹Р№ Р±Р°Рє)",
-		"Р—Р°РїСЂР°РІРёС‚СЊ", "РћС‚РјРµРЅР°", have, FUEL_TANK, FuelStation[s][fsPrice], need * FuelStation[s][fsPrice]);
+	ShowPlayerDialog(playerid, DIALOG_FUEL_FILL, DIALOG_STYLE_INPUT, "АЗС",
+		"{FFFFFF}В баке: {FFFF00}%d{FFFFFF} из %d л.\nЦена: ${FFFF00}%d{FFFFFF} за литр. Полный бак: ${FFFF00}%d\n\nСколько литров залить? (пусто — полный бак)",
+		"Заправить", "Отмена", have, FUEL_TANK, FuelStation[s][fsPrice], need * FuelStation[s][fsPrice]);
 	return true;
 }
 
-// ALT РїРµС€РєРѕРј (keys.inc). Р’РѕР·РІСЂР°С‰Р°РµС‚ true, РµСЃР»Рё РёРіСЂРѕРє РЅР° РђР—РЎ.
+// ALT пешком (keys.inc). Возвращает true, если игрок на АЗС.
 stock bool:Fuel_TryCanisterShop(playerid)
 {
 	new s = Fuel_GetNearbyStation(playerid, 3.0);
 	if (s == -1) return false;
 	if (gPlayerCanister[playerid] > 0)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ СѓР¶Рµ РµСЃС‚СЊ РїРѕР»РЅР°СЏ РєР°РЅРёСЃС‚СЂР°. Р—Р°Р»РёС‚СЊ РІ РјР°С€РёРЅСѓ: /canister");
+		SendClientMessage(playerid, COLOR_GREY, "У тебя уже есть полная канистра. Залить в машину: /canister");
 		return true;
 	}
 	gFuelStationFor[playerid] = s;
-	ShowPlayerDialog(playerid, DIALOG_FUEL_CAN, DIALOG_STYLE_MSGBOX, "РђР—РЎ",
-		"{FFFFFF}РљР°РЅРёСЃС‚СЂР° Р±РµРЅР·РёРЅР° РЅР° %d Р».\nР¦РµРЅР°: ${FFFF00}%d\n\n{FFFFFF}РљСѓРїРёС‚СЊ?", "РљСѓРїРёС‚СЊ", "РћС‚РјРµРЅР°",
+	ShowPlayerDialog(playerid, DIALOG_FUEL_CAN, DIALOG_STYLE_MSGBOX, "АЗС",
+		"{FFFFFF}Канистра бензина на %d л.\nЦена: ${FFFF00}%d\n\n{FFFFFF}Купить?", "Купить", "Отмена",
 		FUEL_CANISTER, FUEL_CANISTER * FuelStation[s][fsPrice]);
 	return true;
 }
@@ -387,33 +387,33 @@ stock Fuel_OnDialog(playerid, dialogid, response, const inputtext[])
 	{
 		if (Fuel_GetNearbyStation(playerid, 3.0) != s || gPlayerCanister[playerid] > 0) return 1;
 		new cost = FUEL_CANISTER * price;
-		if (GetMoney(playerid) < cost) { SendClientMessage(playerid, COLOR_GREY, "РќРµ С…РІР°С‚Р°РµС‚ РґРµРЅРµРі. РќСѓР¶РЅРѕ $%d.", cost); return 1; }
+		if (GetMoney(playerid) < cost) { SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", cost); return 1; }
 		GiveMoney(playerid, -cost);
 		gPlayerCanister[playerid] = 1;
 		Fuel_SaveCanister(playerid);
 		Account_Save(playerid);
-		SendClientMessage(playerid, COLOR_GREEN, "РўС‹ РєСѓРїРёР» РєР°РЅРёСЃС‚СЂСѓ РЅР° %d Р» Р·Р° $%d. Р—Р°Р»РёС‚СЊ РІ РјР°С€РёРЅСѓ: /canister", FUEL_CANISTER, cost);
+		SendClientMessage(playerid, COLOR_GREEN, "Ты купил канистру на %d л за $%d. Залить в машину: /canister", FUEL_CANISTER, cost);
 		return 1;
 	}
 
-	// DIALOG_FUEL_FILL: РёРіСЂРѕРє РјРѕРі СѓРµС…Р°С‚СЊ РёР»Рё Р·Р°РІРµСЃС‚Рё РґРІРёРіР°С‚РµР»СЊ, РїРѕРєР° РѕРєРЅРѕ Р±С‹Р»Рѕ РѕС‚РєСЂС‹С‚Рѕ
+	// DIALOG_FUEL_FILL: игрок мог уехать или завести двигатель, пока окно было открыто
 	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER || Fuel_GetNearbyStation(playerid) != s) return 1;
 	new v = GetPlayerVehicleID(playerid);
 	new have = floatround(Fuel_Get(v), floatround_floor);
 	new liters = FUEL_TANK - have;
 	if (inputtext[0] != '\0')
 	{
-		if (!IsNumeric(inputtext)) { SendClientMessage(playerid, COLOR_GREY, "Р’РІРµРґРё С‡РёСЃР»Рѕ Р»РёС‚СЂРѕРІ."); return 1; }
+		if (!IsNumeric(inputtext)) { SendClientMessage(playerid, COLOR_GREY, "Введи число литров."); return 1; }
 		liters = strval(inputtext);
 	}
 	if (liters > FUEL_TANK - have) liters = FUEL_TANK - have;
-	if (liters < 1) { SendClientMessage(playerid, COLOR_GREY, "Р‘Р°Рє СѓР¶Рµ РїРѕР»РЅС‹Р№."); return 1; }
+	if (liters < 1) { SendClientMessage(playerid, COLOR_GREY, "Бак уже полный."); return 1; }
 
 	new cost = liters * price;
 	if (GetMoney(playerid) < cost)
 	{
 		liters = GetMoney(playerid) / price;
-		if (liters < 1) { SendClientMessage(playerid, COLOR_GREY, "РќРµ С…РІР°С‚Р°РµС‚ РґРµРЅРµРі РґР°Р¶Рµ РЅР° Р»РёС‚СЂ."); return 1; }
+		if (liters < 1) { SendClientMessage(playerid, COLOR_GREY, "Не хватает денег даже на литр."); return 1; }
 		cost = liters * price;
 	}
 	GiveMoney(playerid, -cost);
@@ -422,25 +422,25 @@ stock Fuel_OnDialog(playerid, dialogid, response, const inputtext[])
 	Account_Save(playerid);
 
 	new msg[96];
-	format(msg, sizeof msg, "%s Р·Р°РїСЂР°РІР»СЏРµС‚ РјР°С€РёРЅСѓ.", GetRPName(playerid));
+	format(msg, sizeof msg, "%s заправляет машину.", GetRPName(playerid));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
-	SendClientMessage(playerid, COLOR_GREEN, "Р—Р°Р»РёС‚Рѕ %d Р» Р·Р° $%d. Р’ Р±Р°РєРµ %d РёР· %d Р».", liters, cost,
+	SendClientMessage(playerid, COLOR_GREEN, "Залито %d л за $%d. В баке %d из %d л.", liters, cost,
 		floatround(Fuel_Get(v), floatround_floor), FUEL_TANK);
 	return 1;
 }
 
-// РЎРєРѕР»СЊРєРѕ РєР°РЅРёСЃС‚СЂ Сѓ РёРіСЂРѕРєР° (РґР»СЏ РёРЅРІРµРЅС‚Р°СЂСЏ, needs.inc)
+// Сколько канистр у игрока (для инвентаря, needs.inc)
 stock Fuel_GetCanister(playerid) { return gPlayerCanister[playerid]; }
 
 // ---------------------------------------------------------------------
-//  РљРѕРјР°РЅРґС‹ РёРіСЂРѕРєР°
+//  Команды игрока
 // ---------------------------------------------------------------------
 stock bool:Cmd_Fuel(playerid)
 {
-	if (!IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РЅРµ РІ РјР°С€РёРЅРµ.");
+	if (!IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Ты не в машине.");
 	new v = GetPlayerVehicleID(playerid);
-	if (!Fuel_VehicleUsesFuel(v)) return SendClientMessage(playerid, COLOR_GREY, "Р­С‚РѕРјСѓ С‚СЂР°РЅСЃРїРѕСЂС‚Сѓ Р±РµРЅР·РёРЅ РЅРµ РЅСѓР¶РµРЅ.");
-	SendClientMessage(playerid, COLOR_WHITE, "Р’ Р±Р°РєРµ %d РёР· %d Р».", floatround(Fuel_Get(v), floatround_floor), FUEL_TANK);
+	if (!Fuel_VehicleUsesFuel(v)) return SendClientMessage(playerid, COLOR_GREY, "Этому транспорту бензин не нужен.");
+	SendClientMessage(playerid, COLOR_WHITE, "В баке %d из %d л.", floatround(Fuel_Get(v), floatround_floor), FUEL_TANK);
 	return true;
 }
 
@@ -448,15 +448,15 @@ forward bool:Hud_ToggleSpeedo(playerid);    // hud.inc
 
 stock bool:Cmd_Speedo(playerid)
 {
-	if (Hud_ToggleSpeedo(playerid)) SendClientMessage(playerid, COLOR_WHITE, "РЎРїРёРґРѕРјРµС‚СЂ СЃРїСЂСЏС‚Р°РЅ. Р’РµСЂРЅСѓС‚СЊ: /speedo");
-	else SendClientMessage(playerid, COLOR_WHITE, "РЎРїРёРґРѕРјРµС‚СЂ РІРєР»СЋС‡С‘РЅ.");
+	if (Hud_ToggleSpeedo(playerid)) SendClientMessage(playerid, COLOR_WHITE, "Спидометр спрятан. Вернуть: /speedo");
+	else SendClientMessage(playerid, COLOR_WHITE, "Спидометр включён.");
 	return true;
 }
 
 stock bool:Cmd_Canister(playerid)
 {
-	if (gPlayerCanister[playerid] <= 0) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ РєР°РЅРёСЃС‚СЂС‹. РљСѓРїРёС‚СЊ РјРѕР¶РЅРѕ РЅР° Р»СЋР±РѕР№ РђР—РЎ (ALT).");
-	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return SendClientMessage(playerid, COLOR_GREY, "Р’С‹Р№РґРё РёР· РјР°С€РёРЅС‹ Рё РІСЃС‚Р°РЅСЊ СЂСЏРґРѕРј СЃ РЅРµР№.");
+	if (gPlayerCanister[playerid] <= 0) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет канистры. Купить можно на любой АЗС (ALT).");
+	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return SendClientMessage(playerid, COLOR_GREY, "Выйди из машины и встань рядом с ней.");
 
 	new Float:px, Float:py, Float:pz;
 	GetPlayerPos(playerid, px, py, pz);
@@ -471,8 +471,8 @@ stock bool:Cmd_Canister(playerid)
 			bestDist = d;
 		}
 	}
-	if (best == INVALID_VEHICLE_ID) return SendClientMessage(playerid, COLOR_GREY, "Р СЏРґРѕРј РЅРµС‚ РјР°С€РёРЅС‹.");
-	if (Fuel_Get(best) > float(FUEL_TANK - 1)) return SendClientMessage(playerid, COLOR_GREY, "РЈ СЌС‚РѕР№ РјР°С€РёРЅС‹ РїРѕР»РЅС‹Р№ Р±Р°Рє.");
+	if (best == INVALID_VEHICLE_ID) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет машины.");
+	if (Fuel_Get(best) > float(FUEL_TANK - 1)) return SendClientMessage(playerid, COLOR_GREY, "У этой машины полный бак.");
 
 	Fuel_Set(best, Fuel_Get(best) + float(FUEL_CANISTER));
 	gPlayerCanister[playerid] = 0;
@@ -484,29 +484,29 @@ stock bool:Cmd_Canister(playerid)
 
 	ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
 	new msg[96];
-	format(msg, sizeof msg, "%s Р·Р°Р»РёРІР°РµС‚ Р±РµРЅР·РёРЅ РёР· РєР°РЅРёСЃС‚СЂС‹ РІ РјР°С€РёРЅСѓ.", GetRPName(playerid));
+	format(msg, sizeof msg, "%s заливает бензин из канистры в машину.", GetRPName(playerid));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
-	SendClientMessage(playerid, COLOR_GREEN, "Р—Р°Р»РёС‚Рѕ %d Р». Р’ Р±Р°РєРµ %d РёР· %d Р».", FUEL_CANISTER,
+	SendClientMessage(playerid, COLOR_GREEN, "Залито %d л. В баке %d из %d л.", FUEL_CANISTER,
 		floatround(Fuel_Get(best), floatround_floor), FUEL_TANK);
 	return true;
 }
 
 // ---------------------------------------------------------------------
-//  РљРѕРјР°РЅРґС‹ Р°РґРјРёРЅР°
+//  Команды админа
 // ---------------------------------------------------------------------
 stock bool:Cmd_AddFuel(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, price = FUEL_PRICE;
 	NextIntParam(params, pos, price);
-	if (price < 1 || price > 1000) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /addfuel [С†РµРЅР° Р·Р° Р»РёС‚СЂ 1-1000]");
+	if (price < 1 || price > 1000) return SendClientMessage(playerid, COLOR_GREY, "Использование: /addfuel [цена за литр 1-1000]");
 
 	new Float:x, Float:y, Float:z;
 	GetPlayerPos(playerid, x, y, z);
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO fuel_stations (x, y, z, price) VALUES (%f, %f, %f, %d)", x, y, z, price));
 	new s = Fuel_AddStation(DB_LastInsertId(), x, y, z, price);
-	if (s == -1) return SendClientMessage(playerid, COLOR_RED, "Р›РёРјРёС‚ РђР—РЎ (%d). РЎС‚Р°РЅС†РёСЏ СЃРѕС…СЂР°РЅРµРЅР° РІ Р±Р°Р·Рµ, РїРѕСЏРІРёС‚СЃСЏ РїРѕСЃР»Рµ РїРµСЂРµР·Р°РїСѓСЃРєР°, РµСЃР»Рё СѓРґР°Р»РёС‚СЊ РґСЂСѓРіСѓСЋ.", MAX_FUEL_STATIONS);
-	SendClientMessage(playerid, COLOR_ADMIN, "РђР—РЎ в„–%d СЃРѕР·РґР°РЅР°, Р±РµРЅР·РёРЅ $%d Р·Р° Р»РёС‚СЂ.", FuelStation[s][fsDbId], price);
+	if (s == -1) return SendClientMessage(playerid, COLOR_RED, "Лимит АЗС (%d). Станция сохранена в базе, появится после перезапуска, если удалить другую.", MAX_FUEL_STATIONS);
+	SendClientMessage(playerid, COLOR_ADMIN, "АЗС №%d создана, бензин $%d за литр.", FuelStation[s][fsDbId], price);
 	return true;
 }
 
@@ -514,10 +514,10 @@ stock bool:Cmd_DelFuel(playerid)
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new s = Fuel_GetNearbyStation(playerid);
-	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "Р СЏРґРѕРј РЅРµС‚ РђР—РЎ.");
+	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет АЗС.");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM fuel_stations WHERE id = %d", FuelStation[s][fsDbId]));
 	Marker_Destroy(FuelStation[s][fsMarker], true);
-	SendClientMessage(playerid, COLOR_ADMIN, "РђР—РЎ в„–%d СѓРґР°Р»РµРЅР°.", FuelStation[s][fsDbId]);
+	SendClientMessage(playerid, COLOR_ADMIN, "АЗС №%d удалена.", FuelStation[s][fsDbId]);
 	FuelStation[s][fsUsed] = false;
 	return true;
 }
@@ -525,7 +525,7 @@ stock bool:Cmd_DelFuel(playerid)
 stock bool:Cmd_SetFuel(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 3)) return true;
-	if (!IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, COLOR_GREY, "РЎСЏРґСЊ РІ РјР°С€РёРЅСѓ.");
+	if (!IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Сядь в машину.");
 	new pos = 0, liters = FUEL_TANK;
 	NextIntParam(params, pos, liters);
 	new v = GetPlayerVehicleID(playerid);
@@ -534,6 +534,6 @@ stock bool:Cmd_SetFuel(playerid, const params[])
 	{
 		if (IsPlayerConnected(i) && gPlayerVeh[i] == v) Fuel_SavePersonal(i);
 	}
-	SendClientMessage(playerid, COLOR_ADMIN, "Р’ Р±Р°РєРµ С‚РµРїРµСЂСЊ %d Р».", floatround(Fuel_Get(v), floatround_floor));
+	SendClientMessage(playerid, COLOR_ADMIN, "В баке теперь %d л.", floatround(Fuel_Get(v), floatround_floor));
 	return true;
 }

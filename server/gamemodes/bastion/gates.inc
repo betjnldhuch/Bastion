@@ -1,22 +1,22 @@
 // =====================================================================
-//  gates.inc вЂ” С€Р»Р°РіР±Р°СѓРјС‹ Рё РІРѕСЂРѕС‚Р° С„СЂР°РєС†РёР№.
+//  gates.inc — шлагбаумы и ворота фракций.
 //
-//  H РІ РјР°С€РёРЅРµ (РёР»Рё ALT РїРµС€РєРѕРј) СЂСЏРґРѕРј СЃРѕ С€Р»Р°РіР±Р°СѓРјРѕРј СЃРІРѕРµР№ С„СЂР°РєС†РёРё вЂ”
-//  РѕС‚РєСЂС‹С‚СЊ. Р§РµСЂРµР· GATE_OPEN_TIME СЃРµРєСѓРЅРґ РѕРЅ Р·Р°РєСЂРѕРµС‚СЃСЏ СЃР°Рј.
+//  H в машине (или ALT пешком) рядом со шлагбаумом своей фракции —
+//  открыть. Через GATE_OPEN_TIME секунд он закроется сам.
 //
-//  РђРґРјРёРЅС‹ (4+):
-//    /addgate [С„СЂР°РєС†РёСЏ 0-5] [С‚РёРї 1-2] вЂ” РїРѕСЃС‚Р°РІРёС‚СЊ С‚Р°Рј, РіРґРµ СЃС‚РѕРёС€СЊ
-//        (С‚РёРї 1 вЂ” С€Р»Р°РіР±Р°СѓРј, 2 вЂ” Р±РѕР»СЊС€РёРµ РІРѕСЂРѕС‚Р°; С„СЂР°РєС†РёСЏ 0 вЂ” РѕС‚РєСЂС‹РІР°СЋС‚ РІСЃРµ)
-//        РЁР»Р°РіР±Р°СѓРј РІСЃС‚Р°С‘С‚ РїРѕРїРµСЂС‘Рє С‚РѕРіРѕ РЅР°РїСЂР°РІР»РµРЅРёСЏ, РєСѓРґР° С‚С‹ СЃРјРѕС‚СЂРёС€СЊ.
-//    /delgate вЂ” СѓРґР°Р»РёС‚СЊ Р±Р»РёР¶Р°Р№С€РёР№
+//  Админы (4+):
+//    /addgate [фракция 0-5] [тип 1-2] — поставить там, где стоишь
+//        (тип 1 — шлагбаум, 2 — большие ворота; фракция 0 — открывают все)
+//        Шлагбаум встаёт поперёк того направления, куда ты смотришь.
+//    /delgate — удалить ближайший
 // =====================================================================
 
 #define MAX_GATES           40
-#define GATE_RANGE          10.0    // СЃ РєР°РєРѕРіРѕ СЂР°СЃСЃС‚РѕСЏРЅРёСЏ РјРѕР¶РЅРѕ РѕС‚РєСЂС‹С‚СЊ
-#define GATE_OPEN_TIME      6       // С‡РµСЂРµР· СЃРєРѕР»СЊРєРѕ СЃРµРєСѓРЅРґ Р·Р°РєСЂС‹С‚СЊ
+#define GATE_RANGE          10.0    // с какого расстояния можно открыть
+#define GATE_OPEN_TIME      6       // через сколько секунд закрыть
 
-#define GATE_BARRIER        1       // С€Р»Р°РіР±Р°СѓРј (РѕР±СЉРµРєС‚ 968)
-#define GATE_DOOR           2       // РІРѕСЂРѕС‚Р° (РѕР±СЉРµРєС‚ 980), СѓРµР·Р¶Р°СЋС‚ РІРЅРёР·
+#define GATE_BARRIER        1       // шлагбаум (объект 968)
+#define GATE_DOOR           2       // ворота (объект 980), уезжают вниз
 
 enum E_GATE
 {
@@ -61,7 +61,7 @@ stock Gates_Init()
 	}
 	if (count == 0)
 	{
-		// РЁР»Р°РіР±Р°СѓРј РЅР° РІСЉРµР·РґРµ Рє LSPD (РєРѕРѕСЂРґРёРЅР°С‚С‹ РїСЂРёРјРµСЂРЅС‹Рµ)
+		// Шлагбаум на въезде к LSPD (координаты примерные)
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO gates (faction, type, x, y, z, a) VALUES (%d, %d, %f, %f, %f, %f)",
 			FACTION_POLICE, GATE_BARRIER, 1544.7, -1630.7, 13.1, 90.0));
 	}
@@ -81,7 +81,7 @@ stock Gates_Init()
 	printf("[Gates] Loaded %d gates.", gGateCount);
 }
 
-// Р‘Р»РёР¶Р°Р№С€РёР№ С€Р»Р°РіР±Р°СѓРј РІ СЂР°РґРёСѓСЃРµ (-1 = РЅРµС‚)
+// Ближайший шлагбаум в радиусе (-1 = нет)
 stock Gate_GetNearby(playerid, Float:range = GATE_RANGE)
 {
 	new best = -1, Float:bestDist = range + 1.0;
@@ -102,13 +102,13 @@ stock Gate_Move(g, bool:open)
 	Gate[g][gtOpen] = open;
 	if (Gate[g][gtType] == GATE_BARRIER)
 	{
-		// РїРѕРґРЅРёРјР°РµРј СЃС‚СЂРµР»Сѓ: РїРѕРІРѕСЂРѕС‚ СЃ 90 РґРѕ 0 РіСЂР°РґСѓСЃРѕРІ (z С‡СѓС‚СЊ РјРµРЅСЏРµРј, С‡С‚РѕР±С‹ РѕР±СЉРµРєС‚ РїРѕРµС…Р°Р»)
+		// поднимаем стрелу: поворот с 90 до 0 градусов (z чуть меняем, чтобы объект поехал)
 		if (open) MoveObject(Gate[g][gtObject], Gate[g][gtX], Gate[g][gtY], Gate[g][gtZ] + 0.01, 0.02, 0.0, 0.0, Gate[g][gtA]);
 		else MoveObject(Gate[g][gtObject], Gate[g][gtX], Gate[g][gtY], Gate[g][gtZ], 0.02, 0.0, 90.0, Gate[g][gtA]);
 	}
 	else
 	{
-		// РІРѕСЂРѕС‚Р° СѓРµР·Р¶Р°СЋС‚ РїРѕРґ Р·РµРјР»СЋ
+		// ворота уезжают под землю
 		if (open) MoveObject(Gate[g][gtObject], Gate[g][gtX], Gate[g][gtY], Gate[g][gtZ] - 5.8, 2.5);
 		else MoveObject(Gate[g][gtObject], Gate[g][gtX], Gate[g][gtY], Gate[g][gtZ], 2.5);
 	}
@@ -117,12 +117,12 @@ stock Gate_Move(g, bool:open)
 forward OnGateClose(g, dbid);
 public OnGateClose(g, dbid)
 {
-	// dbid вЂ” Р·Р°С‰РёС‚Р°: Р·Р° СЌС‚Рѕ РІСЂРµРјСЏ С€Р»Р°РіР±Р°СѓРј РјРѕРіР»Рё СѓРґР°Р»РёС‚СЊ Рё РЅРѕРјРµСЂ Р·Р°РЅСЏР» РґСЂСѓРіРѕР№
+	// dbid — защита: за это время шлагбаум могли удалить и номер занял другой
 	if (g >= 0 && g < gGateCount && Gate[g][gtDbId] == dbid && Gate[g][gtOpen]) Gate_Move(g, false);
 	return 1;
 }
 
-// РћС‚РєСЂС‹С‚СЊ С€Р»Р°РіР±Р°СѓРј СЂСЏРґРѕРј (РёР· keys.inc). Р’РѕР·РІСЂР°С‰Р°РµС‚ 1, РµСЃР»Рё СЂСЏРґРѕРј Р±С‹Р» С€Р»Р°РіР±Р°СѓРј.
+// Открыть шлагбаум рядом (из keys.inc). Возвращает 1, если рядом был шлагбаум.
 stock Gates_TryOpen(playerid)
 {
 	new g = Gate_GetNearby(playerid);
@@ -130,7 +130,7 @@ stock Gates_TryOpen(playerid)
 	new f = Gate[g][gtFaction];
 	if (f != FACTION_NONE && Player[playerid][pFaction] != f && Player[playerid][pAdmin] < 3)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Р­С‚РѕС‚ РїСЂРѕРµР·Рґ РѕС‚РєСЂС‹РІР°РµС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ С„СЂР°РєС†РёРё В«%sВ».", Faction_GetName(f));
+		SendClientMessage(playerid, COLOR_GREY, "Этот проезд открывается только для фракции «%s».", Faction_GetName(f));
 		return 1;
 	}
 	if (Gate[g][gtOpen]) return 1;
@@ -140,26 +140,26 @@ stock Gates_TryOpen(playerid)
 }
 
 // ---------------------------------------------------------------------
-//  РђРґРјРёРЅ-РєРѕРјР°РЅРґС‹
+//  Админ-команды
 // ---------------------------------------------------------------------
 stock bool:Cmd_AddGate(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, f, type;
 	if (!NextIntParam(params, pos, f) || f < 0 || f >= MAX_FACTIONS || (f != FACTION_NONE && !Faction_IsValid(f)) || !NextIntParam(params, pos, type) || type < 1 || type > 2)
-		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /addgate [С„СЂР°РєС†РёСЏ, 0 вЂ” РґР»СЏ РІСЃРµС…] [С‚РёРї: 1 С€Р»Р°РіР±Р°СѓРј, 2 РІРѕСЂРѕС‚Р°]");
-	if (GetPlayerInterior(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "РўРѕР»СЊРєРѕ РЅР° СѓР»РёС†Рµ.");
-	if (gGateCount >= MAX_GATES) return SendClientMessage(playerid, COLOR_GREY, "Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ (MAX_GATES).");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /addgate [фракция, 0 — для всех] [тип: 1 шлагбаум, 2 ворота]");
+	if (GetPlayerInterior(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "Только на улице.");
+	if (gGateCount >= MAX_GATES) return SendClientMessage(playerid, COLOR_GREY, "Достигнут лимит (MAX_GATES).");
 
 	new Float:x, Float:y, Float:z, Float:a;
 	GetPlayerPos(playerid, x, y, z);
 	GetPlayerFacingAngle(playerid, a);
-	if (type == GATE_BARRIER) { z -= 0.9; a += 90.0; }    // СЃС‚СЂРµР»Р° РїРѕРїРµСЂС‘Рє РґРѕСЂРѕРіРё, С‡СѓС‚СЊ РЅРёР¶Рµ
+	if (type == GATE_BARRIER) { z -= 0.9; a += 90.0; }    // стрела поперёк дороги, чуть ниже
 	else z += 1.5;
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO gates (faction, type, x, y, z, a) VALUES (%d, %d, %f, %f, %f, %f)", f, type, x, y, z, a));
 	Gate_Create(DB_LastInsertId(), f, type, x, y, z, a);
-	SetPlayerPos(playerid, x + 2.0, y + 2.0, z + 1.0);   // РѕС‚РѕР№С‚Рё, С‡С‚РѕР±С‹ РЅРµ Р·Р°СЃС‚СЂСЏС‚СЊ РІ РѕР±СЉРµРєС‚Рµ
-	SendClientMessage(playerid, COLOR_ADMIN, "Р“РѕС‚РѕРІРѕ. РћС‚РєСЂС‹С‚СЊ: H РІ РјР°С€РёРЅРµ РёР»Рё ALT РїРµС€РєРѕРј. РЈРґР°Р»РёС‚СЊ: /delgate");
+	SetPlayerPos(playerid, x + 2.0, y + 2.0, z + 1.0);   // отойти, чтобы не застрять в объекте
+	SendClientMessage(playerid, COLOR_ADMIN, "Готово. Открыть: H в машине или ALT пешком. Удалить: /delgate");
 	return true;
 }
 
@@ -167,12 +167,12 @@ stock bool:Cmd_DelGate(playerid)
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new g = Gate_GetNearby(playerid);
-	if (g == -1) return SendClientMessage(playerid, COLOR_GREY, "Р СЏРґРѕРј РЅРµС‚ С€Р»Р°РіР±Р°СѓРјР° РёР»Рё РІРѕСЂРѕС‚.");
+	if (g == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет шлагбаума или ворот.");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM gates WHERE id = %d", Gate[g][gtDbId]));
 	DestroyObject(Gate[g][gtObject]);
 	new last = gGateCount - 1;
 	if (g != last) Gate[g] = Gate[last];
 	gGateCount--;
-	SendClientMessage(playerid, COLOR_ADMIN, "РЈРґР°Р»РµРЅРѕ.");
+	SendClientMessage(playerid, COLOR_ADMIN, "Удалено.");
 	return true;
 }

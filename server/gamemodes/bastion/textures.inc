@@ -1,26 +1,26 @@
 // =====================================================================
-//  textures.inc вЂ” РїРµСЂРµРєСЂР°СЃРєР° РѕР±СЉРµРєС‚РѕРІ РјР°РїРїРёРЅРіР° (Р°РґРјРёРЅ DEV_LEVEL+).
+//  textures.inc — перекраска объектов маппинга (админ DEV_LEVEL+).
 //
-//  РћР±СЉРµРєС‚ РёР· /mo РјРѕР¶РЅРѕ РѕР±С‚СЏРЅСѓС‚СЊ Р»СЋР±РѕР№ С‚РµРєСЃС‚СѓСЂРѕР№ GTA, Р·Р°Р»РёС‚СЊ С†РІРµС‚РѕРј РёР»Рё
-//  СЃРґРµР»Р°С‚СЊ РЅР° РЅС‘Рј РЅР°РґРїРёСЃСЊ (РІС‹РІРµСЃРєРё, С‚Р°Р±Р»РёС‡РєРё, РЅРѕРјРµСЂР° РґРѕРјРѕРІ). Р­С‚Рѕ СЂР°Р±РѕС‚Р°РµС‚
-//  Сѓ РІСЃРµС…: РџРљ-РєР»РёРµРЅС‚ 0.3.7 Рё С‚РµР»РµС„РѕРЅ, РЅРёС‡РµРіРѕ СЃРєР°С‡РёРІР°С‚СЊ РЅРµ РЅР°РґРѕ вЂ” С‚РµРєСЃС‚СѓСЂС‹
-//  Р±РµСЂСѓС‚СЃСЏ РёР· СЃР°РјРѕР№ РёРіСЂС‹. Р’СЃС‘ С…СЂР°РЅРёС‚СЃСЏ РІ С‚Р°Р±Р»РёС†Рµ map_materials Рё
-//  РІРѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ РїРѕСЃР»Рµ СЂРµСЃС‚Р°СЂС‚Р°, РїРѕРїР°РґР°РµС‚ РІ /mo export.
+//  Объект из /mo можно обтянуть любой текстурой GTA, залить цветом или
+//  сделать на нём надпись (вывески, таблички, номера домов). Это работает
+//  у всех: ПК-клиент 0.3.7 и телефон, ничего скачивать не надо — текстуры
+//  берутся из самой игры. Всё хранится в таблице map_materials и
+//  восстанавливается после рестарта, попадает в /mo export.
 //
-//    /mt               вЂ” РѕРєРЅРѕ РїРµСЂРµРєСЂР°СЃРєРё РѕР±СЉРµРєС‚Р°, РєРѕС‚РѕСЂС‹Р№ РґРІРёРіР°РµС€СЊ (РёР»Рё Р±Р»РёР¶Р°Р№С€РµРіРѕ)
-//    /mt [в„–]           вЂ” С‚Рѕ Р¶Рµ РґР»СЏ РѕР±СЉРµРєС‚Р° в„–
-//    /mt set [СЃР»РѕС‚] [РјРѕРґРµР»СЊ] [txd] [С‚РµРєСЃС‚СѓСЂР°] вЂ” Р»СЋР±Р°СЏ С‚РµРєСЃС‚СѓСЂР° GTA
-//    /mt color [СЃР»РѕС‚] [С†РІРµС‚]  вЂ” Р·Р°Р»РёС‚СЊ С†РІРµС‚РѕРј, С†РІРµС‚ FF0000 РёР»Рё AARRGGBB
-//    /mt text [СЃР»РѕС‚] [СЂР°Р·РјРµСЂ С€СЂРёС„С‚Р°] [С†РІРµС‚] [С‚РµРєСЃС‚]  вЂ” РЅР°РґРїРёСЃСЊ, | вЂ” РЅРѕРІР°СЏ СЃС‚СЂРѕРєР°
-//    /mt clear [СЃР»РѕС‚|all]     вЂ” СѓР±СЂР°С‚СЊ РїРµСЂРµРєСЂР°СЃРєСѓ
-//    /mt info          вЂ” С‡С‚Рѕ РЅР°РґРµС‚Рѕ РЅР° РѕР±СЉРµРєС‚
-//    /mt save [РЅР°Р·РІР°РЅРёРµ] [СЃР»РѕС‚] вЂ” СЃРѕС…СЂР°РЅРёС‚СЊ С‚РµРєСЃС‚СѓСЂСѓ СЃР»РѕС‚Р° РІ СЃРїРёСЃРѕРє
-//    /mt unsave [в„–]    вЂ” СѓР±СЂР°С‚СЊ РёР· СЃРїРёСЃРєР°
+//    /mt               — окно перекраски объекта, который двигаешь (или ближайшего)
+//    /mt [№]           — то же для объекта №
+//    /mt set [слот] [модель] [txd] [текстура] — любая текстура GTA
+//    /mt color [слот] [цвет]  — залить цветом, цвет FF0000 или AARRGGBB
+//    /mt text [слот] [размер шрифта] [цвет] [текст]  — надпись, | — новая строка
+//    /mt clear [слот|all]     — убрать перекраску
+//    /mt info          — что надето на объект
+//    /mt save [название] [слот] — сохранить текстуру слота в список
+//    /mt unsave [№]    — убрать из списка
 //
-//  РЎР»РѕС‚ (0вЂ“15) вЂ” С‡Р°СЃС‚СЊ РјРѕРґРµР»Рё: Сѓ РѕРґРЅРёС… РѕР±СЉРµРєС‚РѕРІ 0 вЂ” РІСЃСЏ РјРѕРґРµР»СЊ, Сѓ РґСЂСѓРіРёС…
-//  СЃС‚РµРЅС‹/РїРѕР»/СЂР°РјРєР° вЂ” СЂР°Р·РЅС‹Рµ СЃР»РѕС‚С‹. РџСЂРѕС‰Рµ РІСЃРµРіРѕ РїСЂРѕР±РѕРІР°С‚СЊ РїРѕ РѕС‡РµСЂРµРґРё.
-//  РќР°Р·РІР°РЅРёСЏ С‚РµРєСЃС‚СѓСЂ: dev.prineside.com/ru/gtasa_samp_model_id/ (РІРєР»Р°РґРєР°
-//  С‚РµРєСЃС‚СѓСЂ Сѓ РјРѕРґРµР»Рё) РёР»Рё textures.xyin.ws.
+//  Слот (0–15) — часть модели: у одних объектов 0 — вся модель, у других
+//  стены/пол/рамка — разные слоты. Проще всего пробовать по очереди.
+//  Названия текстур: dev.prineside.com/ru/gtasa_samp_model_id/ (вкладка
+//  текстур у модели) или textures.xyin.ws.
 // =====================================================================
 
 #define TEX_SLOTS               16
@@ -29,48 +29,48 @@
 #define TEX_KIND_TEXTURE        (0)
 #define TEX_KIND_TEXT           (1)
 
-static gTexSlot[MAX_PLAYERS] = { -1, ... };      // РѕР±СЉРµРєС‚ РјР°РїРїРёРЅРіР° (СЃР»РѕС‚ РІ dev.inc)
-static gTexIndex[MAX_PLAYERS];                   // СЃР»РѕС‚ РјР°С‚РµСЂРёР°Р»Р° 0вЂ“15
-static gTexList[MAX_PLAYERS][TEX_LIST_MAX];      // СЃС‚СЂРѕРєР° РѕРєРЅР° -> id РіРѕС‚РѕРІРѕР№ С‚РµРєСЃС‚СѓСЂС‹
+static gTexSlot[MAX_PLAYERS] = { -1, ... };      // объект маппинга (слот в dev.inc)
+static gTexIndex[MAX_PLAYERS];                   // слот материала 0–15
+static gTexList[MAX_PLAYERS][TEX_LIST_MAX];      // строка окна -> id готовой текстуры
 
-// Р“РѕС‚РѕРІС‹Рµ С‚РµРєСЃС‚СѓСЂС‹ РїСЂРё РїРµСЂРІРѕРј Р·Р°РїСѓСЃРєРµ. РќР°Р·РІР°РЅРёРµ, РјРѕРґРµР»СЊ, txd, С‚РµРєСЃС‚СѓСЂР°.
-// РџСЂРѕРІРµСЂРµРЅС‹ РЅРµ РІСЃРµ: РµСЃР»Рё РєР°РєР°СЏ-С‚Рѕ РІС‹РіР»СЏРґРёС‚ РЅРµ С‚Р°Рє вЂ” /mt unsave Рё РґРѕР±Р°РІСЊ СЃРІРѕСЋ.
+// Готовые текстуры при первом запуске. Название, модель, txd, текстура.
+// Проверены не все: если какая-то выглядит не так — /mt unsave и добавь свою.
 enum E_TEX_SEED { tsName[32], tsModel, tsTxd[32], tsTex[32] }
 static const gTexSeed[][E_TEX_SEED] =
 {
-	{ "Р‘РµР»С‹Р№ (РґР»СЏ Р·Р°Р»РёРІРєРё)",  10765, "airportgnd_sfse",  "white" },
-	{ "РљРёСЂРїРёС‡ РєСЂР°СЃРЅС‹Р№",       9514,  "711_sfw",          "brick" },
-	{ "РњСЂР°РјРѕСЂ",               3922,  "bistro",           "marblekb_256128" },
-	{ "РџР°СЂРєРµС‚",               14581, "ab_mafiasuitea",   "cof_wood2" },
-	{ "РћР±РѕРё",                 14581, "ab_mafiasuitea",   "walp45S" },
-	{ "РўСЂРѕС‚СѓР°СЂРЅР°СЏ РїР»РёС‚РєР°",    10101, "2notherbuildsfe",  "Bow_Abpave_Gen" },
-	{ "РЁС‚СѓРєР°С‚СѓСЂРєР°",           4552,  "ammu_lan2",        "sl_lavicdtwall1" },
-	{ "РЎС‚РµРєР»Рѕ",               18065, "ab_sfammumain",    "shelf_glas" },
-	{ "Р—РѕР»РѕС‚Рѕ",               8463,  "vgseland",         "tiadbuddhagold" },
-	{ "Р”РѕСЃРєРё",                14650, "ab_trukstpc",      "sa_wood08_128" }
+	{ "Белый (для заливки)",  10765, "airportgnd_sfse",  "white" },
+	{ "Кирпич красный",       9514,  "711_sfw",          "brick" },
+	{ "Мрамор",               3922,  "bistro",           "marblekb_256128" },
+	{ "Паркет",               14581, "ab_mafiasuitea",   "cof_wood2" },
+	{ "Обои",                 14581, "ab_mafiasuitea",   "walp45S" },
+	{ "Тротуарная плитка",    10101, "2notherbuildsfe",  "Bow_Abpave_Gen" },
+	{ "Штукатурка",           4552,  "ammu_lan2",        "sl_lavicdtwall1" },
+	{ "Стекло",               18065, "ab_sfammumain",    "shelf_glas" },
+	{ "Золото",               8463,  "vgseland",         "tiadbuddhagold" },
+	{ "Доски",                14650, "ab_trukstpc",      "sa_wood08_128" }
 };
 
 enum E_TEX_COLOR { tcName[24], tcColor }
 static const gTexColors[][E_TEX_COLOR] =
 {
-	{ "Р‘РµР»С‹Р№",       0xFFFFFFFF },
-	{ "Р§С‘СЂРЅС‹Р№",      0xFF111111 },
-	{ "РЎРµСЂС‹Р№",       0xFF808080 },
-	{ "РљСЂР°СЃРЅС‹Р№",     0xFFCC2222 },
-	{ "Р‘РѕСЂРґРѕРІС‹Р№",    0xFF6E1414 },
-	{ "РћСЂР°РЅР¶РµРІС‹Р№",   0xFFFF8800 },
-	{ "Р–С‘Р»С‚С‹Р№",      0xFFFFD21E },
-	{ "Р—РµР»С‘РЅС‹Р№",     0xFF2E8B3A },
-	{ "РЎРёРЅРёР№",       0xFF1E3C96 },
-	{ "Р“РѕР»СѓР±РѕР№",     0xFF64B4FF },
-	{ "Р¤РёРѕР»РµС‚РѕРІС‹Р№",  0xFF7832A0 },
-	{ "Р РѕР·РѕРІС‹Р№",     0xFFFF78B4 },
-	{ "РљРѕСЂРёС‡РЅРµРІС‹Р№",  0xFF5A3C1E },
-	{ "Р‘РµР¶РµРІС‹Р№",     0xFFE6D2AA }
+	{ "Белый",       0xFFFFFFFF },
+	{ "Чёрный",      0xFF111111 },
+	{ "Серый",       0xFF808080 },
+	{ "Красный",     0xFFCC2222 },
+	{ "Бордовый",    0xFF6E1414 },
+	{ "Оранжевый",   0xFFFF8800 },
+	{ "Жёлтый",      0xFFFFD21E },
+	{ "Зелёный",     0xFF2E8B3A },
+	{ "Синий",       0xFF1E3C96 },
+	{ "Голубой",     0xFF64B4FF },
+	{ "Фиолетовый",  0xFF7832A0 },
+	{ "Розовый",     0xFFFF78B4 },
+	{ "Коричневый",  0xFF5A3C1E },
+	{ "Бежевый",     0xFFE6D2AA }
 };
 
 // ---------------------------------------------------------------------
-//  Р—Р°РїСѓСЃРє (РёР· Dev_Init, РїРѕСЃР»Рµ Р·Р°РіСЂСѓР·РєРё РѕР±СЉРµРєС‚РѕРІ)
+//  Запуск (из Dev_Init, после загрузки объектов)
 // ---------------------------------------------------------------------
 stock Tex_Init()
 {
@@ -118,7 +118,7 @@ stock Tex_OnConnect(playerid)
 	gTexSlot[playerid] = -1;
 }
 
-// РЎС‚СЂРѕРєР° СЂРµР·СѓР»СЊС‚Р°С‚Р°: obj, idx, kind, model, txd, tex, color, text, fsize
+// Строка результата: obj, idx, kind, model, txd, tex, color, text, fsize
 static Tex_ApplyRow(objectid, DBResult:r)
 {
 	new idx = DB_GetFieldInt(r, 1), color = DB_GetFieldInt(r, 6);
@@ -137,7 +137,7 @@ static Tex_ApplyRow(objectid, DBResult:r)
 	}
 }
 
-// | РІ С‚РµРєСЃС‚Рµ -> РїРµСЂРµРЅРѕСЃ СЃС‚СЂРѕРєРё
+// | в тексте -> перенос строки
 static Tex_ApplyText(objectid, idx, const text[], fsize, color)
 {
 	new buf[144];
@@ -149,7 +149,7 @@ static Tex_ApplyText(objectid, idx, const text[], fsize, color)
 	SetObjectMaterialText(objectid, "%s", idx, OBJECT_MATERIAL_SIZE_256x128, "Arial", fsize, true, color, 0, OBJECT_MATERIAL_TEXT_ALIGN_CENT, buf);
 }
 
-// РќР°РґРµС‚СЊ РЅР° РѕР±СЉРµРєС‚ РІСЃС‘ СЃРѕС…СЂР°РЅС‘РЅРЅРѕРµ РґР»СЏ РЅРµРіРѕ (РїРѕСЃР»Рµ РєРѕРїРёСЂРѕРІР°РЅРёСЏ / РїРµСЂРµСЃРѕР·РґР°РЅРёСЏ)
+// Надеть на объект всё сохранённое для него (после копирования / пересоздания)
 stock Tex_ApplyFor(dbid, objectid)
 {
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT obj, idx, kind, model, txd, tex, color, text, fsize FROM map_materials WHERE obj = %d", dbid);
@@ -164,7 +164,7 @@ stock Tex_ApplyFor(dbid, objectid)
 	return rows;
 }
 
-// РР· /mo copy: РїРµСЂРµРЅРµСЃС‚Рё РїРµСЂРµРєСЂР°СЃРєСѓ РЅР° РєРѕРїРёСЋ
+// Из /mo copy: перенести перекраску на копию
 stock Tex_OnMapCopy(srcDb, dstDb, dstObject)
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO map_materials (obj, idx, kind, model, txd, tex, color, text, fsize) SELECT %d, idx, kind, model, txd, tex, color, text, fsize FROM map_materials WHERE obj = %d",
@@ -172,14 +172,14 @@ stock Tex_OnMapCopy(srcDb, dstDb, dstObject)
 	Tex_ApplyFor(dstDb, dstObject);
 }
 
-// РР· /mo del
+// Из /mo del
 stock Tex_OnMapDelete(dbid)
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM map_materials WHERE obj = %d", dbid));
 }
 
-// РР· /mo export: СЃС‚СЂРѕРєРё SetObjectMaterial(Text) РґР»СЏ РѕР±СЉРµРєС‚Р° РІ РїРµСЂРµРјРµРЅРЅРѕР№ tmpobjid.
-// Р’РѕР·РІСЂР°С‰Р°РµС‚ С‡РёСЃР»Рѕ СЃС‚СЂРѕРє. countOnly вЂ” С‚РѕР»СЊРєРѕ РїРѕСЃС‡РёС‚Р°С‚СЊ.
+// Из /mo export: строки SetObjectMaterial(Text) для объекта в переменной tmpobjid.
+// Возвращает число строк. countOnly — только посчитать.
 stock Tex_Export(File:f, dbid, bool:countOnly = false)
 {
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT obj, idx, kind, model, txd, tex, color, text, fsize FROM map_materials WHERE obj = %d ORDER BY idx", dbid);
@@ -216,7 +216,7 @@ stock Tex_Export(File:f, dbid, bool:countOnly = false)
 }
 
 // ---------------------------------------------------------------------
-//  РР·РјРµРЅРµРЅРёРµ
+//  Изменение
 // ---------------------------------------------------------------------
 static Tex_SetTexture(playerid, s, idx, model, const txd[], const tex[], color)
 {
@@ -225,7 +225,7 @@ static Tex_SetTexture(playerid, s, idx, model, const txd[], const tex[], color)
 		dbid, idx, TEX_KIND_TEXTURE, model, txd, tex, color));
 	SetObjectMaterial(Map_ObjectOf(s), idx, model, txd, tex, color);
 	Admin_Log(playerid, "mt set", INVALID_PLAYER_ID, tex, model);
-	SendClientMessage(playerid, COLOR_GREEN, "РћР±СЉРµРєС‚ в„–%d, СЃР»РѕС‚ %d: %d %s %s. РќРµ С‚Рѕ РјРµСЃС‚Рѕ вЂ” РїРѕРїСЂРѕР±СѓР№ РґСЂСѓРіРѕР№ СЃР»РѕС‚.", s + 1, idx, model, txd, tex);
+	SendClientMessage(playerid, COLOR_GREEN, "Объект №%d, слот %d: %d %s %s. Не то место — попробуй другой слот.", s + 1, idx, model, txd, tex);
 }
 
 static Tex_SetText(playerid, s, idx, const text[], fsize, color)
@@ -235,10 +235,10 @@ static Tex_SetText(playerid, s, idx, const text[], fsize, color)
 		dbid, idx, TEX_KIND_TEXT, color, text, fsize));
 	Tex_ApplyText(Map_ObjectOf(s), idx, text, fsize, color);
 	Admin_Log(playerid, "mt text", INVALID_PLAYER_ID, text, idx);
-	SendClientMessage(playerid, COLOR_GREEN, "РћР±СЉРµРєС‚ в„–%d, СЃР»РѕС‚ %d: РЅР°РґРїРёСЃСЊ В«%sВ».", s + 1, idx, text);
+	SendClientMessage(playerid, COLOR_GREEN, "Объект №%d, слот %d: надпись «%s».", s + 1, idx, text);
 }
 
-// Р¦РІРµС‚: Р·Р°Р»РёС‚СЊ С†РІРµС‚РѕРј. Р•СЃР»Рё РІ СЃР»РѕС‚Рµ СѓР¶Рµ С‚РµРєСЃС‚СѓСЂР° вЂ” РїРѕРєСЂР°СЃРёС‚СЊ РµС‘, РёРЅР°С‡Рµ Р±РµР»Р°СЏ + С†РІРµС‚.
+// Цвет: залить цветом. Если в слоте уже текстура — покрасить её, иначе белая + цвет.
 static Tex_SetColor(playerid, s, idx, color)
 {
 	new dbid = Map_DbIdOf(s);
@@ -259,7 +259,7 @@ static Tex_SetColor(playerid, s, idx, color)
 	Tex_SetTexture(playerid, s, idx, model, txd, tex, color);
 }
 
-// РЈР±СЂР°С‚СЊ РїРµСЂРµРєСЂР°СЃРєСѓ: РІ SA-MP РµС‘ РЅРµР»СЊР·СЏ СЃРЅСЏС‚СЊ, РѕР±СЉРµРєС‚ РїРµСЂРµСЃРѕР·РґР°С‘С‚СЃСЏ
+// Убрать перекраску: в SA-MP её нельзя снять, объект пересоздаётся
 static Tex_Clear(playerid, s, idx)
 {
 	new dbid = Map_DbIdOf(s);
@@ -267,11 +267,11 @@ static Tex_Clear(playerid, s, idx)
 	else DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM map_materials WHERE obj = %d AND idx = %d", dbid, idx));
 	Map_Rebuild(s);
 	Admin_Log(playerid, "mt clear", INVALID_PLAYER_ID, "", idx);
-	if (idx < 0) SendClientMessage(playerid, COLOR_WHITE, "РЎ РѕР±СЉРµРєС‚Р° в„–%d СЃРЅСЏС‚Р° РІСЃСЏ РїРµСЂРµРєСЂР°СЃРєР°.", s + 1);
-	else SendClientMessage(playerid, COLOR_WHITE, "РћР±СЉРµРєС‚ в„–%d, СЃР»РѕС‚ %d: РїРµСЂРµРєСЂР°СЃРєР° СЃРЅСЏС‚Р°.", s + 1, idx);
+	if (idx < 0) SendClientMessage(playerid, COLOR_WHITE, "С объекта №%d снята вся перекраска.", s + 1);
+	else SendClientMessage(playerid, COLOR_WHITE, "Объект №%d, слот %d: перекраска снята.", s + 1, idx);
 }
 
-// "FF0000" -> 0xFFFF0000, "80FF0000" -> 0x80FF0000. Р’РѕР·РІСЂР°С‰Р°РµС‚ false, РµСЃР»Рё РЅРµ С†РІРµС‚.
+// "FF0000" -> 0xFFFF0000, "80FF0000" -> 0x80FF0000. Возвращает false, если не цвет.
 static bool:Tex_ParseColor(const str[], &color)
 {
 	new len = strlen(str), start = 0;
@@ -294,7 +294,7 @@ static bool:Tex_ParseColor(const str[], &color)
 	return true;
 }
 
-// РРјСЏ txd/С‚РµРєСЃС‚СѓСЂС‹: С‚РѕР»СЊРєРѕ Р»Р°С‚РёРЅРёС†Р°, С†РёС„СЂС‹, _ - . Рё РїСЂРѕР±РµР» РЅРµ РЅСѓР¶РµРЅ
+// Имя txd/текстуры: только латиница, цифры, _ - . и пробел не нужен
 static bool:Tex_ValidName(const str[])
 {
 	if (str[0] == '\0') return false;
@@ -312,7 +312,7 @@ static bool:Tex_NextIndex(const params[], &pos, &idx)
 }
 
 // ---------------------------------------------------------------------
-//  РћРєРЅР°
+//  Окна
 // ---------------------------------------------------------------------
 static Tex_ShowSlots(playerid)
 {
@@ -331,7 +331,7 @@ static Tex_ShowSlots(playerid)
 				if (DB_GetFieldInt(r, 1) == TEX_KIND_TEXT)
 				{
 					DB_GetFieldString(r, 3, name, sizeof name);
-					format(desc[idx], sizeof desc[], "{FFFF66}РЅР°РґРїРёСЃСЊ: %s", name);
+					format(desc[idx], sizeof desc[], "{FFFF66}надпись: %s", name);
 				}
 				else
 				{
@@ -344,22 +344,22 @@ static Tex_ShowSlots(playerid)
 		DB_FreeResultSet(r);
 	}
 	new text[TEX_SLOTS * 64], line[64];
-	strcat(text, "РЎР»РѕС‚\tРЎРµР№С‡Р°СЃ\n");
+	strcat(text, "Слот\tСейчас\n");
 	for (new i = 0; i < TEX_SLOTS; i++)
 	{
 		if (desc[i][0] != '\0') format(line, sizeof line, "%d\t%s\n", i, desc[i]);
-		else format(line, sizeof line, "%d\t{808080}РєР°Рє РІ РёРіСЂРµ\n", i);
+		else format(line, sizeof line, "%d\t{808080}как в игре\n", i);
 		strcat(text, line);
 	}
 	new title[64];
-	format(title, sizeof title, "РџРµСЂРµРєСЂР°СЃРєР° РѕР±СЉРµРєС‚Р° в„–%d (РјРѕРґРµР»СЊ %d)", s + 1, GetObjectModel(Map_ObjectOf(s)));
-	ShowPlayerDialog(playerid, DIALOG_TEX_SLOTS, DIALOG_STYLE_TABLIST_HEADERS, title, "%s", "Р’С‹Р±СЂР°С‚СЊ", "Р—Р°РєСЂС‹С‚СЊ", text);
+	format(title, sizeof title, "Перекраска объекта №%d (модель %d)", s + 1, GetObjectModel(Map_ObjectOf(s)));
+	ShowPlayerDialog(playerid, DIALOG_TEX_SLOTS, DIALOG_STYLE_TABLIST_HEADERS, title, "%s", "Выбрать", "Закрыть", text);
 }
 
 static Tex_ShowPick(playerid)
 {
 	new text[2400], line[96], n = 0;
-	strcat(text, "{FF6666}РЈР±СЂР°С‚СЊ РїРµСЂРµРєСЂР°СЃРєСѓ СЃР»РѕС‚Р°\n{66FF66}Р—Р°Р»РёС‚СЊ С†РІРµС‚РѕРј...\n{FFFF66}РќР°РґРїРёСЃСЊ...\n");
+	strcat(text, "{FF6666}Убрать перекраску слота\n{66FF66}Залить цветом...\n{FFFF66}Надпись...\n");
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, name, model, tex FROM texture_presets ORDER BY id LIMIT %d", TEX_LIST_MAX);
 	if (r != DBResult:0)
 	{
@@ -377,8 +377,8 @@ static Tex_ShowPick(playerid)
 	}
 	for (new i = n; i < TEX_LIST_MAX; i++) gTexList[playerid][i] = 0;
 	new title[48];
-	format(title, sizeof title, "РћР±СЉРµРєС‚ в„–%d, СЃР»РѕС‚ %d", gTexSlot[playerid] + 1, gTexIndex[playerid]);
-	ShowPlayerDialog(playerid, DIALOG_TEX_PICK, DIALOG_STYLE_LIST, title, "%s", "РќР°РґРµС‚СЊ", "РќР°Р·Р°Рґ", text);
+	format(title, sizeof title, "Объект №%d, слот %d", gTexSlot[playerid] + 1, gTexIndex[playerid]);
+	ShowPlayerDialog(playerid, DIALOG_TEX_PICK, DIALOG_STYLE_LIST, title, "%s", "Надеть", "Назад", text);
 }
 
 static Tex_ShowColors(playerid)
@@ -389,26 +389,26 @@ static Tex_ShowColors(playerid)
 		format(line, sizeof line, "{%06x}##### {FFFFFF}%s\n", gTexColors[i][tcColor] & 0xFFFFFF, gTexColors[i][tcName]);
 		strcat(text, line);
 	}
-	strcat(text, "{AFAFAF}РЎРІРѕР№ С†РІРµС‚: /mt color [СЃР»РѕС‚] FF8800");
-	ShowPlayerDialog(playerid, DIALOG_TEX_COLOR, DIALOG_STYLE_LIST, "Р¦РІРµС‚", "%s", "Р—Р°Р»РёС‚СЊ", "РќР°Р·Р°Рґ", text);
+	strcat(text, "{AFAFAF}Свой цвет: /mt color [слот] FF8800");
+	ShowPlayerDialog(playerid, DIALOG_TEX_COLOR, DIALOG_STYLE_LIST, "Цвет", "%s", "Залить", "Назад", text);
 }
 
 static Tex_Help(playerid)
 {
 	new text[1200];
-	strcat(text, "{FFFF00}РџРµСЂРµРєСЂР°СЃРєР° РѕР±СЉРµРєС‚РѕРІ РјР°РїРїРёРЅРіР° (РІРёРґРЅРѕ Рё РЅР° РџРљ, Рё РЅР° С‚РµР»РµС„РѕРЅРµ)\n{FFFFFF}");
-	strcat(text, "/mt вЂ” РѕРєРЅРѕ РґР»СЏ РѕР±СЉРµРєС‚Р°, РєРѕС‚РѕСЂС‹Р№ РґРІРёРіР°РµС€СЊ, РёР»Рё Р±Р»РёР¶Р°Р№С€РµРіРѕ   /mt [в„–] вЂ” РґР»СЏ РѕР±СЉРµРєС‚Р° в„–\n");
-	strcat(text, "/mt set [СЃР»РѕС‚] [РјРѕРґРµР»СЊ] [txd] [С‚РµРєСЃС‚СѓСЂР°] вЂ” Р»СЋР±Р°СЏ С‚РµРєСЃС‚СѓСЂР° GTA\n");
-	strcat(text, "/mt color [СЃР»РѕС‚] [С†РІРµС‚] вЂ” Р·Р°Р»РёС‚СЊ С†РІРµС‚РѕРј: FF8800 РёР»Рё СЃ РїСЂРѕР·СЂР°С‡РЅРѕСЃС‚СЊСЋ 80FF8800\n");
-	strcat(text, "/mt text [СЃР»РѕС‚] [СЂР°Р·РјРµСЂ] [С†РІРµС‚] [С‚РµРєСЃС‚] вЂ” РЅР°РґРїРёСЃСЊ, | вЂ” РЅРѕРІР°СЏ СЃС‚СЂРѕРєР°\n");
-	strcat(text, "/mt clear [СЃР»РѕС‚|all] вЂ” СЃРЅСЏС‚СЊ   /mt info вЂ” С‡С‚Рѕ РЅР°РґРµС‚Рѕ\n");
-	strcat(text, "/mt save [РЅР°Р·РІР°РЅРёРµ] [СЃР»РѕС‚] вЂ” Р·Р°РїРѕРјРЅРёС‚СЊ С‚РµРєСЃС‚СѓСЂСѓ СЃР»РѕС‚Р° РІ РѕР±С‰РёР№ СЃРїРёСЃРѕРє   /mt unsave [в„–]\n\n");
-	strcat(text, "{AFAFAF}РЎР»РѕС‚ 0вЂ“15 вЂ” С‡Р°СЃС‚СЊ РјРѕРґРµР»Рё, РїСЂРѕР±СѓР№ РїРѕ РѕС‡РµСЂРµРґРё.\nРўРµРєСЃС‚СѓСЂС‹: dev.prineside.com/ru/gtasa_samp_model_id/ (Сѓ РјРѕРґРµР»Рё РІРєР»Р°РґРєР° Textures)");
-	ShowPlayerDialog(playerid, DIALOG_TEX_HELP, DIALOG_STYLE_MSGBOX, "РџРµСЂРµРєСЂР°СЃРєР° /mt", "%s", "Р—Р°РєСЂС‹С‚СЊ", "", text);
+	strcat(text, "{FFFF00}Перекраска объектов маппинга (видно и на ПК, и на телефоне)\n{FFFFFF}");
+	strcat(text, "/mt — окно для объекта, который двигаешь, или ближайшего   /mt [№] — для объекта №\n");
+	strcat(text, "/mt set [слот] [модель] [txd] [текстура] — любая текстура GTA\n");
+	strcat(text, "/mt color [слот] [цвет] — залить цветом: FF8800 или с прозрачностью 80FF8800\n");
+	strcat(text, "/mt text [слот] [размер] [цвет] [текст] — надпись, | — новая строка\n");
+	strcat(text, "/mt clear [слот|all] — снять   /mt info — что надето\n");
+	strcat(text, "/mt save [название] [слот] — запомнить текстуру слота в общий список   /mt unsave [№]\n\n");
+	strcat(text, "{AFAFAF}Слот 0–15 — часть модели, пробуй по очереди.\nТекстуры: dev.prineside.com/ru/gtasa_samp_model_id/ (у модели вкладка Textures)");
+	ShowPlayerDialog(playerid, DIALOG_TEX_HELP, DIALOG_STYLE_MSGBOX, "Перекраска /mt", "%s", "Закрыть", "", text);
 }
 
 // ---------------------------------------------------------------------
-//  РљРѕРјР°РЅРґР° /mt
+//  Команда /mt
 // ---------------------------------------------------------------------
 stock bool:Cmd_Mt(playerid, const params[])
 {
@@ -423,7 +423,7 @@ stock bool:Cmd_Mt(playerid, const params[])
 			if (num >= 1 && num <= Map_Count()) s = num - 1;
 		}
 		else s = Map_SelectedSlot(playerid);
-		if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "РћР±СЉРµРєС‚ РЅРµ РЅР°Р№РґРµРЅ. РџРѕРґРѕР№РґРё Рє РѕР±СЉРµРєС‚Сѓ РёР· /mo РёР»Рё СѓРєР°Р¶Рё РЅРѕРјРµСЂ: /mt [в„–] (РЅРѕРјРµСЂР° вЂ” /mo near). РЎРїСЂР°РІРєР°: /mt help");
+		if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "Объект не найден. Подойди к объекту из /mo или укажи номер: /mt [№] (номера — /mo near). Справка: /mt help");
 		gTexSlot[playerid] = s;
 		Tex_ShowSlots(playerid);
 		return true;
@@ -436,7 +436,7 @@ stock bool:Cmd_Mt(playerid, const params[])
 	if (!strcmp(sub, "unsave", true))
 	{
 		new num;
-		if (!NextIntParam(params, pos, num) || num < 1) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /mt unsave [в„– РёР· СЃРїРёСЃРєР° РІ РѕРєРЅРµ /mt]");
+		if (!NextIntParam(params, pos, num) || num < 1) return SendClientMessage(playerid, COLOR_GREY, "Использование: /mt unsave [№ из списка в окне /mt]");
 		new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id FROM texture_presets ORDER BY id LIMIT 1 OFFSET %d", num - 1);
 		new id = 0;
 		if (r != DBResult:0)
@@ -444,20 +444,20 @@ stock bool:Cmd_Mt(playerid, const params[])
 			if (DB_GetRowCount(r) > 0) id = DB_GetFieldInt(r, 0);
 			DB_FreeResultSet(r);
 		}
-		if (id == 0) return SendClientMessage(playerid, COLOR_GREY, "Р’ СЃРїРёСЃРєРµ РЅРµС‚ в„–%d.", num);
+		if (id == 0) return SendClientMessage(playerid, COLOR_GREY, "В списке нет №%d.", num);
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM texture_presets WHERE id = %d", id));
-		return SendClientMessage(playerid, COLOR_WHITE, "РўРµРєСЃС‚СѓСЂР° в„–%d СѓР±СЂР°РЅР° РёР· СЃРїРёСЃРєР°.", num);
+		return SendClientMessage(playerid, COLOR_WHITE, "Текстура №%d убрана из списка.", num);
 	}
 
 	new s = Map_SelectedSlot(playerid);
-	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРё РѕР±СЉРµРєС‚: /mo edit [в„–] РёР»Рё РїРѕРґРѕР№РґРё Рє РЅРµРјСѓ Р±Р»РёР¶Рµ 30 Рј.");
+	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "Сначала выбери объект: /mo edit [№] или подойди к нему ближе 30 м.");
 	gTexSlot[playerid] = s;
 
 	if (!strcmp(sub, "info", true))
 	{
 		new DBResult:r = DB_ExecuteQuery(gDB, "SELECT idx, kind, model, txd, tex, color, text FROM map_materials WHERE obj = %d ORDER BY idx", Map_DbIdOf(s));
 		new rows = 0;
-		SendClientMessage(playerid, COLOR_YELLOW, "РћР±СЉРµРєС‚ в„–%d (РјРѕРґРµР»СЊ %d):", s + 1, GetObjectModel(Map_ObjectOf(s)));
+		SendClientMessage(playerid, COLOR_YELLOW, "Объект №%d (модель %d):", s + 1, GetObjectModel(Map_ObjectOf(s)));
 		if (r != DBResult:0)
 		{
 			rows = DB_GetRowCount(r);
@@ -467,19 +467,19 @@ stock bool:Cmd_Mt(playerid, const params[])
 				if (DB_GetFieldInt(r, 1) == TEX_KIND_TEXT)
 				{
 					DB_GetFieldString(r, 6, text, sizeof text);
-					SendClientMessage(playerid, COLOR_WHITE, " СЃР»РѕС‚ %d: РЅР°РґРїРёСЃСЊ В«%sВ», С†РІРµС‚ %08x", DB_GetFieldInt(r, 0), text, DB_GetFieldInt(r, 5));
+					SendClientMessage(playerid, COLOR_WHITE, " слот %d: надпись «%s», цвет %08x", DB_GetFieldInt(r, 0), text, DB_GetFieldInt(r, 5));
 				}
 				else
 				{
 					DB_GetFieldString(r, 3, txd, sizeof txd);
 					DB_GetFieldString(r, 4, tex, sizeof tex);
-					SendClientMessage(playerid, COLOR_WHITE, " СЃР»РѕС‚ %d: %d %s %s, С†РІРµС‚ %08x", DB_GetFieldInt(r, 0), DB_GetFieldInt(r, 2), txd, tex, DB_GetFieldInt(r, 5));
+					SendClientMessage(playerid, COLOR_WHITE, " слот %d: %d %s %s, цвет %08x", DB_GetFieldInt(r, 0), DB_GetFieldInt(r, 2), txd, tex, DB_GetFieldInt(r, 5));
 				}
 				DB_SelectNextRow(r);
 			}
 			DB_FreeResultSet(r);
 		}
-		if (rows == 0) SendClientMessage(playerid, COLOR_GREY, " РїРµСЂРµРєСЂР°СЃРєРё РЅРµС‚.");
+		if (rows == 0) SendClientMessage(playerid, COLOR_GREY, " перекраски нет.");
 		return true;
 	}
 	if (!strcmp(sub, "set", true))
@@ -487,9 +487,9 @@ stock bool:Cmd_Mt(playerid, const params[])
 		new idx, model, txd[32], tex[32], ctext[12], color = 0;
 		if (!Tex_NextIndex(params, pos, idx) || !NextIntParam(params, pos, model) || !NextParam(params, pos, txd) || !NextParam(params, pos, tex)
 			|| !Tex_ValidName(txd) || !Tex_ValidName(tex))
-			return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /mt set [СЃР»РѕС‚ 0-15] [РјРѕРґРµР»СЊ] [txd] [С‚РµРєСЃС‚СѓСЂР°] [С†РІРµС‚], РЅР°РїСЂРёРјРµСЂ /mt set 0 9514 711_sfw brick");
+			return SendClientMessage(playerid, COLOR_GREY, "Использование: /mt set [слот 0-15] [модель] [txd] [текстура] [цвет], например /mt set 0 9514 711_sfw brick");
 		if (NextParam(params, pos, ctext) && !Tex_ParseColor(ctext, color))
-			return SendClientMessage(playerid, COLOR_GREY, "Р¦РІРµС‚ РїРёС€РµС‚СЃСЏ С‚Р°Рє: FF8800 (РёР»Рё 80FF8800 СЃ РїСЂРѕР·СЂР°С‡РЅРѕСЃС‚СЊСЋ).");
+			return SendClientMessage(playerid, COLOR_GREY, "Цвет пишется так: FF8800 (или 80FF8800 с прозрачностью).");
 		Tex_SetTexture(playerid, s, idx, model, txd, tex, color);
 		return true;
 	}
@@ -497,7 +497,7 @@ stock bool:Cmd_Mt(playerid, const params[])
 	{
 		new idx, ctext[12], color;
 		if (!Tex_NextIndex(params, pos, idx) || !NextParam(params, pos, ctext) || !Tex_ParseColor(ctext, color))
-			return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /mt color [СЃР»РѕС‚ 0-15] [С†РІРµС‚], РЅР°РїСЂРёРјРµСЂ /mt color 0 FF8800");
+			return SendClientMessage(playerid, COLOR_GREY, "Использование: /mt color [слот 0-15] [цвет], например /mt color 0 FF8800");
 		Tex_SetColor(playerid, s, idx, color);
 		return true;
 	}
@@ -506,20 +506,20 @@ stock bool:Cmd_Mt(playerid, const params[])
 		new idx, fsize, ctext[12], color, text[100];
 		if (!Tex_NextIndex(params, pos, idx) || !NextIntParam(params, pos, fsize) || !NextParam(params, pos, ctext) || !Tex_ParseColor(ctext, color)
 			|| !RestParam(params, pos, text))
-			return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /mt text [СЃР»РѕС‚] [СЂР°Р·РјРµСЂ 10-60] [С†РІРµС‚] [С‚РµРєСЃС‚], РЅР°РїСЂРёРјРµСЂ /mt text 0 30 FFFFFF РњСЌСЂРёСЏ|Р›РѕСЃ-РЎР°РЅС‚РѕСЃ");
-		if (fsize < 10 || fsize > 60) return SendClientMessage(playerid, COLOR_GREY, "Р Р°Р·РјРµСЂ С€СЂРёС„С‚Р° РѕС‚ 10 РґРѕ 60.");
+			return SendClientMessage(playerid, COLOR_GREY, "Использование: /mt text [слот] [размер 10-60] [цвет] [текст], например /mt text 0 30 FFFFFF Мэрия|Лос-Сантос");
+		if (fsize < 10 || fsize > 60) return SendClientMessage(playerid, COLOR_GREY, "Размер шрифта от 10 до 60.");
 		Tex_SetText(playerid, s, idx, text, fsize, color);
 		return true;
 	}
 	if (!strcmp(sub, "clear", true))
 	{
 		new arg[8], idx = -1;
-		if (!NextParam(params, pos, arg)) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /mt clear [СЃР»РѕС‚ 0-15] РёР»Рё /mt clear all");
+		if (!NextParam(params, pos, arg)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /mt clear [слот 0-15] или /mt clear all");
 		if (strcmp(arg, "all", true))
 		{
-			if (!IsNumeric(arg)) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /mt clear [СЃР»РѕС‚ 0-15] РёР»Рё /mt clear all");
+			if (!IsNumeric(arg)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /mt clear [слот 0-15] или /mt clear all");
 			idx = strval(arg);
-			if (idx < 0 || idx >= TEX_SLOTS) return SendClientMessage(playerid, COLOR_GREY, "РЎР»РѕС‚ РѕС‚ 0 РґРѕ 15.");
+			if (idx < 0 || idx >= TEX_SLOTS) return SendClientMessage(playerid, COLOR_GREY, "Слот от 0 до 15.");
 		}
 		Tex_Clear(playerid, s, idx);
 		return true;
@@ -528,7 +528,7 @@ stock bool:Cmd_Mt(playerid, const params[])
 	{
 		new name[32], idx;
 		if (!NextParam(params, pos, name) || !Tex_NextIndex(params, pos, idx))
-			return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /mt save [РЅР°Р·РІР°РЅРёРµ_Р±РµР·_РїСЂРѕР±РµР»РѕРІ] [СЃР»РѕС‚], РЅР°РїСЂРёРјРµСЂ /mt save РїР»РёС‚РєР°_РєСѓС…РЅСЏ 0");
+			return SendClientMessage(playerid, COLOR_GREY, "Использование: /mt save [название_без_пробелов] [слот], например /mt save плитка_кухня 0");
 		new DBResult:r = DB_ExecuteQuery(gDB, "SELECT model, txd, tex FROM map_materials WHERE obj = %d AND idx = %d AND kind = %d", Map_DbIdOf(s), idx, TEX_KIND_TEXTURE);
 		new model = -1, txd[32], tex[32];
 		if (r != DBResult:0)
@@ -541,18 +541,18 @@ stock bool:Cmd_Mt(playerid, const params[])
 			}
 			DB_FreeResultSet(r);
 		}
-		if (model == -1) return SendClientMessage(playerid, COLOR_GREY, "Р’ СЃР»РѕС‚Рµ %d РѕР±СЉРµРєС‚Р° в„–%d РЅРµС‚ С‚РµРєСЃС‚СѓСЂС‹. РЎРЅР°С‡Р°Р»Р° РЅР°РґРµРЅСЊ РµС‘: /mt set", idx, s + 1);
+		if (model == -1) return SendClientMessage(playerid, COLOR_GREY, "В слоте %d объекта №%d нет текстуры. Сначала надень её: /mt set", idx, s + 1);
 		new author[MAX_PLAYER_NAME];
 		GetPlayerName(playerid, author, sizeof author);
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO texture_presets (name, model, txd, tex, author) VALUES ('%q', %d, '%q', '%q', '%q')", name, model, txd, tex, author));
-		return SendClientMessage(playerid, COLOR_GREEN, "РўРµРєСЃС‚СѓСЂР° %s СЃРѕС…СЂР°РЅРµРЅР° РІ СЃРїРёСЃРѕРє РєР°Рє В«%sВ».", tex, name);
+		return SendClientMessage(playerid, COLOR_GREEN, "Текстура %s сохранена в список как «%s».", tex, name);
 	}
 	Tex_Help(playerid);
 	return true;
 }
 
 // ---------------------------------------------------------------------
-//  РћС‚РІРµС‚С‹ РЅР° РѕРєРЅР° (РёР· OnDialogResponse)
+//  Ответы на окна (из OnDialogResponse)
 // ---------------------------------------------------------------------
 stock Tex_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
@@ -585,8 +585,8 @@ stock Tex_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			else if (listitem == 1) Tex_ShowColors(playerid);
 			else if (listitem == 2)
 			{
-				ShowPlayerDialog(playerid, DIALOG_TEX_TEXT, DIALOG_STYLE_INPUT, "РќР°РґРїРёСЃСЊ",
-					"РўРµРєСЃС‚ РЅР°РґРїРёСЃРё (Р±РµР»С‹Р№, СЂР°Р·РјРµСЂ 30). | вЂ” РЅРѕРІР°СЏ СЃС‚СЂРѕРєР°.\nР¦РІРµС‚ Рё СЂР°Р·РјРµСЂ: /mt text [СЃР»РѕС‚] [СЂР°Р·РјРµСЂ] [С†РІРµС‚] [С‚РµРєСЃС‚]", "Р“РѕС‚РѕРІРѕ", "РќР°Р·Р°Рґ");
+				ShowPlayerDialog(playerid, DIALOG_TEX_TEXT, DIALOG_STYLE_INPUT, "Надпись",
+					"Текст надписи (белый, размер 30). | — новая строка.\nЦвет и размер: /mt text [слот] [размер] [цвет] [текст]", "Готово", "Назад");
 			}
 			else
 			{

@@ -1,23 +1,23 @@
 // =====================================================================
-//  gps.inc вЂ” РїСЂР°РІРєР° РјР°СЂРєРµСЂРѕРІ РІ РёРіСЂРµ (/markers) Рё GPS РґР»СЏ РёРіСЂРѕРєРѕРІ (/gps).
+//  gps.inc — правка маркеров в игре (/markers) и GPS для игроков (/gps).
 //
-//  /markers (/mk), Р°РґРјРёРЅ 4+:
-//    Сѓ РјР°СЂРєРµСЂР° вЂ” РјРµРЅСЋ: РїРµСЂРµРЅРµСЃС‚Рё, РІРёРґ (С†РёР»РёРЅРґСЂ, СЃС‚СЂРµР»РєР°, Р·РЅР°С‡РѕРє),
-//    РІС‹С€Рµ/РЅРёР¶Рµ, Р·РЅР°С‡РѕРє РЅР° РєР°СЂС‚Рµ, СЂР°Р·РґРµР» Рё РЅР°Р·РІР°РЅРёРµ РІ GPS, РІРµСЂРЅСѓС‚СЊ РєР°Рє Р±С‹Р»Рѕ;
-//    РІРґР°Р»Рё РѕС‚ РјР°СЂРєРµСЂРѕРІ вЂ” РїРѕСЃС‚Р°РІРёС‚СЊ СЃРІРѕР№ РјР°СЂРєРµСЂ, РґРѕР±Р°РІРёС‚СЊ РјРµСЃС‚Рѕ РІ GPS,
-//    СЃРїРёСЃРѕРє РІСЃРµС… РјР°СЂРєРµСЂРѕРІ СЃ С‚РµР»РµРїРѕСЂС‚РѕРј.
-//    РџРµСЂРµРЅРѕСЃ: В«РџРµСЂРµРЅРµСЃС‚РёВ», РґРѕР№С‚Рё РґРѕ РЅРѕРІРѕРіРѕ РјРµСЃС‚Р°, СЃРЅРѕРІР° /markers вЂ” В«РџРѕСЃС‚Р°РІРёС‚СЊВ».
-//    Р”Р»СЏ РІС…РѕРґР° РІ Р·РґР°РЅРёРµ РІСЃС‚Р°РЅСЊ Р»РёС†РѕРј С‚СѓРґР°, РєСѓРґР° РёРіСЂРѕРє СЃРјРѕС‚СЂРёС‚ РїРѕСЃР»Рµ РІС…РѕРґР°.
-//  /gps вЂ” СЂР°Р·РґРµР»С‹ РјРµСЃС‚ (Р±РµСЂСѓС‚СЃСЏ РёР· РјР°СЂРєРµСЂРѕРІ), РјРѕСЏ РјР°С€РёРЅР°, РјРѕР№ РґРѕРј.
-//    РњРµС‚РєР° СЃС‚Р°РІРёС‚СЃСЏ РЅР° РєР°СЂС‚Сѓ Рё СЂР°РґР°СЂ, РІРЅРёР·Сѓ СЌРєСЂР°РЅР° вЂ” СЂР°СЃСЃС‚РѕСЏРЅРёРµ.
+//  /markers (/mk), админ 4+:
+//    у маркера — меню: перенести, вид (цилиндр, стрелка, значок),
+//    выше/ниже, значок на карте, раздел и название в GPS, вернуть как было;
+//    вдали от маркеров — поставить свой маркер, добавить место в GPS,
+//    список всех маркеров с телепортом.
+//    Перенос: «Перенести», дойти до нового места, снова /markers — «Поставить».
+//    Для входа в здание встань лицом туда, куда игрок смотрит после входа.
+//  /gps — разделы мест (берутся из маркеров), моя машина, мой дом.
+//    Метка ставится на карту и радар, внизу экрана — расстояние.
 // =====================================================================
 
 #define MARKER_ADMIN        4
 #define MARKER_NEAR         4.0
 #define MARKER_STEP         0.25
-#define MARKER_ICON_SLOTS   98      // Р·РЅР°С‡РєРё РјР°СЂРєРµСЂРѕРІ: СЃР»РѕС‚С‹ 0..98
-#define GPS_ICON_SLOT       99      // СЃР»РѕС‚ 99 вЂ” РјРµС‚РєР° GPS
-#define GPS_ICON            41      // Р·РЅР°С‡РѕРє В«РїСѓС‚РµРІР°СЏ С‚РѕС‡РєР°В»
+#define MARKER_ICON_SLOTS   98      // значки маркеров: слоты 0..98
+#define GPS_ICON_SLOT       99      // слот 99 — метка GPS
+#define GPS_ICON            41      // значок «путевая точка»
 #define GPS_ARRIVE          12.0
 #define GPS_LIST_MAX        60
 #define MK_LIST_PAGE        40
@@ -26,16 +26,16 @@
 
 static const gMkTypeNames[MK_TYPES][] =
 {
-	"РЎРІРѕС‘ РјРµСЃС‚Рѕ", "Р’С…РѕРґ", "Р”РѕРј", "Р‘РёР·РЅРµСЃ", "Р‘Р°РЅРєРѕРјР°С‚", "РђР—РЎ", "РЎРўРћ", "Р¤СЂР°РєС†РёСЏ", "Р Р°Р±РѕС‚Р°", "РђРІС‚РѕСЃР°Р»РѕРЅ", "РђРІС‚РѕС€РєРѕР»Р°", "РўРѕС‡РєР° СЃРёСЃС‚РµРј"
+	"Своё место", "Вход", "Дом", "Бизнес", "Банкомат", "АЗС", "СТО", "Фракция", "Работа", "Автосалон", "Автошкола", "Точка систем"
 };
 
 static const gGpsCatNames[GPS_CATS][] =
 {
-	"РќРµ РїРѕРєР°Р·С‹РІР°С‚СЊ", "Р“РѕСЃСѓС‡СЂРµР¶РґРµРЅРёСЏ", "Р Р°Р±РѕС‚С‹", "РњР°РіР°Р·РёРЅС‹ Рё Р±РёР·РЅРµСЃС‹", "РўСЂР°РЅСЃРїРѕСЂС‚",
-	"Р—Р°РїСЂР°РІРєРё", "Р‘Р°РЅРєРѕРјР°С‚С‹", "Р¤СЂР°РєС†РёРё", "Р Р°Р·РІР»РµС‡РµРЅРёСЏ", "Р”СЂСѓРіРѕРµ"
+	"Не показывать", "Госучреждения", "Работы", "Магазины и бизнесы", "Транспорт",
+	"Заправки", "Банкоматы", "Фракции", "Развлечения", "Другое"
 };
 
-// Р—РЅР°С‡РєРё РЅР° РєР°СЂС‚Рµ (РЅРѕРјРµСЂ Р·РЅР°С‡РєР° SA-MP Рё РЅР°Р·РІР°РЅРёРµ)
+// Значки на карте (номер значка SA-MP и название)
 enum E_MK_ICON
 {
 	miId,
@@ -43,20 +43,20 @@ enum E_MK_ICON
 }
 static const gMkIcons[][E_MK_ICON] =
 {
-	{ 30, "РџРѕР»РёС†РёСЏ" },        { 22, "Р‘РѕР»СЊРЅРёС†Р°" },      { 36, "РЁРєРѕР»Р°" },
-	{ 52, "Р”РµРЅСЊРіРё, Р±Р°РЅРє" },   { 55, "РњР°С€РёРЅР°" },        { 63, "РџРѕРєСЂР°СЃРєР°" },
-	{ 27, "РўСЋРЅРёРЅРі" },         { 51, "Р“СЂСѓР·РѕРІРёРє" },      { 6,  "РћСЂСѓР¶РёРµ" },
-	{ 45, "РћРґРµР¶РґР°" },         { 49, "Р‘Р°СЂ" },           { 48, "РљР»СѓР±" },
-	{ 50, "Р РµСЃС‚РѕСЂР°РЅ" },       { 10, "Р‘СѓСЂРіРµСЂРЅР°СЏ" },     { 29, "РџРёС†С†Р°" },
-	{ 14, "РљСѓСЂРёС†Р°" },         { 17, "Р—Р°РєСѓСЃРѕС‡РЅР°СЏ" },    { 7,  "РџР°СЂРёРєРјР°С…РµСЂ" },
-	{ 39, "РўР°С‚Сѓ" },           { 54, "РЎРїРѕСЂС‚Р·Р°Р»" },      { 25, "РљР°Р·РёРЅРѕ" },
-	{ 31, "Р”РѕРј Р·РµР»С‘РЅС‹Р№" },    { 32, "Р”РѕРј РєСЂР°СЃРЅС‹Р№" },   { 35, "РЎРѕС…СЂР°РЅРµРЅРёРµ" },
-	{ 33, "Р¤Р»Р°Рі" },           { 5,  "РЎР°РјРѕР»С‘С‚" },       { 9,  "Р›РѕРґРєР°" },
+	{ 30, "Полиция" },        { 22, "Больница" },      { 36, "Школа" },
+	{ 52, "Деньги, банк" },   { 55, "Машина" },        { 63, "Покраска" },
+	{ 27, "Тюнинг" },         { 51, "Грузовик" },      { 6,  "Оружие" },
+	{ 45, "Одежда" },         { 49, "Бар" },           { 48, "Клуб" },
+	{ 50, "Ресторан" },       { 10, "Бургерная" },     { 29, "Пицца" },
+	{ 14, "Курица" },         { 17, "Закусочная" },    { 7,  "Парикмахер" },
+	{ 39, "Тату" },           { 54, "Спортзал" },      { 25, "Казино" },
+	{ 31, "Дом зелёный" },    { 32, "Дом красный" },   { 35, "Сохранение" },
+	{ 33, "Флаг" },           { 5,  "Самолёт" },       { 9,  "Лодка" },
 	{ 62, "Grove Street" },   { 59, "Ballas" },        { 58, "Aztecas" },
-	{ 60, "Vagos" },          { 56, "РўРѕС‡РєР°" }
+	{ 60, "Vagos" },          { 56, "Точка" }
 };
 
-// РџСѓРЅРєС‚С‹ РјРµРЅСЋ РјР°СЂРєРµСЂР°
+// Пункты меню маркера
 enum
 {
 	MA_CARRY,
@@ -71,8 +71,8 @@ enum
 	MA_DELETE
 }
 
-static gMkSel[MAX_PLAYERS] = { -1, ... };           // РјР°СЂРєРµСЂ РІ РѕС‚РєСЂС‹С‚РѕРј РјРµРЅСЋ
-static gMkCarry[MAX_PLAYERS] = { -1, ... };         // РјР°СЂРєРµСЂ, РєРѕС‚РѕСЂС‹Р№ РЅРµСЃС‘Рј
+static gMkSel[MAX_PLAYERS] = { -1, ... };           // маркер в открытом меню
+static gMkCarry[MAX_PLAYERS] = { -1, ... };         // маркер, который несём
 static gMkActs[MAX_PLAYERS][MK_MENU_MAX];
 static gMkActCount[MAX_PLAYERS];
 static gMkListMap[MAX_PLAYERS][MK_LIST_PAGE + 1];
@@ -112,7 +112,7 @@ stock Gps_OnDisconnect(playerid)
 }
 
 // ---------------------------------------------------------------------
-//  Р—РЅР°С‡РєРё РЅР° РєР°СЂС‚Рµ
+//  Значки на карте
 // ---------------------------------------------------------------------
 stock Markers_ShowIcons(playerid)
 {
@@ -135,14 +135,14 @@ stock Markers_RefreshIcons()
 }
 
 // ---------------------------------------------------------------------
-//  РќР°Р·РІР°РЅРёСЏ РґР»СЏ РјРµРЅСЋ
+//  Названия для меню
 // ---------------------------------------------------------------------
 static Mk_StyleName(model)
 {
 	new s[40];
 	if (model == 0)
 	{
-		strcat(s, "Р±РµР· Р·РЅР°С‡РєР°");
+		strcat(s, "без значка");
 		return s;
 	}
 	for (new i = 0; i < sizeof gMkStyles; i++)
@@ -153,7 +153,7 @@ static Mk_StyleName(model)
 			return s;
 		}
 	}
-	format(s, sizeof s, "РјРѕРґРµР»СЊ %d", model);
+	format(s, sizeof s, "модель %d", model);
 	return s;
 }
 
@@ -162,7 +162,7 @@ static Mk_IconName(icon)
 	new s[32];
 	if (icon < 0)
 	{
-		strcat(s, "РЅРµС‚");
+		strcat(s, "нет");
 		return s;
 	}
 	for (new i = 0; i < sizeof gMkIcons; i++)
@@ -173,19 +173,19 @@ static Mk_IconName(icon)
 			return s;
 		}
 	}
-	format(s, sizeof s, "в„–%d", icon);
+	format(s, sizeof s, "№%d", icon);
 	return s;
 }
 
 static Gps_DistText(Float:d)
 {
 	new s[16];
-	if (d < 1000.0) format(s, sizeof s, "%d Рј", floatround(d));
-	else format(s, sizeof s, "%.1f РєРј", d / 1000.0);
+	if (d < 1000.0) format(s, sizeof s, "%d м", floatround(d));
+	else format(s, sizeof s, "%.1f км", d / 1000.0);
 	return s;
 }
 
-// РЎРєРѕРїРёСЂРѕРІР°С‚СЊ РІРІРѕРґ РёРіСЂРѕРєР°: Р±РµР· %, РЅРµ РґР»РёРЅРЅРµРµ size-1; | вЂ” РЅРѕРІР°СЏ СЃС‚СЂРѕРєР° (РµСЃР»Рё lines)
+// Скопировать ввод игрока: без %, не длиннее size-1; | — новая строка (если lines)
 static Mk_CleanInput(dest[], size, const src[], bool:lines)
 {
 	new n = 0;
@@ -228,18 +228,18 @@ stock bool:Cmd_Markers(playerid)
 	new c = gMkCarry[playerid];
 	if (Marker_IsValid(c))
 	{
-		ShowPlayerDialog(playerid, DIALOG_MK_PLACE, DIALOG_STYLE_MSGBOX, "РџРµСЂРµРЅРѕСЃ РјР°СЂРєРµСЂР°",
-			"{FFFFFF}РџРѕСЃС‚Р°РІРёС‚СЊ В«%sВ» С‚СѓРґР°, РіРґРµ С‚С‹ СЃС‚РѕРёС€СЊ?\n\n{AAAAAA}Р”Р»СЏ РІС…РѕРґР° РІ Р·РґР°РЅРёРµ РІСЃС‚Р°РЅСЊ Р»РёС†РѕРј С‚СѓРґР°, РєСѓРґР° РёРіСЂРѕРє Р±СѓРґРµС‚ СЃРјРѕС‚СЂРµС‚СЊ РїРѕСЃР»Рµ РІС…РѕРґР°.",
-			"РџРѕСЃС‚Р°РІРёС‚СЊ", "РћС‚РјРµРЅР°", gMarker[c][mkName]);
+		ShowPlayerDialog(playerid, DIALOG_MK_PLACE, DIALOG_STYLE_MSGBOX, "Перенос маркера",
+			"{FFFFFF}Поставить «%s» туда, где ты стоишь?\n\n{AAAAAA}Для входа в здание встань лицом туда, куда игрок будет смотреть после входа.",
+			"Поставить", "Отмена", gMarker[c][mkName]);
 		return true;
 	}
 	gMkCarry[playerid] = -1;
 	new m = Mk_Nearest(playerid, MARKER_NEAR);
 	if (m == -1)
 	{
-		ShowPlayerDialog(playerid, DIALOG_MK_NEW, DIALOG_STYLE_LIST, "РњР°СЂРєРµСЂС‹ {AAAAAA}(СЂСЏРґРѕРј РЅРµС‚)",
-			"РџРѕСЃС‚Р°РІРёС‚СЊ СЃРІРѕР№ РјР°СЂРєРµСЂ Р·РґРµСЃСЊ (Р¶С‘Р»С‚С‹Р№ С†РёР»РёРЅРґСЂ)\nР”РѕР±Р°РІРёС‚СЊ РјРµСЃС‚Рѕ РІ GPS Р·РґРµСЃСЊ (Р±РµР· Р·РЅР°С‡РєР°)\nР’СЃРµ РјР°СЂРєРµСЂС‹ (С‚РµР»РµРїРѕСЂС‚ Рє РЅРёРј)",
-			"Р’С‹Р±СЂР°С‚СЊ", "Р—Р°РєСЂС‹С‚СЊ");
+		ShowPlayerDialog(playerid, DIALOG_MK_NEW, DIALOG_STYLE_LIST, "Маркеры {AAAAAA}(рядом нет)",
+			"Поставить свой маркер здесь (жёлтый цилиндр)\nДобавить место в GPS здесь (без значка)\nВсе маркеры (телепорт к ним)",
+			"Выбрать", "Закрыть");
 		return true;
 	}
 	Mk_ShowMenu(playerid, m);
@@ -263,30 +263,30 @@ static Mk_ShowMenu(playerid, m)
 	new text[1000], line[128];
 	new bool:custom = (gMarker[m][mkType] == MK_CUSTOM);
 
-	Mk_AddAct(playerid, text, MA_CARRY, "РџРµСЂРµРЅРµСЃС‚Рё РІ РґСЂСѓРіРѕРµ РјРµСЃС‚Рѕ");
+	Mk_AddAct(playerid, text, MA_CARRY, "Перенести в другое место");
 	if (gMarker[m][mkModel] < 0)
-		format(line, sizeof line, "Р’РёРґ: {FFFF00}%s {AAAAAA}(РєР°Рє РІ РєРѕРґРµ)", Mk_StyleName(Marker_Model(m)));
+		format(line, sizeof line, "Вид: {FFFF00}%s {AAAAAA}(как в коде)", Mk_StyleName(Marker_Model(m)));
 	else
-		format(line, sizeof line, "Р’РёРґ: {FFFF00}%s", Mk_StyleName(Marker_Model(m)));
+		format(line, sizeof line, "Вид: {FFFF00}%s", Mk_StyleName(Marker_Model(m)));
 	Mk_AddAct(playerid, text, MA_STYLE, line);
-	Mk_AddAct(playerid, text, MA_UP, "РџРѕРґРЅСЏС‚СЊ Р·РЅР°С‡РѕРє РЅР° 0.25 Рј");
-	Mk_AddAct(playerid, text, MA_DOWN, "РћРїСѓСЃС‚РёС‚СЊ Р·РЅР°С‡РѕРє РЅР° 0.25 Рј");
-	format(line, sizeof line, "Р—РЅР°С‡РѕРє РЅР° РєР°СЂС‚Рµ: {FFFF00}%s", Mk_IconName(gMarker[m][mkIcon]));
+	Mk_AddAct(playerid, text, MA_UP, "Поднять значок на 0.25 м");
+	Mk_AddAct(playerid, text, MA_DOWN, "Опустить значок на 0.25 м");
+	format(line, sizeof line, "Значок на карте: {FFFF00}%s", Mk_IconName(gMarker[m][mkIcon]));
 	Mk_AddAct(playerid, text, MA_ICON, line);
 	format(line, sizeof line, "GPS: {FFFF00}%s", gGpsCatNames[gMarker[m][mkGps]]);
 	Mk_AddAct(playerid, text, MA_GPS, line);
-	format(line, sizeof line, "РќР°Р·РІР°РЅРёРµ: {FFFF00}%s", gMarker[m][mkName]);
+	format(line, sizeof line, "Название: {FFFF00}%s", gMarker[m][mkName]);
 	Mk_AddAct(playerid, text, MA_NAME, line);
 	if (custom)
 	{
-		Mk_AddAct(playerid, text, MA_LABEL, "РќР°РґРїРёСЃСЊ РЅР°Рґ РјР°СЂРєРµСЂРѕРј");
-		Mk_AddAct(playerid, text, MA_DELETE, "{FF6347}РЈРґР°Р»РёС‚СЊ");
+		Mk_AddAct(playerid, text, MA_LABEL, "Надпись над маркером");
+		Mk_AddAct(playerid, text, MA_DELETE, "{FF6347}Удалить");
 	}
-	else Mk_AddAct(playerid, text, MA_RESET, "{AAAAAA}Р’РµСЂРЅСѓС‚СЊ РєР°Рє Р±С‹Р»Рѕ РІ РєРѕРґРµ");
+	else Mk_AddAct(playerid, text, MA_RESET, "{AAAAAA}Вернуть как было в коде");
 
 	new title[80];
 	format(title, sizeof title, "%s: %s", gMkTypeNames[gMarker[m][mkType]], gMarker[m][mkName]);
-	ShowPlayerDialog(playerid, DIALOG_MK_MENU, DIALOG_STYLE_LIST, title, "%s", "Р’С‹Р±СЂР°С‚СЊ", "Р—Р°РєСЂС‹С‚СЊ", text);
+	ShowPlayerDialog(playerid, DIALOG_MK_MENU, DIALOG_STYLE_LIST, title, "%s", "Выбрать", "Закрыть", text);
 }
 
 static Mk_OnAction(playerid, m, act)
@@ -296,19 +296,19 @@ static Mk_OnAction(playerid, m, act)
 		case MA_CARRY:
 		{
 			gMkCarry[playerid] = m;
-			SendClientMessage(playerid, COLOR_ADMIN, "РњР°СЂРєРµСЂ В«%sВ» РІР·СЏС‚. Р’СЃС‚Р°РЅСЊ РЅР° РЅРѕРІРѕРµ РјРµСЃС‚Рѕ Рё СЃРЅРѕРІР° РІРІРµРґРё /markers.", gMarker[m][mkName]);
+			SendClientMessage(playerid, COLOR_ADMIN, "Маркер «%s» взят. Встань на новое место и снова введи /markers.", gMarker[m][mkName]);
 		}
 		case MA_STYLE:
 		{
 			new text[1200], line[64];
-			format(text, sizeof text, "{AAAAAA}РљР°Рє РІ РєРѕРґРµ (%s)", Mk_StyleName(gMarker[m][mkDefModel]));
+			format(text, sizeof text, "{AAAAAA}Как в коде (%s)", Mk_StyleName(gMarker[m][mkDefModel]));
 			for (new i = 0; i < sizeof gMkStyles; i++)
 			{
 				format(line, sizeof line, "\n%s", gMkStyles[i][msName]);
 				strcat(text, line);
 			}
-			strcat(text, "\nР‘РµР· Р·РЅР°С‡РєР° (С‚РѕР»СЊРєРѕ РЅР°РґРїРёСЃСЊ)");
-			ShowPlayerDialog(playerid, DIALOG_MK_STYLE, DIALOG_STYLE_LIST, "Р’РёРґ РјР°СЂРєРµСЂР°", "%s", "Р’С‹Р±СЂР°С‚СЊ", "РќР°Р·Р°Рґ", text);
+			strcat(text, "\nБез значка (только надпись)");
+			ShowPlayerDialog(playerid, DIALOG_MK_STYLE, DIALOG_STYLE_LIST, "Вид маркера", "%s", "Выбрать", "Назад", text);
 		}
 		case MA_UP, MA_DOWN:
 		{
@@ -321,13 +321,13 @@ static Mk_OnAction(playerid, m, act)
 		case MA_ICON:
 		{
 			new text[1200], line[64];
-			strcat(text, "{AAAAAA}Р‘РµР· Р·РЅР°С‡РєР°");
+			strcat(text, "{AAAAAA}Без значка");
 			for (new i = 0; i < sizeof gMkIcons; i++)
 			{
 				format(line, sizeof line, "\n%s {AAAAAA}(%d)", gMkIcons[i][miName], gMkIcons[i][miId]);
 				strcat(text, line);
 			}
-			ShowPlayerDialog(playerid, DIALOG_MK_ICON, DIALOG_STYLE_LIST, "Р—РЅР°С‡РѕРє РЅР° РєР°СЂС‚Рµ", "%s", "Р’С‹Р±СЂР°С‚СЊ", "РќР°Р·Р°Рґ", text);
+			ShowPlayerDialog(playerid, DIALOG_MK_ICON, DIALOG_STYLE_LIST, "Значок на карте", "%s", "Выбрать", "Назад", text);
 		}
 		case MA_GPS:
 		{
@@ -337,30 +337,30 @@ static Mk_OnAction(playerid, m, act)
 				if (i > 0) strcat(text, "\n");
 				strcat(text, gGpsCatNames[i]);
 			}
-			ShowPlayerDialog(playerid, DIALOG_MK_GPS, DIALOG_STYLE_LIST, "Р Р°Р·РґРµР» РІ GPS", "%s", "Р’С‹Р±СЂР°С‚СЊ", "РќР°Р·Р°Рґ", text);
+			ShowPlayerDialog(playerid, DIALOG_MK_GPS, DIALOG_STYLE_LIST, "Раздел в GPS", "%s", "Выбрать", "Назад", text);
 		}
 		case MA_NAME:
 		{
-			ShowPlayerDialog(playerid, DIALOG_MK_NAME, DIALOG_STYLE_INPUT, "РќР°Р·РІР°РЅРёРµ",
-				"{FFFFFF}РќР°Р·РІР°РЅРёРµ РјРµСЃС‚Р° РґР»СЏ GPS Рё СЃРїРёСЃРєРѕРІ (РґРѕ 31 Р±СѓРєРІС‹).\nРЎРµР№С‡Р°СЃ: {FFFF00}%s\n{AAAAAA}РџСѓСЃС‚Рѕ вЂ” РєР°Рє РІ РєРѕРґРµ.",
-				"РЎРѕС…СЂР°РЅРёС‚СЊ", "РќР°Р·Р°Рґ", gMarker[m][mkName]);
+			ShowPlayerDialog(playerid, DIALOG_MK_NAME, DIALOG_STYLE_INPUT, "Название",
+				"{FFFFFF}Название места для GPS и списков (до 31 буквы).\nСейчас: {FFFF00}%s\n{AAAAAA}Пусто — как в коде.",
+				"Сохранить", "Назад", gMarker[m][mkName]);
 		}
 		case MA_LABEL:
 		{
-			ShowPlayerDialog(playerid, DIALOG_MK_LABEL, DIALOG_STYLE_INPUT, "РќР°РґРїРёСЃСЊ РЅР°Рґ РјР°СЂРєРµСЂРѕРј",
-				"{FFFFFF}РўРµРєСЃС‚ РЅР°Рґ РјР°СЂРєРµСЂРѕРј. РќРѕРІР°СЏ СЃС‚СЂРѕРєР° вЂ” СЃРёРјРІРѕР» |\n{AAAAAA}РџСѓСЃС‚Рѕ вЂ” Р±РµР· РЅР°РґРїРёСЃРё.",
-				"РЎРѕС…СЂР°РЅРёС‚СЊ", "РќР°Р·Р°Рґ");
+			ShowPlayerDialog(playerid, DIALOG_MK_LABEL, DIALOG_STYLE_INPUT, "Надпись над маркером",
+				"{FFFFFF}Текст над маркером. Новая строка — символ |\n{AAAAAA}Пусто — без надписи.",
+				"Сохранить", "Назад");
 		}
 		case MA_RESET:
 		{
 			Mk_Reset(m);
-			SendClientMessage(playerid, COLOR_ADMIN, "РњР°СЂРєРµСЂ В«%sВ» РІРµСЂРЅСѓР»СЃСЏ Рє РЅР°СЃС‚СЂРѕР№РєР°Рј РёР· РєРѕРґР°.", gMarker[m][mkName]);
+			SendClientMessage(playerid, COLOR_ADMIN, "Маркер «%s» вернулся к настройкам из кода.", gMarker[m][mkName]);
 			Mk_ShowMenu(playerid, m);
 		}
 		case MA_DELETE:
 		{
-			ShowPlayerDialog(playerid, DIALOG_MK_DELETE, DIALOG_STYLE_MSGBOX, "РЈРґР°Р»РёС‚СЊ РјР°СЂРєРµСЂ",
-				"{FFFFFF}РЈРґР°Р»РёС‚СЊ В«%sВ»?", "РЈРґР°Р»РёС‚СЊ", "РќР°Р·Р°Рґ", gMarker[m][mkName]);
+			ShowPlayerDialog(playerid, DIALOG_MK_DELETE, DIALOG_STYLE_MSGBOX, "Удалить маркер",
+				"{FFFFFF}Удалить «%s»?", "Удалить", "Назад", gMarker[m][mkName]);
 		}
 	}
 }
@@ -404,7 +404,7 @@ static Mk_PlaceHere(playerid, m)
 	Marker_Save(m);
 	Marker_OnMoved(m);
 	if (gMarker[m][mkIcon] >= 0) Markers_RefreshIcons();
-	SendClientMessage(playerid, COLOR_ADMIN, "РњР°СЂРєРµСЂ В«%sВ» РїРµСЂРµРЅРµСЃС‘РЅ СЃСЋРґР° Рё СЃРѕС…СЂР°РЅС‘РЅ.", gMarker[m][mkName]);
+	SendClientMessage(playerid, COLOR_ADMIN, "Маркер «%s» перенесён сюда и сохранён.", gMarker[m][mkName]);
 }
 
 static Mk_NextCustomRef()
@@ -422,11 +422,11 @@ static Mk_CreateHere(playerid, bool:withModel)
 	new Float:x, Float:y, Float:z, Float:a;
 	GetPlayerPos(playerid, x, y, z);
 	GetPlayerFacingAngle(playerid, a);
-	new m = Marker_Create(MK_CUSTOM, Mk_NextCustomRef(), "РќРѕРІРѕРµ РјРµСЃС‚Рѕ", 0, x, y, z,
+	new m = Marker_Create(MK_CUSTOM, Mk_NextCustomRef(), "Новое место", 0, x, y, z,
 		GetPlayerVirtualWorld(playerid), GetPlayerInterior(playerid), withModel ? GPS_NONE : GPS_OTHER, a);
 	if (m == -1)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РЎР»РёС€РєРѕРј РјРЅРѕРіРѕ РјР°СЂРєРµСЂРѕРІ (MAX_MARKERS).");
+		SendClientMessage(playerid, COLOR_GREY, "Слишком много маркеров (MAX_MARKERS).");
 		return;
 	}
 	if (withModel) gMarker[m][mkModel] = 19197;
@@ -450,7 +450,7 @@ static Mk_ShowList(playerid, page)
 		}
 		if (n == MK_LIST_PAGE)
 		{
-			strcat(text, "\n{FFFF00}Р”Р°Р»СЊС€Рµ >>");
+			strcat(text, "\n{FFFF00}Дальше >>");
 			gMkListMap[playerid][n++] = -2;
 			break;
 		}
@@ -461,14 +461,14 @@ static Mk_ShowList(playerid, page)
 	}
 	if (n == 0)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РњР°СЂРєРµСЂРѕРІ Р±РѕР»СЊС€Рµ РЅРµС‚.");
+		SendClientMessage(playerid, COLOR_GREY, "Маркеров больше нет.");
 		return;
 	}
 	gMkListCount[playerid] = n;
 	gMkListPage[playerid] = page;
 	new title[48];
-	format(title, sizeof title, "Р’СЃРµ РјР°СЂРєРµСЂС‹, СЃС‚СЂ. %d", page + 1);
-	ShowPlayerDialog(playerid, DIALOG_MK_LIST, DIALOG_STYLE_LIST, title, "%s", "РўРµР»РµРїРѕСЂС‚", "Р—Р°РєСЂС‹С‚СЊ", text);
+	format(title, sizeof title, "Все маркеры, стр. %d", page + 1);
+	ShowPlayerDialog(playerid, DIALOG_MK_LIST, DIALOG_STYLE_LIST, title, "%s", "Телепорт", "Закрыть", text);
 }
 
 // ---------------------------------------------------------------------
@@ -493,9 +493,9 @@ stock bool:Cmd_Gps(playerid)
 	}
 	new text[800], line[80];
 	gGpsMenuCount[playerid] = 0;
-	if (gGpsOn[playerid]) Gps_AddMenu(playerid, text, -1, "{FF6347}РЈР±СЂР°С‚СЊ РјРµС‚РєСѓ GPS");
-	Gps_AddMenu(playerid, text, -2, "{FFFF00}РњРѕСЏ РјР°С€РёРЅР°");
-	Gps_AddMenu(playerid, text, -3, "{FFFF00}РњРѕР№ РґРѕРј");
+	if (gGpsOn[playerid]) Gps_AddMenu(playerid, text, -1, "{FF6347}Убрать метку GPS");
+	Gps_AddMenu(playerid, text, -2, "{FFFF00}Моя машина");
+	Gps_AddMenu(playerid, text, -3, "{FFFF00}Мой дом");
 	for (new c = 1; c < GPS_CATS; c++)
 	{
 		if (count[c] == 0) continue;
@@ -503,9 +503,9 @@ stock bool:Cmd_Gps(playerid)
 		Gps_AddMenu(playerid, text, c, line);
 	}
 	if (Player[playerid][pAdmin] >= MARKER_ADMIN)
-		ShowPlayerDialog(playerid, DIALOG_GPS_MAIN, DIALOG_STYLE_LIST, "GPS {AAAAAA}(РїСЂР°РІРёС‚СЊ РјРµСЃС‚Р°: /markers)", "%s", "Р’С‹Р±СЂР°С‚СЊ", "Р—Р°РєСЂС‹С‚СЊ", text);
+		ShowPlayerDialog(playerid, DIALOG_GPS_MAIN, DIALOG_STYLE_LIST, "GPS {AAAAAA}(править места: /markers)", "%s", "Выбрать", "Закрыть", text);
 	else
-		ShowPlayerDialog(playerid, DIALOG_GPS_MAIN, DIALOG_STYLE_LIST, "GPS", "%s", "Р’С‹Р±СЂР°С‚СЊ", "Р—Р°РєСЂС‹С‚СЊ", text);
+		ShowPlayerDialog(playerid, DIALOG_GPS_MAIN, DIALOG_STYLE_LIST, "GPS", "%s", "Выбрать", "Закрыть", text);
 	return true;
 }
 
@@ -519,7 +519,7 @@ static Gps_ShowCat(playerid, cat)
 	{
 		if (!gMarker[m][mkUsed] || gMarker[m][mkGps] != cat) continue;
 		new Float:d = VectorSize(px - gMarker[m][mkX], py - gMarker[m][mkY], pz - gMarker[m][mkZ]);
-		// РІСЃС‚Р°РІРєР° РїРѕ РІРѕР·СЂР°СЃС‚Р°РЅРёСЋ СЂР°СЃСЃС‚РѕСЏРЅРёСЏ
+		// вставка по возрастанию расстояния
 		new j = n;
 		while (j > 0 && dist[j - 1] > d)
 		{
@@ -533,7 +533,7 @@ static Gps_ShowCat(playerid, cat)
 	}
 	if (n == 0)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Р’ СЌС‚РѕРј СЂР°Р·РґРµР»Рµ РїРѕРєР° РЅРµС‚ РјРµСЃС‚.");
+		SendClientMessage(playerid, COLOR_GREY, "В этом разделе пока нет мест.");
 		return;
 	}
 	gGpsListCount[playerid] = n;
@@ -541,10 +541,10 @@ static Gps_ShowCat(playerid, cat)
 	for (new i = 0; i < n; i++)
 	{
 		if (i > 0) strcat(text, "\n");
-		format(line, sizeof line, "%s {AAAAAA}вЂ” %s", gMarker[gGpsList[playerid][i]][mkName], Gps_DistText(dist[i]));
+		format(line, sizeof line, "%s {AAAAAA}— %s", gMarker[gGpsList[playerid][i]][mkName], Gps_DistText(dist[i]));
 		strcat(text, line);
 	}
-	ShowPlayerDialog(playerid, DIALOG_GPS_LIST, DIALOG_STYLE_LIST, gGpsCatNames[cat], "%s", "РњРµС‚РєР°", "РќР°Р·Р°Рґ", text);
+	ShowPlayerDialog(playerid, DIALOG_GPS_LIST, DIALOG_STYLE_LIST, gGpsCatNames[cat], "%s", "Метка", "Назад", text);
 }
 
 static Gps_Set(playerid, Float:x, Float:y, Float:z, const name[])
@@ -566,10 +566,10 @@ static Gps_Set(playerid, Float:x, Float:y, Float:z, const name[])
 		PlayerTextDrawShow(playerid, gGpsTD[playerid]);
 	}
 	Gps_Update(playerid);
-	SendClientMessage(playerid, COLOR_YELLOW, "GPS: РјРµС‚РєР° В«%sВ» РЅР° РєР°СЂС‚Рµ Рё СЂР°РґР°СЂРµ. РЈР±СЂР°С‚СЊ: /gps", name);
+	SendClientMessage(playerid, COLOR_YELLOW, "GPS: метка «%s» на карте и радаре. Убрать: /gps", name);
 }
 
-// РџРѕСЃС‚Р°РІРёС‚СЊ РјРµС‚РєСѓ GPS РёР· РґСЂСѓРіРёС… РјРѕРґСѓР»РµР№
+// Поставить метку GPS из других модулей
 stock Gps_SetPoint(playerid, Float:x, Float:y, Float:z, const name[])
 {
 	Gps_Set(playerid, x, y, z, name);
@@ -593,7 +593,7 @@ static Gps_Update(playerid)
 	if (d < GPS_ARRIVE)
 	{
 		Gps_Clear(playerid);
-		SendClientMessage(playerid, COLOR_YELLOW, "GPS: С‚С‹ РЅР° РјРµСЃС‚Рµ.");
+		SendClientMessage(playerid, COLOR_YELLOW, "GPS: ты на месте.");
 		return;
 	}
 	if (gGpsTD[playerid] == INVALID_PLAYER_TEXT_DRAW) return;
@@ -619,19 +619,19 @@ static Gps_OnMain(playerid, listitem)
 		case -1:
 		{
 			Gps_Clear(playerid);
-			SendClientMessage(playerid, COLOR_YELLOW, "GPS: РјРµС‚РєР° СѓР±СЂР°РЅР°.");
+			SendClientMessage(playerid, COLOR_YELLOW, "GPS: метка убрана.");
 		}
 		case -2:
 		{
 			new v = gPlayerVeh[playerid];
 			if (v == INVALID_VEHICLE_ID)
 			{
-				SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ РјР°С€РёРЅС‹.");
+				SendClientMessage(playerid, COLOR_GREY, "У тебя нет машины.");
 				return;
 			}
 			new Float:x, Float:y, Float:z;
 			GetVehiclePos(v, x, y, z);
-			Gps_Set(playerid, x, y, z, "РњРѕСЏ РјР°С€РёРЅР°");
+			Gps_Set(playerid, x, y, z, "Моя машина");
 		}
 		case -3:
 		{
@@ -639,17 +639,17 @@ static Gps_OnMain(playerid, listitem)
 			if (h == -1) h = House_GetRented(playerid);
 			if (h == -1)
 			{
-				SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ РґРѕРјР°.");
+				SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
 				return;
 			}
-			Gps_Set(playerid, House[h][hX], House[h][hY], House[h][hZ], "РњРѕР№ РґРѕРј");
+			Gps_Set(playerid, House[h][hX], House[h][hY], House[h][hZ], "Мой дом");
 		}
 		default: Gps_ShowCat(playerid, act);
 	}
 }
 
 // ---------------------------------------------------------------------
-//  РћРєРЅР°
+//  Окна
 // ---------------------------------------------------------------------
 stock Markers_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
@@ -700,7 +700,7 @@ stock Markers_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			if (!Marker_IsValid(m)) return 1;
 			Teleport_SaveBack(playerid);
 			Teleport_Player(playerid, gMarker[m][mkX] + 1.0, gMarker[m][mkY], gMarker[m][mkZ], gMarker[m][mkA], gMarker[m][mkInterior], gMarker[m][mkWorld]);
-			SendClientMessage(playerid, COLOR_ADMIN, "РўС‹ Сѓ РјР°СЂРєРµСЂР° В«%sВ». РњРµРЅСЋ: /markers", gMarker[m][mkName]);
+			SendClientMessage(playerid, COLOR_ADMIN, "Ты у маркера «%s». Меню: /markers", gMarker[m][mkName]);
 			return 1;
 		}
 		case DIALOG_MK_PLACE:
@@ -709,7 +709,7 @@ stock Markers_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			gMkCarry[playerid] = -1;
 			if (!Marker_IsValid(c)) return 1;
 			if (response) Mk_PlaceHere(playerid, c);
-			else SendClientMessage(playerid, COLOR_GREY, "РџРµСЂРµРЅРѕСЃ РѕС‚РјРµРЅС‘РЅ, РјР°СЂРєРµСЂ РѕСЃС‚Р°Р»СЃСЏ РЅР° РјРµСЃС‚Рµ.");
+			else SendClientMessage(playerid, COLOR_GREY, "Перенос отменён, маркер остался на месте.");
 			return 1;
 		}
 	}
@@ -793,7 +793,7 @@ stock Markers_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 				Mk_ShowMenu(playerid, m);
 				return 1;
 			}
-			SendClientMessage(playerid, COLOR_ADMIN, "РњР°СЂРєРµСЂ В«%sВ» СѓРґР°Р»С‘РЅ.", gMarker[m][mkName]);
+			SendClientMessage(playerid, COLOR_ADMIN, "Маркер «%s» удалён.", gMarker[m][mkName]);
 			Marker_Destroy(m, true);
 			gMkSel[playerid] = -1;
 		}

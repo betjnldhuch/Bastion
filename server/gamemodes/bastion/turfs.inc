@@ -1,23 +1,23 @@
 // =====================================================================
-//  turfs.inc вЂ” СЂР°Р№РѕРЅС‹ Р±Р°РЅРґ Рё РІРѕР№РЅС‹ Р·Р° РЅРёС….
+//  turfs.inc — районы банд и войны за них.
 //
-//  РљР°СЂС‚Р° РїРѕРґРµР»РµРЅР° РЅР° СЂР°Р№РѕРЅС‹ (С†РІРµС‚РЅС‹Рµ РєРІР°РґСЂР°С‚С‹ РЅР° СЂР°РґР°СЂРµ). Р¦РІРµС‚ СЂР°Р№РѕРЅР° вЂ”
-//  С†РІРµС‚ Р±Р°РЅРґС‹, РєРѕС‚РѕСЂР°СЏ РёРј РІР»Р°РґРµРµС‚. РЎРµСЂС‹Р№ вЂ” РЅРёС‡РµР№.
+//  Карта поделена на районы (цветные квадраты на радаре). Цвет района —
+//  цвет банды, которая им владеет. Серый — ничей.
 //
-//  РљР°Рє Р·Р°С…РІР°С‚РёС‚СЊ СЂР°Р№РѕРЅ:
-//  1. Р§Р»РµРЅ Р±Р°РЅРґС‹ СЂР°РЅРіР° TURF_MIN_RANK+ РІСЃС‚Р°С‘С‚ РІ С‡СѓР¶РѕР№ (РёР»Рё РЅРёС‡РµР№) СЂР°Р№РѕРЅ
-//     Рё РІРІРѕРґРёС‚ /capture.
-//  2. Р Р°Р№РѕРЅ РјРёРіР°РµС‚ Сѓ РІСЃРµС…, Р±Р°РЅРґС‹ РїРѕР»СѓС‡Р°СЋС‚ СЃРѕРѕР±С‰РµРЅРёРµ. Р—Р°С…РІР°С‚ РґР»РёС‚СЃСЏ
-//     TURF_CAPTURE_TIME СЃРµРєСѓРЅРґ.
-//  3. РћС‡РєРё: +1 Р·Р° РєР°Р¶РґРѕРµ СѓР±РёР№СЃС‚РІРѕ РІСЂР°РіР° РІ СЂР°Р№РѕРЅРµ Рё +1 Р·Р° РєР°Р¶РґРѕРіРѕ Р¶РёРІРѕРіРѕ
-//     Р±РѕР№С†Р°, РєРѕС‚РѕСЂС‹Р№ СЃС‚РѕРёС‚ РІ СЂР°Р№РѕРЅРµ РІ РєРѕРЅС†Рµ. Р‘РѕР»СЊС€Рµ РѕС‡РєРѕРІ Сѓ РЅР°РїР°РґР°СЋС‰РёС… вЂ”
-//     СЂР°Р№РѕРЅ РёС…. РќРёС‡СЊСЏ вЂ” СЂР°Р№РѕРЅ РѕСЃС‚Р°С‘С‚СЃСЏ Сѓ Р·Р°С‰РёС‚РЅРёРєРѕРІ.
+//  Как захватить район:
+//  1. Член банды ранга TURF_MIN_RANK+ встаёт в чужой (или ничей) район
+//     и вводит /capture.
+//  2. Район мигает у всех, банды получают сообщение. Захват длится
+//     TURF_CAPTURE_TIME секунд.
+//  3. Очки: +1 за каждое убийство врага в районе и +1 за каждого живого
+//     бойца, который стоит в районе в конце. Больше очков у нападающих —
+//     район их. Ничья — район остаётся у защитников.
 //
-//  РљР°Р¶РґС‹Р№ PayDay С‡Р»РµРЅС‹ Р±Р°РЅРґС‹ РѕРЅР»Р°Р№РЅ РїРѕР»СѓС‡Р°СЋС‚ TURF_INCOME Р·Р° РєР°Р¶РґС‹Р№ СЂР°Р№РѕРЅ.
-//  Р’СЂРµРјСЏ, РєРѕРіРґР° РјРѕР¶РЅРѕ Р·Р°С…РІР°С‚С‹РІР°С‚СЊ, Р·Р°РґР°С‘С‚СЃСЏ РІ config.inc.
+//  Каждый PayDay члены банды онлайн получают TURF_INCOME за каждый район.
+//  Время, когда можно захватывать, задаётся в config.inc.
 //
-//  РђРґРјРёРЅС‹ (4+): /addturf [СЂР°Р·РјРµСЂ] [РЅР°Р·РІР°РЅРёРµ] вЂ” РЅРѕРІС‹Р№ СЂР°Р№РѕРЅ РІРѕРєСЂСѓРі СЃРµР±СЏ,
-//  /delturf вЂ” СѓРґР°Р»РёС‚СЊ СЂР°Р№РѕРЅ, РІ РєРѕС‚РѕСЂРѕРј СЃС‚РѕРёС€СЊ.
+//  Админы (4+): /addturf [размер] [название] — новый район вокруг себя,
+//  /delturf — удалить район, в котором стоишь.
 // =====================================================================
 
 #define MAX_TURFS           40
@@ -30,21 +30,21 @@ enum E_TURF
 	Float:tMinY,
 	Float:tMaxX,
 	Float:tMaxY,
-	tOwner,             // FACTION_* Р±Р°РЅРґС‹ (0 = РЅРёС‡РµР№)
-	tZone,              // id Р·РѕРЅС‹ РЅР° СЂР°РґР°СЂРµ
-	tLastWar            // РєРѕРіРґР° РїРѕСЃР»РµРґРЅРёР№ СЂР°Р· Р°С‚Р°РєРѕРІР°Р»Рё (gettime)
+	tOwner,             // FACTION_* банды (0 = ничей)
+	tZone,              // id зоны на радаре
+	tLastWar            // когда последний раз атаковали (gettime)
 }
 new Turf[MAX_TURFS][E_TURF];
 new gTurfCount = 0;
 
-// РўРµРєСѓС‰Р°СЏ РІРѕР№РЅР° (РѕРґРЅР° РЅР° РІРµСЃСЊ СЃРµСЂРІРµСЂ)
-new gWarTurf = -1;          // РєР°РєРѕР№ СЂР°Р№РѕРЅ Р°С‚Р°РєСѓСЋС‚ (-1 = РІРѕР№РЅС‹ РЅРµС‚)
-new gWarAttacker;           // Р±Р°РЅРґР°-РЅР°РїР°РґР°СЋС‰РёР№
-new gWarDefender;           // Р±Р°РЅРґР°-Р·Р°С‰РёС‚РЅРёРє (0 = СЂР°Р№РѕРЅ Р±С‹Р» РЅРёС‡РµР№)
+// Текущая война (одна на весь сервер)
+new gWarTurf = -1;          // какой район атакуют (-1 = войны нет)
+new gWarAttacker;           // банда-нападающий
+new gWarDefender;           // банда-защитник (0 = район был ничей)
 new gWarAttackScore;
 new gWarDefendScore;
 
-// Р Р°Р№РѕРЅС‹ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ (СЃРѕР·РґР°СЋС‚СЃСЏ РїСЂРё РїРµСЂРІРѕРј Р·Р°РїСѓСЃРєРµ). РљРѕРѕСЂРґРёРЅР°С‚С‹ РїСЂРёРјРµСЂРЅС‹Рµ.
+// Районы по умолчанию (создаются при первом запуске). Координаты примерные.
 enum E_TURF_DEF
 {
 	tdName[32],
@@ -67,7 +67,7 @@ static const gTurfDefaults[][E_TURF_DEF] =
 	{ "Willowfield",   2280.0, -2060.0, 2520.0, -1890.0, FACTION_NONE }
 };
 
-// Р¦РІРµС‚ СЂР°Р№РѕРЅР° РЅР° СЂР°РґР°СЂРµ (РїРѕР»СѓРїСЂРѕР·СЂР°С‡РЅС‹Р№)
+// Цвет района на радаре (полупрозрачный)
 stock Turf_GetColor(t)
 {
 	if (!Faction_IsGang(Turf[t][tOwner])) return 0xFFFFFF40;
@@ -82,7 +82,7 @@ stock bool:Turf_IsPlayerIn(playerid, t)
 	return (x >= Turf[t][tMinX] && x <= Turf[t][tMaxX] && y >= Turf[t][tMinY] && y <= Turf[t][tMaxY]);
 }
 
-// Р’ РєР°РєРѕРј СЂР°Р№РѕРЅРµ СЃС‚РѕРёС‚ РёРіСЂРѕРє (-1 = РЅРё РІ РєР°РєРѕРј)
+// В каком районе стоит игрок (-1 = ни в каком)
 stock Turf_GetAt(playerid)
 {
 	for (new t = 0; t < gTurfCount; t++)
@@ -102,7 +102,7 @@ stock Turf_CountOwned(f)
 	return count;
 }
 
-// Р¤СЂР°РєС†РёСЋ СѓРґР°Р»РёР»Рё (/delfaction): РµС‘ СЂР°Р№РѕРЅС‹ СЃС‚Р°РЅРѕРІСЏС‚СЃСЏ РЅРёС‡СЊРёРјРё
+// Фракцию удалили (/delfaction): её районы становятся ничьими
 stock Turfs_FreeFaction(f)
 {
 	for (new t = 0; t < gTurfCount; t++)
@@ -114,7 +114,7 @@ stock Turfs_FreeFaction(f)
 	}
 }
 
-// Р¦РІРµС‚ С„СЂР°РєС†РёРё СЃРјРµРЅРёР»Рё (/fcolor, /fedit): РїРµСЂРµРєСЂР°СЃРёС‚СЊ СЂР°Р№РѕРЅС‹ РЅР° СЂР°РґР°СЂРµ
+// Цвет фракции сменили (/fcolor, /fedit): перекрасить районы на радаре
 stock Turfs_Recolor()
 {
 	for (new t = 0; t < gTurfCount; t++) GangZoneShowForAll(Turf[t][tZone], Turf_GetColor(t));
@@ -180,7 +180,7 @@ stock Turfs_Init()
 	printf("[Turfs] Loaded %d turfs.", gTurfCount);
 }
 
-// РџРѕРєР°Р·Р°С‚СЊ СЂР°Р№РѕРЅС‹ РёРіСЂРѕРєСѓ, РєРѕС‚РѕСЂС‹Р№ С‚РѕР»СЊРєРѕ С‡С‚Рѕ Р·Р°С€С‘Р» (РёР· OnPlayerSpawn)
+// Показать районы игроку, который только что зашёл (из OnPlayerSpawn)
 stock Turfs_ShowForPlayer(playerid)
 {
 	for (new t = 0; t < gTurfCount; t++)
@@ -190,7 +190,7 @@ stock Turfs_ShowForPlayer(playerid)
 	}
 }
 
-// РЎРѕРѕР±С‰РµРЅРёРµ РѕР±РµРёРј Р±Р°РЅРґР°Рј, РєРѕС‚РѕСЂС‹Рµ РІРѕСЋСЋС‚
+// Сообщение обеим бандам, которые воюют
 stock Turf_WarMessage(const message[])
 {
 	for (new i = 0; i < MAX_PLAYERS; i++)
@@ -202,7 +202,7 @@ stock Turf_WarMessage(const message[])
 	}
 }
 
-// РР· OnPlayerDeath: РѕС‡РєРё Р·Р° СѓР±РёР№СЃС‚РІР° РІРѕ РІСЂРµРјСЏ РІРѕР№РЅС‹
+// Из OnPlayerDeath: очки за убийства во время войны
 stock Turfs_OnDeath(playerid, killerid)
 {
 	if (gWarTurf == -1 || killerid == INVALID_PLAYER_ID || !IsPlayerConnected(killerid)) return;
@@ -213,13 +213,13 @@ stock Turfs_OnDeath(playerid, killerid)
 	if (kf == gWarAttacker && vf == gWarDefender && vf != FACTION_NONE)
 	{
 		gWarAttackScore++;
-		format(msg, sizeof msg, "[Р’РѕР№РЅР°] %s СѓР±РёР» Р·Р°С‰РёС‚РЅРёРєР°. РЎС‡С‘С‚: РЅР°РїР°РґР°СЋС‰РёРµ %d вЂ” Р·Р°С‰РёС‚РЅРёРєРё %d", GetRPName(killerid), gWarAttackScore, gWarDefendScore);
+		format(msg, sizeof msg, "[Война] %s убил защитника. Счёт: нападающие %d — защитники %d", GetRPName(killerid), gWarAttackScore, gWarDefendScore);
 		Turf_WarMessage(msg);
 	}
 	else if (kf == gWarDefender && kf != FACTION_NONE && vf == gWarAttacker)
 	{
 		gWarDefendScore++;
-		format(msg, sizeof msg, "[Р’РѕР№РЅР°] %s СѓР±РёР» РЅР°РїР°РґР°СЋС‰РµРіРѕ. РЎС‡С‘С‚: РЅР°РїР°РґР°СЋС‰РёРµ %d вЂ” Р·Р°С‰РёС‚РЅРёРєРё %d", GetRPName(killerid), gWarAttackScore, gWarDefendScore);
+		format(msg, sizeof msg, "[Война] %s убил нападающего. Счёт: нападающие %d — защитники %d", GetRPName(killerid), gWarAttackScore, gWarDefendScore);
 		Turf_WarMessage(msg);
 	}
 }
@@ -230,7 +230,7 @@ public OnTurfWarEnd()
 	new t = gWarTurf;
 	if (t == -1) return 1;
 
-	// +1 РѕС‡РєРѕ Р·Р° РєР°Р¶РґРѕРіРѕ Р¶РёРІРѕРіРѕ Р±РѕР№С†Р° РІ СЂР°Р№РѕРЅРµ
+	// +1 очко за каждого живого бойца в районе
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!IsPlayerConnected(i) || !Player[i][pLogged] || !Turf_IsPlayerIn(i, t)) continue;
@@ -244,12 +244,12 @@ public OnTurfWarEnd()
 	{
 		Turf[t][tOwner] = gWarAttacker;
 		Turf_Save(t);
-		SendClientMessageToAll(Faction_GetColor(gWarAttacker), "[Р’РѕР№РЅР°] В«%sВ» Р·Р°С…РІР°С‚РёР»Рё СЂР°Р№РѕРЅ %s! РЎС‡С‘С‚ %d:%d.",
+		SendClientMessageToAll(Faction_GetColor(gWarAttacker), "[Война] «%s» захватили район %s! Счёт %d:%d.",
 			Faction_GetName(gWarAttacker), Turf[t][tName], gWarAttackScore, gWarDefendScore);
 	}
 	else
 	{
-		SendClientMessageToAll(COLOR_ORANGE, "[Р’РѕР№РЅР°] Р—Р°С…РІР°С‚ СЂР°Р№РѕРЅР° %s РїСЂРѕРІР°Р»РёР»СЃСЏ. РЎС‡С‘С‚ %d:%d.",
+		SendClientMessageToAll(COLOR_ORANGE, "[Война] Захват района %s провалился. Счёт %d:%d.",
 			Turf[t][tName], gWarAttackScore, gWarDefendScore);
 	}
 	GangZoneShowForAll(Turf[t][tZone], Turf_GetColor(t));
@@ -258,7 +258,7 @@ public OnTurfWarEnd()
 	return 1;
 }
 
-// Р—Р°СЂРїР»Р°С‚Р° Р±Р°РЅРґС‹ Р·Р° СЂР°Р№РѕРЅС‹ РЅР° PayDay. Р’РѕР·РІСЂР°С‰Р°РµС‚ СЃСѓРјРјСѓ.
+// Зарплата банды за районы на PayDay. Возвращает сумму.
 stock Turfs_GetIncome(playerid)
 {
 	new f = Player[playerid][pFaction];
@@ -267,42 +267,42 @@ stock Turfs_GetIncome(playerid)
 }
 
 // ---------------------------------------------------------------------
-//  РљРѕРјР°РЅРґС‹
+//  Команды
 // ---------------------------------------------------------------------
 stock bool:Cmd_Turfs(playerid)
 {
-	SendClientMessage(playerid, COLOR_ORANGE, "Р Р°Р№РѕРЅС‹ Р±Р°РЅРґ:");
+	SendClientMessage(playerid, COLOR_ORANGE, "Районы банд:");
 	for (new t = 0; t < gTurfCount; t++)
 	{
 		if (Faction_IsGang(Turf[t][tOwner]))
-			SendClientMessage(playerid, Faction_GetColor(Turf[t][tOwner]), " %s вЂ” %s", Turf[t][tName], Faction_GetName(Turf[t][tOwner]));
+			SendClientMessage(playerid, Faction_GetColor(Turf[t][tOwner]), " %s — %s", Turf[t][tName], Faction_GetName(Turf[t][tOwner]));
 		else
-			SendClientMessage(playerid, COLOR_GREY, " %s вЂ” РЅРёС‡РµР№", Turf[t][tName]);
+			SendClientMessage(playerid, COLOR_GREY, " %s — ничей", Turf[t][tName]);
 	}
 	if (gWarTurf != -1)
-		SendClientMessage(playerid, COLOR_RED, "РЎРµР№С‡Р°СЃ РёРґС‘С‚ Р·Р°С…РІР°С‚ СЂР°Р№РѕРЅР° %s.", Turf[gWarTurf][tName]);
+		SendClientMessage(playerid, COLOR_RED, "Сейчас идёт захват района %s.", Turf[gWarTurf][tName]);
 	return true;
 }
 
 stock bool:Cmd_Capture(playerid)
 {
 	new f = Player[playerid][pFaction];
-	if (!Faction_IsGang(f)) return SendClientMessage(playerid, COLOR_GREY, "Р—Р°С…РІР°С‚С‹РІР°С‚СЊ СЂР°Р№РѕРЅС‹ РјРѕРіСѓС‚ С‚РѕР»СЊРєРѕ Р±Р°РЅРґС‹.");
+	if (!Faction_IsGang(f)) return SendClientMessage(playerid, COLOR_GREY, "Захватывать районы могут только банды.");
 	if (Player[playerid][pRank] < TURF_MIN_RANK)
-		return SendClientMessage(playerid, COLOR_GREY, "РќР°С‡Р°С‚СЊ Р·Р°С…РІР°С‚ РјРѕР¶РЅРѕ СЃ СЂР°РЅРіР° %d.", TURF_MIN_RANK);
-	if (gWarTurf != -1) return SendClientMessage(playerid, COLOR_GREY, "РЈР¶Рµ РёРґС‘С‚ Р·Р°С…РІР°С‚ СЂР°Р№РѕРЅР° %s.", Turf[gWarTurf][tName]);
+		return SendClientMessage(playerid, COLOR_GREY, "Начать захват можно с ранга %d.", TURF_MIN_RANK);
+	if (gWarTurf != -1) return SendClientMessage(playerid, COLOR_GREY, "Уже идёт захват района %s.", Turf[gWarTurf][tName]);
 
 	new hour;
 	gettime(hour);
 	if (hour < CAPTURE_HOUR_FROM || hour >= CAPTURE_HOUR_TO)
-		return SendClientMessage(playerid, COLOR_GREY, "Р—Р°С…РІР°С‚С‹РІР°С‚СЊ СЂР°Р№РѕРЅС‹ РјРѕР¶РЅРѕ СЃ %d:00 РґРѕ %d:00.", CAPTURE_HOUR_FROM, CAPTURE_HOUR_TO);
+		return SendClientMessage(playerid, COLOR_GREY, "Захватывать районы можно с %d:00 до %d:00.", CAPTURE_HOUR_FROM, CAPTURE_HOUR_TO);
 
 	new t = Turf_GetAt(playerid);
-	if (t == -1) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РЅРµ РІ СЂР°Р№РѕРЅРµ Р±Р°РЅРґ. РЎРїРёСЃРѕРє: /turfs");
-	if (Turf[t][tOwner] == f) return SendClientMessage(playerid, COLOR_GREY, "Р­С‚РѕС‚ СЂР°Р№РѕРЅ СѓР¶Рµ РІР°С€.");
+	if (t == -1) return SendClientMessage(playerid, COLOR_GREY, "Ты не в районе банд. Список: /turfs");
+	if (Turf[t][tOwner] == f) return SendClientMessage(playerid, COLOR_GREY, "Этот район уже ваш.");
 	new wait = Turf[t][tLastWar] + TURF_COOLDOWN - gettime();
 	if (Turf[t][tLastWar] != 0 && wait > 0)
-		return SendClientMessage(playerid, COLOR_GREY, "РќР° СЌС‚РѕС‚ СЂР°Р№РѕРЅ РЅРµРґР°РІРЅРѕ РЅР°РїР°РґР°Р»Рё. РџРѕРґРѕР¶РґРё %d РјРёРЅ.", wait / 60 + 1);
+		return SendClientMessage(playerid, COLOR_GREY, "На этот район недавно нападали. Подожди %d мин.", wait / 60 + 1);
 
 	gWarTurf = t;
 	gWarAttacker = f;
@@ -313,10 +313,10 @@ stock bool:Cmd_Capture(playerid)
 	SetTimer("OnTurfWarEnd", TURF_CAPTURE_TIME * 1000, false);
 
 	if (gWarDefender != FACTION_NONE)
-		SendClientMessageToAll(COLOR_ORANGE, "[Р’РѕР№РЅР°] В«%sВ» РЅР°РїР°РґР°СЋС‚ РЅР° СЂР°Р№РѕРЅ %s (В«%sВ»)! Р—Р°С…РІР°С‚ вЂ” %d РјРёРЅ.",
+		SendClientMessageToAll(COLOR_ORANGE, "[Война] «%s» нападают на район %s («%s»)! Захват — %d мин.",
 			Faction_GetName(f), Turf[t][tName], Faction_GetName(gWarDefender), TURF_CAPTURE_TIME / 60);
 	else
-		SendClientMessageToAll(COLOR_ORANGE, "[Р’РѕР№РЅР°] В«%sВ» Р·Р°С…РІР°С‚С‹РІР°СЋС‚ РЅРёС‡РµР№РЅС‹Р№ СЂР°Р№РѕРЅ %s! Р—Р°С…РІР°С‚ вЂ” %d РјРёРЅ.",
+		SendClientMessageToAll(COLOR_ORANGE, "[Война] «%s» захватывают ничейный район %s! Захват — %d мин.",
 			Faction_GetName(f), Turf[t][tName], TURF_CAPTURE_TIME / 60);
 	return true;
 }
@@ -326,15 +326,15 @@ stock bool:Cmd_AddTurf(playerid, const params[])
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, size, name[32];
 	if (!NextIntParam(params, pos, size) || size < 30 || size > 500 || !RestParam(params, pos, name))
-		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /addturf [СЂР°Р·РјРµСЂ 30-500] [РЅР°Р·РІР°РЅРёРµ] вЂ” РєРІР°РґСЂР°С‚ РІРѕРєСЂСѓРі С‚РµР±СЏ");
-	if (gTurfCount >= MAX_TURFS) return SendClientMessage(playerid, COLOR_GREY, "Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ СЂР°Р№РѕРЅРѕРІ (MAX_TURFS).");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /addturf [размер 30-500] [название] — квадрат вокруг тебя");
+	if (gTurfCount >= MAX_TURFS) return SendClientMessage(playerid, COLOR_GREY, "Достигнут лимит районов (MAX_TURFS).");
 
 	new Float:x, Float:y, Float:z, Float:half = float(size) / 2.0;
 	GetPlayerPos(playerid, x, y, z);
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO turfs (name, minx, miny, maxx, maxy, owner) VALUES ('%q', %f, %f, %f, %f, 0)",
 		name, x - half, y - half, x + half, y + half));
 	Turf_Add(DB_LastInsertId(), name, x - half, y - half, x + half, y + half, FACTION_NONE);
-	SendClientMessage(playerid, COLOR_ADMIN, "Р Р°Р№РѕРЅ В«%sВ» СЃРѕР·РґР°РЅ. РћС‚РґР°С‚СЊ Р±Р°РЅРґРµ: /setturf [Р±Р°РЅРґР° 3-5]", name);
+	SendClientMessage(playerid, COLOR_ADMIN, "Район «%s» создан. Отдать банде: /setturf [банда 3-5]", name);
 	return true;
 }
 
@@ -343,15 +343,15 @@ stock bool:Cmd_SetTurf(playerid, const params[])
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, f;
 	if (!NextIntParam(params, pos, f) || (f != FACTION_NONE && !Faction_IsGang(f)))
-		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /setturf [0 вЂ” РЅРёС‡РµР№ РёР»Рё РЅРѕРјРµСЂ Р±Р°РЅРґС‹: 3 Grove, 4 Ballas, 5 Aztecas, СЃРІРѕРё вЂ” /flist]");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setturf [0 — ничей или номер банды: 3 Grove, 4 Ballas, 5 Aztecas, свои — /flist]");
 	new t = Turf_GetAt(playerid);
-	if (t == -1) return SendClientMessage(playerid, COLOR_GREY, "Р’СЃС‚Р°РЅСЊ РІ СЂР°Р№РѕРЅ.");
-	if (t == gWarTurf) return SendClientMessage(playerid, COLOR_GREY, "Р—РґРµСЃСЊ РёРґС‘С‚ Р·Р°С…РІР°С‚, РїРѕРґРѕР¶РґРё.");
+	if (t == -1) return SendClientMessage(playerid, COLOR_GREY, "Встань в район.");
+	if (t == gWarTurf) return SendClientMessage(playerid, COLOR_GREY, "Здесь идёт захват, подожди.");
 	Turf[t][tOwner] = f;
 	Turf_Save(t);
 	GangZoneShowForAll(Turf[t][tZone], Turf_GetColor(t));
-	if (f == FACTION_NONE) SendClientMessage(playerid, COLOR_ADMIN, "Р Р°Р№РѕРЅ %s С‚РµРїРµСЂСЊ РЅРёС‡РµР№.", Turf[t][tName]);
-	else SendClientMessage(playerid, COLOR_ADMIN, "Р Р°Р№РѕРЅ %s С‚РµРїРµСЂСЊ: %s.", Turf[t][tName], Faction_GetName(f));
+	if (f == FACTION_NONE) SendClientMessage(playerid, COLOR_ADMIN, "Район %s теперь ничей.", Turf[t][tName]);
+	else SendClientMessage(playerid, COLOR_ADMIN, "Район %s теперь: %s.", Turf[t][tName], Faction_GetName(f));
 	return true;
 }
 
@@ -359,14 +359,14 @@ stock bool:Cmd_DelTurf(playerid)
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new t = Turf_GetAt(playerid);
-	if (t == -1) return SendClientMessage(playerid, COLOR_GREY, "Р’СЃС‚Р°РЅСЊ РІ СЂР°Р№РѕРЅ, РєРѕС‚РѕСЂС‹Р№ С…РѕС‡РµС€СЊ СѓРґР°Р»РёС‚СЊ.");
-	if (t == gWarTurf) return SendClientMessage(playerid, COLOR_GREY, "Р—РґРµСЃСЊ РёРґС‘С‚ Р·Р°С…РІР°С‚, РїРѕРґРѕР¶РґРё.");
+	if (t == -1) return SendClientMessage(playerid, COLOR_GREY, "Встань в район, который хочешь удалить.");
+	if (t == gWarTurf) return SendClientMessage(playerid, COLOR_GREY, "Здесь идёт захват, подожди.");
 
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM turfs WHERE id = %d", Turf[t][tDbId]));
 	GangZoneDestroy(Turf[t][tZone]);
-	SendClientMessage(playerid, COLOR_ADMIN, "Р Р°Р№РѕРЅ %s СѓРґР°Р»С‘РЅ.", Turf[t][tName]);
+	SendClientMessage(playerid, COLOR_ADMIN, "Район %s удалён.", Turf[t][tName]);
 
-	// СЃРґРІРёРіР°РµРј РїРѕСЃР»РµРґРЅРёР№ СЂР°Р№РѕРЅ РЅР° РјРµСЃС‚Рѕ СѓРґР°Р»С‘РЅРЅРѕРіРѕ
+	// сдвигаем последний район на место удалённого
 	new last = gTurfCount - 1;
 	if (t != last)
 	{

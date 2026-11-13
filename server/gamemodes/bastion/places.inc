@@ -1,41 +1,41 @@
 // =====================================================================
-//  places.inc вЂ” С‚РѕС‡РєРё РЅРѕРІС‹С… СЃРёСЃС‚РµРј, РєРѕС‚РѕСЂС‹Рµ Р°РґРјРёРЅ СЂР°СЃСЃС‚Р°РІР»СЏРµС‚ СЃР°Рј.
+//  places.inc — точки новых систем, которые админ расставляет сам.
 //
-//  РћРґРЅР° С‚Р°Р±Р»РёС†Р° places (РІРёРґ, РјРµСЃС‚Рѕ) РґР»СЏ РІСЃРµРіРѕ: С‚РѕСЂРіРѕРІС†С‹ РЅР°СЂРєРѕС‚РёРєР°РјРё, РјРµСЃС‚Р°
-//  СЂС‹Р±Р°Р»РєРё, РіСЂСЏРґРєРё Рё Р°РјР±Р°СЂ С„РµСЂРјС‹, РјСѓСЃРѕСЂРЅС‹Рµ Р±Р°РєРё Рё СЃРІР°Р»РєР°, РєР°РјРµСЂС‹ Рё СЂР°Р±РѕС‚С‹
-//  С‚СЋСЂСЊРјС‹, СЃС‚РѕР№РєР° Р±РѕР»СЊРЅРёС†С‹, С†РµСЂРєРѕРІСЊ, Р»Р°СЂС‘Рє Р»РѕС‚РµСЂРµРё, СЂР°Р±РѕС‡РёРµ РјР°С€РёРЅС‹.
+//  Одна таблица places (вид, место) для всего: торговцы наркотиками, места
+//  рыбалки, грядки и амбар фермы, мусорные баки и свалка, камеры и работы
+//  тюрьмы, стойка больницы, церковь, ларёк лотереи, рабочие машины.
 //
-//  РђРґРјРёРЅ 4+:
-//    /place [РІРёРґ]      вЂ” РїРѕСЃС‚Р°РІРёС‚СЊ С‚РѕС‡РєСѓ С‚Р°Рј, РіРґРµ СЃС‚РѕРёС€СЊ (РІ РјР°С€РёРЅРµ вЂ” С‚РѕС‡РєСѓ РјР°С€РёРЅС‹)
-//    /places [РІРёРґ]     вЂ” СЃРїРёСЃРѕРє С‚РѕС‡РµРє СЌС‚РѕРіРѕ РІРёРґР° (Р±РµР· РІРёРґР° вЂ” СЃРєРѕР»СЊРєРѕ РєР°РєРёС…)
-//    /unplace          вЂ” СѓРґР°Р»РёС‚СЊ Р±Р»РёР¶Р°Р№С€СѓСЋ С‚РѕС‡РєСѓ (РґРѕ 5 Рј)
-//    /gotoplace [в„–]    вЂ” С‚РµР»РµРїРѕСЂС‚ Рє С‚РѕС‡РєРµ
-//  РўРѕС‡РєРё СЃ РјР°СЂРєРµСЂРѕРј (С‚РѕСЂРіРѕРІРµС†, Р±РѕР»СЊРЅРёС†Р°, С†РµСЂРєРѕРІСЊ, Р»РѕС‚РµСЂРµСЏ, Р±Р°Р·Р° СЂР°Р±РѕС‚С‹) РґРІРёРіР°СЋС‚СЃСЏ Рё РІ /markers.
+//  Админ 4+:
+//    /place [вид]      — поставить точку там, где стоишь (в машине — точку машины)
+//    /places [вид]     — список точек этого вида (без вида — сколько каких)
+//    /unplace          — удалить ближайшую точку (до 5 м)
+//    /gotoplace [№]    — телепорт к точке
+//  Точки с маркером (торговец, больница, церковь, лотерея, база работы) двигаются и в /markers.
 // =====================================================================
 
 #define MAX_PLACES          400
-#define PLACE_REF           3000000     // ref РјР°СЂРєРµСЂР° С‚РѕС‡РєРё: PLACE_REF + РЅРѕРјРµСЂ РІ Р±Р°Р·Рµ
-#define DRUG_DEALER_SKIN    29          // СЃРєРёРЅ С‚РѕСЂРіРѕРІС†Р° РЅР°СЂРєРѕС‚РёРєР°РјРё
+#define PLACE_REF           3000000     // ref маркера точки: PLACE_REF + номер в базе
+#define DRUG_DEALER_SKIN    29          // скин торговца наркотиками
 
 enum
 {
-	PL_DEALER,      // С‚РѕСЂРіРѕРІРµС† РЅР°СЂРєРѕС‚РёРєР°РјРё (drugs.inc)
-	PL_FISH,        // РјРµСЃС‚Рѕ СЂС‹Р±Р°Р»РєРё
-	PL_FIELD,       // РіСЂСЏРґРєР° С„РµСЂРјС‹
-	PL_BARN,        // Р°РјР±Р°СЂ С„РµСЂРјС‹ (СЃРґР°С‚СЊ СѓСЂРѕР¶Р°Р№)
-	PL_BIN,         // РјСѓСЃРѕСЂРЅС‹Р№ Р±Р°Рє
-	PL_DUMP,        // СЃРІР°Р»РєР° (СЂР°Р·РіСЂСѓР·РёС‚СЊ РјСѓСЃРѕСЂРѕРІРѕР·)
-	PL_VAULT,       // С…СЂР°РЅРёР»РёС‰Рµ Р±Р°РЅРєР° РґР»СЏ РёРЅРєР°СЃСЃР°С‚РѕСЂР° (СЃРґР°С‚СЊ РґРµРЅСЊРіРё)
-	PL_CAR,         // СЂР°Р±РѕС‡Р°СЏ РјР°С€РёРЅР°: РІ /place car [СЂР°Р±РѕС‚Р°] (fisher/farmer/collector/garbage)
-	PL_CELL,        // РєР°РјРµСЂР° С‚СЋСЂСЊРјС‹
-	PL_PWORK,       // СЂР°Р±РѕС‚Р° Р·Р°РєР»СЋС‡С‘РЅРЅС‹С…
-	PL_ESCAPE,      // Р»Р°Р· РґР»СЏ РїРѕР±РµРіР°
-	PL_RELEASE,     // РІС‹С…РѕРґ РёР· С‚СЋСЂСЊРјС‹ РЅР° СЃРІРѕР±РѕРґСѓ
-	PL_PGUARD,      // СЂР°Р·РґРµРІР°Р»РєР°/РїРѕСЃС‚ РѕС…СЂР°РЅС‹ (РІС…РѕРґ РґР»СЏ РѕС…СЂР°РЅС‹)
-	PL_CLINIC,      // СЃС‚РѕР№РєР° Р±РѕР»СЊРЅРёС†С‹: Р»РµС‡РµРЅРёРµ, СЃС‚СЂР°С…РѕРІРєР°, РјРµРґРєР°СЂС‚Р°
-	PL_CHURCH,      // С†РµСЂРєРѕРІСЊ: СЃРІР°РґСЊР±Р°, СЂР°Р·РІРѕРґ
-	PL_LOTTERY,     // Р»Р°СЂС‘Рє Р»РѕС‚РµСЂРµРё
-	PL_KPZ,         // РєР°РјРµСЂР° РљРџР— РІ LSPD (РєРѕСЂРѕС‚РєРёРµ СЃСЂРѕРєРё); РЅРµС‚ РЅРё РѕРґРЅРѕР№ вЂ” СЃС‚Р°СЂС‹Рµ РєР°РјРµСЂС‹ РёР· РєРѕРґР°
+	PL_DEALER,      // торговец наркотиками (drugs.inc)
+	PL_FISH,        // место рыбалки
+	PL_FIELD,       // грядка фермы
+	PL_BARN,        // амбар фермы (сдать урожай)
+	PL_BIN,         // мусорный бак
+	PL_DUMP,        // свалка (разгрузить мусоровоз)
+	PL_VAULT,       // хранилище банка для инкассатора (сдать деньги)
+	PL_CAR,         // рабочая машина: в /place car [работа] (fisher/farmer/collector/garbage)
+	PL_CELL,        // камера тюрьмы
+	PL_PWORK,       // работа заключённых
+	PL_ESCAPE,      // лаз для побега
+	PL_RELEASE,     // выход из тюрьмы на свободу
+	PL_PGUARD,      // раздевалка/пост охраны (вход для охраны)
+	PL_CLINIC,      // стойка больницы: лечение, страховка, медкарта
+	PL_CHURCH,      // церковь: свадьба, развод
+	PL_LOTTERY,     // ларёк лотереи
+	PL_KPZ,         // камера КПЗ в LSPD (короткие сроки); нет ни одной — старые камеры из кода
 	PL_KINDS
 }
 static const gPlaceKey[PL_KINDS][] =
@@ -45,11 +45,11 @@ static const gPlaceKey[PL_KINDS][] =
 };
 static const gPlaceName[PL_KINDS][] =
 {
-	"РўРѕСЂРіРѕРІРµС† РЅР°СЂРєРѕС‚РёРєР°РјРё", "РњРµСЃС‚Рѕ СЂС‹Р±Р°Р»РєРё", "Р“СЂСЏРґРєР° С„РµСЂРјС‹", "РђРјР±Р°СЂ С„РµСЂРјС‹", "РњСѓСЃРѕСЂРЅС‹Р№ Р±Р°Рє", "РЎРІР°Р»РєР°",
-	"РҐСЂР°РЅРёР»РёС‰Рµ Р±Р°РЅРєР°", "Р Р°Р±РѕС‡Р°СЏ РјР°С€РёРЅР°", "РљР°РјРµСЂР° С‚СЋСЂСЊРјС‹", "Р Р°Р±РѕС‚Р° РІ С‚СЋСЂСЊРјРµ", "Р›Р°Р· РґР»СЏ РїРѕР±РµРіР°",
-	"Р’С‹С…РѕРґ РёР· С‚СЋСЂСЊРјС‹", "РџРѕСЃС‚ РѕС…СЂР°РЅС‹ С‚СЋСЂСЊРјС‹", "РЎС‚РѕР№РєР° Р±РѕР»СЊРЅРёС†С‹", "Р¦РµСЂРєРѕРІСЊ", "Р›РѕС‚РµСЂРµСЏ", "РљР°РјРµСЂР° РљРџР—"
+	"Торговец наркотиками", "Место рыбалки", "Грядка фермы", "Амбар фермы", "Мусорный бак", "Свалка",
+	"Хранилище банка", "Рабочая машина", "Камера тюрьмы", "Работа в тюрьме", "Лаз для побега",
+	"Выход из тюрьмы", "Пост охраны тюрьмы", "Стойка больницы", "Церковь", "Лотерея", "Камера КПЗ"
 };
-// РќСѓР¶РµРЅ Р»Рё Р·РЅР°С‡РѕРє СЃ РЅР°РґРїРёСЃСЊСЋ (РѕСЃС‚Р°Р»СЊРЅС‹Рµ С‚РѕС‡РєРё РІРёРґРЅС‹ С‚РѕР»СЊРєРѕ РєР°Рє РјРµС‚РєР° Р·Р°РґР°РЅРёСЏ)
+// Нужен ли значок с надписью (остальные точки видны только как метка задания)
 static const bool:gPlaceMarker[PL_KINDS] =
 {
 	true, false, false, true, false, true, true, false,
@@ -62,7 +62,7 @@ enum E_PLACE
 	bool:plUsed,
 	plDbId,
 	plKind,
-	plArg,                  // РґР»СЏ PL_CAR вЂ” СЂР°Р±РѕС‚Р° (JOB_*)
+	plArg,                  // для PL_CAR — работа (JOB_*)
 	Float:plX, Float:plY, Float:plZ, Float:plA,
 	plWorld, plInt,
 	plMk,
@@ -71,24 +71,24 @@ enum E_PLACE
 new gPlace[MAX_PLACES][E_PLACE];
 
 // ---------------------------------------------------------------------
-//  РњРµСЃС‚Р° РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ (СЃС‚Р°РІСЏС‚СЃСЏ РѕРґРёРЅ СЂР°Р·, РїСЂРё РїРµСЂРІРѕРј Р·Р°РїСѓСЃРєРµ; РґР°Р»СЊС€Рµ вЂ” /place Рё /markers)
+//  Места по умолчанию (ставятся один раз, при первом запуске; дальше — /place и /markers)
 // ---------------------------------------------------------------------
 enum E_PLACE_DEF { pdKind, pdArg, Float:pdX, Float:pdY, Float:pdZ, Float:pdA }
 static const gPlaceDefs[][E_PLACE_DEF] =
 {
-	{ PL_DEALER, 0, 2167.5, -1671.9, 15.08, 225.0 },     // Ganton, Сѓ РїРµСЂРµСѓР»РєР°
-	{ PL_FISH, 0, 836.4, -2063.2, 12.87, 180.0 },        // РїРёСЂСЃ РЎР°РЅС‚Р°-РњР°СЂРёРё
+	{ PL_DEALER, 0, 2167.5, -1671.9, 15.08, 225.0 },     // Ganton, у переулка
+	{ PL_FISH, 0, 836.4, -2063.2, 12.87, 180.0 },        // пирс Санта-Марии
 	{ PL_FISH, 0, 843.0, -2063.2, 12.87, 180.0 },
 	{ PL_FISH, 0, 830.0, -2063.2, 12.87, 180.0 },
 	{ PL_FISH, 0, 836.4, -2085.0, 12.87, 180.0 },
-	{ PL_FIELD, 0, -1095.0, -1215.0, 129.2, 0.0 },       // С„РµСЂРјР° EasterBoard (Flint County)
+	{ PL_FIELD, 0, -1095.0, -1215.0, 129.2, 0.0 },       // ферма EasterBoard (Flint County)
 	{ PL_FIELD, 0, -1080.0, -1235.0, 129.2, 0.0 },
 	{ PL_FIELD, 0, -1060.0, -1250.0, 129.2, 0.0 },
 	{ PL_FIELD, 0, -1040.0, -1230.0, 129.2, 0.0 },
 	{ PL_FIELD, 0, -1020.0, -1215.0, 129.2, 0.0 },
 	{ PL_FIELD, 0, -1005.0, -1240.0, 129.2, 0.0 },
 	{ PL_BARN, 0, -1061.0, -1195.0, 129.22, 0.0 },
-	{ PL_BIN, 0, 2491.0, -1680.0, 13.34, 0.0 },          // Р±Р°РєРё РїРѕ Р›РѕСЃ-РЎР°РЅС‚РѕСЃСѓ
+	{ PL_BIN, 0, 2491.0, -1680.0, 13.34, 0.0 },          // баки по Лос-Сантосу
 	{ PL_BIN, 0, 2230.0, -1715.0, 13.5, 0.0 },
 	{ PL_BIN, 0, 1944.0, -1765.0, 13.38, 0.0 },
 	{ PL_BIN, 0, 1830.0, -1835.0, 13.5, 0.0 },
@@ -100,14 +100,14 @@ static const gPlaceDefs[][E_PLACE_DEF] =
 	{ PL_BIN, 0, 1005.0, -930.0, 42.1, 0.0 },
 	{ PL_BIN, 0, 2120.0, -1150.0, 24.1, 0.0 },
 	{ PL_BIN, 0, 2100.0, -1810.0, 13.5, 0.0 },
-	{ PL_DUMP, 0, 2186.0, -1990.0, 13.55, 0.0 },         // Willowfield, Сѓ СЃРІР°Р»РєРё РјР°С€РёРЅ
-	{ PL_VAULT, 0, 1461.5, -1021.0, 23.83, 0.0 },        // Р±Р°РЅРє РІ Market
-	{ PL_CLINIC, 0, 1172.6, -1323.4, 15.4, 270.0 },      // Сѓ РІС…РѕРґР° РІ All Saints
-	{ PL_CHURCH, 0, 2232.4, -1333.0, 23.98, 90.0 },      // С†РµСЂРєРѕРІСЊ Jefferson
-	{ PL_LOTTERY, 0, 1484.0, -1740.0, 13.55, 180.0 },    // Сѓ РјСЌСЂРёРё
-	{ PL_CAR, JOB_COLLECTOR * 1000 + 428, 1476.0, -1030.0, 23.8, 90.0 },     // Securicar Сѓ Р±Р°РЅРєР°
+	{ PL_DUMP, 0, 2186.0, -1990.0, 13.55, 0.0 },         // Willowfield, у свалки машин
+	{ PL_VAULT, 0, 1461.5, -1021.0, 23.83, 0.0 },        // банк в Market
+	{ PL_CLINIC, 0, 1172.6, -1323.4, 15.4, 270.0 },      // у входа в All Saints
+	{ PL_CHURCH, 0, 2232.4, -1333.0, 23.98, 90.0 },      // церковь Jefferson
+	{ PL_LOTTERY, 0, 1484.0, -1740.0, 13.55, 180.0 },    // у мэрии
+	{ PL_CAR, JOB_COLLECTOR * 1000 + 428, 1476.0, -1030.0, 23.8, 90.0 },     // Securicar у банка
 	{ PL_CAR, JOB_COLLECTOR * 1000 + 428, 1476.0, -1036.0, 23.8, 90.0 },
-	{ PL_CAR, JOB_GARBAGE * 1000 + 408, 2200.0, -1985.0, 13.6, 0.0 },        // РјСѓСЃРѕСЂРѕРІРѕР·С‹
+	{ PL_CAR, JOB_GARBAGE * 1000 + 408, 2200.0, -1985.0, 13.6, 0.0 },        // мусоровозы
 	{ PL_CAR, JOB_GARBAGE * 1000 + 408, 2207.0, -1985.0, 13.6, 0.0 }
 };
 
@@ -130,14 +130,14 @@ static Place_Label(i)
 	new text[MK_TEXT_LEN];
 	switch (gPlace[i][plKind])
 	{
-		case PL_DEALER:  strcat(text, "РњСѓС‚РЅС‹Р№ С‚РёРї\n{FFFFFF}ALT вЂ” РїРѕРіРѕРІРѕСЂРёС‚СЊ");
-		case PL_BARN:    strcat(text, "РђРјР±Р°СЂ С„РµСЂРјС‹\n{FFFFFF}СЃСЋРґР° РЅРµСЃСѓС‚ СѓСЂРѕР¶Р°Р№");
-		case PL_DUMP:    strcat(text, "РЎРІР°Р»РєР°\n{FFFFFF}СЂР°Р·РіСЂСѓР·РєР° РјСѓСЃРѕСЂРѕРІРѕР·Р°");
-		case PL_VAULT:   strcat(text, "РҐСЂР°РЅРёР»РёС‰Рµ Р±Р°РЅРєР°\n{FFFFFF}РёРЅРєР°СЃСЃР°С‚РѕСЂС‹ СЃРґР°СЋС‚ РґРµРЅСЊРіРё");
-		case PL_PGUARD:  strcat(text, "РџРѕСЃС‚ РѕС…СЂР°РЅС‹ С‚СЋСЂСЊРјС‹\n{FFFFFF}ALT вЂ” СЃРїРёСЃРѕРє Р·Р°РєР»СЋС‡С‘РЅРЅС‹С…");
-		case PL_CLINIC:  strcat(text, "Р РµРіРёСЃС‚СЂР°С‚СѓСЂР° Р±РѕР»СЊРЅРёС†С‹\n{FFFFFF}ALT вЂ” Р»РµС‡РµРЅРёРµ, СЃС‚СЂР°С…РѕРІРєР°, РјРµРґРєР°СЂС‚Р°");
-		case PL_CHURCH:  strcat(text, "Р¦РµСЂРєРѕРІСЊ\n{FFFFFF}ALT вЂ” СЃРІР°РґСЊР±Р° Рё СЂР°Р·РІРѕРґ");
-		case PL_LOTTERY: strcat(text, "Р›РѕС‚РµСЂРµСЏ С€С‚Р°С‚Р°\n{FFFFFF}ALT вЂ” РєСѓРїРёС‚СЊ Р±РёР»РµС‚");
+		case PL_DEALER:  strcat(text, "Мутный тип\n{FFFFFF}ALT — поговорить");
+		case PL_BARN:    strcat(text, "Амбар фермы\n{FFFFFF}сюда несут урожай");
+		case PL_DUMP:    strcat(text, "Свалка\n{FFFFFF}разгрузка мусоровоза");
+		case PL_VAULT:   strcat(text, "Хранилище банка\n{FFFFFF}инкассаторы сдают деньги");
+		case PL_PGUARD:  strcat(text, "Пост охраны тюрьмы\n{FFFFFF}ALT — список заключённых");
+		case PL_CLINIC:  strcat(text, "Регистратура больницы\n{FFFFFF}ALT — лечение, страховка, медкарта");
+		case PL_CHURCH:  strcat(text, "Церковь\n{FFFFFF}ALT — свадьба и развод");
+		case PL_LOTTERY: strcat(text, "Лотерея штата\n{FFFFFF}ALT — купить билет");
 		default:         strcat(text, gPlaceName[gPlace[i][plKind]]);
 	}
 	return text;
@@ -235,7 +235,7 @@ stock Places_Init()
 	printf("[Places] %d places.", rows);
 }
 
-// Р•СЃС‚СЊ Р»Рё С‚Р°Р±Р»РёС†Р° (РґР»СЏ РїРµСЂРІРѕРіРѕ Р·Р°РїСѓСЃРєР°)
+// Есть ли таблица (для первого запуска)
 stock bool:DB_TableExists(const table[])
 {
 	new bool:ok = false;
@@ -248,7 +248,7 @@ stock bool:DB_TableExists(const table[])
 	return ok;
 }
 
-// РњР°СЂРєРµСЂ С‚РѕС‡РєРё РґРІРёРіР°Р»Рё РІ /markers
+// Маркер точки двигали в /markers
 stock Place_OnMarkerMoved(ref, Float:x, Float:y, Float:z)
 {
 	for (new i = 0; i < MAX_PLACES; i++)
@@ -274,7 +274,7 @@ stock Place_OnMarkerMoved(ref, Float:x, Float:y, Float:z)
 }
 
 // ---------------------------------------------------------------------
-//  Р”Р»СЏ РјРѕРґСѓР»РµР№
+//  Для модулей
 // ---------------------------------------------------------------------
 stock Place_Count(kind, arg = -1)
 {
@@ -284,7 +284,7 @@ stock Place_Count(kind, arg = -1)
 	return n;
 }
 
-// РЎР»СѓС‡Р°Р№РЅР°СЏ С‚РѕС‡РєР° РІРёРґР° (РєСЂРѕРјРµ except); -1 вЂ” РЅРµС‚ РЅРё РѕРґРЅРѕР№
+// Случайная точка вида (кроме except); -1 — нет ни одной
 stock Place_Random(kind, except = -1, arg = -1)
 {
 	new list[MAX_PLACES], n = 0;
@@ -294,7 +294,7 @@ stock Place_Random(kind, except = -1, arg = -1)
 	return list[random(n)];
 }
 
-// Р‘Р»РёР¶Р°Р№С€Р°СЏ С‚РѕС‡РєР° РІРёРґР° РІ СЂР°РґРёСѓСЃРµ; -1 вЂ” РЅРµС‚
+// Ближайшая точка вида в радиусе; -1 — нет
 stock Place_Nearby(playerid, kind, Float:range)
 {
 	new best = -1, Float:bd = range;
@@ -309,14 +309,14 @@ stock Place_Nearby(playerid, kind, Float:range)
 	return best;
 }
 
-// РџРµСЂРІР°СЏ С‚РѕС‡РєР° РІРёРґР° (РґР»СЏ РєР°РјРµСЂ, РІС‹С…РѕРґР° Рё С‚.Рї.)
+// Первая точка вида (для камер, выхода и т.п.)
 stock Place_First(kind)
 {
 	for (new i = 0; i < MAX_PLACES; i++) if (gPlace[i][plUsed] && gPlace[i][plKind] == kind) return i;
 	return -1;
 }
 
-// РџРѕСЃС‚Р°РІРёС‚СЊ РёРіСЂРѕРєР° РІ С‚РѕС‡РєСѓ (СЃ РёРЅС‚РµСЂСЊРµСЂРѕРј Рё РјРёСЂРѕРј)
+// Поставить игрока в точку (с интерьером и миром)
 stock Place_Teleport(playerid, i)
 {
 	if (i < 0 || i >= MAX_PLACES || !gPlace[i][plUsed]) return;
@@ -328,11 +328,11 @@ stock Place_Teleport(playerid, i)
 }
 
 // ---------------------------------------------------------------------
-//  РљРѕРјР°РЅРґС‹ Р°РґРјРёРЅР°
+//  Команды админа
 // ---------------------------------------------------------------------
 static Places_KindsList(playerid)
 {
-	new line[144] = "Р’РёРґС‹:";
+	new line[144] = "Виды:";
 	for (new k = 0; k < PL_KINDS; k++)
 	{
 		new part[24];
@@ -349,7 +349,7 @@ stock bool:Cmd_Place(playerid, const params[])
 	new pos = 0, key[16], job[16];
 	if (!NextParam(params, pos, key))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /place [РІРёРґ]   (РІ РјР°С€РёРЅРµ: /place car [fisher|farmer|collector|garbage])");
+		SendClientMessage(playerid, COLOR_GREY, "Использование: /place [вид]   (в машине: /place car [fisher|farmer|collector|garbage])");
 		Places_KindsList(playerid);
 		return true;
 	}
@@ -360,12 +360,12 @@ stock bool:Cmd_Place(playerid, const params[])
 	if (kind == PL_CAR)
 	{
 		new v = GetPlayerVehicleID(playerid);
-		if (v == 0) return SendClientMessage(playerid, COLOR_GREY, "РЎСЏРґСЊ РІ РјР°С€РёРЅСѓ РЅСѓР¶РЅРѕР№ РјРѕРґРµР»Рё Рё РїРѕСЃС‚Р°РІСЊ РµС‘ РєР°Рє РЅР°РґРѕ.");
+		if (v == 0) return SendClientMessage(playerid, COLOR_GREY, "Сядь в машину нужной модели и поставь её как надо.");
 		if (!NextParam(params, pos, job) || (arg = WorkLife_JobByKey(job)) == JOB_NONE)
-			return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /place car [fisher|farmer|collector|garbage]");
+			return SendClientMessage(playerid, COLOR_GREY, "Использование: /place car [fisher|farmer|collector|garbage]");
 		GetVehiclePos(v, x, y, z);
 		GetVehicleZAngle(v, a);
-		arg = arg * 1000 + GetVehicleModel(v);     // СЂР°Р±РѕС‚Р° Рё РјРѕРґРµР»СЊ РІ РѕРґРЅРѕРј С‡РёСЃР»Рµ
+		arg = arg * 1000 + GetVehicleModel(v);     // работа и модель в одном числе
 	}
 	else
 	{
@@ -373,12 +373,12 @@ stock bool:Cmd_Place(playerid, const params[])
 		GetPlayerFacingAngle(playerid, a);
 	}
 	new i = Place_Insert(kind, arg, x, y, z, a, GetPlayerVirtualWorld(playerid), GetPlayerInterior(playerid));
-	if (i == -1) return SendClientMessage(playerid, COLOR_GREY, "РЎР»РёС€РєРѕРј РјРЅРѕРіРѕ С‚РѕС‡РµРє (%d).", MAX_PLACES);
+	if (i == -1) return SendClientMessage(playerid, COLOR_GREY, "Слишком много точек (%d).", MAX_PLACES);
 	if (kind == PL_CAR) WorkLife_SpawnCar(i);
 	new log[48];
 	format(log, sizeof log, "%s #%d", gPlaceKey[kind], gPlace[i][plDbId]);
 	Admin_Log(playerid, "place", INVALID_PLAYER_ID, log);
-	SendClientMessage(playerid, COLOR_ADMIN, "РўРѕС‡РєР° В«%sВ» в„–%d РїРѕСЃС‚Р°РІР»РµРЅР°. Р’СЃРµРіРѕ С‚Р°РєРёС…: %d.", gPlaceName[kind], gPlace[i][plDbId], Place_Count(kind));
+	SendClientMessage(playerid, COLOR_ADMIN, "Точка «%s» №%d поставлена. Всего таких: %d.", gPlaceName[kind], gPlace[i][plDbId], Place_Count(kind));
 	return true;
 }
 
@@ -388,26 +388,26 @@ stock bool:Cmd_Places(playerid, const params[])
 	new pos = 0, key[16];
 	if (!NextParam(params, pos, key))
 	{
-		SendClientMessage(playerid, COLOR_ADMIN, "РўРѕС‡РєРё СЃРёСЃС‚РµРј (/places [РІРёРґ] вЂ” СЃРїРёСЃРѕРє):");
+		SendClientMessage(playerid, COLOR_ADMIN, "Точки систем (/places [вид] — список):");
 		for (new k = 0; k < PL_KINDS; k++)
-			SendClientMessage(playerid, COLOR_WHITE, " %s вЂ” %s: %d", gPlaceKey[k], gPlaceName[k], Place_Count(k));
+			SendClientMessage(playerid, COLOR_WHITE, " %s — %s: %d", gPlaceKey[k], gPlaceName[k], Place_Count(k));
 		return true;
 	}
 	new kind = Place_Kind(key);
 	if (kind == -1) { Places_KindsList(playerid); return true; }
 	new Float:px, Float:py, Float:pz, n = 0;
 	GetPlayerPos(playerid, px, py, pz);
-	SendClientMessage(playerid, COLOR_ADMIN, "%s (С‚РµР»РµРїРѕСЂС‚: /gotoplace [в„–]):", gPlaceName[kind]);
+	SendClientMessage(playerid, COLOR_ADMIN, "%s (телепорт: /gotoplace [№]):", gPlaceName[kind]);
 	for (new i = 0; i < MAX_PLACES && n < 30; i++)
 	{
 		if (!gPlace[i][plUsed] || gPlace[i][plKind] != kind) continue;
 		new extra[24];
-		if (kind == PL_CAR) format(extra, sizeof extra, " (%s, РјРѕРґРµР»СЊ %d)", WorkLife_JobKey(gPlace[i][plArg] / 1000), gPlace[i][plArg] % 1000);
-		SendClientMessage(playerid, COLOR_WHITE, " в„–%d%s вЂ” %d Рј, РёРЅС‚ %d, РјРёСЂ %d", gPlace[i][plDbId], extra,
+		if (kind == PL_CAR) format(extra, sizeof extra, " (%s, модель %d)", WorkLife_JobKey(gPlace[i][plArg] / 1000), gPlace[i][plArg] % 1000);
+		SendClientMessage(playerid, COLOR_WHITE, " №%d%s — %d м, инт %d, мир %d", gPlace[i][plDbId], extra,
 			floatround(GetPlayerDistanceFromPoint(playerid, gPlace[i][plX], gPlace[i][plY], gPlace[i][plZ])), gPlace[i][plInt], gPlace[i][plWorld]);
 		n++;
 	}
-	if (n == 0) SendClientMessage(playerid, COLOR_GREY, " РќРµС‚ РЅРё РѕРґРЅРѕР№. РџРѕСЃС‚Р°РІРёС‚СЊ: /place %s", gPlaceKey[kind]);
+	if (n == 0) SendClientMessage(playerid, COLOR_GREY, " Нет ни одной. Поставить: /place %s", gPlaceKey[kind]);
 	return true;
 }
 
@@ -423,14 +423,14 @@ stock bool:Cmd_Unplace(playerid)
 		if (d < bd) { bd = d; best = i; }
 	}
 	if (v != 0 && best == -1) best = WorkLife_PlaceOfCar(v);
-	if (best == -1) return SendClientMessage(playerid, COLOR_GREY, "Р СЏРґРѕРј (5 Рј) РЅРµС‚ С‚РѕС‡РµРє. РЎРїРёСЃРѕРє: /places");
+	if (best == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом (5 м) нет точек. Список: /places");
 	new kind = gPlace[best][plKind];
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM places WHERE id = %d", gPlace[best][plDbId]));
 	if (gPlace[best][plMk] != -1) { Marker_Destroy(gPlace[best][plMk], true); gPlace[best][plMk] = -1; }
 	if (kind == PL_CAR) WorkLife_RemoveCar(best);
 	gPlace[best][plUsed] = false;
 	Place_Build(best);
-	SendClientMessage(playerid, COLOR_ADMIN, "РўРѕС‡РєР° В«%sВ» в„–%d СѓРґР°Р»РµРЅР°.", gPlaceName[kind], gPlace[best][plDbId]);
+	SendClientMessage(playerid, COLOR_ADMIN, "Точка «%s» №%d удалена.", gPlaceName[kind], gPlace[best][plDbId]);
 	return true;
 }
 
@@ -438,13 +438,13 @@ stock bool:Cmd_GotoPlace(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 3)) return true;
 	new pos = 0, id;
-	if (!NextIntParam(params, pos, id)) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /gotoplace [в„–]  (РЅРѕРјРµСЂР°: /places [РІРёРґ])");
+	if (!NextIntParam(params, pos, id)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /gotoplace [№]  (номера: /places [вид])");
 	for (new i = 0; i < MAX_PLACES; i++)
 	{
 		if (!gPlace[i][plUsed] || gPlace[i][plDbId] != id) continue;
 		Teleport_SaveBack(playerid);
 		Place_Teleport(playerid, i);
-		return SendClientMessage(playerid, COLOR_ADMIN, "РўС‹ Сѓ С‚РѕС‡РєРё В«%sВ» в„–%d.", gPlaceName[gPlace[i][plKind]], id);
+		return SendClientMessage(playerid, COLOR_ADMIN, "Ты у точки «%s» №%d.", gPlaceName[gPlace[i][plKind]], id);
 	}
-	return SendClientMessage(playerid, COLOR_GREY, "РќРµС‚ С‚РѕС‡РєРё СЃ С‚Р°РєРёРј РЅРѕРјРµСЂРѕРј.");
+	return SendClientMessage(playerid, COLOR_GREY, "Нет точки с таким номером.");
 }

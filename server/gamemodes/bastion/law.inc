@@ -1,37 +1,37 @@
 // =====================================================================
-//  law.inc вЂ” Р·Р°РєРѕРЅ: РјРµС‚РєР° Р·Р°РґРµСЂР¶Р°РЅРёСЏ, РґРІРµСЂСЊ СѓС‡Р°СЃС‚РєР°, РІР·СЏС‚РєР°, РїРѕР±РµРі.
+//  law.inc — закон: метка задержания, дверь участка, взятка, побег.
 //
-//  РњРµС‚РєР° Р·Р°РґРµСЂР¶Р°РЅРёСЏ: /mark [id] СЃС‚Р°РІРёС‚ РїРѕР»РёС†РµР№СЃРєРёР№ РЅР° СЃРјРµРЅРµ. РњРµС‚РєР° РІРёСЃРёС‚
-//  MARK_SECONDS. Р•СЃР»Рё РёРіСЂРѕРє СЃ РјРµС‚РєРѕР№ РІС‹С€РµР» РёР· РёРіСЂС‹ (СЃР°Рј РёР»Рё В«РІС‹Р»РµС‚РµР»В») вЂ”
-//  РїСЂРё СЃР»РµРґСѓСЋС‰РµРј РІС…РѕРґРµ РѕРЅ РїРѕРїР°РґР°РµС‚ РІ РґРµРјРѕСЂРіР°РЅ: MARK_AJAIL_PER_STAR РјРёРЅСѓС‚
-//  Р·Р° РєР°Р¶РґСѓСЋ Р·РІРµР·РґСѓ СЂРѕР·С‹СЃРєР°, РЅРѕ РЅРµ РјРµРЅСЊС€Рµ MARK_AJAIL_MIN.
-//  РќР°СЂСѓС‡РЅРёРєРё РјРµС‚РєРѕР№ РЅРµ СЃС‡РёС‚Р°СЋС‚СЃСЏ. РџРѕРІС‚РѕСЂРЅС‹Р№ /mark СЃРЅРёРјР°РµС‚ РјРµС‚РєСѓ.
+//  Метка задержания: /mark [id] ставит полицейский на смене. Метка висит
+//  MARK_SECONDS. Если игрок с меткой вышел из игры (сам или «вылетел») —
+//  при следующем входе он попадает в деморган: MARK_AJAIL_PER_STAR минут
+//  за каждую звезду розыска, но не меньше MARK_AJAIL_MIN.
+//  Наручники меткой не считаются. Повторный /mark снимает метку.
 //
-//  Р”РІРµСЂСЊ СѓС‡Р°СЃС‚РєР° LSPD РґР»СЏ Р·Р°РєР»СЋС‡С‘РЅРЅС‹С… Р·Р°РїРµСЂС‚Р°. РћС‚РєСЂС‹С‚СЊ РµС‘ РјРѕР¶РµС‚
-//  РїРѕР»РёС†РµР№СЃРєРёР№ РЅР° СЃРјРµРЅРµ: /celldoor (РЅР° CELLDOOR_SECONDS СЃРµРєСѓРЅРґ).
-//  РљС‚Рѕ РёР· Р·Р°РєР»СЋС‡С‘РЅРЅС‹С… СѓСЃРїРµР» РІС‹Р№С‚Рё вЂ” СЃР±РµР¶Р°Р»: СЃСЂРѕРє СЃРЅСЏС‚, РЅРѕ СЂРѕР·С‹СЃРє
-//  +ESCAPE_STARS Р·РІС‘Р·Рґ Рё СЃРѕРѕР±С‰РµРЅРёРµ РІСЃРµР№ РїРѕР»РёС†РёРё. РљС‚Рѕ РѕС‚РєСЂС‹Р» вЂ” РїРёС€РµС‚СЃСЏ
-//  РІ Р¶СѓСЂРЅР°Р» С„СЂР°РєС†РёРё (/lmenu > Р–СѓСЂРЅР°Р»).
+//  Дверь участка LSPD для заключённых заперта. Открыть её может
+//  полицейский на смене: /celldoor (на CELLDOOR_SECONDS секунд).
+//  Кто из заключённых успел выйти — сбежал: срок снят, но розыск
+//  +ESCAPE_STARS звёзд и сообщение всей полиции. Кто открыл — пишется
+//  в журнал фракции (/lmenu > Журнал).
 //
-//  Р’Р·СЏС‚РєР°: Р·Р°РєР»СЋС‡С‘РЅРЅС‹Р№ РїРёС€РµС‚ /bribe [id] [СЃСѓРјРјР°] РїРѕР»РёС†РµР№СЃРєРѕРјСѓ СЂСЏРґРѕРј.
-//  Р•СЃР»Рё С‚РѕС‚ РїСЂРёРЅСЏР» (Y РёР»Рё /accept) вЂ” РґРµРЅСЊРіРё РїРµСЂРµС…РѕРґСЏС‚ РµРјСѓ, Р° Р·Р°РєР»СЋС‡С‘РЅРЅС‹Р№
-//  РІ С‚РµС‡РµРЅРёРµ BRIBE_PASS_SECONDS РјРѕР¶РµС‚ С‚РёС…Рѕ РІС‹Р№С‚Рё С‡РµСЂРµР· РґРІРµСЂСЊ: СЃСЂРѕРє СЃРЅСЏС‚,
-//  СЂРѕР·С‹СЃРєР° РЅРµС‚. РџРµСЂРµРґР°С‡Р° РґРµРЅРµРі РІРёРґРЅР° Р°РґРјРёРЅР°Рј РІ Р¶СѓСЂРЅР°Р»Рµ РґРµРЅРµРі.
+//  Взятка: заключённый пишет /bribe [id] [сумма] полицейскому рядом.
+//  Если тот принял (Y или /accept) — деньги переходят ему, а заключённый
+//  в течение BRIBE_PASS_SECONDS может тихо выйти через дверь: срок снят,
+//  розыска нет. Передача денег видна админам в журнале денег.
 // =====================================================================
 
-#define MARK_SECONDS            600     // СЃРєРѕР»СЊРєРѕ РІРёСЃРёС‚ РјРµС‚РєР° Р·Р°РґРµСЂР¶Р°РЅРёСЏ
-#define MARK_RANGE              30.0    // СЃ РєР°РєРѕРіРѕ СЂР°СЃСЃС‚РѕСЏРЅРёСЏ РµС‘ РјРѕР¶РЅРѕ РїРѕСЃС‚Р°РІРёС‚СЊ
-#define MARK_AJAIL_PER_STAR     10      // РјРёРЅСѓС‚ РґРµРјРѕСЂРіР°РЅР° Р·Р° Р·РІРµР·РґСѓ СЂРѕР·С‹СЃРєР°
-#define MARK_AJAIL_MIN          10      // Рё РЅРµ РјРµРЅСЊС€Рµ СЌС‚РѕРіРѕ
-#define CELLDOOR_SECONDS        30      // РЅР° СЃРєРѕР»СЊРєРѕ /celldoor РѕС‚РєСЂС‹РІР°РµС‚ РґРІРµСЂСЊ
-#define ESCAPE_STARS            3       // СЂРѕР·С‹СЃРє Р·Р° РїРѕР±РµРі
+#define MARK_SECONDS            600     // сколько висит метка задержания
+#define MARK_RANGE              30.0    // с какого расстояния её можно поставить
+#define MARK_AJAIL_PER_STAR     10      // минут деморгана за звезду розыска
+#define MARK_AJAIL_MIN          10      // и не меньше этого
+#define CELLDOOR_SECONDS        30      // на сколько /celldoor открывает дверь
+#define ESCAPE_STARS            3       // розыск за побег
 #define BRIBE_MIN               500
 #define BRIBE_MAX               1000000
-#define BRIBE_PASS_SECONDS      120     // СЃРєРѕР»СЊРєРѕ РІСЂРµРјРµРЅРё РЅР° РІС‹С…РѕРґ РїРѕСЃР»Рµ РІР·СЏС‚РєРё
+#define BRIBE_PASS_SECONDS      120     // сколько времени на выход после взятки
 
-static gMarkUntil[MAX_PLAYERS];         // РґРѕ РєР°РєРѕРіРѕ РІСЂРµРјРµРЅРё РІРёСЃРёС‚ РјРµС‚РєР° (0 вЂ” РЅРµС‚)
-static gJailPass[MAX_PLAYERS];          // РґРѕ РєР°РєРѕРіРѕ РІСЂРµРјРµРЅРё РјРѕР¶РЅРѕ С‚РёС…Рѕ РІС‹Р№С‚Рё (РІР·СЏС‚РєР°)
-static gCellOpenUntil;                  // РґРѕ РєР°РєРѕРіРѕ РІСЂРµРјРµРЅРё РѕС‚РєСЂС‹С‚Р° РґРІРµСЂСЊ СѓС‡Р°СЃС‚РєР°
+static gMarkUntil[MAX_PLAYERS];         // до какого времени висит метка (0 — нет)
+static gJailPass[MAX_PLAYERS];          // до какого времени можно тихо выйти (взятка)
+static gCellOpenUntil;                  // до какого времени открыта дверь участка
 
 stock Law_OnConnect(playerid)
 {
@@ -44,8 +44,8 @@ stock Law_ClearMark(playerid)
 	gMarkUntil[playerid] = 0;
 }
 
-// РР· OnPlayerDisconnect вЂ” РїРµСЂРІРѕР№ СЃС‚СЂРѕРєРѕР№, РїРѕРєР° Р°РєРєР°СѓРЅС‚ РµС‰С‘ Р·Р°РіСЂСѓР¶РµРЅ.
-// reason: 0 вЂ” РІС‹Р»РµС‚, 1 вЂ” РІС‹С€РµР» СЃР°Рј, 2 вЂ” РєРёРє РёР»Рё Р±Р°РЅ.
+// Из OnPlayerDisconnect — первой строкой, пока аккаунт ещё загружен.
+// reason: 0 — вылет, 1 — вышел сам, 2 — кик или бан.
 stock Law_OnDisconnect(playerid, reason)
 {
 	new bool:marked = (gMarkUntil[playerid] > gettime());
@@ -59,61 +59,61 @@ stock Law_OnDisconnect(playerid, reason)
 
 	new name[MAX_PLAYER_NAME], msg[144];
 	GetPlayerName(playerid, name, sizeof name);
-	Admin_LogName("РЎРµСЂРІРµСЂ", 0, "ajail", name, Player[playerid][pDbId], "РІС‹С…РѕРґ РёР· РёРіСЂС‹ СЃ РјРµС‚РєРѕР№ Р·Р°РґРµСЂР¶Р°РЅРёСЏ", minutes);
-	format(msg, sizeof msg, "[Р”РёСЃРїРµС‚С‡РµСЂ] %s РІС‹С€РµР» РёР· РёРіСЂС‹ СЃ РјРµС‚РєРѕР№ Р·Р°РґРµСЂР¶Р°РЅРёСЏ. Р”РµРјРѕСЂРіР°РЅ: %d РјРёРЅ.", GetRPName(playerid), minutes);
+	Admin_LogName("Сервер", 0, "ajail", name, Player[playerid][pDbId], "выход из игры с меткой задержания", minutes);
+	format(msg, sizeof msg, "[Диспетчер] %s вышел из игры с меткой задержания. Деморган: %d мин.", GetRPName(playerid), minutes);
 	Faction_MessageLaw(msg);
 }
 
-// /mark [id] вЂ” РїРѕСЃС‚Р°РІРёС‚СЊ РёР»Рё СЃРЅСЏС‚СЊ РјРµС‚РєСѓ Р·Р°РґРµСЂР¶Р°РЅРёСЏ
+// /mark [id] — поставить или снять метку задержания
 stock bool:Cmd_Mark(playerid, const params[])
 {
 	if (!Faction_NeedLaw(playerid)) return true;
 	new pos = 0;
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /mark [id] вЂ” РјРµС‚РєР° Р·Р°РґРµСЂР¶Р°РЅРёСЏ (РµС‰С‘ СЂР°Р· вЂ” СЃРЅСЏС‚СЊ)");
-	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє РµС‰С‘ РЅРµ РІРѕС€С‘Р» РІ Р°РєРєР°СѓРЅС‚.");
+	if (target == INVALID_PLAYER_ID || target == playerid) return SendClientMessage(playerid, COLOR_GREY, "Использование: /mark [id] — метка задержания (ещё раз — снять)");
+	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
 
 	new msg[144];
 	if (gMarkUntil[target] > gettime())
 	{
 		gMarkUntil[target] = 0;
-		SendClientMessage(target, COLOR_GREEN, "РњРµС‚РєР° Р·Р°РґРµСЂР¶Р°РЅРёСЏ СЃРЅСЏС‚Р°.");
-		format(msg, sizeof msg, "[Р”РёСЃРїРµС‚С‡РµСЂ] %s СЃРЅСЏР» РјРµС‚РєСѓ Р·Р°РґРµСЂР¶Р°РЅРёСЏ СЃ %s.", GetRPName(playerid), GetRPName(target));
+		SendClientMessage(target, COLOR_GREEN, "Метка задержания снята.");
+		format(msg, sizeof msg, "[Диспетчер] %s снял метку задержания с %s.", GetRPName(playerid), GetRPName(target));
 		Faction_MessageLaw(msg);
 		return true;
 	}
-	if (Player[target][pJail] > 0) return SendClientMessage(playerid, COLOR_GREY, "Р­С‚РѕС‚ С‡РµР»РѕРІРµРє СѓР¶Рµ РІ С‚СЋСЂСЊРјРµ.");
+	if (Player[target][pJail] > 0) return SendClientMessage(playerid, COLOR_GREY, "Этот человек уже в тюрьме.");
 	if (Faction_IsLaw(Player[target][pFaction]) && Player[target][pDuty])
-		return SendClientMessage(playerid, COLOR_GREY, "РќРµР»СЊР·СЏ РїРѕСЃС‚Р°РІРёС‚СЊ РјРµС‚РєСѓ РїРѕР»РёС†РµР№СЃРєРѕРјСѓ РЅР° СЃРјРµРЅРµ.");
-	if (!IsPlayerNearPlayer(playerid, target, MARK_RANGE)) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє СЃР»РёС€РєРѕРј РґР°Р»РµРєРѕ.");
+		return SendClientMessage(playerid, COLOR_GREY, "Нельзя поставить метку полицейскому на смене.");
+	if (!IsPlayerNearPlayer(playerid, target, MARK_RANGE)) return SendClientMessage(playerid, COLOR_GREY, "Игрок слишком далеко.");
 
 	gMarkUntil[target] = gettime() + MARK_SECONDS;
-	SendClientMessage(target, COLOR_RED, "РџРѕР»РёС†РёСЏ РїРѕСЃС‚Р°РІРёР»Р° РЅР° С‚РµР±СЏ РјРµС‚РєСѓ Р·Р°РґРµСЂР¶Р°РЅРёСЏ РЅР° %d РјРёРЅ. Р’С‹Р№РґРµС€СЊ РёР· РёРіСЂС‹ вЂ” РїРѕРїР°РґС‘С€СЊ РІ РґРµРјРѕСЂРіР°РЅ.", MARK_SECONDS / 60);
-	format(msg, sizeof msg, "[Р”РёСЃРїРµС‚С‡РµСЂ] %s РїРѕСЃС‚Р°РІРёР» РјРµС‚РєСѓ Р·Р°РґРµСЂР¶Р°РЅРёСЏ РЅР° %s [%d] (%d РјРёРЅ).", GetRPName(playerid), GetRPName(target), target, MARK_SECONDS / 60);
+	SendClientMessage(target, COLOR_RED, "Полиция поставила на тебя метку задержания на %d мин. Выйдешь из игры — попадёшь в деморган.", MARK_SECONDS / 60);
+	format(msg, sizeof msg, "[Диспетчер] %s поставил метку задержания на %s [%d] (%d мин).", GetRPName(playerid), GetRPName(target), target, MARK_SECONDS / 60);
 	Faction_MessageLaw(msg);
 	return true;
 }
 
-// РўСЂРё РґРІРµСЂРё РєР°РјРµСЂ: РєР°Р¶РґР°СЏ РѕС‚СЉРµР·Р¶Р°РµС‚ РІР±РѕРє РІРґРѕР»СЊ СЂРµС€С‘С‚РєРё Рё РІРѕР·РІСЂР°С‰Р°РµС‚СЃСЏ.
-// РњРµСЃС‚Р° вЂ” РёР· РёРіСЂС‹ (/pos): РіРґРµ СЃС‚РѕРёС‚ Р·Р°РєСЂС‹С‚Р°СЏ РґРІРµСЂСЊ Рё РєСѓРґР° РѕРЅР° СѓРµР·Р¶Р°РµС‚.
-// РњРѕРґРµР»СЊ 19302 вЂ” СЂРµС€С‘С‚С‡Р°С‚Р°СЏ РґРІРµСЂСЊ РєР°РјРµСЂС‹ (РЅРµ РІРѕСЂРѕС‚Р°!). Р”РІРµСЂСЊ СЃС‚РѕРёС‚ РІРґРѕР»СЊ РѕСЃРё Y.
-// Р”Р°Р»СЊРЅСЏСЏ РєР°РјРµСЂР° (Сѓ СЃС‚РµРЅС‹) РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ: РІ РЅРµР№ СЃС‚РѕРёС‚ С€С‚Р°С‚РЅР°СЏ СЂРµС€С‘С‚РєР° РёРЅС‚РµСЂСЊРµСЂР°.
+// Три двери камер: каждая отъезжает вбок вдоль решётки и возвращается.
+// Места — из игры (/pos): где стоит закрытая дверь и куда она уезжает.
+// Модель 19302 — решётчатая дверь камеры (не ворота!). Дверь стоит вдоль оси Y.
+// Дальняя камера (у стены) не используется: в ней стоит штатная решётка интерьера.
 #define CELL_BARS           2
-#define CELL_SPEED          1.2     // СЃРєРѕСЂРѕСЃС‚СЊ РґРІРёР¶РµРЅРёСЏ РґРІРµСЂРё
-#define CELL_CENTER_X       266.4   // СЃРµСЂРµРґРёРЅР° СЂСЏРґР° РєР°РјРµСЂ: РѕС‚СЃСЋРґР° РїСЂРѕРІРµСЂСЏРµС‚СЃСЏ, СЃС‚РѕРёС‚ Р»Рё РїРѕР»РёС†РµР№СЃРєРёР№ СЂСЏРґРѕРј
+#define CELL_SPEED          1.2     // скорость движения двери
+#define CELL_CENTER_X       266.4   // середина ряда камер: отсюда проверяется, стоит ли полицейский рядом
 #define CELL_CENTER_Y       85.5
 #define CELL_CENTER_Z       1001.03
-#define CELL_USE_RANGE      6.0     // ALT Сѓ РґРІРµСЂРµР№
+#define CELL_USE_RANGE      6.0     // ALT у дверей
 #define CELL_GATE_MODEL     19302
-#define CELL_GATE_X         266.30  // Р»РёРЅРёСЏ СЂРµС€С‘С‚РѕРє
-#define CELL_GATE_Z         1001.28 // СЃРµСЂРµРґРёРЅР° РґРІРµСЂРё РїРѕ РІС‹СЃРѕС‚Рµ (РёРіСЂРѕРє СЃС‚РѕРёС‚ РЅР° 1001.03)
+#define CELL_GATE_X         266.30  // линия решёток
+#define CELL_GATE_Z         1001.28 // середина двери по высоте (игрок стоит на 1001.03)
 #define CELL_GATE_ROT       90.0
 
-// y Р·Р°РєСЂС‹С‚РѕР№ Рё РѕС‚РєСЂС‹С‚РѕР№ РґРІРµСЂРё; x Рё z Сѓ РІСЃРµС… РѕРґРЅРё (СЃ /pos СЃРЅСЏС‚ РёРіСЂРѕРє, Р° РЅРµ РѕР±СЉРµРєС‚)
+// y закрытой и открытой двери; x и z у всех одни (с /pos снят игрок, а не объект)
 static const Float:gCellClosed[CELL_BARS][4] =
 {
-	{ CELL_GATE_X, 87.89, CELL_GATE_Z, CELL_GATE_ROT },   // Сѓ РІС…РѕРґР°
-	{ CELL_GATE_X, 83.20, CELL_GATE_Z, CELL_GATE_ROT }    // РІ С†РµРЅС‚СЂРµ
+	{ CELL_GATE_X, 87.89, CELL_GATE_Z, CELL_GATE_ROT },   // у входа
+	{ CELL_GATE_X, 83.20, CELL_GATE_Z, CELL_GATE_ROT }    // в центре
 };
 static const Float:gCellOpen[CELL_BARS][3] =
 {
@@ -122,11 +122,11 @@ static const Float:gCellOpen[CELL_BARS][3] =
 };
 
 static gCellObj[CELL_BARS] = { -1, ... };
-static gCellUntil[CELL_BARS];            // РґРѕ РєР°РєРѕРіРѕ РІСЂРµРјРµРЅРё РѕС‚РєСЂС‹С‚Р° РєР°Р¶РґР°СЏ СЂРµС€С‘С‚РєР° (0 вЂ” Р·Р°РєСЂС‹С‚Р°)
-static gCellSerial[CELL_BARS];           // РЅРѕРјРµСЂ РѕС‚РєСЂС‹С‚РёСЏ: СЃС‚Р°СЂС‹Р№ С‚Р°Р№РјРµСЂ РЅРµ Р·Р°РєСЂРѕРµС‚ РЅРѕРІРѕРµ
+static gCellUntil[CELL_BARS];            // до какого времени открыта каждая решётка (0 — закрыта)
+static gCellSerial[CELL_BARS];           // номер открытия: старый таймер не закроет новое
 
-// Р”Р°Р»СЊРЅСЏСЏ РєР°РјРµСЂР° (Сѓ СЃС‚РµРЅС‹, С‚Р°Рј РґРµРјРѕСЂРіР°РЅ): С‚Р° Р¶Рµ СЂРµС€С‘С‚РєР° 19302, РЅРѕ РЅРµРїРѕРґРІРёР¶РЅР°СЏ, ALT РµС‘ РЅРµ РѕС‚РєСЂС‹РІР°РµС‚.
-// РњРµСЃС‚Рѕ Р·Р°РєСЂС‹С‚РѕР№ РґРІРµСЂРё СЃРЅСЏС‚Рѕ РІ РёРіСЂРµ (/pos). РЁС‚Р°С‚РЅСѓСЋ СЂРµС€С‘С‚РєСѓ РёРЅС‚РµСЂСЊРµСЂР° С‚Р°Рј СѓР±РёСЂР°СЋС‚ С‡РµСЂРµР· /mo remove.
+// Дальняя камера (у стены, там деморган): та же решётка 19302, но неподвижная, ALT её не открывает.
+// Место закрытой двери снято в игре (/pos). Штатную решётку интерьера там убирают через /mo remove.
 #define CELL_FAR_Y          76.82
 
 stock Law_Init()
@@ -144,7 +144,7 @@ stock bool:Law_NearCellGate(playerid, Float:range)
 		&& IsPlayerInRangeOfPoint(playerid, range, CELL_CENTER_X, CELL_CENTER_Y, CELL_CENTER_Z);
 }
 
-// Р‘Р»РёР¶Р°Р№С€Р°СЏ Рє РёРіСЂРѕРєСѓ СЂРµС€С‘С‚РєР° (РїРѕ РµС‘ Р·Р°РєСЂС‹С‚РѕРјСѓ РјРµСЃС‚Сѓ)
+// Ближайшая к игроку решётка (по её закрытому месту)
 static Law_NearestCell(playerid)
 {
 	new best = 0, Float:bestDist = 100000.0;
@@ -156,7 +156,7 @@ static Law_NearestCell(playerid)
 	return best;
 }
 
-// РћС‚РєСЂС‹С‚СЊ РёР»Рё Р·Р°РєСЂС‹С‚СЊ РѕРґРЅСѓ СЂРµС€С‘С‚РєСѓ (РѕР±СЉРµРєС‚ РµРґРµС‚ РІ СЃРІРѕС‘ РјРµСЃС‚Рѕ)
+// Открыть или закрыть одну решётку (объект едет в своё место)
 static Law_SetCellGate(i, bool:open)
 {
 	if (gCellObj[i] != -1)
@@ -172,7 +172,7 @@ static Law_SetCellGate(i, bool:open)
 	}
 	else gCellUntil[i] = 0;
 
-	// РґР»СЏ РїРѕР±РµРіР° Рё РІС‹С…РѕРґР° РёР· СѓС‡Р°СЃС‚РєР°: РѕС‚РєСЂС‹С‚Р° Р»Рё С…РѕС‚СЊ РѕРґРЅР° СЂРµС€С‘С‚РєР°
+	// для побега и выхода из участка: открыта ли хоть одна решётка
 	gCellOpenUntil = 0;
 	for (new k = 0; k < CELL_BARS; k++)
 	{
@@ -188,7 +188,7 @@ public OnCellGateClose(cell, serial)
 	return 1;
 }
 
-// РџРѕР»РёС†РµР№СЃРєРёР№ РЅР° СЃРјРµРЅРµ Сѓ СЂРµС€С‘С‚РєРё: Р¶РјС‘С‚ ALT РёР»Рё РІРІРѕРґРёС‚ /celldoor вЂ” Р±Р»РёР¶Р°Р№С€Р°СЏ СЂРµС€С‘С‚РєР° РѕС‚РєСЂС‹РІР°РµС‚СЃСЏ РёР»Рё Р·Р°РєСЂС‹РІР°РµС‚СЃСЏ
+// Полицейский на смене у решётки: жмёт ALT или вводит /celldoor — ближайшая решётка открывается или закрывается
 static Law_ToggleCellGate(playerid)
 {
 	new msg[144];
@@ -198,21 +198,21 @@ static Law_ToggleCellGate(playerid)
 	ApplyAnimation(playerid, "BOMBER", "BOM_Plant_In", 4.1, false, false, false, false, 0, SYNC_ALL);
 	if (opening)
 	{
-		format(msg, sizeof msg, "%s РїРѕРІРѕСЂР°С‡РёРІР°РµС‚ РєР»СЋС‡ Рё РѕС‚РєСЂС‹РІР°РµС‚ СЂРµС€С‘С‚РєСѓ РєР°РјРµСЂС‹.", GetRPName(playerid));
+		format(msg, sizeof msg, "%s поворачивает ключ и открывает решётку камеры.", GetRPName(playerid));
 		SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
-		format(msg, sizeof msg, "%s РѕС‚РєСЂС‹Р» СЂРµС€С‘С‚РєСѓ РєР°РјРµСЂС‹ в„–%d РґР»СЏ Р·Р°РєР»СЋС‡С‘РЅРЅС‹С… РЅР° %d СЃРµРє.", GetRPName(playerid), cell + 1, CELLDOOR_SECONDS);
+		format(msg, sizeof msg, "%s открыл решётку камеры №%d для заключённых на %d сек.", GetRPName(playerid), cell + 1, CELLDOOR_SECONDS);
 		Faction_Log(FACTION_POLICE, msg);
-		SendClientMessage(playerid, COLOR_ORANGE, "Р РµС€С‘С‚РєР° РѕС‚РєСЂС‹С‚Р° РЅР° %d СЃРµРє. Р—Р°РєСЂС‹С‚СЊ СЂР°РЅСЊС€Рµ: /celldoor РёР»Рё ALT Сѓ РЅРµС‘.", CELLDOOR_SECONDS);
+		SendClientMessage(playerid, COLOR_ORANGE, "Решётка открыта на %d сек. Закрыть раньше: /celldoor или ALT у неё.", CELLDOOR_SECONDS);
 	}
 	else
 	{
-		format(msg, sizeof msg, "%s Р·Р°РєСЂС‹РІР°РµС‚ СЂРµС€С‘С‚РєСѓ РєР°РјРµСЂС‹.", GetRPName(playerid));
+		format(msg, sizeof msg, "%s закрывает решётку камеры.", GetRPName(playerid));
 		SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	}
 	return opening;
 }
 
-// РР· Doors_Try (doors.inc): ALT Сѓ РґРІРµСЂРё СѓС‡Р°СЃС‚РєР° СЂСЏРґРѕРј СЃ СЂРµС€С‘С‚РєРѕР№. true вЂ” РѕР±СЂР°Р±РѕС‚Р°РЅРѕ.
+// Из Doors_Try (doors.inc): ALT у двери участка рядом с решёткой. true — обработано.
 stock bool:Law_CellGateUse(playerid)
 {
 	if (!Faction_IsLaw(Player[playerid][pFaction]) || !Player[playerid][pDuty]) return false;
@@ -221,17 +221,17 @@ stock bool:Law_CellGateUse(playerid)
 	return true;
 }
 
-// /celldoor вЂ” РїРѕР»РёС†РµР№СЃРєРёР№ РЅР° СЃРјРµРЅРµ РѕС‚РєСЂС‹РІР°РµС‚ РёР»Рё Р·Р°РєСЂС‹РІР°РµС‚ Р±Р»РёР¶Р°Р№С€СѓСЋ СЂРµС€С‘С‚РєСѓ РєР°РјРµСЂС‹
+// /celldoor — полицейский на смене открывает или закрывает ближайшую решётку камеры
 stock bool:Cmd_CellDoor(playerid)
 {
 	if (!Faction_NeedLaw(playerid)) return true;
 	if (!Law_NearCellGate(playerid, 12.0))
-		return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Рє СЂРµС€С‘С‚РєРµ РєР°РјРµСЂС‹ РІ СѓС‡Р°СЃС‚РєРµ LSPD.");
+		return SendClientMessage(playerid, COLOR_GREY, "Подойди к решётке камеры в участке LSPD.");
 	Law_ToggleCellGate(playerid);
 	return true;
 }
 
-// Р—Р°РєР»СЋС‡С‘РЅРЅС‹Р№ РЅРµ РЅР° РјРµСЃС‚Рµ, РЅРѕ СЌС‚Рѕ Р·Р°РєРѕРЅРЅРѕ: РґРІРµСЂСЊ РѕС‚РєСЂС‹С‚Р° РёР»Рё РѕРЅ Р·Р°РїР»Р°С‚РёР»
+// Заключённый не на месте, но это законно: дверь открыта или он заплатил
 stock Law_MayLeaveCell(playerid)
 {
 	new now = gettime();
@@ -239,7 +239,7 @@ stock Law_MayLeaveCell(playerid)
 	return 0;
 }
 
-// РР· doors.inc: РёРіСЂРѕРє Сѓ РґРІРµСЂРё. 1 вЂ” РјРѕР¶РЅРѕ РїСЂРѕР№С‚Рё, 0 вЂ” РґРІРµСЂСЊ Р·Р°РїРµСЂС‚Р° (РёРіСЂРѕРєСѓ СѓР¶Рµ РЅР°РїРёСЃР°РЅРѕ).
+// Из doors.inc: игрок у двери. 1 — можно пройти, 0 — дверь заперта (игроку уже написано).
 stock Law_TryLeave(playerid)
 {
 	if (Player[playerid][pJail] <= 0) return 1;
@@ -249,7 +249,7 @@ stock Law_TryLeave(playerid)
 		gJailPass[playerid] = 0;
 		Player[playerid][pJail] = 0;
 		Account_Save(playerid);
-		SendClientMessage(playerid, COLOR_GREEN, "РўРµР±СЏ С‚РёС…Рѕ РІС‹РїСѓСЃС‚РёР»Рё. РЎСЂРѕРє СЃРЅСЏС‚.");
+		SendClientMessage(playerid, COLOR_GREEN, "Тебя тихо выпустили. Срок снят.");
 		return 1;
 	}
 	if (gCellOpenUntil > now)
@@ -259,60 +259,60 @@ stock Law_TryLeave(playerid)
 		if (Player[playerid][pWanted] > 6) Player[playerid][pWanted] = 6;
 		SetPlayerWantedLevel(playerid, Player[playerid][pWanted]);
 		Account_Save(playerid);
-		SendClientMessage(playerid, COLOR_RED, "РўС‹ СЃР±РµР¶Р°Р» РёР· СѓС‡Р°СЃС‚РєР°! Р РѕР·С‹СЃРє: %d Р·РІ.", Player[playerid][pWanted]);
+		SendClientMessage(playerid, COLOR_RED, "Ты сбежал из участка! Розыск: %d зв.", Player[playerid][pWanted]);
 		new msg[144];
-		format(msg, sizeof msg, "[Р”РёСЃРїРµС‚С‡РµСЂ] РџРѕР±РµРі РёР· СѓС‡Р°СЃС‚РєР° LSPD: %s [%d]. Р РѕР·С‹СЃРє %d Р·РІ.", GetRPName(playerid), playerid, Player[playerid][pWanted]);
+		format(msg, sizeof msg, "[Диспетчер] Побег из участка LSPD: %s [%d]. Розыск %d зв.", GetRPName(playerid), playerid, Player[playerid][pWanted]);
 		Faction_MessageLaw(msg);
 		return 1;
 	}
-	SendClientMessage(playerid, COLOR_GREY, "Р”РІРµСЂСЊ Р·Р°РїРµСЂС‚Р°. РћС‚РєСЂС‹С‚СЊ РµС‘ РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ РїРѕР»РёС†РµР№СЃРєРёР№. Р”РѕРіРѕРІРѕСЂРёС‚СЊСЃСЏ: /bribe [id] [СЃСѓРјРјР°]");
+	SendClientMessage(playerid, COLOR_GREY, "Дверь заперта. Открыть её может только полицейский. Договориться: /bribe [id] [сумма]");
 	return 0;
 }
 
-// /bribe [id] [СЃСѓРјРјР°] вЂ” Р·Р°РєР»СЋС‡С‘РЅРЅС‹Р№ РїСЂРµРґР»Р°РіР°РµС‚ РІР·СЏС‚РєСѓ РїРѕР»РёС†РµР№СЃРєРѕРјСѓ СЂСЏРґРѕРј
+// /bribe [id] [сумма] — заключённый предлагает взятку полицейскому рядом
 stock bool:Cmd_Bribe(playerid, const params[])
 {
-	if (Player[playerid][pJail] <= 0) return SendClientMessage(playerid, COLOR_GREY, "Р’Р·СЏС‚РєСѓ РїСЂРµРґР»Р°РіР°СЋС‚ РёР· РєР°РјРµСЂС‹: С‚С‹ РЅРµ РІ С‚СЋСЂСЊРјРµ.");
+	if (Player[playerid][pJail] <= 0) return SendClientMessage(playerid, COLOR_GREY, "Взятку предлагают из камеры: ты не в тюрьме.");
 	new pos = 0, amount;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || target == playerid || !NextIntParam(params, pos, amount))
-		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /bribe [id РїРѕР»РёС†РµР№СЃРєРѕРіРѕ] [СЃСѓРјРјР° РѕС‚ $%d]", BRIBE_MIN);
-	if (amount < BRIBE_MIN || amount > BRIBE_MAX) return SendClientMessage(playerid, COLOR_GREY, "РЎСѓРјРјР° РѕС‚ $%d РґРѕ $%d.", BRIBE_MIN, BRIBE_MAX);
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /bribe [id полицейского] [сумма от $%d]", BRIBE_MIN);
+	if (amount < BRIBE_MIN || amount > BRIBE_MAX) return SendClientMessage(playerid, COLOR_GREY, "Сумма от $%d до $%d.", BRIBE_MIN, BRIBE_MAX);
 	if (!Player[target][pLogged] || !Faction_IsLaw(Player[target][pFaction]) || !Player[target][pDuty])
-		return SendClientMessage(playerid, COLOR_GREY, "Р­С‚Рѕ РЅРµ РїРѕР»РёС†РµР№СЃРєРёР№ РЅР° СЃРјРµРЅРµ.");
-	if (!IsPlayerNearPlayer(playerid, target, 5.0)) return SendClientMessage(playerid, COLOR_GREY, "РџРѕР»РёС†РµР№СЃРєРёР№ СЃР»РёС€РєРѕРј РґР°Р»РµРєРѕ.");
-	if (GetMoney(playerid) < amount) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ СЃС‚РѕР»СЊРєРѕ РЅР°Р»РёС‡РЅС‹С….");
+		return SendClientMessage(playerid, COLOR_GREY, "Это не полицейский на смене.");
+	if (!IsPlayerNearPlayer(playerid, target, 5.0)) return SendClientMessage(playerid, COLOR_GREY, "Полицейский слишком далеко.");
+	if (GetMoney(playerid) < amount) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет столько наличных.");
 
 	Player[target][pOfferType] = OFFER_BRIBE;
 	Player[target][pOfferFrom] = playerid;
 	Player[target][pOfferFromDb] = Player[playerid][pDbId];
 	Player[target][pOfferValue] = amount;
-	SendClientMessage(target, COLOR_BLUE, "%s РїСЂРµРґР»Р°РіР°РµС‚ С‚РµР±Рµ $%d, С‡С‚РѕР±С‹ С‚С‹ РµРіРѕ РІС‹РїСѓСЃС‚РёР». Р’Р·СЏС‚СЊ: Y (РёР»Рё /accept), РѕС‚РєР°Р·Р°С‚СЊСЃСЏ: N", GetRPName(playerid), amount);
-	SendClientMessage(playerid, COLOR_WHITE, "РўС‹ РїСЂРµРґР»РѕР¶РёР» $%d. Р–РґС‘Рј РѕС‚РІРµС‚Р°.", amount);
+	SendClientMessage(target, COLOR_BLUE, "%s предлагает тебе $%d, чтобы ты его выпустил. Взять: Y (или /accept), отказаться: N", GetRPName(playerid), amount);
+	SendClientMessage(playerid, COLOR_WHITE, "Ты предложил $%d. Ждём ответа.", amount);
 	return true;
 }
 
-// РР· Cmd_Accept (factions.inc): РїРѕР»РёС†РµР№СЃРєРёР№ playerid Р±РµСЂС‘С‚ РІР·СЏС‚РєСѓ Сѓ Р·Р°РєР»СЋС‡С‘РЅРЅРѕРіРѕ from
+// Из Cmd_Accept (factions.inc): полицейский playerid берёт взятку у заключённого from
 stock Law_AcceptBribe(playerid, from, amount)
 {
 	if (!Faction_IsLaw(Player[playerid][pFaction]) || !Player[playerid][pDuty] || Player[from][pJail] <= 0
 		|| amount < BRIBE_MIN || !IsPlayerNearPlayer(playerid, from, 5.0))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РџСЂРµРґР»РѕР¶РµРЅРёРµ Р±РѕР»СЊС€Рµ РЅРµ РґРµР№СЃС‚РІСѓРµС‚.");
+		SendClientMessage(playerid, COLOR_GREY, "Предложение больше не действует.");
 		return 0;
 	}
 	if (GetMoney(from) < amount)
 	{
-		SendClientMessage(from, COLOR_GREY, "РЈ С‚РµР±СЏ СѓР¶Рµ РЅРµС‚ СЌС‚РёС… РґРµРЅРµРі.");
-		SendClientMessage(playerid, COLOR_GREY, "РЈ РЅРµРіРѕ РЅРµС‚ С‚Р°РєРёС… РґРµРЅРµРі.");
+		SendClientMessage(from, COLOR_GREY, "У тебя уже нет этих денег.");
+		SendClientMessage(playerid, COLOR_GREY, "У него нет таких денег.");
 		return 0;
 	}
-	GiveMoney(from, -amount, "РІР·СЏС‚РєР° РїРѕР»РёС†РµР№СЃРєРѕРјСѓ");
-	GiveMoney(playerid, amount, "РІР·СЏС‚РєР° РѕС‚ Р·Р°РєР»СЋС‡С‘РЅРЅРѕРіРѕ");
+	GiveMoney(from, -amount, "взятка полицейскому");
+	GiveMoney(playerid, amount, "взятка от заключённого");
 	Account_Save(from);
 	Account_Save(playerid);
 	gJailPass[from] = gettime() + BRIBE_PASS_SECONDS;
-	SendClientMessage(playerid, COLOR_GREEN, "РўС‹ РІР·СЏР» $%d. РЈ РЅРµРіРѕ %d СЃРµРє., С‡С‚РѕР±С‹ РІС‹Р№С‚Рё С‡РµСЂРµР· РґРІРµСЂСЊ СѓС‡Р°СЃС‚РєР°.", amount, BRIBE_PASS_SECONDS);
-	SendClientMessage(from, COLOR_GREEN, "Р’Р·СЏС‚РєСѓ РІР·СЏР»Рё. РЈ С‚РµР±СЏ %d СЃРµРє.: РёРґРё Рє РґРІРµСЂРё СѓС‡Р°СЃС‚РєР° Рё РІС‹С…РѕРґРё (ALT).", BRIBE_PASS_SECONDS);
+	SendClientMessage(playerid, COLOR_GREEN, "Ты взял $%d. У него %d сек., чтобы выйти через дверь участка.", amount, BRIBE_PASS_SECONDS);
+	SendClientMessage(from, COLOR_GREEN, "Взятку взяли. У тебя %d сек.: иди к двери участка и выходи (ALT).", BRIBE_PASS_SECONDS);
 	return 1;
 }

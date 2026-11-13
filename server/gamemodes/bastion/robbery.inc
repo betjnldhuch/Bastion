@@ -1,28 +1,28 @@
 // =====================================================================
-//  robbery.inc вЂ” РѕРіСЂР°Р±Р»РµРЅРёРµ РјР°РіР°Р·РёРЅРѕРІ 24/7 Рё Р±Р°СЂРѕРІ.
+//  robbery.inc — ограбление магазинов 24/7 и баров.
 //
-//  Р’СЃС‚Р°РЅСЊ Сѓ Р·РЅР°С‡РєР° РјР°РіР°Р·РёРЅР° СЃ РѕСЂСѓР¶РёРµРј РІ СЂСѓРєР°С… Рё РІРІРµРґРё /rob. РџРѕР»РёС†РёРё
-//  СЃСЂР°Р·Сѓ РїСЂРёС…РѕРґРёС‚ РІС‹Р·РѕРІ, С‚РµР±Рµ вЂ” СЂРѕР·С‹СЃРє ROB_WANTED Р·РІС‘Р·Рґ. РќСѓР¶РЅРѕ
-//  РїСЂРѕРґРµСЂР¶Р°С‚СЊСЃСЏ ROB_TIME СЃРµРєСѓРЅРґ СЂСЏРґРѕРј СЃ РјР°РіР°Р·РёРЅРѕРј вЂ” С‚РѕРіРґР° РєР°СЃСЃР° С‚РІРѕСЏ.
-//  РЈС€С‘Р» РґР°Р»СЊС€Рµ ROB_RANGE, СЂР°РЅРµРЅ РёР»Рё РІС‹С€РµР» вЂ” РѕРіСЂР°Р±Р»РµРЅРёРµ СЃРѕСЂРІР°РЅРѕ.
-//  РћРґРёРЅ РјР°РіР°Р·РёРЅ РјРѕР¶РЅРѕ РіСЂР°Р±РёС‚СЊ СЂР°Р· РІ ROB_BIZ_COOLDOWN, РёРіСЂРѕРєСѓ вЂ” СЂР°Р· РІ
-//  ROB_PLAYER_COOLDOWN. РќСѓР¶РµРЅ С…РѕС‚СЏ Р±С‹ ROB_MIN_POLICE РїРѕР»РёС†РµР№СЃРєРёР№ РѕРЅР»Р°Р№РЅ
-//  (Р°РґРјРёРЅРѕРІ 4+ СЌС‚Рѕ РЅРµ РєР°СЃР°РµС‚СЃСЏ вЂ” РґР»СЏ РїСЂРѕРІРµСЂРєРё).
+//  Встань у значка магазина с оружием в руках и введи /rob. Полиции
+//  сразу приходит вызов, тебе — розыск ROB_WANTED звёзд. Нужно
+//  продержаться ROB_TIME секунд рядом с магазином — тогда касса твоя.
+//  Ушёл дальше ROB_RANGE, ранен или вышел — ограбление сорвано.
+//  Один магазин можно грабить раз в ROB_BIZ_COOLDOWN, игроку — раз в
+//  ROB_PLAYER_COOLDOWN. Нужен хотя бы ROB_MIN_POLICE полицейский онлайн
+//  (админов 4+ это не касается — для проверки).
 // =====================================================================
 
-#define ROB_TIME            40          // СЃРµРєСѓРЅРґ РґРµСЂР¶Р°С‚СЊСЃСЏ Сѓ РјР°РіР°Р·РёРЅР°
+#define ROB_TIME            40          // секунд держаться у магазина
 #define ROB_RANGE           10.0
 #define ROB_MIN_LEVEL       2
-#define ROB_WANTED          3           // Р·РІС‘Р·Рґ Р·Р° РѕРіСЂР°Р±Р»РµРЅРёРµ
+#define ROB_WANTED          3           // звёзд за ограбление
 #define ROB_MIN_MONEY       1500
 #define ROB_MAX_MONEY       3500
-#define ROB_BIZ_COOLDOWN    1800        // СЃРµРєСѓРЅРґ РјРµР¶РґСѓ РѕРіСЂР°Р±Р»РµРЅРёСЏРјРё РѕРґРЅРѕРіРѕ РјР°РіР°Р·РёРЅР°
-#define ROB_PLAYER_COOLDOWN 900         // СЃРµРєСѓРЅРґ РјРµР¶РґСѓ РѕРіСЂР°Р±Р»РµРЅРёСЏРјРё РѕРґРЅРѕРіРѕ РёРіСЂРѕРєР°
+#define ROB_BIZ_COOLDOWN    1800        // секунд между ограблениями одного магазина
+#define ROB_PLAYER_COOLDOWN 900         // секунд между ограблениями одного игрока
 #define ROB_MIN_POLICE      1
 
 forward Rob_OnSecond();
 
-static gRobBiz[MAX_PLAYERS] = { -1, ... };      // РєР°РєРѕР№ Р±РёР·РЅРµСЃ РіСЂР°Р±РёС‚ (-1 вЂ” РЅРёРєР°РєРѕР№)
+static gRobBiz[MAX_PLAYERS] = { -1, ... };      // какой бизнес грабит (-1 — никакой)
 static gRobLeft[MAX_PLAYERS];
 static gRobPlayerLast[MAX_PLAYERS];
 static gRobBizLast[MAX_BUSINESSES];
@@ -34,7 +34,7 @@ stock Robbery_Init()
 
 stock Rob_OnDisconnect(playerid)
 {
-	if (gRobBiz[playerid] != -1) Rob_Fail(playerid, "РіСЂР°Р±РёС‚РµР»СЊ СЃРєСЂС‹Р»СЃСЏ РёР· РіРѕСЂРѕРґР°");
+	if (gRobBiz[playerid] != -1) Rob_Fail(playerid, "грабитель скрылся из города");
 	gRobPlayerLast[playerid] = 0;
 }
 
@@ -53,31 +53,31 @@ static Rob_Fail(playerid, const why[])
 	new b = gRobBiz[playerid];
 	gRobBiz[playerid] = -1;
 	if (b < 0) return;
-	if (IsPlayerConnected(playerid)) SendClientMessage(playerid, COLOR_RED, "РћРіСЂР°Р±Р»РµРЅРёРµ СЃРѕСЂРІР°РЅРѕ: %s.", why);
+	if (IsPlayerConnected(playerid)) SendClientMessage(playerid, COLOR_RED, "Ограбление сорвано: %s.", why);
 	new msg[144];
-	format(msg, sizeof msg, "[Р”РёСЃРїРµС‚С‡РµСЂ] РћРіСЂР°Р±Р»РµРЅРёРµ В«%sВ» СЃРѕСЂРІР°РЅРѕ: %s.", Biz[b][bName], why);
+	format(msg, sizeof msg, "[Диспетчер] Ограбление «%s» сорвано: %s.", Biz[b][bName], why);
 	Faction_MessageLaw(msg);
 }
 
 stock bool:Cmd_Rob(playerid)
 {
-	if (gRobBiz[playerid] != -1) return SendClientMessage(playerid, COLOR_GREY, "РўС‹ СѓР¶Рµ РіСЂР°Р±РёС€СЊ. Р”РµСЂР¶РёСЃСЊ СЂСЏРґРѕРј СЃ РјР°РіР°Р·РёРЅРѕРј.");
+	if (gRobBiz[playerid] != -1) return SendClientMessage(playerid, COLOR_GREY, "Ты уже грабишь. Держись рядом с магазином.");
 	new b = Biz_GetNearby(playerid);
 	if (b == -1 || (Biz[b][bType] != BIZ_SHOP && Biz[b][bType] != BIZ_BAR))
-		return SendClientMessage(playerid, COLOR_GREY, "Р“СЂР°Р±РёС‚СЊ РјРѕР¶РЅРѕ РјР°РіР°Р·РёРЅ 24/7 РёР»Рё Р±Р°СЂ: РІСЃС‚Р°РЅСЊ Сѓ РµРіРѕ Р·РЅР°С‡РєР°.");
-	if (Player[playerid][pLevel] < ROB_MIN_LEVEL) return SendClientMessage(playerid, COLOR_GREY, "Р“СЂР°Р±РёС‚СЊ РјРѕР¶РЅРѕ СЃ %d СѓСЂРѕРІРЅСЏ.", ROB_MIN_LEVEL);
+		return SendClientMessage(playerid, COLOR_GREY, "Грабить можно магазин 24/7 или бар: встань у его значка.");
+	if (Player[playerid][pLevel] < ROB_MIN_LEVEL) return SendClientMessage(playerid, COLOR_GREY, "Грабить можно с %d уровня.", ROB_MIN_LEVEL);
 	if (Player[playerid][pDuty] && (Faction_IsLaw(Player[playerid][pFaction]) || Faction_IsMedic(Player[playerid][pFaction])))
-		return SendClientMessage(playerid, COLOR_GREY, "РќР° СЃРјРµРЅРµ РіСЂР°Р±РёС‚СЊ РЅРµР»СЊР·СЏ.");
+		return SendClientMessage(playerid, COLOR_GREY, "На смене грабить нельзя.");
 	new w = _:GetPlayerWeapon(playerid);
-	if (w < 22 || w > 34) return SendClientMessage(playerid, COLOR_GREY, "РќСѓР¶РЅРѕ РѕРіРЅРµСЃС‚СЂРµР»СЊРЅРѕРµ РѕСЂСѓР¶РёРµ РІ СЂСѓРєР°С….");
+	if (w < 22 || w > 34) return SendClientMessage(playerid, COLOR_GREY, "Нужно огнестрельное оружие в руках.");
 
 	new bool:admin = Player[playerid][pAdmin] >= 4;
-	if (!admin && Rob_PoliceOnline() < ROB_MIN_POLICE) return SendClientMessage(playerid, COLOR_GREY, "РЎРµР№С‡Р°СЃ РІ РіРѕСЂРѕРґРµ РЅРµС‚ РїРѕР»РёС†РёРё вЂ” РіСЂР°Р±РёС‚СЊ РЅРµРёРЅС‚РµСЂРµСЃРЅРѕ.");
+	if (!admin && Rob_PoliceOnline() < ROB_MIN_POLICE) return SendClientMessage(playerid, COLOR_GREY, "Сейчас в городе нет полиции — грабить неинтересно.");
 	new now = gettime();
 	if (now - gRobPlayerLast[playerid] < ROB_PLAYER_COOLDOWN)
-		return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РЅРµРґР°РІРЅРѕ РіСЂР°Р±РёР». РџРѕРґРѕР¶РґРё РµС‰С‘ %d РјРёРЅ.", (ROB_PLAYER_COOLDOWN - (now - gRobPlayerLast[playerid])) / 60 + 1);
+		return SendClientMessage(playerid, COLOR_GREY, "Ты недавно грабил. Подожди ещё %d мин.", (ROB_PLAYER_COOLDOWN - (now - gRobPlayerLast[playerid])) / 60 + 1);
 	if (now - gRobBizLast[b] < ROB_BIZ_COOLDOWN)
-		return SendClientMessage(playerid, COLOR_GREY, "Р­С‚РѕС‚ РјР°РіР°Р·РёРЅ РЅРµРґР°РІРЅРѕ РіСЂР°Р±РёР»Рё, РєР°СЃСЃР° РїСѓСЃС‚Р°СЏ. РџРѕРґРѕР¶РґРё %d РјРёРЅ.", (ROB_BIZ_COOLDOWN - (now - gRobBizLast[b])) / 60 + 1);
+		return SendClientMessage(playerid, COLOR_GREY, "Этот магазин недавно грабили, касса пустая. Подожди %d мин.", (ROB_BIZ_COOLDOWN - (now - gRobBizLast[b])) / 60 + 1);
 
 	gRobBiz[playerid] = b;
 	gRobLeft[playerid] = ROB_TIME;
@@ -90,14 +90,14 @@ stock bool:Cmd_Rob(playerid)
 	SetPlayerWantedLevel(playerid, stars);
 	Account_Save(playerid);
 
-	SendClientMessage(playerid, COLOR_RED, "РўС‹ РЅР°С‡Р°Р» РѕРіСЂР°Р±Р»РµРЅРёРµ В«%sВ»! РџСЂРѕРґРµСЂР¶РёСЃСЊ %d СЃРµРє. СЂСЏРґРѕРј СЃ РјР°РіР°Р·РёРЅРѕРј. Р РѕР·С‹СЃРє: %d Р·РІ.", Biz[b][bName], ROB_TIME, stars);
+	SendClientMessage(playerid, COLOR_RED, "Ты начал ограбление «%s»! Продержись %d сек. рядом с магазином. Розыск: %d зв.", Biz[b][bName], ROB_TIME, stars);
 	new msg[144];
-	format(msg, sizeof msg, "[Р”РёСЃРїРµС‚С‡РµСЂ] РћРіСЂР°Р±Р»РµРЅРёРµ В«%sВ»! РџРѕРґРѕР·СЂРµРІР°РµРјС‹Р№: %s [%d], %d Р·РІ. РњРµС‚РєР° РЅР° РєР°СЂС‚Рµ Сѓ РІСЃРµС… РЅР° СЃРјРµРЅРµ.", Biz[b][bName], GetRPName(playerid), playerid, stars);
+	format(msg, sizeof msg, "[Диспетчер] Ограбление «%s»! Подозреваемый: %s [%d], %d зв. Метка на карте у всех на смене.", Biz[b][bName], GetRPName(playerid), playerid, stars);
 	Faction_MessageLaw(msg);
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!IsPlayerConnected(i) || !Faction_IsLaw(Player[i][pFaction]) || !Player[i][pDuty]) continue;
-		Gps_SetPoint(i, Biz[b][bX], Biz[b][bY], Biz[b][bZ], "РѕРіСЂР°Р±Р»РµРЅРёРµ");
+		Gps_SetPoint(i, Biz[b][bX], Biz[b][bY], Biz[b][bZ], "ограбление");
 	}
 	return true;
 }
@@ -110,11 +110,11 @@ public Rob_OnSecond()
 		new b = gRobBiz[i];
 		if (b == -1) continue;
 		if (!IsPlayerConnected(i)) { gRobBiz[i] = -1; continue; }
-		if (Wound_IsWounded(i) || GetPlayerState(i) == PLAYER_STATE_WASTED) { Rob_Fail(i, "РіСЂР°Р±РёС‚РµР»СЊ СЂР°РЅРµРЅ"); continue; }
-		if (Player[i][pCuffed]) { Rob_Fail(i, "РіСЂР°Р±РёС‚РµР»СЊ Р·Р°РґРµСЂР¶Р°РЅ"); continue; }
+		if (Wound_IsWounded(i) || GetPlayerState(i) == PLAYER_STATE_WASTED) { Rob_Fail(i, "грабитель ранен"); continue; }
+		if (Player[i][pCuffed]) { Rob_Fail(i, "грабитель задержан"); continue; }
 		if (!Biz_IsInside(i, b) && (GetPlayerInterior(i) != 0 || !IsPlayerInRangeOfPoint(i, ROB_RANGE, Biz[b][bX], Biz[b][bY], Biz[b][bZ])))
 		{
-			Rob_Fail(i, "РіСЂР°Р±РёС‚РµР»СЊ СѓС€С‘Р» Р±РµР· РґРµРЅРµРі");
+			Rob_Fail(i, "грабитель ушёл без денег");
 			continue;
 		}
 		gRobLeft[i]--;
@@ -126,11 +126,11 @@ public Rob_OnSecond()
 		}
 		gRobBiz[i] = -1;
 		new money = ROB_MIN_MONEY + random(ROB_MAX_MONEY - ROB_MIN_MONEY + 1);
-		GiveMoney(i, money, "РѕРіСЂР°Р±Р»РµРЅРёРµ");
+		GiveMoney(i, money, "ограбление");
 		GameTextForPlayer(i, "~g~Robbery done", 2500, 3);
-		SendClientMessage(i, COLOR_GREEN, "РљР°СЃСЃР° В«%sВ» С‚РІРѕСЏ: $%d. РЈС…РѕРґРё, РїРѕР»РёС†РёСЏ СѓР¶Рµ РµРґРµС‚!", Biz[b][bName], money);
+		SendClientMessage(i, COLOR_GREEN, "Касса «%s» твоя: $%d. Уходи, полиция уже едет!", Biz[b][bName], money);
 		new msg[144];
-		format(msg, sizeof msg, "[Р”РёСЃРїРµС‚С‡РµСЂ] РР· В«%sВ» СѓРЅРµСЃР»Рё $%d. Р“СЂР°Р±РёС‚РµР»СЊ: %s [%d].", Biz[b][bName], money, GetRPName(i), i);
+		format(msg, sizeof msg, "[Диспетчер] Из «%s» унесли $%d. Грабитель: %s [%d].", Biz[b][bName], money, GetRPName(i), i);
 		Faction_MessageLaw(msg);
 	}
 	return 1;

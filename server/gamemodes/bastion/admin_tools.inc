@@ -1,27 +1,27 @@
 // =====================================================================
-//  admin_tools.inc вЂ” С‚РµР»РµРїРѕСЂС‚С‹ Рё РёРЅСЃС‚СЂСѓРјРµРЅС‚С‹ Р°РґРјРёРЅРёСЃС‚СЂР°С†РёРё.
+//  admin_tools.inc — телепорты и инструменты администрации.
 //
-//  РўРµР»РµРїРѕСЂС‚С‹:
-//    /tp [РЅР°Р·РІР°РЅРёРµ]  вЂ” РІ СЃРѕС…СЂР°РЅС‘РЅРЅСѓСЋ С‚РѕС‡РєСѓ. Р‘РµР· РЅР°Р·РІР°РЅРёСЏ вЂ” РѕРєРЅРѕ СЃРѕ СЃРїРёСЃРєРѕРј
-//                      (СѓРґРѕР±РЅРѕ СЃ С‚РµР»РµС„РѕРЅР°).
-//    /addtp [РЅР°Р·РІР°РЅРёРµ], /deltp [РЅР°Р·РІР°РЅРёРµ] вЂ” СЃРѕС…СЂР°РЅРёС‚СЊ / СѓРґР°Р»РёС‚СЊ С‚РѕС‡РєСѓ (4+).
-//    /back           вЂ” РІРµСЂРЅСѓС‚СЊСЃСЏ С‚СѓРґР°, РіРґРµ СЃС‚РѕСЏР» РґРѕ С‚РµР»РµРїРѕСЂС‚Р°.
-//    /gotocoord x y z [РёРЅС‚РµСЂСЊРµСЂ], /gotocar [id РјР°С€РёРЅС‹], /sendto [id] [С‚РѕС‡РєР°].
-//    РњРµС‚РєР° РЅР° РєР°СЂС‚Рµ (ESC > РљР°СЂС‚Р°, РїСЂР°РІР°СЏ РєРЅРѕРїРєР° РјС‹С€Рё) вЂ” Р°РґРјРёРЅ СЃСЂР°Р·Сѓ
-//    РїРµСЂРµРЅРѕСЃРёС‚СЃСЏ С‚СѓРґР°, СЃ РјР°С€РёРЅРѕР№, РµСЃР»Рё Р·Р° СЂСѓР»С‘Рј. Р’РєР»СЋС‡РµРЅРѕ Сѓ РІСЃРµС… Р°РґРјРёРЅРѕРІ
-//    РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ, РІС‹РєР»СЋС‡РёС‚СЊ/РІРєР»СЋС‡РёС‚СЊ: /maptp.
-//  Р•СЃР»Рё Р°РґРјРёРЅ Р·Р° СЂСѓР»С‘Рј вЂ” РїРµСЂРµРЅРѕСЃРёС‚СЃСЏ РІРјРµСЃС‚Рµ СЃ РјР°С€РёРЅРѕР№.
+//  Телепорты:
+//    /tp [название]  — в сохранённую точку. Без названия — окно со списком
+//                      (удобно с телефона).
+//    /addtp [название], /deltp [название] — сохранить / удалить точку (4+).
+//    /back           — вернуться туда, где стоял до телепорта.
+//    /gotocoord x y z [интерьер], /gotocar [id машины], /sendto [id] [точка].
+//    Метка на карте (ESC > Карта, правая кнопка мыши) — админ сразу
+//    переносится туда, с машиной, если за рулём. Включено у всех админов
+//    по умолчанию, выключить/включить: /maptp.
+//  Если админ за рулём — переносится вместе с машиной.
 //
-//  РРЅСЃС‚СЂСѓРјРµРЅС‚С‹:
-//    /aduty вЂ” РґРµР¶СѓСЂСЃС‚РІРѕ (Р±РµСЃСЃРјРµСЂС‚РёРµ, СЂРѕР·РѕРІС‹Р№ РЅРёРє, РІРёРґРЅРѕ РІ /admins)
-//    /ao вЂ” РѕР±СЉСЏРІР»РµРЅРёРµ РѕС‚ Р°РґРјРёРЅРёСЃС‚СЂР°С†РёРё РІСЃРµРј
-//    /fixveh /flip вЂ” РїРѕС‡РёРЅРёС‚СЊ / РїРµСЂРµРІРµСЂРЅСѓС‚СЊ РјР°С€РёРЅСѓ
-//    /respawncars вЂ” РІРµСЂРЅСѓС‚СЊ РїСѓСЃС‚С‹Рµ РјР°С€РёРЅС‹ РЅР° РјРµСЃС‚Р°
-//    /setweather вЂ” РїРѕРіРѕРґР°
-//  РђРЅС‚РёС‡РёС‚: РґР¶РµС‚РїР°Рє Сѓ РЅРµ-Р°РґРјРёРЅР° вЂ” РєРёРє Рё Р·Р°РїРёСЃСЊ РІ Р»РѕРі.
+//  Инструменты:
+//    /aduty — дежурство (бессмертие, розовый ник, видно в /admins)
+//    /ao — объявление от администрации всем
+//    /fixveh /flip — починить / перевернуть машину
+//    /respawncars — вернуть пустые машины на места
+//    /setweather — погода
+//  Античит: джетпак у не-админа — кик и запись в лог.
 //
-//  РўРѕС‡РєРё С…СЂР°РЅСЏС‚СЃСЏ РІ С‚Р°Р±Р»РёС†Рµ teleports (СЃРѕР·РґР°С‘С‚СЃСЏ СЃР°РјР°). РџСЂРё РїРµСЂРІРѕРј
-//  Р·Р°РїСѓСЃРєРµ С‚СѓРґР° Р·Р°РїРёСЃС‹РІР°СЋС‚СЃСЏ РѕСЃРЅРѕРІРЅС‹Рµ РјРµСЃС‚Р° РєР°СЂС‚С‹.
+//  Точки хранятся в таблице teleports (создаётся сама). При первом
+//  запуске туда записываются основные места карты.
 // =====================================================================
 
 #define MAX_TELEPORTS           60
@@ -41,23 +41,23 @@ enum E_TELEPORT
 	tpWorld
 }
 static gTeleport[MAX_TELEPORTS][E_TELEPORT];
-static gTpList[MAX_PLAYERS][MAX_TELEPORTS];     // СЃС‚СЂРѕРєР° РѕРєРЅР° -> СЃР»РѕС‚
-static gTpSendTarget[MAX_PLAYERS];              // РєРѕРіРѕ РѕС‚РїСЂР°РІР»СЏРµРј С‡РµСЂРµР· РѕРєРЅРѕ (/sendto Р±РµР· С‚РѕС‡РєРё)
+static gTpList[MAX_PLAYERS][MAX_TELEPORTS];     // строка окна -> слот
+static gTpSendTarget[MAX_PLAYERS];              // кого отправляем через окно (/sendto без точки)
 static gTpSendTargetDb[MAX_PLAYERS];
 
-// РљСѓРґР° РІРµСЂРЅСѓС‚СЊ РїРѕ /back
+// Куда вернуть по /back
 static bool:gBackSaved[MAX_PLAYERS];
 static Float:gBackPos[MAX_PLAYERS][4];
 static gBackInt[MAX_PLAYERS];
 static gBackWorld[MAX_PLAYERS];
 
-static bool:gMapTpOff[MAX_PLAYERS];             // Р°РґРјРёРЅ РІС‹РєР»СЋС‡РёР» С‚РµР»РµРїРѕСЂС‚ РїРѕ РјРµС‚РєРµ
-static gMapTpVeh[MAX_PLAYERS];                  // РјР°С€РёРЅР°, РєРѕС‚РѕСЂСѓСЋ СЃС‚Р°РІРёРј РїРѕРґ Р°РґРјРёРЅР° РїРѕСЃР»Рµ РјРµС‚РєРё
+static bool:gMapTpOff[MAX_PLAYERS];             // админ выключил телепорт по метке
+static gMapTpVeh[MAX_PLAYERS];                  // машина, которую ставим под админа после метки
 static bool:gADuty[MAX_PLAYERS];
 static bool:gJetpackFlag[MAX_PLAYERS];
 
 // =====================================================================
-//  Р—Р°РїСѓСЃРє
+//  Запуск
 // =====================================================================
 stock Teleports_Init()
 {
@@ -72,7 +72,7 @@ stock Teleports_Init()
 	}
 	if (count == 0)
 	{
-		// РћСЃРЅРѕРІРЅС‹Рµ РјРµСЃС‚Р° вЂ” РѕРґРёРЅ СЂР°Р·, РґР°Р»СЊС€Рµ Р°РґРјРёРЅС‹ РїСЂР°РІСЏС‚ СЃР°РјРё (/addtp /deltp)
+		// Основные места — один раз, дальше админы правят сами (/addtp /deltp)
 		Teleports_Seed("spawn",      SPAWN_X, SPAWN_Y, SPAWN_Z, SPAWN_A);
 		Teleports_Seed("cityhall",   1481.0, -1745.0, 13.55, 0.0);
 		Teleports_Seed("autoschool", LIC_SCHOOL_X, LIC_SCHOOL_Y, LIC_SCHOOL_Z, 0.0);
@@ -94,7 +94,7 @@ stock Teleports_Init()
 
 static Teleports_Seed(const name[], Float:x, Float:y, Float:z, Float:a)
 {
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR IGNORE INTO teleports (name, x, y, z, a, creator) VALUES ('%q', %f, %f, %f, %f, 'РЎРµСЂРІРµСЂ')",
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR IGNORE INTO teleports (name, x, y, z, a, creator) VALUES ('%q', %f, %f, %f, %f, 'Сервер')",
 		name, x, y, z, a));
 }
 
@@ -128,7 +128,7 @@ static Teleports_Find(const name[])
 }
 
 // =====================================================================
-//  РЎРѕР±С‹С‚РёСЏ (РІС‹Р·С‹РІР°СЋС‚СЃСЏ РёР· admin.inc Рё rp.pwn)
+//  События (вызываются из admin.inc и rp.pwn)
 // =====================================================================
 stock AdminTools_OnConnect(playerid)
 {
@@ -149,7 +149,7 @@ stock AdminTools_OnSpawn(playerid)
 	}
 }
 
-// РР· OnPlayerUpdate вЂ” С‚РѕР»СЊРєРѕ РґРµС€С‘РІС‹Рµ РїСЂРѕРІРµСЂРєРё
+// Из OnPlayerUpdate — только дешёвые проверки
 stock AdminTools_OnUpdate(playerid)
 {
 	if (gJetpackFlag[playerid] || Player[playerid][pAdmin] > 0) return;
@@ -157,18 +157,18 @@ stock AdminTools_OnUpdate(playerid)
 	if (GetPlayerSpecialAction(playerid) == SPECIAL_ACTION_USEJETPACK)
 	{
 		gJetpackFlag[playerid] = true;
-		Admin_Log(INVALID_PLAYER_ID, "anticheat kick", playerid, "РґР¶РµС‚РїР°Рє");
+		Admin_Log(INVALID_PLAYER_ID, "anticheat kick", playerid, "джетпак");
 		new msg[144];
-		format(msg, sizeof msg, "[РђРЅС‚РёС‡РёС‚] %s[%d] РєРёРєРЅСѓС‚: РґР¶РµС‚РїР°Рє.", GetRPName(playerid), playerid);
+		format(msg, sizeof msg, "[Античит] %s[%d] кикнут: джетпак.", GetRPName(playerid), playerid);
 		SendAdminMessage(COLOR_RED, msg);
-		SendClientMessage(playerid, COLOR_RED, "РўС‹ РєРёРєРЅСѓС‚ Р°РЅС‚РёС‡РёС‚РѕРј (РґР¶РµС‚РїР°Рє). Р•СЃР»Рё СЌС‚Рѕ РѕС€РёР±РєР° вЂ” РЅР°РїРёС€Рё РЅР° С„РѕСЂСѓРј.");
+		SendClientMessage(playerid, COLOR_RED, "Ты кикнут античитом (джетпак). Если это ошибка — напиши на форум.");
 		KickWithDelay(playerid);
 	}
 }
 
-// РњРµС‚РєР° РЅР° РєР°СЂС‚Рµ (OnPlayerClickMap). Р’С‹СЃРѕС‚Р° z РѕС‚ РєР»РёРµРЅС‚Р° С‡Р°СЃС‚Рѕ 0 (РјРµСЃС‚Рѕ РµС‰С‘
-// РЅРµ РїСЂРѕРіСЂСѓР¶РµРЅРѕ), РїРѕСЌС‚РѕРјСѓ СЃС‚Р°РІРёРј Р°РґРјРёРЅР° С‡РµСЂРµР· SetPlayerPosFindZ вЂ” РєР»РёРµРЅС‚ СЃР°Рј
-// РЅР°С…РѕРґРёС‚ Р·РµРјР»СЋ, Р° РјР°С€РёРЅСѓ РїРѕРґС‚СЏРіРёРІР°РµРј РїРѕРґ РЅРµРіРѕ С‡РµСЂРµР· РїРѕР»СЃРµРєСѓРЅРґС‹.
+// Метка на карте (OnPlayerClickMap). Высота z от клиента часто 0 (место ещё
+// не прогружено), поэтому ставим админа через SetPlayerPosFindZ — клиент сам
+// находит землю, а машину подтягиваем под него через полсекунды.
 forward MapTp_PlaceVehicle(playerid, vehicleid);
 stock AdminTools_OnClickMap(playerid, Float:x, Float:y, Float:z)
 {
@@ -191,7 +191,7 @@ stock AdminTools_OnClickMap(playerid, Float:x, Float:y, Float:z)
 		gMapTpVeh[playerid] = v;
 		SetTimerEx("MapTp_PlaceVehicle", 600, false, "ii", playerid, v);
 	}
-	SendClientMessage(playerid, COLOR_ADMIN, "РўРµР»РµРїРѕСЂС‚ РїРѕ РјРµС‚РєРµ. Р’РµСЂРЅСѓС‚СЊСЃСЏ: /back   Р’С‹РєР»СЋС‡РёС‚СЊ: /maptp");
+	SendClientMessage(playerid, COLOR_ADMIN, "Телепорт по метке. Вернуться: /back   Выключить: /maptp");
 }
 
 public MapTp_PlaceVehicle(playerid, vehicleid)
@@ -216,7 +216,7 @@ stock bool:Admin_IsOnDuty(playerid)
 }
 
 // =====================================================================
-//  РўРµР»РµРїРѕСЂС‚
+//  Телепорт
 // =====================================================================
 stock Teleport_SaveBack(playerid)
 {
@@ -227,7 +227,7 @@ stock Teleport_SaveBack(playerid)
 	gBackSaved[playerid] = true;
 }
 
-// РџРµСЂРµРЅРµСЃС‚Рё РёРіСЂРѕРєР° (РІРѕРґРёС‚РµР»СЏ вЂ” РІРјРµСЃС‚Рµ СЃ РјР°С€РёРЅРѕР№). a < 0 вЂ” РЅРµ РјРµРЅСЏС‚СЊ СѓРіРѕР».
+// Перенести игрока (водителя — вместе с машиной). a < 0 — не менять угол.
 stock Teleport_Player(playerid, Float:x, Float:y, Float:z, Float:a, interior, world)
 {
 	new v = GetPlayerVehicleID(playerid);
@@ -269,8 +269,8 @@ static Teleports_ShowList(playerid, const title[])
 		strcat(text, line);
 		gTpList[playerid][n++] = i;
 	}
-	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "РўРѕС‡РµРє С‚РµР»РµРїРѕСЂС‚Р° РЅРµС‚. Р”РѕР±Р°РІРёС‚СЊ: /addtp [РЅР°Р·РІР°РЅРёРµ]");
-	ShowPlayerDialog(playerid, DIALOG_TPLIST, DIALOG_STYLE_LIST, title, "%s", "РўРµР»РµРїРѕСЂС‚", "Р—Р°РєСЂС‹С‚СЊ", text);
+	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "Точек телепорта нет. Добавить: /addtp [название]");
+	ShowPlayerDialog(playerid, DIALOG_TPLIST, DIALOG_STYLE_LIST, title, "%s", "Телепорт", "Закрыть", text);
 	return 1;
 }
 
@@ -281,14 +281,14 @@ stock bool:Cmd_Tp(playerid, const params[])
 	if (!NextParam(params, pos, name))
 	{
 		gTpSendTarget[playerid] = INVALID_PLAYER_ID;
-		Teleports_ShowList(playerid, "РўРµР»РµРїРѕСЂС‚С‹");
+		Teleports_ShowList(playerid, "Телепорты");
 		return true;
 	}
 	new slot = Teleports_Find(name);
-	if (slot == -1) return SendClientMessage(playerid, COLOR_GREY, "РўРѕС‡РєРё \"%s\" РЅРµС‚. РЎРїРёСЃРѕРє: /tp", name);
+	if (slot == -1) return SendClientMessage(playerid, COLOR_GREY, "Точки \"%s\" нет. Список: /tp", name);
 	Teleport_SaveBack(playerid);
 	Teleport_ToPoint(playerid, slot);
-	SendClientMessage(playerid, COLOR_ADMIN, "РўС‹ РІ С‚РѕС‡РєРµ %s. Р’РµСЂРЅСѓС‚СЊСЃСЏ: /back", gTeleport[slot][tpName]);
+	SendClientMessage(playerid, COLOR_ADMIN, "Ты в точке %s. Вернуться: /back", gTeleport[slot][tpName]);
 	return true;
 }
 
@@ -296,13 +296,13 @@ stock bool:Cmd_AddTp(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, name[24];
-	if (!NextParam(params, pos, name)) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /addtp [РЅР°Р·РІР°РЅРёРµ РѕРґРЅРёРј СЃР»РѕРІРѕРј]");
-	if (strlen(name) > 20) return SendClientMessage(playerid, COLOR_GREY, "РќР°Р·РІР°РЅРёРµ РґРѕ 20 СЃРёРјРІРѕР»РѕРІ.");
-	if (Teleports_Find(name) != -1) return SendClientMessage(playerid, COLOR_GREY, "РўРѕС‡РєР° \"%s\" СѓР¶Рµ РµСЃС‚СЊ. РЎРЅР°С‡Р°Р»Р° /deltp %s", name, name);
+	if (!NextParam(params, pos, name)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /addtp [название одним словом]");
+	if (strlen(name) > 20) return SendClientMessage(playerid, COLOR_GREY, "Название до 20 символов.");
+	if (Teleports_Find(name) != -1) return SendClientMessage(playerid, COLOR_GREY, "Точка \"%s\" уже есть. Сначала /deltp %s", name, name);
 
 	new free = -1;
 	for (new i = 0; i < MAX_TELEPORTS; i++) if (!gTeleport[i][tpUsed]) { free = i; break; }
-	if (free == -1) return SendClientMessage(playerid, COLOR_GREY, "РЎР»РёС€РєРѕРј РјРЅРѕРіРѕ С‚РѕС‡РµРє (РјР°РєСЃРёРјСѓРј %d).", MAX_TELEPORTS);
+	if (free == -1) return SendClientMessage(playerid, COLOR_GREY, "Слишком много точек (максимум %d).", MAX_TELEPORTS);
 
 	new Float:x, Float:y, Float:z, Float:a, admin[MAX_PLAYER_NAME];
 	GetPlayerPos(playerid, x, y, z);
@@ -312,7 +312,7 @@ stock bool:Cmd_AddTp(playerid, const params[])
 		name, x, y, z, a, GetPlayerInterior(playerid), GetPlayerVirtualWorld(playerid), admin));
 	Teleports_Load();
 	Admin_Log(playerid, "addtp", INVALID_PLAYER_ID, name);
-	SendClientMessage(playerid, COLOR_ADMIN, "РўРѕС‡РєР° \"%s\" СЃРѕС…СЂР°РЅРµРЅР°. РўРµР»РµРїРѕСЂС‚: /tp %s", name, name);
+	SendClientMessage(playerid, COLOR_ADMIN, "Точка \"%s\" сохранена. Телепорт: /tp %s", name, name);
 	return true;
 }
 
@@ -320,12 +320,12 @@ stock bool:Cmd_DelTp(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, name[24];
-	if (!NextParam(params, pos, name)) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /deltp [РЅР°Р·РІР°РЅРёРµ]");
+	if (!NextParam(params, pos, name)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /deltp [название]");
 	new slot = Teleports_Find(name);
-	if (slot == -1) return SendClientMessage(playerid, COLOR_GREY, "РўРѕС‡РєРё \"%s\" РЅРµС‚.", name);
+	if (slot == -1) return SendClientMessage(playerid, COLOR_GREY, "Точки \"%s\" нет.", name);
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM teleports WHERE id = %d", gTeleport[slot][tpDbId]));
 	Admin_Log(playerid, "deltp", INVALID_PLAYER_ID, gTeleport[slot][tpName]);
-	SendClientMessage(playerid, COLOR_ADMIN, "РўРѕС‡РєР° \"%s\" СѓРґР°Р»РµРЅР°.", gTeleport[slot][tpName]);
+	SendClientMessage(playerid, COLOR_ADMIN, "Точка \"%s\" удалена.", gTeleport[slot][tpName]);
 	Teleports_Load();
 	return true;
 }
@@ -333,12 +333,12 @@ stock bool:Cmd_DelTp(playerid, const params[])
 stock bool:Cmd_Back(playerid)
 {
 	if (!Admin_Check(playerid, 1)) return true;
-	if (!gBackSaved[playerid]) return SendClientMessage(playerid, COLOR_GREY, "РќРµРєСѓРґР° РІРѕР·РІСЂР°С‰Р°С‚СЊСЃСЏ: С‚С‹ РµС‰С‘ РЅРµ С‚РµР»РµРїРѕСЂС‚РёСЂРѕРІР°Р»СЃСЏ.");
+	if (!gBackSaved[playerid]) return SendClientMessage(playerid, COLOR_GREY, "Некуда возвращаться: ты ещё не телепортировался.");
 	new Float:x = gBackPos[playerid][0], Float:y = gBackPos[playerid][1], Float:z = gBackPos[playerid][2], Float:a = gBackPos[playerid][3];
 	new interior = gBackInt[playerid], world = gBackWorld[playerid];
-	Teleport_SaveBack(playerid);     // РїРѕРІС‚РѕСЂРЅС‹Р№ /back РІРµСЂРЅС‘С‚ РѕР±СЂР°С‚РЅРѕ
+	Teleport_SaveBack(playerid);     // повторный /back вернёт обратно
 	Teleport_Player(playerid, x, y, z, a, interior, world);
-	SendClientMessage(playerid, COLOR_ADMIN, "РўС‹ РІРµСЂРЅСѓР»СЃСЏ РЅР° РїСЂРѕС€Р»РѕРµ РјРµСЃС‚Рѕ.");
+	SendClientMessage(playerid, COLOR_ADMIN, "Ты вернулся на прошлое место.");
 	return true;
 }
 
@@ -347,15 +347,15 @@ stock bool:Cmd_GotoCoord(playerid, const params[])
 	if (!Admin_Check(playerid, 3)) return true;
 	new pos = 0, bx[16], by[16], bz[16], interior = 0;
 	if (!NextParam(params, pos, bx) || !NextParam(params, pos, by) || !NextParam(params, pos, bz))
-		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /gotocoord [x] [y] [z] [РёРЅС‚РµСЂСЊРµСЂ]");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /gotocoord [x] [y] [z] [интерьер]");
 	NextIntParam(params, pos, interior);
 	Teleport_SaveBack(playerid);
 	Teleport_Player(playerid, floatstr(bx), floatstr(by), floatstr(bz), -1.0, interior, 0);
-	SendClientMessage(playerid, COLOR_ADMIN, "РўРµР»РµРїРѕСЂС‚ РЅР° %.1f %.1f %.1f (РёРЅС‚РµСЂСЊРµСЂ %d). Р’РµСЂРЅСѓС‚СЊСЃСЏ: /back", floatstr(bx), floatstr(by), floatstr(bz), interior);
+	SendClientMessage(playerid, COLOR_ADMIN, "Телепорт на %.1f %.1f %.1f (интерьер %d). Вернуться: /back", floatstr(bx), floatstr(by), floatstr(bz), interior);
 	return true;
 }
 
-// РЎС‚Р°РЅРґР°СЂС‚РЅС‹Рµ РёРЅС‚РµСЂСЊРµСЂС‹ GTA: /gotoint [РЅРѕРјРµСЂ] [РјРёСЂ]
+// Стандартные интерьеры GTA: /gotoint [номер] [мир]
 enum E_GTA_INT
 {
 	giName[32],
@@ -364,21 +364,21 @@ enum E_GTA_INT
 }
 static const gGtaInts[][E_GTA_INT] =
 {
-	{ "РџРѕР»РёС†РёСЏ LS",              6,  246.78,   63.90, 1003.64 },
-	{ "РџРѕР»РёС†РёСЏ SF",              10, 246.40,  110.84, 1003.22 },
-	{ "РџРѕР»РёС†РёСЏ LV",              3,  288.47,  170.06, 1007.17 },
-	{ "РњСЌСЂРёСЏ (Planning Dept.)",  3,  386.52,  173.64, 1008.38 },
-	{ "Р”РѕРј CJ",                  3,  2496.05, -1695.17, 1014.74 },
-	{ "Р”РѕРј Р Р°Р№РґРµСЂР°",             2,  2447.87, -1704.45, 1013.50 },
-	{ "Р”РѕРј РЎРІРёС‚Р°",               1,  2527.02, -1679.21, 1015.50 },
-	{ "РќР°СЂРєРѕРїСЂРёС‚РѕРЅ Р‘РёРі РЎРјРѕСѓРєР°",  2,  2536.53, -1294.84, 1044.12 },
-	{ "РњРѕС‚РµР»СЊ Р”Р¶РµС„С„РµСЂСЃРѕРЅ",       15, 2220.26, -1148.01, 1025.80 },
-	{ "РћСЃРѕР±РЅСЏРє РњСЌРґРґ Р”РѕРіРіР°",      5,  1267.84, -776.96, 1091.91 },
-	{ "РџСЂРёС‚РѕРЅ",                  5,  318.56,  1118.21, 1083.88 },
-	{ "РЎРєР»Р°Рґ",                   18, 1290.41,    1.95, 1001.02 },
-	{ "РђС‚СЂРёСѓРј",                  18, 1726.19, -1641.00,   20.23 },
-	{ "РњР°РіР°Р·РёРЅ 24/7",            17, -25.88,  -185.87, 1003.55 },
-	{ "Р‘Р°СЂ Ten Green Bottles",   11, 501.98,   -69.15,  998.76 },
+	{ "Полиция LS",              6,  246.78,   63.90, 1003.64 },
+	{ "Полиция SF",              10, 246.40,  110.84, 1003.22 },
+	{ "Полиция LV",              3,  288.47,  170.06, 1007.17 },
+	{ "Мэрия (Planning Dept.)",  3,  386.52,  173.64, 1008.38 },
+	{ "Дом CJ",                  3,  2496.05, -1695.17, 1014.74 },
+	{ "Дом Райдера",             2,  2447.87, -1704.45, 1013.50 },
+	{ "Дом Свита",               1,  2527.02, -1679.21, 1015.50 },
+	{ "Наркопритон Биг Смоука",  2,  2536.53, -1294.84, 1044.12 },
+	{ "Мотель Джефферсон",       15, 2220.26, -1148.01, 1025.80 },
+	{ "Особняк Мэдд Догга",      5,  1267.84, -776.96, 1091.91 },
+	{ "Притон",                  5,  318.56,  1118.21, 1083.88 },
+	{ "Склад",                   18, 1290.41,    1.95, 1001.02 },
+	{ "Атриум",                  18, 1726.19, -1641.00,   20.23 },
+	{ "Магазин 24/7",            17, -25.88,  -185.87, 1003.55 },
+	{ "Бар Ten Green Bottles",   11, 501.98,   -69.15,  998.76 },
 	{ "Binco",                   15, 207.74,  -109.02, 1005.13 },
 	{ "Ammu-Nation",             1,  286.15,   -40.64, 1001.52 }
 };
@@ -389,7 +389,7 @@ stock bool:Cmd_GotoInt(playerid, const params[])
 	new pos = 0, n, world = 0;
 	if (!NextIntParam(params, pos, n) || n < 1 || n > sizeof (gGtaInts))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /gotoint [РЅРѕРјРµСЂ] [РјРёСЂ вЂ” РЅРµРѕР±СЏР·Р°С‚РµР»СЊРЅРѕ]. РРЅС‚РµСЂСЊРµСЂС‹:");
+		SendClientMessage(playerid, COLOR_GREY, "Использование: /gotoint [номер] [мир — необязательно]. Интерьеры:");
 		new line[144], part[48];
 		for (new i = 0; i < sizeof (gGtaInts); i++)
 		{
@@ -409,7 +409,7 @@ stock bool:Cmd_GotoInt(playerid, const params[])
 	n--;
 	Teleport_SaveBack(playerid);
 	Teleport_Player(playerid, gGtaInts[n][giX], gGtaInts[n][giY], gGtaInts[n][giZ], -1.0, gGtaInts[n][giInt], world);
-	SendClientMessage(playerid, COLOR_ADMIN, "%s: РёРЅС‚РµСЂСЊРµСЂ %d, РјРёСЂ %d. Р’РµСЂРЅСѓС‚СЊСЃСЏ: /back", gGtaInts[n][giName], gGtaInts[n][giInt], world);
+	SendClientMessage(playerid, COLOR_ADMIN, "%s: интерьер %d, мир %d. Вернуться: /back", gGtaInts[n][giName], gGtaInts[n][giInt], world);
 	return true;
 }
 
@@ -418,7 +418,7 @@ stock bool:Cmd_GotoCar(playerid, const params[])
 	if (!Admin_Check(playerid, 2)) return true;
 	new pos = 0, v;
 	if (!NextIntParam(params, pos, v) || v < 1 || v >= MAX_VEHICLES || GetVehicleModel(v) == 0)
-		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /gotocar [id РјР°С€РёРЅС‹]");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /gotocar [id машины]");
 	new Float:x, Float:y, Float:z;
 	GetVehiclePos(v, x, y, z);
 	Teleport_SaveBack(playerid);
@@ -427,7 +427,7 @@ stock bool:Cmd_GotoCar(playerid, const params[])
 	SetPlayerVirtualWorld(playerid, GetVehicleVirtualWorld(v));
 	SetPlayerPos(playerid, x + 2.0, y, z + 0.5);
 	Player[playerid][pHouseInside] = -1;
-	SendClientMessage(playerid, COLOR_ADMIN, "РўС‹ Сѓ РјР°С€РёРЅС‹ %d (РјРѕРґРµР»СЊ %d). Р’РµСЂРЅСѓС‚СЊСЃСЏ: /back", v, GetVehicleModel(v));
+	SendClientMessage(playerid, COLOR_ADMIN, "Ты у машины %d (модель %d). Вернуться: /back", v, GetVehicleModel(v));
 	return true;
 }
 
@@ -435,8 +435,8 @@ static Teleport_Send(playerid, target, slot)
 {
 	Teleport_ToPoint(target, slot);
 	Admin_Log(playerid, "sendto", target, gTeleport[slot][tpName]);
-	SendClientMessage(target, COLOR_ADMIN, "РђРґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ %s РїРµСЂРµРјРµСЃС‚РёР» С‚РµР±СЏ: %s.", GetRPName(playerid), gTeleport[slot][tpName]);
-	SendClientMessage(playerid, COLOR_ADMIN, "%s РѕС‚РїСЂР°РІР»РµРЅ РІ С‚РѕС‡РєСѓ %s.", GetRPName(target), gTeleport[slot][tpName]);
+	SendClientMessage(target, COLOR_ADMIN, "Администратор %s переместил тебя: %s.", GetRPName(playerid), gTeleport[slot][tpName]);
+	SendClientMessage(playerid, COLOR_ADMIN, "%s отправлен в точку %s.", GetRPName(target), gTeleport[slot][tpName]);
 }
 
 stock bool:Cmd_SendTo(playerid, const params[])
@@ -444,20 +444,20 @@ stock bool:Cmd_SendTo(playerid, const params[])
 	if (!Admin_Check(playerid, 2)) return true;
 	new pos = 0, name[24];
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /sendto [id] [С‚РѕС‡РєР°]  (Р±РµР· С‚РѕС‡РєРё вЂ” СЃРїРёСЃРѕРє)");
-	if (Admin_IsInAJail(target)) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє РІ РґРµРјРѕСЂРіР°РЅРµ. РЎРЅР°С‡Р°Р»Р° /unajail.");
-	if (Player[target][pJail] > 0) return SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє РІ С‚СЋСЂСЊРјРµ.");
+	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /sendto [id] [точка]  (без точки — список)");
+	if (Admin_IsInAJail(target)) return SendClientMessage(playerid, COLOR_GREY, "Игрок в деморгане. Сначала /unajail.");
+	if (Player[target][pJail] > 0) return SendClientMessage(playerid, COLOR_GREY, "Игрок в тюрьме.");
 	if (!NextParam(params, pos, name))
 	{
 		gTpSendTarget[playerid] = target;
 		gTpSendTargetDb[playerid] = Player[target][pDbId];
 		new title[48];
-		format(title, sizeof title, "РљСѓРґР° РѕС‚РїСЂР°РІРёС‚СЊ %s", GetRPName(target));
+		format(title, sizeof title, "Куда отправить %s", GetRPName(target));
 		Teleports_ShowList(playerid, title);
 		return true;
 	}
 	new slot = Teleports_Find(name);
-	if (slot == -1) return SendClientMessage(playerid, COLOR_GREY, "РўРѕС‡РєРё \"%s\" РЅРµС‚. РЎРїРёСЃРѕРє: /tp", name);
+	if (slot == -1) return SendClientMessage(playerid, COLOR_GREY, "Точки \"%s\" нет. Список: /tp", name);
 	Teleport_Send(playerid, target, slot);
 	return true;
 }
@@ -466,13 +466,13 @@ stock bool:Cmd_MapTp(playerid)
 {
 	if (!Admin_Check(playerid, 1)) return true;
 	gMapTpOff[playerid] = !gMapTpOff[playerid];
-	if (!gMapTpOff[playerid]) SendClientMessage(playerid, COLOR_ADMIN, "РўРµР»РµРїРѕСЂС‚ РїРѕ РјРµС‚РєРµ РІРєР»СЋС‡С‘РЅ: ESC > РљР°СЂС‚Р°, РїСЂР°РІР°СЏ РєРЅРѕРїРєР° РјС‹С€Рё. Р’С‹РєР»СЋС‡РёС‚СЊ: /maptp");
-	else SendClientMessage(playerid, COLOR_ADMIN, "РўРµР»РµРїРѕСЂС‚ РїРѕ РјРµС‚РєРµ РІС‹РєР»СЋС‡РµРЅ вЂ” РјРµС‚РєР° СЃРЅРѕРІР° РѕР±С‹С‡РЅР°СЏ. Р’РєР»СЋС‡РёС‚СЊ: /maptp");
+	if (!gMapTpOff[playerid]) SendClientMessage(playerid, COLOR_ADMIN, "Телепорт по метке включён: ESC > Карта, правая кнопка мыши. Выключить: /maptp");
+	else SendClientMessage(playerid, COLOR_ADMIN, "Телепорт по метке выключен — метка снова обычная. Включить: /maptp");
 	return true;
 }
 
 // =====================================================================
-//  РРЅСЃС‚СЂСѓРјРµРЅС‚С‹
+//  Инструменты
 // =====================================================================
 stock bool:Cmd_ADuty(playerid)
 {
@@ -483,13 +483,13 @@ stock bool:Cmd_ADuty(playerid)
 	{
 		SetPlayerHealth(playerid, ADMIN_DUTY_HEALTH);
 		SetPlayerColor(playerid, ADMIN_DUTY_COLOR);
-		format(msg, sizeof msg, "[A] %s Р·Р°СЃС‚СѓРїРёР» РЅР° РґРµР¶СѓСЂСЃС‚РІРѕ.", GetRPName(playerid));
+		format(msg, sizeof msg, "[A] %s заступил на дежурство.", GetRPName(playerid));
 	}
 	else
 	{
 		SetPlayerHealth(playerid, 100.0);
-		Faction_UpdateColor(playerid);      // РІРµСЂРЅСѓС‚СЊ С†РІРµС‚ РЅРёРєР° (factions.inc)
-		format(msg, sizeof msg, "[A] %s СѓС€С‘Р» СЃ РґРµР¶СѓСЂСЃС‚РІР°.", GetRPName(playerid));
+		Faction_UpdateColor(playerid);      // вернуть цвет ника (factions.inc)
+		format(msg, sizeof msg, "[A] %s ушёл с дежурства.", GetRPName(playerid));
 	}
 	SendAdminMessage(COLOR_ADMIN, msg);
 	return true;
@@ -499,13 +499,13 @@ stock bool:Cmd_AO(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 3)) return true;
 	new text[110];
-	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /ao [С‚РµРєСЃС‚ РѕР±СЉСЏРІР»РµРЅРёСЏ]");
-	SendClientMessageToAll(COLOR_ADMIN, "[РђРґРјРёРЅРёСЃС‚СЂР°С†РёСЏ] %s: %s", GetRPName(playerid), text);
+	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /ao [текст объявления]");
+	SendClientMessageToAll(COLOR_ADMIN, "[Администрация] %s: %s", GetRPName(playerid), text);
 	Admin_Log(playerid, "ao", INVALID_PLAYER_ID, text);
 	return true;
 }
 
-// РњР°С€РёРЅР°, РІ РєРѕС‚РѕСЂРѕР№ СЃРёРґРёС‚ РёРіСЂРѕРє (РёР»Рё СЃР°Рј Р°РґРјРёРЅ, РµСЃР»Рё id РЅРµ СѓРєР°Р·Р°РЅ)
+// Машина, в которой сидит игрок (или сам админ, если id не указан)
 static Admin_ParamVehicle(playerid, const params[], &target)
 {
 	new pos = 0;
@@ -519,15 +519,15 @@ stock bool:Cmd_FixVeh(playerid, const params[])
 	if (!Admin_Check(playerid, 2)) return true;
 	new target;
 	new v = Admin_ParamVehicle(playerid, params, target);
-	if (v == 0) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /fixveh [id РёРіСЂРѕРєР° РІ РјР°С€РёРЅРµ] вЂ” РёР»Рё СЃСЏРґСЊ РІ РјР°С€РёРЅСѓ СЃР°Рј.");
+	if (v == 0) return SendClientMessage(playerid, COLOR_GREY, "Использование: /fixveh [id игрока в машине] — или сядь в машину сам.");
 	RepairVehicle(v);
 	SetVehicleHealth(v, 1000.0);
 	if (target != playerid)
 	{
 		Admin_Log(playerid, "fixveh", target);
-		SendClientMessage(target, COLOR_ADMIN, "РђРґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ %s РїРѕС‡РёРЅРёР» С‚РІРѕСЋ РјР°С€РёРЅСѓ.", GetRPName(playerid));
+		SendClientMessage(target, COLOR_ADMIN, "Администратор %s починил твою машину.", GetRPName(playerid));
 	}
-	SendClientMessage(playerid, COLOR_ADMIN, "РњР°С€РёРЅР° %d РїРѕС‡РёРЅРµРЅР°.", v);
+	SendClientMessage(playerid, COLOR_ADMIN, "Машина %d починена.", v);
 	return true;
 }
 
@@ -536,13 +536,13 @@ stock bool:Cmd_Flip(playerid, const params[])
 	if (!Admin_Check(playerid, 2)) return true;
 	new target;
 	new v = Admin_ParamVehicle(playerid, params, target);
-	if (v == 0) return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /flip [id РёРіСЂРѕРєР° РІ РјР°С€РёРЅРµ] вЂ” РёР»Рё СЃСЏРґСЊ РІ РјР°С€РёРЅСѓ СЃР°Рј.");
+	if (v == 0) return SendClientMessage(playerid, COLOR_GREY, "Использование: /flip [id игрока в машине] — или сядь в машину сам.");
 	new Float:x, Float:y, Float:z, Float:a;
 	GetVehiclePos(v, x, y, z);
 	GetVehicleZAngle(v, a);
 	SetVehiclePos(v, x, y, z + 1.0);
 	SetVehicleZAngle(v, a);
-	SendClientMessage(playerid, COLOR_ADMIN, "РњР°С€РёРЅР° %d РїРµСЂРµРІС‘СЂРЅСѓС‚Р°.", v);
+	SendClientMessage(playerid, COLOR_ADMIN, "Машина %d перевёрнута.", v);
 	return true;
 }
 
@@ -566,8 +566,8 @@ stock bool:Cmd_RespawnCars(playerid)
 		}
 	}
 	Admin_Log(playerid, "respawncars", INVALID_PLAYER_ID, "", respawned);
-	SendClientMessageToAll(COLOR_ADMIN, "[РђРґРјРёРЅРёСЃС‚СЂР°С†РёСЏ] РџСѓСЃС‚РѕР№ С‚СЂР°РЅСЃРїРѕСЂС‚ РІРѕР·РІСЂР°С‰С‘РЅ РЅР° РјРµСЃС‚Р°.");
-	SendClientMessage(playerid, COLOR_ADMIN, "Р’РѕР·РІСЂР°С‰РµРЅРѕ РјР°С€РёРЅ: %d, СѓРґР°Р»РµРЅРѕ СЃРѕР·РґР°РЅРЅС‹С… С‡РµСЂРµР· /veh: %d.", respawned, removed);
+	SendClientMessageToAll(COLOR_ADMIN, "[Администрация] Пустой транспорт возвращён на места.");
+	SendClientMessage(playerid, COLOR_ADMIN, "Возвращено машин: %d, удалено созданных через /veh: %d.", respawned, removed);
 	return true;
 }
 
@@ -576,16 +576,16 @@ stock bool:Cmd_SetWeather(playerid, const params[])
 	if (!Admin_Check(playerid, 3)) return true;
 	new pos = 0, weather;
 	if (!NextIntParam(params, pos, weather) || weather < 0 || weather > 45)
-		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /setweather [0-45]  (1 вЂ” СЏСЃРЅРѕ, 8 вЂ” РґРѕР¶РґСЊ, 9 вЂ” С‚СѓРјР°РЅ, 19 вЂ” РїРµСЃС‡Р°РЅР°СЏ Р±СѓСЂСЏ)");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setweather [0-45]  (1 — ясно, 8 — дождь, 9 — туман, 19 — песчаная буря)");
 	SetWeather(weather);
-	gServerWeather = weather;      // drugs.inc: РїРѕСЃР»Рµ СЌС„С„РµРєС‚Р° РёРіСЂРѕРєСѓ РІРµСЂРЅС‘С‚СЃСЏ СЌС‚Р° РїРѕРіРѕРґР°
+	gServerWeather = weather;      // drugs.inc: после эффекта игроку вернётся эта погода
 	Admin_Log(playerid, "setweather", INVALID_PLAYER_ID, "", weather);
-	SendClientMessage(playerid, COLOR_ADMIN, "РџРѕРіРѕРґР° РёР·РјРµРЅРµРЅР° РЅР° %d.", weather);
+	SendClientMessage(playerid, COLOR_ADMIN, "Погода изменена на %d.", weather);
 	return true;
 }
 
 // =====================================================================
-//  РћРєРЅР° Рё СЂР°Р·Р±РѕСЂ РєРѕРјР°РЅРґ (РІС‹Р·С‹РІР°СЋС‚СЃСЏ РёР· admin.inc)
+//  Окна и разбор команд (вызываются из admin.inc)
 // =====================================================================
 stock AdminTools_OnDialog(playerid, dialogid, response, listitem)
 {
@@ -601,7 +601,7 @@ stock AdminTools_OnDialog(playerid, dialogid, response, listitem)
 		gTpSendTarget[playerid] = INVALID_PLAYER_ID;
 		if (!IsPlayerConnected(target) || Player[target][pDbId] != gTpSendTargetDb[playerid])
 		{
-			SendClientMessage(playerid, COLOR_GREY, "РРіСЂРѕРє СѓР¶Рµ РІС‹С€РµР».");
+			SendClientMessage(playerid, COLOR_GREY, "Игрок уже вышел.");
 			return 1;
 		}
 		Teleport_Send(playerid, target, slot);
@@ -609,11 +609,11 @@ stock AdminTools_OnDialog(playerid, dialogid, response, listitem)
 	}
 	Teleport_SaveBack(playerid);
 	Teleport_ToPoint(playerid, slot);
-	SendClientMessage(playerid, COLOR_ADMIN, "РўС‹ РІ С‚РѕС‡РєРµ %s. Р’РµСЂРЅСѓС‚СЊСЃСЏ: /back", gTeleport[slot][tpName]);
+	SendClientMessage(playerid, COLOR_ADMIN, "Ты в точке %s. Вернуться: /back", gTeleport[slot][tpName]);
 	return 1;
 }
 
-// РўРѕР»СЊРєРѕ РґР»СЏ Р°РґРјРёРЅРѕРІ (РїСЂРѕРІРµСЂРєР° СѓСЂРѕРІРЅСЏ РІ admin.inc СѓР¶Рµ РїСЂРѕС€Р»Р°: pAdmin >= 1)
+// Только для админов (проверка уровня в admin.inc уже прошла: pAdmin >= 1)
 stock AdminTools_OnCommand(playerid, const cmd[], const params[])
 {
 	if (!strcmp(cmd, "/tp", true))          { Cmd_Tp(playerid, params); return 1; }

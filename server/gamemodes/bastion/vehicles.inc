@@ -1,14 +1,14 @@
 // =====================================================================
-//  vehicles.inc вЂ” С‚СЂР°РЅСЃРїРѕСЂС‚.
-//  * Р”РІРёРіР°С‚РµР»СЊ Р·Р°РІРѕРґРёС‚СЃСЏ РІСЂСѓС‡РЅСѓСЋ: /engine
-//  * РћР±С‰РµСЃС‚РІРµРЅРЅС‹Рµ РјР°С€РёРЅС‹ СЃС‚РѕСЏС‚ Сѓ СЃРїР°РІРЅР°
-//  * РђРІС‚РѕСЃР°Р»РѕРЅ: /buycar, СЃРІРѕСЏ РјР°С€РёРЅР°: /park /lock /sellcar
-//  * РђРґРјРёРЅ-РјР°С€РёРЅС‹: /veh /dveh (admin.inc)
-//  * Р‘РµРЅР·РёРЅ, РђР—РЎ, СЃРїРёРґРѕРјРµС‚СЂ вЂ” fuel.inc
-//  * РЎРўРћ (СЂРµРјРѕРЅС‚, С‚СЋРЅРёРЅРі) Рё С€С‚СЂР°С„СЃС‚РѕСЏРЅРєР° вЂ” garage.inc
+//  vehicles.inc — транспорт.
+//  * Двигатель заводится вручную: /engine
+//  * Общественные машины стоят у спавна
+//  * Автосалон: /buycar, своя машина: /park /lock /sellcar
+//  * Админ-машины: /veh /dveh (admin.inc)
+//  * Бензин, АЗС, спидометр — fuel.inc
+//  * СТО (ремонт, тюнинг) и штрафстоянка — garage.inc
 // =====================================================================
 
-// РђРІС‚РѕСЃР°Р»РѕРЅ (Coutt & Schutz, Р›РѕСЃ-РЎР°РЅС‚РѕСЃ)
+// Автосалон (Coutt & Schutz, Лос-Сантос)
 #define DEALER_X            2131.8
 #define DEALER_Y            -1150.6
 #define DEALER_Z            24.1
@@ -17,30 +17,30 @@
 #define DEALER_SPAWN_Z      25.3
 #define DEALER_SPAWN_A      0.0
 
-static gDealerMk = -1;          // РјР°СЂРєРµСЂ Р°РІС‚РѕСЃР°Р»РѕРЅР° (РґРІРёРіР°РµС‚СЃСЏ РІ РёРіСЂРµ: /markers)
+static gDealerMk = -1;          // маркер автосалона (двигается в игре: /markers)
 
-#define PERSONAL_RESPAWN    600     // С‡РµСЂРµР· СЃРєРѕР»СЊРєРѕ СЃРµРєСѓРЅРґ Р±СЂРѕС€РµРЅРЅР°СЏ РјР°С€РёРЅР° РІРµСЂРЅС‘С‚СЃСЏ РЅР° РїР°СЂРєРѕРІРєСѓ
+#define PERSONAL_RESPAWN    600     // через сколько секунд брошенная машина вернётся на парковку
 
-// Р¤СѓРЅРєС†РёРё РёР· fuel.inc, РєРѕС‚РѕСЂС‹Рµ РЅСѓР¶РЅС‹ Р·РґРµСЃСЊ СЂР°РЅСЊС€Рµ, С‡РµРј РѕРЅ РїРѕРґРєР»СЋС‡С‘РЅ
+// Функции из fuel.inc, которые нужны здесь раньше, чем он подключён
 forward Float:Fuel_Get(vehicleid);
 forward bool:Fuel_IsEmpty(vehicleid);
-// ...Рё РёР· factions.inc Рё admin.inc (РґР»СЏ fuel.inc, licenses.inc, jobs.inc)
+// ...и из factions.inc и admin.inc (для fuel.inc, licenses.inc, jobs.inc)
 forward bool:IsPlayerNearPlayer(playerid, target, Float:range);
 forward bool:Admin_Check(playerid, level);
 
-new gVehOwner[MAX_VEHICLES];        // id Р°РєРєР°СѓРЅС‚Р° РІР»Р°РґРµР»СЊС†Р° (0 = РѕР±С‰Р°СЏ РјР°С€РёРЅР°)
+new gVehOwner[MAX_VEHICLES];        // id аккаунта владельца (0 = общая машина)
 new bool:gVehLocked[MAX_VEHICLES];
-new bool:gVehAdmin[MAX_VEHICLES];   // СЃРѕР·РґР°РЅР° Р°РґРјРёРЅРѕРј С‡РµСЂРµР· /veh
-new gVehFaction[MAX_VEHICLES];      // РјР°С€РёРЅР° С„СЂР°РєС†РёРё (FACTION_*, 0 = РЅРµ С„СЂР°РєС†РёРѕРЅРЅР°СЏ)
-new gVehCargo[MAX_VEHICLES];        // РїСЂРёРїР°СЃС‹ РІ РєСѓР·РѕРІРµ РјР°С€РёРЅС‹ Р°СЂРјРёРё (factions.inc, /supply)
-new gVehCargoSrc[MAX_VEHICLES];     // РѕС‚РєСѓРґР° РіСЂСѓР·: 1 вЂ” Р±Р°Р·Р° СЃРЅР°Р±Р¶РµРЅРёСЏ, 2 вЂ” СЃРєР»Р°Рґ Р°СЂРјРёРё
+new bool:gVehAdmin[MAX_VEHICLES];   // создана админом через /veh
+new gVehFaction[MAX_VEHICLES];      // машина фракции (FACTION_*, 0 = не фракционная)
+new gVehCargo[MAX_VEHICLES];        // припасы в кузове машины армии (factions.inc, /supply)
+new gVehCargoSrc[MAX_VEHICLES];     // откуда груз: 1 — база снабжения, 2 — склад армии
 new gPlayerVeh[MAX_PLAYERS] = { INVALID_VEHICLE_ID, ... };
 
 static const gDealerModels[] = { 462, 410, 401, 516, 405, 560 };
 static const gDealerPrices[] = { 3000, 9000, 12000, 18000, 25000, 60000 };
-static const gDealerNames[][] = { "Faggio (РјРѕРїРµРґ)", "Manana", "Bravura", "Nebula", "Sentinel", "Sultan" };
+static const gDealerNames[][] = { "Faggio (мопед)", "Manana", "Bravura", "Nebula", "Sentinel", "Sultan" };
 
-// Р¦РµРЅР° РјРѕРґРµР»Рё РІ Р°РІС‚РѕСЃР°Р»РѕРЅРµ (РґР»СЏ РЅР°Р»РѕРіР° РЅР° РјР°С€РёРЅСѓ; 10000, РµСЃР»Рё РјРѕРґРµР»Рё РЅРµС‚ РІ СЃР°Р»РѕРЅРµ)
+// Цена модели в автосалоне (для налога на машину; 10000, если модели нет в салоне)
 stock Vehicles_GetModelPrice(model)
 {
 	for (new i = 0; i < sizeof (gDealerModels); i++)
@@ -53,28 +53,28 @@ stock Vehicles_GetModelPrice(model)
 // ---------------------------------------------------------------------
 stock Vehicles_Init()
 {
-	ManualVehicleEngineAndLights();   // РґРІРёРіР°С‚РµР»Рё Р±РѕР»СЊС€Рµ РЅРµ Р·Р°РІРѕРґСЏС‚СЃСЏ СЃР°РјРё
+	ManualVehicleEngineAndLights();   // двигатели больше не заводятся сами
 
-	// РћР±С‰РµСЃС‚РІРµРЅРЅС‹Рµ РјР°С€РёРЅС‹ Сѓ СЃРїР°РІРЅР° (РјРѕРґРµР»СЊ, x, y, z, СѓРіРѕР», С†РІРµС‚1, С†РІРµС‚2, СЂРµСЃРїР°РІРЅ РІ СЃРµРє.)
+	// Общественные машины у спавна (модель, x, y, z, угол, цвет1, цвет2, респавн в сек.)
 	AddStaticVehicleEx(492, 2508.7, -1666.5, 13.2, 13.0, -1, -1, 300);   // Greenwood
 	AddStaticVehicleEx(567, 2473.6, -1655.8, 13.2, 90.0, -1, -1, 300);   // Savanna
 	AddStaticVehicleEx(412, 2484.0, -1655.8, 13.2, 90.0, -1, -1, 300);   // Voodoo
 	AddStaticVehicleEx(462, 2497.0, -1680.0, 13.0, 0.0, -1, -1, 300);    // Faggio
 	AddStaticVehicleEx(462, 2499.0, -1680.0, 13.0, 0.0, -1, -1, 300);    // Faggio
 
-	// РђРІС‚РѕСЃР°Р»РѕРЅ
+	// Автосалон
 	new Float:dx = DEALER_X, Float:dy = DEALER_Y, Float:dz = DEALER_Z;
-	gDealerMk = Marker_Create(MK_DEALER, 0, "РђРІС‚РѕСЃР°Р»РѕРЅ", 1274, dx, dy, dz, 0, 0, GPS_TRANSPORT);
-	Marker_SetLabel(gDealerMk, "{FFFF00}РђРІС‚РѕСЃР°Р»РѕРЅ\n{FFFFFF}ALT вЂ” РєСѓРїРёС‚СЊ РјР°С€РёРЅСѓ");
+	gDealerMk = Marker_Create(MK_DEALER, 0, "Автосалон", 1274, dx, dy, dz, 0, 0, GPS_TRANSPORT);
+	Marker_SetLabel(gDealerMk, "{FFFF00}Автосалон\n{FFFFFF}ALT — купить машину");
 }
 
-// РРіСЂРѕРє Сѓ Р°РІС‚РѕСЃР°Р»РѕРЅР°
+// Игрок у автосалона
 stock Vehicles_IsNearDealer(playerid)
 {
 	return Marker_InRange(playerid, gDealerMk, 3.0);
 }
 
-// РџСЂРёРјРµРЅРёС‚СЊ "РґРІРµСЂРё Р·Р°РєСЂС‹С‚С‹ / РѕС‚РєСЂС‹С‚С‹" Рє РјР°С€РёРЅРµ
+// Применить "двери закрыты / открыты" к машине
 stock Vehicle_ApplyLock(vehicleid)
 {
 	new engine, lights, alarm, doors, bonnet, boot, objective;
@@ -90,11 +90,11 @@ stock Vehicle_Clear(vehicleid)
 	gVehFaction[vehicleid] = 0;
 	gVehCargo[vehicleid] = 0;
 	gVehCargoSrc[vehicleid] = 0;
-	Fuel_ResetVehicle(vehicleid);     // fuel.inc: РЅРѕРІР°СЏ РјР°С€РёРЅР° вЂ” РїРѕР»РЅС‹Р№ Р±Р°Рє
-	Garage_ResetVehicle(vehicleid);   // garage.inc: Р±РµР· С‚СЋРЅРёРЅРіР°
+	Fuel_ResetVehicle(vehicleid);     // fuel.inc: новая машина — полный бак
+	Garage_ResetVehicle(vehicleid);   // garage.inc: без тюнинга
 }
 
-// РЎРѕР·РґР°С‚СЊ Р»РёС‡РЅСѓСЋ РјР°С€РёРЅСѓ РёРіСЂРѕРєР°
+// Создать личную машину игрока
 stock Vehicles_SpawnPersonal(playerid, model, Float:x, Float:y, Float:z, Float:a, c1, c2, bool:locked)
 {
 	new v = CreateVehicle(model, x, y, z, a, c1, c2, PERSONAL_RESPAWN);
@@ -104,11 +104,11 @@ stock Vehicles_SpawnPersonal(playerid, model, Float:x, Float:y, Float:z, Float:a
 	gVehLocked[v] = locked;
 	Vehicle_ApplyLock(v);
 	gPlayerVeh[playerid] = v;
-	Garage_LoadMods(playerid, v);     // РїРѕРєСЂР°СЃРєР° Рё С‚СЋРЅРёРЅРі (garage.inc)
+	Garage_LoadMods(playerid, v);     // покраска и тюнинг (garage.inc)
 	return v;
 }
 
-// РЎРѕР·РґР°С‚СЊ Р»РёС‡РЅСѓСЋ РјР°С€РёРЅСѓ РёР· Р±Р°Р·С‹ (РµСЃР»Рё РѕРЅР° РЅРµ РЅР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРµ)
+// Создать личную машину из базы (если она не на штрафстоянке)
 stock Vehicles_SpawnFromDb(playerid)
 {
 	new v = INVALID_VEHICLE_ID;
@@ -125,24 +125,24 @@ stock Vehicles_SpawnFromDb(playerid)
 	return v;
 }
 
-// РџРѕСЃР»Рµ РІС…РѕРґР° РІ Р°РєРєР°СѓРЅС‚ (accounts.inc)
+// После входа в аккаунт (accounts.inc)
 stock Vehicles_LoadForPlayer(playerid)
 {
 	Vehicles_SpawnFromDb(playerid);
-	Fuel_LoadPlayer(playerid);          // Р±РµРЅР·РёРЅ РјР°С€РёРЅС‹ Рё РєР°РЅРёСЃС‚СЂР° (fuel.inc)
-	Licenses_LoadPlayer(playerid);      // Р»РёС†РµРЅР·РёРё (licenses.inc)
-	Jobs_LoadPlayer(playerid);          // СЃС‚Р°Р¶ РЅР° СЂР°Р±РѕС‚Рµ (jobs.inc)
-	Needs_LoadPlayer(playerid);         // СЃС‹С‚РѕСЃС‚СЊ Рё РёРЅРІРµРЅС‚Р°СЂСЊ (needs.inc)
-	Houses_LoadPlayer(playerid);        // СЃСЉС‘РјРЅР°СЏ РєРѕРјРЅР°С‚Р° (houses.inc)
-	Garage_LoadPlayer(playerid);        // РјР°С€РёРЅР° РЅР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРµ (garage.inc)
-	Drugs_LoadPlayer(playerid);         // Р·Р°РІРёСЃРёРјРѕСЃС‚СЊ (drugs.inc)
-	Prison_LoadPlayer(playerid);        // СЃРёРґРёС‚ Р»Рё РІ С‚СЋСЂСЊРјРµ (prison.inc)
-	Hospital_LoadPlayer(playerid);      // СЃС‚СЂР°С…РѕРІРєР° Рё РјРµРґРєР°СЂС‚Р° (hospital.inc)
-	Marriage_LoadPlayer(playerid);      // СЃСѓРїСЂСѓРі (marriage.inc)
-	Donate_LoadPlayer(playerid);        // РґРѕРЅР°С‚-РјРѕРЅРµС‚С‹ Рё VIP (donate.inc)
+	Fuel_LoadPlayer(playerid);          // бензин машины и канистра (fuel.inc)
+	Licenses_LoadPlayer(playerid);      // лицензии (licenses.inc)
+	Jobs_LoadPlayer(playerid);          // стаж на работе (jobs.inc)
+	Needs_LoadPlayer(playerid);         // сытость и инвентарь (needs.inc)
+	Houses_LoadPlayer(playerid);        // съёмная комната (houses.inc)
+	Garage_LoadPlayer(playerid);        // машина на штрафстоянке (garage.inc)
+	Drugs_LoadPlayer(playerid);         // зависимость (drugs.inc)
+	Prison_LoadPlayer(playerid);        // сидит ли в тюрьме (prison.inc)
+	Hospital_LoadPlayer(playerid);      // страховка и медкарта (hospital.inc)
+	Marriage_LoadPlayer(playerid);      // супруг (marriage.inc)
+	Donate_LoadPlayer(playerid);        // донат-монеты и VIP (donate.inc)
 }
 
-// РџСЂРё РІС‹С…РѕРґРµ РёРіСЂРѕРєР° РјР°С€РёРЅР° РїСЂРѕРїР°РґР°РµС‚ (Рё РїРѕСЏРІРёС‚СЃСЏ СЃРЅРѕРІР° РїСЂРё РІС…РѕРґРµ)
+// При выходе игрока машина пропадает (и появится снова при входе)
 stock Vehicles_UnloadForPlayer(playerid)
 {
 	new v = gPlayerVeh[playerid];
@@ -155,71 +155,71 @@ stock Vehicles_UnloadForPlayer(playerid)
 	}
 }
 
-// Р’С‹Р·С‹РІР°РµС‚СЃСЏ РёР· OnVehicleSpawn: РїРѕСЃР»Рµ СЂРµСЃРїР°РІРЅР° РІРµСЂРЅСѓС‚СЊ Р·Р°РјРѕРє
+// Вызывается из OnVehicleSpawn: после респавна вернуть замок
 stock Vehicles_OnSpawn(vehicleid)
 {
 	if (gVehOwner[vehicleid] != 0)
 	{
 		Vehicle_ApplyLock(vehicleid);
-		Garage_ApplyMods(vehicleid);    // СЂРµСЃРїР°РІРЅ СЃРЅРёРјР°РµС‚ С‚СЋРЅРёРЅРі вЂ” РІРµС€Р°РµРј РѕР±СЂР°С‚РЅРѕ
+		Garage_ApplyMods(vehicleid);    // респавн снимает тюнинг — вешаем обратно
 	}
 }
 
-// РџРѕРґСЃРєР°Р·РєР° РїСЂРё РїРѕСЃР°РґРєРµ Р·Р° СЂСѓР»СЊ (РёР· OnPlayerStateChange)
+// Подсказка при посадке за руль (из OnPlayerStateChange)
 stock Vehicles_OnBecomeDriver(playerid)
 {
 	new v = GetPlayerVehicleID(playerid);
 	if (gVehOwner[v] != 0 && gVehOwner[v] == Player[playerid][pDbId])
-		SendClientMessage(playerid, COLOR_BLUE, "Р­С‚Рѕ С‚РІРѕСЏ РјР°С€РёРЅР°. 2 вЂ” РґРІРёРіР°С‚РµР»СЊ, /park вЂ” РїСЂРёРїР°СЂРєРѕРІР°С‚СЊ, /lock вЂ” Р·Р°РјРѕРє.");
+		SendClientMessage(playerid, COLOR_BLUE, "Это твоя машина. 2 — двигатель, /park — припарковать, /lock — замок.");
 	else
-		SendClientMessage(playerid, COLOR_GREY, "Р§С‚РѕР±С‹ Р·Р°РІРµСЃС‚Рё РґРІРёРіР°С‚РµР»СЊ, РЅР°Р¶РјРё 2 (РёР»Рё /engine)");
+		SendClientMessage(playerid, COLOR_GREY, "Чтобы завести двигатель, нажми 2 (или /engine)");
 }
 
 // ---------------------------------------------------------------------
-//  РљРѕРјР°РЅРґС‹
+//  Команды
 // ---------------------------------------------------------------------
 stock bool:Cmd_Engine(playerid)
 {
 	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER)
-		return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РґРѕР»Р¶РµРЅ СЃРёРґРµС‚СЊ Р·Р° СЂСѓР»С‘Рј.");
+		return SendClientMessage(playerid, COLOR_GREY, "Ты должен сидеть за рулём.");
 
 	new v = GetPlayerVehicleID(playerid);
 	new engine, lights, alarm, doors, bonnet, boot, objective;
 	GetVehicleParamsEx(v, engine, lights, alarm, doors, bonnet, boot, objective);
 	engine = (engine == 1) ? 0 : 1;
 	if (engine == 1 && Fuel_IsEmpty(v))
-		return SendClientMessage(playerid, COLOR_RED, "Р‘Р°Рє РїСѓСЃС‚. РљСѓРїРё РєР°РЅРёСЃС‚СЂСѓ РЅР° РђР—РЎ (/canister) РёР»Рё РІС‹Р·РѕРІРё РїРѕРјРѕС‰СЊ.");
-	SetVehicleParamsEx(v, engine, engine, alarm, doors, bonnet, boot, objective);   // С„Р°СЂС‹ РІРјРµСЃС‚Рµ СЃ РґРІРёРіР°С‚РµР»РµРј
+		return SendClientMessage(playerid, COLOR_RED, "Бак пуст. Купи канистру на АЗС (/canister) или вызови помощь.");
+	SetVehicleParamsEx(v, engine, engine, alarm, doors, bonnet, boot, objective);   // фары вместе с двигателем
 
 	new msg[96];
-	if (engine) format(msg, sizeof msg, "%s Р·Р°РІРѕРґРёС‚ РґРІРёРіР°С‚РµР»СЊ.", GetRPName(playerid));
-	else format(msg, sizeof msg, "%s РіР»СѓС€РёС‚ РґРІРёРіР°С‚РµР»СЊ.", GetRPName(playerid));
+	if (engine) format(msg, sizeof msg, "%s заводит двигатель.", GetRPName(playerid));
+	else format(msg, sizeof msg, "%s глушит двигатель.", GetRPName(playerid));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	return true;
 }
 
 stock bool:Cmd_BuyCar(playerid)
 {
-	if (Debts_BlockBuy(playerid)) return true;      // Р±РѕР»СЊС€РѕР№ РґРѕР»Рі С€С‚Р°С‚Сѓ (debts.inc)
+	if (Debts_BlockBuy(playerid)) return true;      // большой долг штату (debts.inc)
 	if (!Vehicles_IsNearDealer(playerid))
-		return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РІ Р°РІС‚РѕСЃР°Р»РѕРЅРµ (Р·РЅР°С‡РѕРє РґРѕР»Р»Р°СЂР°).");
+		return SendClientMessage(playerid, COLOR_GREY, "Ты должен быть в автосалоне (значок доллара).");
 	if (gPlayerVeh[playerid] != INVALID_VEHICLE_ID)
-		return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ СѓР¶Рµ РµСЃС‚СЊ РјР°С€РёРЅР°. РџСЂРѕРґР°С‚СЊ: /sellcar");
+		return SendClientMessage(playerid, COLOR_GREY, "У тебя уже есть машина. Продать: /sellcar");
 	if (Garage_GetImpound(playerid) > 0)
-		return SendClientMessage(playerid, COLOR_GREY, "РўРІРѕСЏ РјР°С€РёРЅР° РЅР° С€С‚СЂР°С„СЃС‚РѕСЏРЅРєРµ. РЎРЅР°С‡Р°Р»Р° Р·Р°Р±РµСЂРё РµС‘.");
+		return SendClientMessage(playerid, COLOR_GREY, "Твоя машина на штрафстоянке. Сначала забери её.");
 
-	new list[512] = "РњРѕРґРµР»СЊ\tР¦РµРЅР°\n";
+	new list[512] = "Модель\tЦена\n";
 	new line[64];
 	for (new i = 0; i < sizeof (gDealerModels); i++)
 	{
 		format(line, sizeof line, "%s\t$%d\n", gDealerNames[i], gDealerPrices[i]);
 		strcat(list, line);
 	}
-	ShowPlayerDialog(playerid, DIALOG_BUYCAR, DIALOG_STYLE_TABLIST_HEADERS, "РђРІС‚РѕСЃР°Р»РѕРЅ", "%s", "РљСѓРїРёС‚СЊ", "РћС‚РјРµРЅР°", list);
+	ShowPlayerDialog(playerid, DIALOG_BUYCAR, DIALOG_STYLE_TABLIST_HEADERS, "Автосалон", "%s", "Купить", "Отмена", list);
 	return true;
 }
 
-// РћС‚РІРµС‚ РЅР° РѕРєРЅРѕ Р°РІС‚РѕСЃР°Р»РѕРЅР° (РёР· OnDialogResponse)
+// Ответ на окно автосалона (из OnDialogResponse)
 stock Vehicles_OnDialog(playerid, dialogid, response, listitem)
 {
 	if (dialogid != DIALOG_BUYCAR) return 0;
@@ -229,7 +229,7 @@ stock Vehicles_OnDialog(playerid, dialogid, response, listitem)
 	new price = gDealerPrices[listitem];
 	if (GetMoney(playerid) < price)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РќРµ С…РІР°С‚Р°РµС‚ РґРµРЅРµРі. РќСѓР¶РЅРѕ $%d.", price);
+		SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", price);
 		return 1;
 	}
 
@@ -238,18 +238,18 @@ stock Vehicles_OnDialog(playerid, dialogid, response, listitem)
 	new v = Vehicles_SpawnPersonal(playerid, model, DEALER_SPAWN_X, DEALER_SPAWN_Y, DEALER_SPAWN_Z, DEALER_SPAWN_A, c1, c2, false);
 	if (v == INVALID_VEHICLE_ID)
 	{
-		SendClientMessage(playerid, COLOR_RED, "РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ РјР°С€РёРЅСѓ (Р»РёРјРёС‚ С‚СЂР°РЅСЃРїРѕСЂС‚Р°).");
+		SendClientMessage(playerid, COLOR_RED, "Не удалось создать машину (лимит транспорта).");
 		return 1;
 	}
 
-	GiveMoney(playerid, -price, "РїРѕРєСѓРїРєР° РјР°С€РёРЅС‹");
+	GiveMoney(playerid, -price, "покупка машины");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB,
 		"INSERT INTO vehicles (owner, model, x, y, z, a, c1, c2) VALUES (%d, %d, %f, %f, %f, %f, %d, %d)",
 		Player[playerid][pDbId], model, DEALER_SPAWN_X, DEALER_SPAWN_Y, DEALER_SPAWN_Z, DEALER_SPAWN_A, c1, c2));
 	Account_Save(playerid);
 
 	PutPlayerInVehicle(playerid, v, 0);
-	SendClientMessage(playerid, COLOR_GREEN, "РўС‹ РєСѓРїРёР» %s Р·Р° $%d! РџСЂРёРїР°СЂРєСѓР№ РµС‘ РІ СѓРґРѕР±РЅРѕРј РјРµСЃС‚Рµ: /park", gDealerNames[listitem], price);
+	SendClientMessage(playerid, COLOR_GREEN, "Ты купил %s за $%d! Припаркуй её в удобном месте: /park", gDealerNames[listitem], price);
 	return 1;
 }
 
@@ -257,7 +257,7 @@ stock bool:Cmd_Park(playerid)
 {
 	new v = GetPlayerVehicleID(playerid);
 	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER || v != gPlayerVeh[playerid])
-		return SendClientMessage(playerid, COLOR_GREY, "РўС‹ РґРѕР»Р¶РµРЅ СЃРёРґРµС‚СЊ Р·Р° СЂСѓР»С‘Рј СЃРІРѕРµР№ РјР°С€РёРЅС‹.");
+		return SendClientMessage(playerid, COLOR_GREY, "Ты должен сидеть за рулём своей машины.");
 
 	new Float:x, Float:y, Float:z, Float:a;
 	GetVehiclePos(v, x, y, z);
@@ -265,7 +265,7 @@ stock bool:Cmd_Park(playerid)
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET x = %f, y = %f, z = %f, a = %f WHERE owner = %d",
 		x, y, z, a, Player[playerid][pDbId]));
 
-	// РџРµСЂРµСЃРѕР·РґР°С‘Рј РјР°С€РёРЅСѓ, С‡С‚РѕР±С‹ РѕРЅР° "Р·Р°РїРѕРјРЅРёР»Р°" РЅРѕРІРѕРµ РјРµСЃС‚Рѕ СЂРµСЃРїР°РІРЅР°
+	// Пересоздаём машину, чтобы она "запомнила" новое место респавна
 	new model = GetVehicleModel(v);
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT c1, c2 FROM vehicles WHERE owner = %d", Player[playerid][pDbId]);
 	new c1 = -1, c2 = -1;
@@ -290,35 +290,35 @@ stock bool:Cmd_Park(playerid)
 		Fuel_SavePersonal(playerid);
 	}
 
-	SendClientMessage(playerid, COLOR_GREEN, "РњР°С€РёРЅР° РїСЂРёРїР°СЂРєРѕРІР°РЅР°. Р—РґРµСЃСЊ РѕРЅР° Р±СѓРґРµС‚ РїРѕСЏРІР»СЏС‚СЊСЃСЏ.");
+	SendClientMessage(playerid, COLOR_GREEN, "Машина припаркована. Здесь она будет появляться.");
 	return true;
 }
 
 stock bool:Vehicles_ToggleLock(playerid)
 {
 	new v = gPlayerVeh[playerid];
-	if (v == INVALID_VEHICLE_ID) return SendClientMessage(playerid, COLOR_GREY, "Р СЏРґРѕРј РЅРµС‚ С‚РІРѕРµРіРѕ РґРѕРјР° РёР»Рё РјР°С€РёРЅС‹.");
+	if (v == INVALID_VEHICLE_ID) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет твоего дома или машины.");
 
 	new Float:x, Float:y, Float:z;
 	GetVehiclePos(v, x, y, z);
 	if (!IsPlayerInRangeOfPoint(playerid, 6.0, x, y, z))
-		return SendClientMessage(playerid, COLOR_GREY, "РўРІРѕСЏ РјР°С€РёРЅР° СЃР»РёС€РєРѕРј РґР°Р»РµРєРѕ.");
+		return SendClientMessage(playerid, COLOR_GREY, "Твоя машина слишком далеко.");
 
 	gVehLocked[v] = !gVehLocked[v];
 	Vehicle_ApplyLock(v);
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET locked = %d WHERE owner = %d",
 		gVehLocked[v] ? 1 : 0, Player[playerid][pDbId]));
-	if (gVehLocked[v]) SendClientMessage(playerid, COLOR_WHITE, "РњР°С€РёРЅР° {FF6347}Р·Р°РєСЂС‹С‚Р°{FFFFFF}.");
-	else SendClientMessage(playerid, COLOR_WHITE, "РњР°С€РёРЅР° {33AA33}РѕС‚РєСЂС‹С‚Р°{FFFFFF}.");
+	if (gVehLocked[v]) SendClientMessage(playerid, COLOR_WHITE, "Машина {FF6347}закрыта{FFFFFF}.");
+	else SendClientMessage(playerid, COLOR_WHITE, "Машина {33AA33}открыта{FFFFFF}.");
 	return true;
 }
 
 stock bool:Cmd_SellCar(playerid)
 {
 	new v = gPlayerVeh[playerid];
-	if (v == INVALID_VEHICLE_ID) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ РјР°С€РёРЅС‹.");
+	if (v == INVALID_VEHICLE_ID) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет машины.");
 	if (!Vehicles_IsNearDealer(playerid))
-		return SendClientMessage(playerid, COLOR_GREY, "РџСЂРѕРґР°С‚СЊ РјР°С€РёРЅСѓ РјРѕР¶РЅРѕ РІ Р°РІС‚РѕСЃР°Р»РѕРЅРµ.");
+		return SendClientMessage(playerid, COLOR_GREY, "Продать машину можно в автосалоне.");
 
 	new model = GetVehicleModel(v), refund = 1000;
 	for (new i = 0; i < sizeof (gDealerModels); i++)
@@ -327,8 +327,8 @@ stock bool:Cmd_SellCar(playerid)
 	}
 	Vehicles_UnloadForPlayer(playerid);
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM vehicles WHERE owner = %d", Player[playerid][pDbId]));
-	GiveMoney(playerid, refund, "РїСЂРѕРґР°Р¶Р° РјР°С€РёРЅС‹");
+	GiveMoney(playerid, refund, "продажа машины");
 	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_GREEN, "РњР°С€РёРЅР° РїСЂРѕРґР°РЅР° Р·Р° $%d.", refund);
+	SendClientMessage(playerid, COLOR_GREEN, "Машина продана за $%d.", refund);
 	return true;
 }

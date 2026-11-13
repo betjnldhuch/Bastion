@@ -1,64 +1,64 @@
 // =====================================================================
-//  business.inc вЂ” Р±РёР·РЅРµСЃС‹: РјР°РіР°Р·РёРЅС‹, Р±Р°СЂС‹, РѕРґРµР¶РґР°, РѕСЂСѓР¶РёРµ.
+//  business.inc — бизнесы: магазины, бары, одежда, оружие.
 //
-//  Р›СЋР±РѕР№ РёРіСЂРѕРє РјРѕР¶РµС‚ РєСѓРїРёС‚СЊ С‚РѕРІР°СЂ: РїРѕРґРѕР№РґРё Рє Р·РЅР°С‡РєСѓ Р±РёР·РЅРµСЃР° Рё РІРІРµРґРё /buy.
-//  Р‘РёР·РЅРµСЃ РјРѕР¶РЅРѕ РєСѓРїРёС‚СЊ (/buybiz). РўРѕРіРґР° РІР»Р°РґРµР»СЊС†Сѓ РІ РєР°СЃСЃСѓ РёРґС‘С‚
-//  BIZ_SALE_SHARE% РѕС‚ РєР°Р¶РґРѕР№ РїРѕРєСѓРїРєРё Рё BIZ_PAYDAY_INCOME РєР°Р¶РґС‹Р№ PayDay.
-//  Р—Р°Р±СЂР°С‚СЊ РґРµРЅСЊРіРё РёР· РєР°СЃСЃС‹: /bizcash (СЃС‚РѕСЏ Сѓ СЃРІРѕРµРіРѕ Р±РёР·РЅРµСЃР°).
+//  Любой игрок может купить товар: подойди к значку бизнеса и введи /buy.
+//  Бизнес можно купить (/buybiz). Тогда владельцу в кассу идёт
+//  BIZ_SALE_SHARE% от каждой покупки и BIZ_PAYDAY_INCOME каждый PayDay.
+//  Забрать деньги из кассы: /bizcash (стоя у своего бизнеса).
 //
-//  РўРёРїС‹: 1 вЂ” РјР°РіР°Р·РёРЅ 24/7, 2 вЂ” Р±Р°СЂ, 3 вЂ” РѕРґРµР¶РґР°, 4 вЂ” РѕСЂСѓР¶РµР№РЅС‹Р№, 5 вЂ” РєР°Р·РёРЅРѕ (casino.inc).
-//  РђРґРјРёРЅС‹ (4+): /createbiz [С‚РёРї] [С†РµРЅР°] [РЅР°Р·РІР°РЅРёРµ], /delbiz
+//  Типы: 1 — магазин 24/7, 2 — бар, 3 — одежда, 4 — оружейный, 5 — казино (casino.inc).
+//  Админы (4+): /createbiz [тип] [цена] [название], /delbiz
 //
-//  РРЅС‚РµСЂСЊРµСЂ: Сѓ РєР°Р¶РґРѕРіРѕ Р±РёР·РЅРµСЃР° СЃС‚Р°РЅРґР°СЂС‚РЅС‹Р№ РёРЅС‚РµСЂСЊРµСЂ GTA РїРѕ РµРіРѕ С‚РёРїСѓ (РІСЂРµРјРµРЅРЅРѕРµ СЂРµС€РµРЅРёРµ).
-//  ALT РёР»Рё /enter Сѓ Р·РЅР°С‡РєР° вЂ” РІРѕР№С‚Рё, РІРЅСѓС‚СЂРё ALT РІ Р·Р°Р»Рµ вЂ” РјР°РіР°Р·РёРЅ, ALT Сѓ РґРІРµСЂРё РёР»Рё /exit вЂ” РІС‹Р№С‚Рё.
-//  РЈ РєР°Р¶РґРѕРіРѕ Р±РёР·РЅРµСЃР° СЃРІРѕР№ РІРёСЂС‚СѓР°Р»СЊРЅС‹Р№ РјРёСЂ (BIZ_WORLD_OFFSET + РЅРѕРјРµСЂ).
-//  /setbizint [в„–] вЂ” СЃРІРѕСЏ С‚РѕС‡РєР° РІРЅСѓС‚СЂРё (СЃС‚РѕСЏ РІ РёРЅС‚РµСЂСЊРµСЂРµ), /setbizint [в„–] def|off вЂ” СЃС‚Р°РЅРґР°СЂС‚РЅС‹Р№ / Р±РµР· РёРЅС‚РµСЂСЊРµСЂР°,
-//  /setbizint [в„–] out вЂ” РїРµСЂРµСЃС‚Р°РІРёС‚СЊ РІС…РѕРґ СЃРЅР°СЂСѓР¶Рё (СЃС‚РѕСЏ Сѓ РґРІРµСЂРё СЃРїРёРЅРѕР№ Рє РЅРµР№).
-//  Р’С…РѕРґ Рё РІС‹С…РѕРґ вЂ” РєР°Рє Сѓ Р·РґР°РЅРёР№ С„СЂР°РєС†РёР№: СЃС‚СЂРµР»РєРё-РјР°СЂРєРµСЂС‹ СЃ РЅР°РґРїРёСЃСЊСЋ, РѕР±Р° РґРІРёРіР°СЋС‚СЃСЏ РІ /markers,
-//  РёРіСЂРѕРє РїРѕСЏРІР»СЏРµС‚СЃСЏ РЅР° С€Р°Рі РїРµСЂРµРґ РјР°СЂРєРµСЂРѕРј Р»РёС†РѕРј РѕС‚ РґРІРµСЂРё. /bizlock вЂ” Р·Р°РєСЂС‹С‚СЊ РІС…РѕРґ (РІР»Р°РґРµР»РµС† РёР»Рё Р°РґРјРёРЅ 4+).
+//  Интерьер: у каждого бизнеса стандартный интерьер GTA по его типу (временное решение).
+//  ALT или /enter у значка — войти, внутри ALT в зале — магазин, ALT у двери или /exit — выйти.
+//  У каждого бизнеса свой виртуальный мир (BIZ_WORLD_OFFSET + номер).
+//  /setbizint [№] — своя точка внутри (стоя в интерьере), /setbizint [№] def|off — стандартный / без интерьера,
+//  /setbizint [№] out — переставить вход снаружи (стоя у двери спиной к ней).
+//  Вход и выход — как у зданий фракций: стрелки-маркеры с надписью, оба двигаются в /markers,
+//  игрок появляется на шаг перед маркером лицом от двери. /bizlock — закрыть вход (владелец или админ 4+).
 // =====================================================================
 
 #define BIZ_RANGE           2.5
-#define BIZ_WORLD_OFFSET    5000        // РІРёСЂС‚. РјРёСЂ РёРЅС‚РµСЂСЊРµСЂР° = 5000 + РЅРѕРјРµСЂ Р±РёР·РЅРµСЃР° РІ Р±Р°Р·Рµ
-#define BIZ_EXIT_RANGE      1.5         // РєР°Рє Р±Р»РёР·РєРѕ Рє СЃС‚СЂРµР»РєРµ РІРЅСѓС‚СЂРё СЃСЂР°Р±Р°С‚С‹РІР°РµС‚ РІС‹С…РѕРґ
-#define BIZ_IN_REF          1000000     // ref РјР°СЂРєРµСЂР° РІС‹С…РѕРґР° РІРЅСѓС‚СЂРё: BIZ_IN_REF + РЅРѕРјРµСЂ Р±РёР·РЅРµСЃР° РІ Р±Р°Р·Рµ
-#define GUNS_MIN_LEVEL      2           // СЃ РєР°РєРѕРіРѕ СѓСЂРѕРІРЅСЏ РїСЂРѕРґР°СЋС‚ РѕСЂСѓР¶РёРµ
+#define BIZ_WORLD_OFFSET    5000        // вирт. мир интерьера = 5000 + номер бизнеса в базе
+#define BIZ_EXIT_RANGE      1.5         // как близко к стрелке внутри срабатывает выход
+#define BIZ_IN_REF          1000000     // ref маркера выхода внутри: BIZ_IN_REF + номер бизнеса в базе
+#define GUNS_MIN_LEVEL      2           // с какого уровня продают оружие
 
 enum
 {
 	BIZ_NONE,
-	BIZ_SHOP,       // 1 вЂ” 24/7
-	BIZ_BAR,        // 2 вЂ” Р±Р°СЂ
-	BIZ_CLOTHES,    // 3 вЂ” РѕРґРµР¶РґР°
-	BIZ_GUNS,       // 4 вЂ” РѕСЂСѓР¶РµР№РЅС‹Р№
-	BIZ_CASINO      // 5 вЂ” РєР°Р·РёРЅРѕ (casino.inc)
+	BIZ_SHOP,       // 1 — 24/7
+	BIZ_BAR,        // 2 — бар
+	BIZ_CLOTHES,    // 3 — одежда
+	BIZ_GUNS,       // 4 — оружейный
+	BIZ_CASINO      // 5 — казино (casino.inc)
 }
 #define BIZ_TYPES           6
 
-static const gBizTypeNames[BIZ_TYPES][24] = { "-", "РњР°РіР°Р·РёРЅ 24/7", "Р‘Р°СЂ", "РњР°РіР°Р·РёРЅ РѕРґРµР¶РґС‹", "РћСЂСѓР¶РµР№РЅС‹Р№ РјР°РіР°Р·РёРЅ", "РљР°Р·РёРЅРѕ" };
+static const gBizTypeNames[BIZ_TYPES][24] = { "-", "Магазин 24/7", "Бар", "Магазин одежды", "Оружейный магазин", "Казино" };
 
-// РЎС‚Р°РЅРґР°СЂС‚РЅС‹Рµ РёРЅС‚РµСЂСЊРµСЂС‹ РїРѕ С‚РёРїСѓ Р±РёР·РЅРµСЃР°: РЅРѕРјРµСЂ РёРЅС‚РµСЂСЊРµСЂР° Рё С‚РѕС‡РєР° Сѓ РґРІРµСЂРё (x, y, z, СѓРіРѕР»)
+// Стандартные интерьеры по типу бизнеса: номер интерьера и точка у двери (x, y, z, угол)
 static const gBizIntId[BIZ_TYPES] = { 0, 17, 11, 15, 1, 10 };
 static const Float:gBizIntPos[BIZ_TYPES][4] =
 {
 	{ 0.0, 0.0, 0.0, 0.0 },
 	{ -25.88, -185.87, 1003.55, 0.0 },      // 24/7
-	{ 501.98, -69.15, 998.76, 180.0 },      // Р±Р°СЂ Ten Green Bottles
+	{ 501.98, -69.15, 998.76, 180.0 },      // бар Ten Green Bottles
 	{ 207.74, -109.02, 1005.13, 0.0 },      // Binco
 	{ 286.15, -40.64, 1001.52, 0.0 },       // Ammu-Nation
-	{ 2018.95, 1017.09, 996.88, 90.0 }      // РєР°Р·РёРЅРѕ Four Dragons
+	{ 2018.95, 1017.09, 996.88, 90.0 }      // казино Four Dragons
 };
 
-// Р§С‚Рѕ РјРѕР¶РЅРѕ РєСѓРїРёС‚СЊ
+// Что можно купить
 enum
 {
-	ITEM_PHONE,     // С‚РµР»РµС„РѕРЅ
-	ITEM_HEAL,      // +Р·РґРѕСЂРѕРІСЊРµ (value = СЃРєРѕР»СЊРєРѕ)
-	ITEM_WEAPON,    // РѕСЂСѓР¶РёРµ (value = id РѕСЂСѓР¶РёСЏ, value2 = РїР°С‚СЂРѕРЅС‹)
-	ITEM_ARMOUR,    // Р±СЂРѕРЅРµР¶РёР»РµС‚
-	ITEM_SKIN,      // РѕРґРµР¶РґР° (value = СЃРєРёРЅ)
-	ITEM_FOOD,      // РµРґР° РІ Р±Р°СЂРµ СЃСЂР°Р·Сѓ (value = +HP, value2 = +% СЃС‹С‚РѕСЃС‚Рё)
-	ITEM_INV        // РІРµС‰СЊ РІ РёРЅРІРµРЅС‚Р°СЂСЊ (value = INV_* РёР· needs.inc, value2 = С€С‚СѓРє)
+	ITEM_PHONE,     // телефон
+	ITEM_HEAL,      // +здоровье (value = сколько)
+	ITEM_WEAPON,    // оружие (value = id оружия, value2 = патроны)
+	ITEM_ARMOUR,    // бронежилет
+	ITEM_SKIN,      // одежда (value = скин)
+	ITEM_FOOD,      // еда в баре сразу (value = +HP, value2 = +% сытости)
+	ITEM_INV        // вещь в инвентарь (value = INV_* из needs.inc, value2 = штук)
 }
 
 enum E_BIZ_ITEM
@@ -72,36 +72,36 @@ enum E_BIZ_ITEM
 }
 static const gBizItems[][E_BIZ_ITEM] =
 {
-	{ BIZ_SHOP,    "РўРµР»РµС„РѕРЅ",           PHONE_PRICE, ITEM_PHONE,  0,  0   },
-	{ BIZ_SHOP,    "РђРїС‚РµС‡РєР° (РІ СЃСѓРјРєСѓ)", 150,  ITEM_INV,    INV_MEDKIT, 1 },
-	{ BIZ_SHOP,    "Р‘СѓСЂРіРµСЂ (РІ СЃСѓРјРєСѓ)",  60,   ITEM_INV,    INV_BURGER, 1 },
-	{ BIZ_SHOP,    "РҐРѕС‚-РґРѕРі (РІ СЃСѓРјРєСѓ)", 30,   ITEM_INV,    INV_HOTDOG, 1 },
-	{ BIZ_SHOP,    "Р РµРјРєРѕРјРїР»РµРєС‚",       400,  ITEM_INV,    INV_REPAIRKIT, 1 },
-	{ BIZ_SHOP,    "РџРёС†С†Р° (РІ СЃСѓРјРєСѓ)",   90,   ITEM_INV,    INV_PIZZA, 1 },
-	{ BIZ_SHOP,    "Р’РѕРґР° (РІ СЃСѓРјРєСѓ)",    10,   ITEM_INV,    INV_WATER, 1 },
-	{ BIZ_SHOP,    "РџРёРІРѕ (РІ СЃСѓРјРєСѓ)",    25,   ITEM_INV,    INV_BEER, 1 },
-	{ BIZ_SHOP,    "РЎРёРіР°СЂРµС‚С‹ (10 С€С‚.)", 40,   ITEM_INV,    INV_CIGARETTES, 10 },
-	{ BIZ_SHOP,    "Р‘РёРЅС‚",              50,   ITEM_INV,    INV_BANDAGE, 1 },
-	{ BIZ_SHOP,    "Р¦РІРµС‚С‹ (РІ СЃСѓРјРєСѓ)",   50,   ITEM_INV,    INV_FLOWERS, 1 },
-	{ BIZ_SHOP,    "РРіСЂР°Р»СЊРЅС‹Рµ РєРѕСЃС‚Рё",   30,   ITEM_INV,    INV_DICE, 1 },
-	{ BIZ_SHOP,    "РњР°СЃРєР°",             500,  ITEM_INV,    INV_MASK, 1 },
-	{ BIZ_SHOP,    "Р‘РёС‚Р°",              200,  ITEM_WEAPON, 5,  1   },
-	{ BIZ_BAR,     "РџРёРІРѕ (+10 HP)",     20,   ITEM_FOOD,   10, 5   },
-	{ BIZ_BAR,     "Р’РёСЃРєРё (+25 HP)",    50,   ITEM_FOOD,   25, 5   },
-	{ BIZ_BAR,     "РћР±РµРґ (+60 HP, СЃС‹С‚РѕСЃС‚СЊ)", 120, ITEM_FOOD, 60, 60 },
-	{ BIZ_CLOTHES, "РЎРєРёРЅ 7",            300,  ITEM_SKIN,   7,  0   },
-	{ BIZ_CLOTHES, "РЎРєРёРЅ 23",           300,  ITEM_SKIN,   23, 0   },
-	{ BIZ_CLOTHES, "РЎРєРёРЅ 29",           300,  ITEM_SKIN,   29, 0   },
-	{ BIZ_CLOTHES, "РЎРєРёРЅ 46",           400,  ITEM_SKIN,   46, 0   },
-	{ BIZ_CLOTHES, "РЎРєРёРЅ 72",           300,  ITEM_SKIN,   72, 0   },
-	{ BIZ_CLOTHES, "РЎРєРёРЅ 12 (Р¶РµРЅ.)",    300,  ITEM_SKIN,   12, 0   },
-	{ BIZ_CLOTHES, "РЎРєРёРЅ 40 (Р¶РµРЅ.)",    300,  ITEM_SKIN,   40, 0   },
-	{ BIZ_CLOTHES, "РЎРєРёРЅ 93 (Р¶РµРЅ.)",    400,  ITEM_SKIN,   93, 0   },
-	{ BIZ_GUNS,    "РџРёСЃС‚РѕР»РµС‚ Colt",     500,  ITEM_WEAPON, 22, 60  },
+	{ BIZ_SHOP,    "Телефон",           PHONE_PRICE, ITEM_PHONE,  0,  0   },
+	{ BIZ_SHOP,    "Аптечка (в сумку)", 150,  ITEM_INV,    INV_MEDKIT, 1 },
+	{ BIZ_SHOP,    "Бургер (в сумку)",  60,   ITEM_INV,    INV_BURGER, 1 },
+	{ BIZ_SHOP,    "Хот-дог (в сумку)", 30,   ITEM_INV,    INV_HOTDOG, 1 },
+	{ BIZ_SHOP,    "Ремкомплект",       400,  ITEM_INV,    INV_REPAIRKIT, 1 },
+	{ BIZ_SHOP,    "Пицца (в сумку)",   90,   ITEM_INV,    INV_PIZZA, 1 },
+	{ BIZ_SHOP,    "Вода (в сумку)",    10,   ITEM_INV,    INV_WATER, 1 },
+	{ BIZ_SHOP,    "Пиво (в сумку)",    25,   ITEM_INV,    INV_BEER, 1 },
+	{ BIZ_SHOP,    "Сигареты (10 шт.)", 40,   ITEM_INV,    INV_CIGARETTES, 10 },
+	{ BIZ_SHOP,    "Бинт",              50,   ITEM_INV,    INV_BANDAGE, 1 },
+	{ BIZ_SHOP,    "Цветы (в сумку)",   50,   ITEM_INV,    INV_FLOWERS, 1 },
+	{ BIZ_SHOP,    "Игральные кости",   30,   ITEM_INV,    INV_DICE, 1 },
+	{ BIZ_SHOP,    "Маска",             500,  ITEM_INV,    INV_MASK, 1 },
+	{ BIZ_SHOP,    "Бита",              200,  ITEM_WEAPON, 5,  1   },
+	{ BIZ_BAR,     "Пиво (+10 HP)",     20,   ITEM_FOOD,   10, 5   },
+	{ BIZ_BAR,     "Виски (+25 HP)",    50,   ITEM_FOOD,   25, 5   },
+	{ BIZ_BAR,     "Обед (+60 HP, сытость)", 120, ITEM_FOOD, 60, 60 },
+	{ BIZ_CLOTHES, "Скин 7",            300,  ITEM_SKIN,   7,  0   },
+	{ BIZ_CLOTHES, "Скин 23",           300,  ITEM_SKIN,   23, 0   },
+	{ BIZ_CLOTHES, "Скин 29",           300,  ITEM_SKIN,   29, 0   },
+	{ BIZ_CLOTHES, "Скин 46",           400,  ITEM_SKIN,   46, 0   },
+	{ BIZ_CLOTHES, "Скин 72",           300,  ITEM_SKIN,   72, 0   },
+	{ BIZ_CLOTHES, "Скин 12 (жен.)",    300,  ITEM_SKIN,   12, 0   },
+	{ BIZ_CLOTHES, "Скин 40 (жен.)",    300,  ITEM_SKIN,   40, 0   },
+	{ BIZ_CLOTHES, "Скин 93 (жен.)",    400,  ITEM_SKIN,   93, 0   },
+	{ BIZ_GUNS,    "Пистолет Colt",     500,  ITEM_WEAPON, 22, 60  },
 	{ BIZ_GUNS,    "Desert Eagle",      1500, ITEM_WEAPON, 24, 35  },
-	{ BIZ_GUNS,    "Р”СЂРѕР±РѕРІРёРє",          2000, ITEM_WEAPON, 25, 30  },
+	{ BIZ_GUNS,    "Дробовик",          2000, ITEM_WEAPON, 25, 30  },
 	{ BIZ_GUNS,    "MP5",               3000, ITEM_WEAPON, 29, 120 },
-	{ BIZ_GUNS,    "Р‘СЂРѕРЅРµР¶РёР»РµС‚",        1000, ITEM_ARMOUR, 100, 0  }
+	{ BIZ_GUNS,    "Бронежилет",        1000, ITEM_ARMOUR, 100, 0  }
 };
 
 enum E_BIZ
@@ -109,28 +109,28 @@ enum E_BIZ
 	bDbId,
 	bName[32],
 	bType,
-	bOwner,                     // id Р°РєРєР°СѓРЅС‚Р° РІР»Р°РґРµР»СЊС†Р° (0 = РїСЂРѕРґР°С‘С‚СЃСЏ)
+	bOwner,                     // id аккаунта владельца (0 = продаётся)
 	bOwnerName[MAX_PLAYER_NAME],
 	bPrice,
 	Float:bX,
 	Float:bY,
 	Float:bZ,
-	bTill,                      // РґРµРЅСЊРіРё РІ РєР°СЃСЃРµ
-	Float:bA,                   // РєСѓРґР° СЃРјРѕС‚СЂРёС‚ РІС…РѕРґ (-1 вЂ” РЅРµ Р·Р°РґР°РЅРѕ: РІС‹С…РѕРґ РїСЂСЏРјРѕ РЅР° Р·РЅР°С‡РѕРє, РєР°Рє СЂР°РЅСЊС€Рµ)
-	bool:bLocked,               // Р·Р°РєСЂС‹С‚: РІРѕР№С‚Рё РјРѕР¶РµС‚ С‚РѕР»СЊРєРѕ РІР»Р°РґРµР»РµС†
-	bMarker,                    // РјР°СЂРєРµСЂ (markers.inc)
-	bIntMode,                   // РєР°Рє РІ Р±Р°Р·Рµ: -1 СЃС‚Р°РЅРґР°СЂС‚РЅС‹Р№ РїРѕ С‚РёРїСѓ, 0 Р±РµР· РёРЅС‚РµСЂСЊРµСЂР°, РёРЅР°С‡Рµ СЃРІРѕСЏ С‚РѕС‡РєР°
-	bInt,                       // РёРЅС‚РµСЂСЊРµСЂ (0 вЂ” РІС…РѕРґР° РЅРµС‚, С‚РѕСЂРіРѕРІР»СЏ Сѓ Р·РЅР°С‡РєР°)
-	Float:bIX, Float:bIY, Float:bIZ, Float:bIA,   // С‚РѕС‡РєР° РІРЅСѓС‚СЂРё Сѓ РґРІРµСЂРё
-	bExitMk                     // РјР°СЂРєРµСЂ-СЃС‚СЂРµР»РєР° Сѓ РґРІРµСЂРё РІРЅСѓС‚СЂРё (markers.inc)
+	bTill,                      // деньги в кассе
+	Float:bA,                   // куда смотрит вход (-1 — не задано: выход прямо на значок, как раньше)
+	bool:bLocked,               // закрыт: войти может только владелец
+	bMarker,                    // маркер (markers.inc)
+	bIntMode,                   // как в базе: -1 стандартный по типу, 0 без интерьера, иначе своя точка
+	bInt,                       // интерьер (0 — входа нет, торговля у значка)
+	Float:bIX, Float:bIY, Float:bIZ, Float:bIA,   // точка внутри у двери
+	bExitMk                     // маркер-стрелка у двери внутри (markers.inc)
 }
 new Biz[MAX_BUSINESSES][E_BIZ];
 new gBizCount = 0;
 
-static gBuyBiz[MAX_PLAYERS];            // Сѓ РєР°РєРѕРіРѕ Р±РёР·РЅРµСЃР° РѕС‚РєСЂС‹С‚Рѕ РѕРєРЅРѕ РїРѕРєСѓРїРєРё
-static gBuyList[MAX_PLAYERS][20];       // СЃС‚СЂРѕРєР° РѕРєРЅР° -> РЅРѕРјРµСЂ С‚РѕРІР°СЂР°
+static gBuyBiz[MAX_PLAYERS];            // у какого бизнеса открыто окно покупки
+static gBuyList[MAX_PLAYERS][20];       // строка окна -> номер товара
 
-// Р‘РёР·РЅРµСЃС‹ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ (РєРѕРѕСЂРґРёРЅР°С‚С‹ РїСЂРёРјРµСЂРЅС‹Рµ)
+// Бизнесы по умолчанию (координаты примерные)
 enum E_BIZ_DEF
 {
 	bdName[32],
@@ -159,20 +159,20 @@ stock Biz_GetTypeName(type)
 stock Biz_Refresh(b)
 {
 	new text[MK_TEXT_LEN];
-	new act[32] = "ALT вЂ” РєСѓРїРёС‚СЊ С‚РѕРІР°СЂ";
+	new act[32] = "ALT — купить товар";
 	if (Biz[b][bInt] != 0)
 	{
 		act[0] = '\0';
-		strcat(act, Biz[b][bLocked] ? ("{FF6347}Р—Р°РєСЂС‹С‚Рѕ{FFFFFF}") : ("ALT вЂ” РІРѕР№С‚Рё"));
+		strcat(act, Biz[b][bLocked] ? ("{FF6347}Закрыто{FFFFFF}") : ("ALT — войти"));
 	}
 	if (Biz[b][bOwner] == 0)
 	{
-		format(text, sizeof text, "{FF9900}%s\n{FFFFFF}%s\n%s\nР‘РёР·РЅРµСЃ РїСЂРѕРґР°С‘С‚СЃСЏ: ${FFFF00}%d{FFFFFF} (/buybiz)",
+		format(text, sizeof text, "{FF9900}%s\n{FFFFFF}%s\n%s\nБизнес продаётся: ${FFFF00}%d{FFFFFF} (/buybiz)",
 			Biz[b][bName], Biz_GetTypeName(Biz[b][bType]), act, Biz[b][bPrice]);
 	}
 	else
 	{
-		format(text, sizeof text, "{FF9900}%s\n{FFFFFF}%s\n%s\nР’Р»Р°РґРµР»РµС†: %s",
+		format(text, sizeof text, "{FF9900}%s\n{FFFFFF}%s\n%s\nВладелец: %s",
 			Biz[b][bName], Biz_GetTypeName(Biz[b][bType]), act, Biz[b][bOwnerName]);
 	}
 	if (Biz[b][bMarker] == -1)
@@ -185,10 +185,10 @@ stock Biz_Refresh(b)
 	Marker_SetLabel(Biz[b][bMarker], text);
 }
 
-// РђРґРјРёРЅ РїРµСЂРµРЅС‘СЃ РјР°СЂРєРµСЂ Р±РёР·РЅРµСЃР° (/markers)
+// Админ перенёс маркер бизнеса (/markers)
 stock Biz_OnMarkerMoved(dbid, Float:x, Float:y, Float:z)
 {
-	// СЃС‚СЂРµР»РєР° РІС‹С…РѕРґР° РІРЅСѓС‚СЂРё: С‚РѕС‡РєР° СЃС‚Р°РЅРѕРІРёС‚СЃСЏ СЃРІРѕРµР№ (РёРЅС‚РµСЂСЊРµСЂ С‚РѕС‚ Р¶Рµ)
+	// стрелка выхода внутри: точка становится своей (интерьер тот же)
 	if (dbid >= BIZ_IN_REF)
 	{
 		new bi = Biz_FindByDbId(dbid - BIZ_IN_REF);
@@ -229,12 +229,12 @@ stock Biz_Add(dbid, const name[], type, owner, const ownerName[], price, Float:x
 	Biz[b][bLocked] = locked;
 	Biz[b][bMarker] = -1;
 	Biz[b][bExitMk] = -1;
-	Biz_ApplyInt(b, -1, 0, 0.0, 0.0, 0.0, 0.0);     // СЃС‚Р°РЅРґР°СЂС‚РЅС‹Р№ РёРЅС‚РµСЂСЊРµСЂ РїРѕ С‚РёРїСѓ
+	Biz_ApplyInt(b, -1, 0, 0.0, 0.0, 0.0, 0.0);     // стандартный интерьер по типу
 	Biz_Refresh(b);
 	return b;
 }
 
-// РРЅС‚РµСЂСЊРµСЂ Р±РёР·РЅРµСЃР°. mode: -1 вЂ” СЃС‚Р°РЅРґР°СЂС‚РЅС‹Р№ РїРѕ С‚РёРїСѓ, 0 вЂ” Р±РµР· РёРЅС‚РµСЂСЊРµСЂР°, 1 вЂ” СЃРІРѕСЏ С‚РѕС‡РєР° (interior, x, y, z, a)
+// Интерьер бизнеса. mode: -1 — стандартный по типу, 0 — без интерьера, 1 — своя точка (interior, x, y, z, a)
 stock Biz_ApplyInt(b, mode, interior, Float:x, Float:y, Float:z, Float:a)
 {
 	new t = Biz[b][bType];
@@ -264,22 +264,22 @@ stock Biz_ApplyInt(b, mode, interior, Float:x, Float:y, Float:z, Float:a)
 	{
 		new name[32];
 		strcat(name, Biz[b][bName], 22);
-		strcat(name, ", РІС‹С…РѕРґ");
+		strcat(name, ", выход");
 		new Float:ix = Biz[b][bIX], Float:iy = Biz[b][bIY], Float:iz = Biz[b][bIZ];
 		Biz[b][bExitMk] = Marker_Create(MK_BIZ, BIZ_IN_REF + Biz[b][bDbId], name, DOOR_PICKUP_MODEL, ix, iy, iz,
 			BIZ_WORLD_OFFSET + Biz[b][bDbId], Biz[b][bInt], GPS_NONE, Biz[b][bIA]);
 		Biz[b][bIX] = ix; Biz[b][bIY] = iy; Biz[b][bIZ] = iz;
-		Marker_SetLabel(Biz[b][bExitMk], "{FFFFFF}ALT вЂ” РІС‹Р№С‚Рё", COLOR_WHITE, 10.0);
+		Marker_SetLabel(Biz[b][bExitMk], "{FFFFFF}ALT — выйти", COLOR_WHITE, 10.0);
 	}
 }
 
-// Р’С‹С…РѕРґ РІРЅСѓС‚СЂРё РїРѕСЃС‚Р°РІР»РµРЅ Р·Р°РЅРѕРІРѕ РёР»Рё Р±РёР·РЅРµСЃ СѓРґР°Р»С‘РЅ: Р·Р°Р±С‹С‚СЊ РїСЂР°РІРєРё СЃС‚СЂРµР»РєРё РёР· /markers
+// Выход внутри поставлен заново или бизнес удалён: забыть правки стрелки из /markers
 static Biz_ForgetExitMarker(dbid)
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM markers WHERE type = %d AND ref = %d", MK_BIZ, BIZ_IN_REF + dbid));
 }
 
-// РРіСЂРѕРє РІРЅСѓС‚СЂРё РёРЅС‚РµСЂСЊРµСЂР° Р±РёР·РЅРµСЃР° b
+// Игрок внутри интерьера бизнеса b
 stock bool:Biz_IsInside(playerid, b)
 {
 	return (Biz[b][bInt] != 0 && GetPlayerVirtualWorld(playerid) == BIZ_WORLD_OFFSET + Biz[b][bDbId]);
@@ -289,17 +289,17 @@ stock Biz_Enter(playerid, b)
 {
 	if (Biz[b][bLocked] && Biz[b][bOwner] != Player[playerid][pDbId] && Player[playerid][pAdmin] < 4)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "В«%sВ» Р·Р°РєСЂС‹С‚.", Biz[b][bName]);
+		SendClientMessage(playerid, COLOR_GREY, "«%s» закрыт.", Biz[b][bName]);
 		return;
 	}
-	Door_SpawnAt(playerid, Biz[b][bExitMk]);     // С€Р°Рі РїРµСЂРµРґ СЃС‚СЂРµР»РєРѕР№ РІРЅСѓС‚СЂРё, Р»РёС†РѕРј РІ Р·Р°Р» (doors.inc)
+	Door_SpawnAt(playerid, Biz[b][bExitMk]);     // шаг перед стрелкой внутри, лицом в зал (doors.inc)
 	Player[playerid][pHouseInside] = -1;
-	SendClientMessage(playerid, COLOR_WHITE, "%s. РљСѓРїРёС‚СЊ С‚РѕРІР°СЂ: ALT РІ Р·Р°Р»Рµ РёР»Рё /buy. Р’С‹Р№С‚Рё: ALT Сѓ РґРІРµСЂРё РёР»Рё /exit.", Biz[b][bName]);
+	SendClientMessage(playerid, COLOR_WHITE, "%s. Купить товар: ALT в зале или /buy. Выйти: ALT у двери или /exit.", Biz[b][bName]);
 }
 
 stock Biz_Exit(playerid, b)
 {
-	// РІС…РѕРґ СЃ Р·Р°РґР°РЅРЅС‹Рј РЅР°РїСЂР°РІР»РµРЅРёРµРј вЂ” С€Р°Рі РїРµСЂРµРґ РґРІРµСЂСЊСЋ Р»РёС†РѕРј РЅР° СѓР»РёС†Сѓ; СЃС‚Р°СЂС‹Рµ Р±РёР·РЅРµСЃС‹ вЂ” РїСЂСЏРјРѕ РЅР° Р·РЅР°С‡РѕРє
+	// вход с заданным направлением — шаг перед дверью лицом на улицу; старые бизнесы — прямо на значок
 	if (Biz[b][bA] >= 0.0 && Marker_IsValid(Biz[b][bMarker])) Door_SpawnAt(playerid, Biz[b][bMarker]);
 	else
 	{
@@ -313,22 +313,22 @@ stock Biz_Exit(playerid, b)
 	Player[playerid][pHouseInside] = -1;
 }
 
-// /gotobiz [в„–] вЂ” РєРѕ РІС…РѕРґСѓ Р±РёР·РЅРµСЃР°, /gotobizint [в„–] вЂ” РІРЅСѓС‚СЂСЊ (Р°РґРјРёРЅ 3+), /bizlist вЂ” РІСЃРµ Р±РёР·РЅРµСЃС‹
+// /gotobiz [№] — ко входу бизнеса, /gotobizint [№] — внутрь (админ 3+), /bizlist — все бизнесы
 static Biz_FromParam(playerid, const params[], const usage[])
 {
 	new pos = 0, dbid;
 	if (!NextIntParam(params, pos, dbid)) { SendClientMessage(playerid, COLOR_GREY, "%s", usage); return -1; }
 	new b = Biz_FindByDbId(dbid);
-	if (b == -1) SendClientMessage(playerid, COLOR_GREY, "Р‘РёР·РЅРµСЃР° СЃ С‚Р°РєРёРј РЅРѕРјРµСЂРѕРј РЅРµС‚. РЎРїРёСЃРѕРє: /bizlist");
+	if (b == -1) SendClientMessage(playerid, COLOR_GREY, "Бизнеса с таким номером нет. Список: /bizlist");
 	return b;
 }
 
 stock bool:Cmd_GotoBiz(playerid, const params[], bool:inside)
 {
 	if (!Admin_Check(playerid, 3)) return true;
-	new b = Biz_FromParam(playerid, params, inside ? ("РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /gotobizint [в„–] вЂ” РІРЅСѓС‚СЂСЊ Р±РёР·РЅРµСЃР°. РЎРїРёСЃРѕРє: /bizlist") : ("РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /gotobiz [в„–] вЂ” РєРѕ РІС…РѕРґСѓ Р±РёР·РЅРµСЃР°. РЎРїРёСЃРѕРє: /bizlist"));
+	new b = Biz_FromParam(playerid, params, inside ? ("Использование: /gotobizint [№] — внутрь бизнеса. Список: /bizlist") : ("Использование: /gotobiz [№] — ко входу бизнеса. Список: /bizlist"));
 	if (b == -1) return true;
-	if (inside && Biz[b][bInt] == 0) return SendClientMessage(playerid, COLOR_GREY, "РЈ В«%sВ» РЅРµС‚ РёРЅС‚РµСЂСЊРµСЂР°. РљРѕ РІС…РѕРґСѓ: /gotobiz %d", Biz[b][bName], Biz[b][bDbId]);
+	if (inside && Biz[b][bInt] == 0) return SendClientMessage(playerid, COLOR_GREY, "У «%s» нет интерьера. Ко входу: /gotobiz %d", Biz[b][bName], Biz[b][bDbId]);
 	Teleport_SaveBack(playerid);
 	if (IsPlayerInAnyVehicle(playerid)) RemovePlayerFromVehicle(playerid);
 	if (inside) Door_SpawnAt(playerid, Biz[b][bExitMk]);
@@ -342,19 +342,19 @@ stock bool:Cmd_GotoBiz(playerid, const params[], bool:inside)
 		SetCameraBehindPlayer(playerid);
 	}
 	Player[playerid][pHouseInside] = -1;
-	SendClientMessage(playerid, COLOR_ADMIN, "В«%sВ» (в„–%d)%s. РќР°Р·Р°Рґ: /back", Biz[b][bName], Biz[b][bDbId], inside ? (", РІРЅСѓС‚СЂРё") : (""));
+	SendClientMessage(playerid, COLOR_ADMIN, "«%s» (№%d)%s. Назад: /back", Biz[b][bName], Biz[b][bDbId], inside ? (", внутри") : (""));
 	return true;
 }
 
 stock bool:Cmd_BizList(playerid)
 {
 	if (!Admin_Check(playerid, 3)) return true;
-	if (gBizCount == 0) return SendClientMessage(playerid, COLOR_GREY, "Р‘РёР·РЅРµСЃРѕРІ РЅРµС‚.");
-	SendClientMessage(playerid, COLOR_YELLOW, "Р‘РёР·РЅРµСЃС‹ (в„– вЂ” РЅР°Р·РІР°РЅРёРµ, С‚РёРї):");
+	if (gBizCount == 0) return SendClientMessage(playerid, COLOR_GREY, "Бизнесов нет.");
+	SendClientMessage(playerid, COLOR_YELLOW, "Бизнесы (№ — название, тип):");
 	new line[144], part[64];
 	for (new b = 0; b < gBizCount; b++)
 	{
-		format(part, sizeof part, "%d %s (%s)%s   ", Biz[b][bDbId], Biz[b][bName], Biz_GetTypeName(Biz[b][bType]), Biz[b][bLocked] ? (" Р·Р°РєСЂ.") : (""));
+		format(part, sizeof part, "%d %s (%s)%s   ", Biz[b][bDbId], Biz[b][bName], Biz_GetTypeName(Biz[b][bType]), Biz[b][bLocked] ? (" закр.") : (""));
 		if (strlen(line) + strlen(part) >= sizeof (line) - 1)
 		{
 			SendClientMessage(playerid, COLOR_WHITE, "%s", line);
@@ -366,22 +366,22 @@ stock bool:Cmd_BizList(playerid)
 	return true;
 }
 
-// /bizlock вЂ” Р·Р°РєСЂС‹С‚СЊ РёР»Рё РѕС‚РєСЂС‹С‚СЊ РІС…РѕРґ (РІР»Р°РґРµР»РµС† Сѓ СЃРІРѕРµРіРѕ Р±РёР·РЅРµСЃР° РёР»Рё Р°РґРјРёРЅ 4+ Сѓ Р»СЋР±РѕРіРѕ)
+// /bizlock — закрыть или открыть вход (владелец у своего бизнеса или админ 4+ у любого)
 stock bool:Cmd_BizLock(playerid)
 {
 	new b = Biz_GetNearby(playerid);
-	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Рє Р±РёР·РЅРµСЃСѓ (РёР»Рё Р·Р°Р№РґРё РІРЅСѓС‚СЂСЊ).");
-	if (Biz[b][bOwner] != Player[playerid][pDbId] && Player[playerid][pAdmin] < 4) return SendClientMessage(playerid, COLOR_GREY, "Р­С‚Рѕ РЅРµ С‚РІРѕР№ Р±РёР·РЅРµСЃ.");
-	if (Biz[b][bInt] == 0) return SendClientMessage(playerid, COLOR_GREY, "РЈ СЌС‚РѕРіРѕ Р±РёР·РЅРµСЃР° РЅРµС‚ РёРЅС‚РµСЂСЊРµСЂР°: С‚РѕСЂРіРѕРІР»СЏ РёРґС‘С‚ Сѓ Р·РЅР°С‡РєР°.");
+	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "Подойди к бизнесу (или зайди внутрь).");
+	if (Biz[b][bOwner] != Player[playerid][pDbId] && Player[playerid][pAdmin] < 4) return SendClientMessage(playerid, COLOR_GREY, "Это не твой бизнес.");
+	if (Biz[b][bInt] == 0) return SendClientMessage(playerid, COLOR_GREY, "У этого бизнеса нет интерьера: торговля идёт у значка.");
 	Biz[b][bLocked] = !Biz[b][bLocked];
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE businesses SET locked = %d WHERE id = %d", Biz[b][bLocked] ? 1 : 0, Biz[b][bDbId]));
 	Biz_Refresh(b);
-	if (Biz[b][bLocked]) SendClientMessage(playerid, COLOR_ORANGE, "В«%sВ» Р·Р°РєСЂС‹С‚: РІРѕР№С‚Рё РјРѕР¶РµС€СЊ С‚РѕР»СЊРєРѕ С‚С‹. РћС‚РєСЂС‹С‚СЊ: /bizlock", Biz[b][bName]);
-	else SendClientMessage(playerid, COLOR_GREEN, "В«%sВ» РѕС‚РєСЂС‹С‚ РґР»СЏ РїРѕРєСѓРїР°С‚РµР»РµР№.", Biz[b][bName]);
+	if (Biz[b][bLocked]) SendClientMessage(playerid, COLOR_ORANGE, "«%s» закрыт: войти можешь только ты. Открыть: /bizlock", Biz[b][bName]);
+	else SendClientMessage(playerid, COLOR_GREEN, "«%s» открыт для покупателей.", Biz[b][bName]);
 	return true;
 }
 
-// Р”РІРµСЂСЊ Р±РёР·РЅРµСЃР°: СЃРЅР°СЂСѓР¶Рё Сѓ Р·РЅР°С‡РєР° вЂ” РІРѕР№С‚Рё, РІРЅСѓС‚СЂРё Сѓ РґРІРµСЂРё вЂ” РІС‹Р№С‚Рё. true вЂ” СЃСЂР°Р±РѕС‚Р°Р»Рѕ.
+// Дверь бизнеса: снаружи у значка — войти, внутри у двери — выйти. true — сработало.
 stock bool:Biz_TryDoor(playerid)
 {
 	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) return false;
@@ -468,7 +468,7 @@ stock Business_Init()
 
 stock Biz_GetNearby(playerid)
 {
-	// РІРЅСѓС‚СЂРё РёРЅС‚РµСЂСЊРµСЂР° Р±РёР·РЅРµСЃР°: РІРµСЃСЊ Р·Р°Р» СЃС‡РёС‚Р°РµС‚СЃСЏ В«СЂСЏРґРѕРјВ»
+	// внутри интерьера бизнеса: весь зал считается «рядом»
 	new world = GetPlayerVirtualWorld(playerid);
 	if (world >= BIZ_WORLD_OFFSET)
 	{
@@ -494,7 +494,7 @@ stock Biz_GetOwned(playerid)
 	return -1;
 }
 
-// Р Р°Р· РІ PayDay (РёР· rp.pwn): РґРѕС…РѕРґ РІ РєР°СЃСЃС‹
+// Раз в PayDay (из rp.pwn): доход в кассы
 stock Business_PayDay()
 {
 	for (new b = 0; b < gBizCount; b++)
@@ -505,7 +505,7 @@ stock Business_PayDay()
 	}
 }
 
-// РћРєРЅРѕ РїРѕРєСѓРїРєРё (РёР· OnDialogResponse)
+// Окно покупки (из OnDialogResponse)
 stock Business_OnDialog(playerid, dialogid, response, listitem)
 {
 	if (dialogid != DIALOG_BIZ_BUY) return 0;
@@ -514,7 +514,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 	new b = gBuyBiz[playerid];
 	if (b < 0 || b >= gBizCount || Biz_GetNearby(playerid) != b)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РўС‹ РѕС‚РѕС€С‘Р» РѕС‚ РјР°РіР°Р·РёРЅР°.");
+		SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от магазина.");
 		return 1;
 	}
 	new item = gBuyList[playerid][listitem];
@@ -523,7 +523,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 	new price = gBizItems[item][biPrice];
 	if (GetMoney(playerid) < price)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РќРµ С…РІР°С‚Р°РµС‚ РґРµРЅРµРі. РќСѓР¶РЅРѕ $%d.", price);
+		SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", price);
 		return 1;
 	}
 
@@ -533,7 +533,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 		{
 			if (Player[playerid][pPhone] != 0)
 			{
-				SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ СѓР¶Рµ РµСЃС‚СЊ С‚РµР»РµС„РѕРЅ (РЅРѕРјРµСЂ %d).", Player[playerid][pPhone]);
+				SendClientMessage(playerid, COLOR_GREY, "У тебя уже есть телефон (номер %d).", Player[playerid][pPhone]);
 				return 1;
 			}
 		}
@@ -541,7 +541,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 		{
 			if (Outfit_FreeSlots(playerid) == 0)
 			{
-				SendClientMessage(playerid, COLOR_GREY, "Р’ СЃСѓРјРєРµ РЅРµС‚ РјРµСЃС‚Р° РґР»СЏ РѕРґРµР¶РґС‹. Р’С‹Р±СЂРѕСЃРё РёР»Рё РїРµСЂРµРґР°Р№ СЃС‚Р°СЂСѓСЋ (/inv).");
+				SendClientMessage(playerid, COLOR_GREY, "В сумке нет места для одежды. Выброси или передай старую (/inv).");
 				return 1;
 			}
 		}
@@ -549,7 +549,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 		{
 			if (Inv_Count(playerid, gBizItems[item][biValue]) + gBizItems[item][biValue2] > Inv_GetMax(gBizItems[item][biValue]))
 			{
-				SendClientMessage(playerid, COLOR_GREY, "Р’ СЃСѓРјРєРµ РЅРµС‚ РјРµСЃС‚Р°: Р±РѕР»СЊС€Рµ %d С€С‚СѓРє РЅРµ СѓРЅРµСЃС‚Рё (/inv).", Inv_GetMax(gBizItems[item][biValue]));
+				SendClientMessage(playerid, COLOR_GREY, "В сумке нет места: больше %d штук не унести (/inv).", Inv_GetMax(gBizItems[item][biValue]));
 				return 1;
 			}
 		}
@@ -557,12 +557,12 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 		{
 			if (Biz[b][bType] == BIZ_GUNS && gBizItems[item][biKind] == ITEM_WEAPON && !Licenses_Has(playerid, LIC_GUN))
 			{
-				SendClientMessage(playerid, COLOR_GREY, "РћСЂСѓР¶РёРµ РїСЂРѕРґР°СЋС‚ С‚РѕР»СЊРєРѕ СЃ Р»РёС†РµРЅР·РёРµР№. РЎРґР°С‚СЊ РЅР° РЅРµС‘ РјРѕР¶РЅРѕ РІ Р°РІС‚РѕС€РєРѕР»Рµ Сѓ РјСЌСЂРёРё.");
+				SendClientMessage(playerid, COLOR_GREY, "Оружие продают только с лицензией. Сдать на неё можно в автошколе у мэрии.");
 				return 1;
 			}
 			if (Biz[b][bType] == BIZ_GUNS && Player[playerid][pLevel] < GUNS_MIN_LEVEL)
 			{
-				SendClientMessage(playerid, COLOR_GREY, "РћСЂСѓР¶РёРµ РїСЂРѕРґР°СЋС‚ СЃ %d СѓСЂРѕРІРЅСЏ.", GUNS_MIN_LEVEL);
+				SendClientMessage(playerid, COLOR_GREY, "Оружие продают с %d уровня.", GUNS_MIN_LEVEL);
 				return 1;
 			}
 		}
@@ -585,7 +585,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 		case ITEM_INV:
 		{
 			Inv_Add(playerid, gBizItems[item][biValue], gBizItems[item][biValue2]);
-			SendClientMessage(playerid, COLOR_WHITE, "%s РІ СЃСѓРјРєРµ. РћС‚РєСЂС‹С‚СЊ: /inv", Inv_GetName(gBizItems[item][biValue]));
+			SendClientMessage(playerid, COLOR_WHITE, "%s в сумке. Открыть: /inv", Inv_GetName(gBizItems[item][biValue]));
 		}
 		case ITEM_FOOD:
 		{
@@ -595,12 +595,12 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 			if (hp > 100.0) hp = 100.0;
 			SetPlayerHealth(playerid, hp);
 			Needs_Feed(playerid, gBizItems[item][biValue2]);
-			SendClientMessage(playerid, COLOR_WHITE, "РЎС‹С‚РѕСЃС‚СЊ: %d%%.", Needs_GetHunger(playerid));
+			SendClientMessage(playerid, COLOR_WHITE, "Сытость: %d%%.", Needs_GetHunger(playerid));
 		}
 		case ITEM_SKIN:
 		{
-			Outfit_Add(playerid, gBizItems[item][biValue]);    // РѕРґРµР¶РґР° РІ СЃСѓРјРєСѓ (needs.inc)
-			SendClientMessage(playerid, COLOR_WHITE, "РћРґРµР¶РґР° (СЃРєРёРЅ %d) РІ СЃСѓРјРєРµ. РќР°РґРµС‚СЊ: /inv", gBizItems[item][biValue]);
+			Outfit_Add(playerid, gBizItems[item][biValue]);    // одежда в сумку (needs.inc)
+			SendClientMessage(playerid, COLOR_WHITE, "Одежда (скин %d) в сумке. Надеть: /inv", gBizItems[item][biValue]);
 		}
 	}
 
@@ -610,21 +610,21 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 		Biz_Save(b);
 	}
 	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_GREEN, "РўС‹ РєСѓРїРёР»: %s Р·Р° $%d.", gBizItems[item][biName], price);
+	SendClientMessage(playerid, COLOR_GREEN, "Ты купил: %s за $%d.", gBizItems[item][biName], price);
 	return 1;
 }
 
 // ---------------------------------------------------------------------
-//  РљРѕРјР°РЅРґС‹
+//  Команды
 // ---------------------------------------------------------------------
 stock bool:Cmd_Buy(playerid)
 {
 	new b = Biz_GetNearby(playerid);
-	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Рє Р·РЅР°С‡РєСѓ РјР°РіР°Р·РёРЅР° (Р±СѓРєРІР° i).");
-	if (Biz[b][bInt] != 0 && !Biz_IsInside(playerid, b)) return SendClientMessage(playerid, COLOR_GREY, "РўРѕСЂРіСѓСЋС‚ РІРЅСѓС‚СЂРё. Р’РѕР№С‚Рё: ALT РёР»Рё /enter Сѓ Р·РЅР°С‡РєР°.");
-	if (Biz[b][bType] == BIZ_CASINO) return Casino_Show(playerid, b);     // РёРіСЂС‹ (casino.inc)
+	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "Подойди к значку магазина (буква i).");
+	if (Biz[b][bInt] != 0 && !Biz_IsInside(playerid, b)) return SendClientMessage(playerid, COLOR_GREY, "Торгуют внутри. Войти: ALT или /enter у значка.");
+	if (Biz[b][bType] == BIZ_CASINO) return Casino_Show(playerid, b);     // игры (casino.inc)
 
-	new list[1024] = "РўРѕРІР°СЂ\tР¦РµРЅР°\n", line[64], n = 0;
+	new list[1024] = "Товар\tЦена\n", line[64], n = 0;
 	for (new i = 0; i < sizeof (gBizItems) && n < sizeof (gBuyList[]); i++)
 	{
 		if (gBizItems[i][biType] != Biz[b][bType]) continue;
@@ -632,47 +632,47 @@ stock bool:Cmd_Buy(playerid)
 		strcat(list, line);
 		gBuyList[playerid][n++] = i;
 	}
-	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "Р—РґРµСЃСЊ РїРѕРєР° РЅРёС‡РµРіРѕ РЅРµ РїСЂРѕРґР°СЋС‚.");
+	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "Здесь пока ничего не продают.");
 	gBuyBiz[playerid] = b;
-	ShowPlayerDialog(playerid, DIALOG_BIZ_BUY, DIALOG_STYLE_TABLIST_HEADERS, Biz[b][bName], "%s", "РљСѓРїРёС‚СЊ", "Р—Р°РєСЂС‹С‚СЊ", list);
+	ShowPlayerDialog(playerid, DIALOG_BIZ_BUY, DIALOG_STYLE_TABLIST_HEADERS, Biz[b][bName], "%s", "Купить", "Закрыть", list);
 	return true;
 }
 
 stock bool:Cmd_BuyBiz(playerid)
 {
-	if (Debts_BlockBuy(playerid)) return true;      // Р±РѕР»СЊС€РѕР№ РґРѕР»Рі С€С‚Р°С‚Сѓ (debts.inc)
+	if (Debts_BlockBuy(playerid)) return true;      // большой долг штату (debts.inc)
 	new b = Biz_GetNearby(playerid);
-	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Рє Р·РЅР°С‡РєСѓ Р±РёР·РЅРµСЃР°.");
-	if (Biz[b][bOwner] != 0) return SendClientMessage(playerid, COLOR_GREY, "РЈ СЌС‚РѕРіРѕ Р±РёР·РЅРµСЃР° СѓР¶Рµ РµСЃС‚СЊ РІР»Р°РґРµР»РµС†.");
-	if (Biz_GetOwned(playerid) != -1) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ СѓР¶Рµ РµСЃС‚СЊ Р±РёР·РЅРµСЃ. РџСЂРѕРґР°С‚СЊ: /sellbiz");
-	if (GetMoney(playerid) < Biz[b][bPrice]) return SendClientMessage(playerid, COLOR_GREY, "РќРµ С…РІР°С‚Р°РµС‚ РґРµРЅРµРі. РќСѓР¶РЅРѕ $%d.", Biz[b][bPrice]);
+	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "Подойди к значку бизнеса.");
+	if (Biz[b][bOwner] != 0) return SendClientMessage(playerid, COLOR_GREY, "У этого бизнеса уже есть владелец.");
+	if (Biz_GetOwned(playerid) != -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя уже есть бизнес. Продать: /sellbiz");
+	if (GetMoney(playerid) < Biz[b][bPrice]) return SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", Biz[b][bPrice]);
 
-	GiveMoney(playerid, -Biz[b][bPrice], "РїРѕРєСѓРїРєР° Р±РёР·РЅРµСЃР°");
+	GiveMoney(playerid, -Biz[b][bPrice], "покупка бизнеса");
 	Biz[b][bOwner] = Player[playerid][pDbId];
 	Biz[b][bTill] = 0;
 	GetPlayerName(playerid, Biz[b][bOwnerName], MAX_PLAYER_NAME);
 	Biz_Save(b);
 	Biz_Refresh(b);
 	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_GREEN, "РџРѕР·РґСЂР°РІР»СЏРµРј! В«%sВ» С‚РµРїРµСЂСЊ С‚РІРѕР№. РљР°СЃСЃР°: /bizcash, РёРЅС„РѕСЂРјР°С†РёСЏ: /bizinfo", Biz[b][bName]);
+	SendClientMessage(playerid, COLOR_GREEN, "Поздравляем! «%s» теперь твой. Касса: /bizcash, информация: /bizinfo", Biz[b][bName]);
 	return true;
 }
 
 stock bool:Cmd_SellBiz(playerid)
 {
 	new b = Biz_GetOwned(playerid);
-	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ Р±РёР·РЅРµСЃР°.");
-	if (Biz_GetNearby(playerid) != b) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Рє СЃРІРѕРµРјСѓ Р±РёР·РЅРµСЃСѓ.");
+	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет бизнеса.");
+	if (Biz_GetNearby(playerid) != b) return SendClientMessage(playerid, COLOR_GREY, "Подойди к своему бизнесу.");
 
 	new refund = Biz[b][bPrice] / 2 + Biz[b][bTill];
-	GiveMoney(playerid, refund, "РїСЂРѕРґР°Р¶Р° Р±РёР·РЅРµСЃР°");
+	GiveMoney(playerid, refund, "продажа бизнеса");
 	Biz[b][bOwner] = 0;
 	Biz[b][bOwnerName][0] = '\0';
 	Biz[b][bTill] = 0;
 	Biz_Save(b);
 	Biz_Refresh(b);
 	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_GREEN, "РўС‹ РїСЂРѕРґР°Р» Р±РёР·РЅРµСЃ РіРѕСЃСѓРґР°СЂСЃС‚РІСѓ. РџРѕР»СѓС‡РµРЅРѕ $%d (РїРѕР»РѕРІРёРЅР° С†РµРЅС‹ + РєР°СЃСЃР°).", refund);
+	SendClientMessage(playerid, COLOR_GREEN, "Ты продал бизнес государству. Получено $%d (половина цены + касса).", refund);
 	return true;
 }
 
@@ -680,27 +680,27 @@ stock bool:Cmd_BizInfo(playerid)
 {
 	new b = Biz_GetOwned(playerid);
 	if (b == -1) b = Biz_GetNearby(playerid);
-	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ Р±РёР·РЅРµСЃР°, Рё СЂСЏРґРѕРј РµРіРѕ С‚РѕР¶Рµ РЅРµС‚.");
-	SendClientMessage(playerid, COLOR_ORANGE, "%s (%s), в„–%d", Biz[b][bName], Biz_GetTypeName(Biz[b][bType]), Biz[b][bDbId]);
-	if (Biz[b][bOwner] == 0) SendClientMessage(playerid, COLOR_WHITE, "РџСЂРѕРґР°С‘С‚СЃСЏ Р·Р° $%d.", Biz[b][bPrice]);
-	else SendClientMessage(playerid, COLOR_WHITE, "Р’Р»Р°РґРµР»РµС†: %s.", Biz[b][bOwnerName]);
+	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет бизнеса, и рядом его тоже нет.");
+	SendClientMessage(playerid, COLOR_ORANGE, "%s (%s), №%d", Biz[b][bName], Biz_GetTypeName(Biz[b][bType]), Biz[b][bDbId]);
+	if (Biz[b][bOwner] == 0) SendClientMessage(playerid, COLOR_WHITE, "Продаётся за $%d.", Biz[b][bPrice]);
+	else SendClientMessage(playerid, COLOR_WHITE, "Владелец: %s.", Biz[b][bOwnerName]);
 	if (Biz[b][bOwner] != 0 && Biz[b][bOwner] == Player[playerid][pDbId])
-		SendClientMessage(playerid, COLOR_WHITE, "Р’ РєР°СЃСЃРµ: $%d. Р—Р°Р±СЂР°С‚СЊ: /bizcash (Сѓ Р±РёР·РЅРµСЃР°).", Biz[b][bTill]);
+		SendClientMessage(playerid, COLOR_WHITE, "В кассе: $%d. Забрать: /bizcash (у бизнеса).", Biz[b][bTill]);
 	return true;
 }
 
 stock bool:Cmd_BizCash(playerid)
 {
 	new b = Biz_GetOwned(playerid);
-	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "РЈ С‚РµР±СЏ РЅРµС‚ Р±РёР·РЅРµСЃР°.");
-	if (Biz_GetNearby(playerid) != b) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Рє СЃРІРѕРµРјСѓ Р±РёР·РЅРµСЃСѓ.");
-	if (Biz[b][bTill] <= 0) return SendClientMessage(playerid, COLOR_GREY, "РљР°СЃСЃР° РїСѓСЃС‚Р°.");
+	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет бизнеса.");
+	if (Biz_GetNearby(playerid) != b) return SendClientMessage(playerid, COLOR_GREY, "Подойди к своему бизнесу.");
+	if (Biz[b][bTill] <= 0) return SendClientMessage(playerid, COLOR_GREY, "Касса пуста.");
 	new cash = Biz[b][bTill];
 	Biz[b][bTill] = 0;
-	GiveMoney(playerid, cash, "РєР°СЃСЃР° Р±РёР·РЅРµСЃР°");
+	GiveMoney(playerid, cash, "касса бизнеса");
 	Biz_Save(b);
 	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_GREEN, "РўС‹ Р·Р°Р±СЂР°Р» РёР· РєР°СЃСЃС‹ $%d.", cash);
+	SendClientMessage(playerid, COLOR_GREEN, "Ты забрал из кассы $%d.", cash);
 	return true;
 }
 
@@ -710,9 +710,9 @@ stock bool:Cmd_CreateBiz(playerid, const params[])
 	new pos = 0, type, price, name[32];
 	if (!NextIntParam(params, pos, type) || type <= BIZ_NONE || type >= BIZ_TYPES
 		|| !NextIntParam(params, pos, price) || price < 1 || !RestParam(params, pos, name))
-		return SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /createbiz [С‚РёРї 1-5] [С†РµРЅР°] [РЅР°Р·РІР°РЅРёРµ]  (1 24/7, 2 Р±Р°СЂ, 3 РѕРґРµР¶РґР°, 4 РѕСЂСѓР¶РёРµ, 5 РєР°Р·РёРЅРѕ)");
-	if (GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "Р‘РёР·РЅРµСЃ РјРѕР¶РЅРѕ СЃС‚Р°РІРёС‚СЊ С‚РѕР»СЊРєРѕ РЅР° СѓР»РёС†Рµ.");
-	if (gBizCount >= MAX_BUSINESSES) return SendClientMessage(playerid, COLOR_GREY, "Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ Р±РёР·РЅРµСЃРѕРІ (MAX_BUSINESSES).");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /createbiz [тип 1-5] [цена] [название]  (1 24/7, 2 бар, 3 одежда, 4 оружие, 5 казино)");
+	if (GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "Бизнес можно ставить только на улице.");
+	if (gBizCount >= MAX_BUSINESSES) return SendClientMessage(playerid, COLOR_GREY, "Достигнут лимит бизнесов (MAX_BUSINESSES).");
 
 	new Float:x, Float:y, Float:z, Float:a;
 	GetPlayerPos(playerid, x, y, z);
@@ -720,7 +720,7 @@ stock bool:Cmd_CreateBiz(playerid, const params[])
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO businesses (name, type, price, x, y, z, oa) VALUES ('%q', %d, %d, %f, %f, %f, %f)",
 		name, type, price, x, y, z, a));
 	Biz_Add(DB_LastInsertId(), name, type, 0, "", price, x, y, z, 0, a);
-	SendClientMessage(playerid, COLOR_ADMIN, "Р‘РёР·РЅРµСЃ В«%sВ» (%s) СЃРѕР·РґР°РЅ, С†РµРЅР° $%d. РЎС‚Р°РІСЊ РµРіРѕ Сѓ РґРІРµСЂРё, СЃРїРёРЅРѕР№ Рє РЅРµР№: РІС‹С…РѕРґСЏС‚ СЃСЋРґР° Р»РёС†РѕРј РЅР° СѓР»РёС†Сѓ.", name, Biz_GetTypeName(type), price);
+	SendClientMessage(playerid, COLOR_ADMIN, "Бизнес «%s» (%s) создан, цена $%d. Ставь его у двери, спиной к ней: выходят сюда лицом на улицу.", name, Biz_GetTypeName(type), price);
 	return true;
 }
 
@@ -728,36 +728,36 @@ stock bool:Cmd_DelBiz(playerid)
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new b = Biz_GetNearby(playerid);
-	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "РџРѕРґРѕР№РґРё Рє Р±РёР·РЅРµСЃСѓ.");
+	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "Подойди к бизнесу.");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM businesses WHERE id = %d", Biz[b][bDbId]));
-	// РєС‚Рѕ Р±С‹Р» РІРЅСѓС‚СЂРё вЂ” РЅР° СѓР»РёС†Сѓ (РїРѕРєР° РјР°СЂРєРµСЂС‹ РµС‰С‘ РµСЃС‚СЊ)
+	// кто был внутри — на улицу (пока маркеры ещё есть)
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (IsPlayerConnected(i) && Biz_IsInside(i, b)) Biz_Exit(i, b);
 	}
 	Marker_Destroy(Biz[b][bMarker], true);
 	if (Biz[b][bExitMk] != -1) Marker_Destroy(Biz[b][bExitMk], true);
-	SendClientMessage(playerid, COLOR_ADMIN, "Р‘РёР·РЅРµСЃ В«%sВ» СѓРґР°Р»С‘РЅ.", Biz[b][bName]);
+	SendClientMessage(playerid, COLOR_ADMIN, "Бизнес «%s» удалён.", Biz[b][bName]);
 	new last = gBizCount - 1;
 	if (b != last) Biz[b] = Biz[last];
 	gBizCount--;
 	return true;
 }
 
-// /setbizint [в„– Р±РёР·РЅРµСЃР°] вЂ” С‚РѕС‡РєР° РІРЅСѓС‚СЂРё С‚Р°Рј, РіРґРµ СЃС‚РѕРёС€СЊ (РІ РёРЅС‚РµСЂСЊРµСЂРµ); def вЂ” СЃС‚Р°РЅРґР°СЂС‚РЅС‹Р№ РїРѕ С‚РёРїСѓ; off вЂ” Р±РµР· РёРЅС‚РµСЂСЊРµСЂР°
+// /setbizint [№ бизнеса] — точка внутри там, где стоишь (в интерьере); def — стандартный по типу; off — без интерьера
 stock bool:Cmd_SetBizInt(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, dbid, word[8];
 	if (!NextIntParam(params, pos, dbid))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ: /setbizint [в„– Р±РёР·РЅРµСЃР°] вЂ” С‚РѕС‡РєР° Сѓ РґРІРµСЂРё РІРЅСѓС‚СЂРё С‚Р°Рј, РіРґРµ С‚С‹ СЃС‚РѕРёС€СЊ (РІ РёРЅС‚РµСЂСЊРµСЂРµ)");
-		SendClientMessage(playerid, COLOR_GREY, "/setbizint [в„–] def вЂ” СЃС‚Р°РЅРґР°СЂС‚РЅС‹Р№ РёРЅС‚РµСЂСЊРµСЂ РїРѕ С‚РёРїСѓ, /setbizint [в„–] off вЂ” Р±РµР· РёРЅС‚РµСЂСЊРµСЂР°. в„–: /bizinfo");
-		SendClientMessage(playerid, COLOR_GREY, "/setbizint [в„–] out вЂ” РїРµСЂРµСЃС‚Р°РІРёС‚СЊ РІС…РѕРґ СЃРЅР°СЂСѓР¶Рё СЃСЋРґР° (Сѓ РґРІРµСЂРё, СЃРїРёРЅРѕР№ Рє РЅРµР№)");
+		SendClientMessage(playerid, COLOR_GREY, "Использование: /setbizint [№ бизнеса] — точка у двери внутри там, где ты стоишь (в интерьере)");
+		SendClientMessage(playerid, COLOR_GREY, "/setbizint [№] def — стандартный интерьер по типу, /setbizint [№] off — без интерьера. №: /bizinfo");
+		SendClientMessage(playerid, COLOR_GREY, "/setbizint [№] out — переставить вход снаружи сюда (у двери, спиной к ней)");
 		return true;
 	}
 	new b = Biz_FindByDbId(dbid);
-	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "Р‘РёР·РЅРµСЃР° СЃ С‚Р°РєРёРј РЅРѕРјРµСЂРѕРј РЅРµС‚. РќРѕРјРµСЂ: /bizinfo Сѓ Р±РёР·РЅРµСЃР°.");
+	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "Бизнеса с таким номером нет. Номер: /bizinfo у бизнеса.");
 
 	new mode = 1, interior = GetPlayerInterior(playerid);
 	new Float:x, Float:y, Float:z, Float:a;
@@ -767,25 +767,25 @@ stock bool:Cmd_SetBizInt(playerid, const params[])
 		else if (!strcmp(word, "off", true)) mode = 0;
 		else if (!strcmp(word, "out", true))
 		{
-			if (GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "Р’С…РѕРґ СЃС‚Р°РІРёС‚СЃСЏ РЅР° СѓР»РёС†Рµ.");
+			if (GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "Вход ставится на улице.");
 			GetPlayerPos(playerid, Biz[b][bX], Biz[b][bY], Biz[b][bZ]);
 			GetPlayerFacingAngle(playerid, Biz[b][bA]);
 			DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE businesses SET x = %f, y = %f, z = %f, oa = %f WHERE id = %d",
 				Biz[b][bX], Biz[b][bY], Biz[b][bZ], Biz[b][bA], Biz[b][bDbId]));
-			Marker_Destroy(Biz[b][bMarker], true);     // СЃ РїСЂР°РІРєР°РјРё /markers: РјРµСЃС‚Рѕ С‚РµРїРµСЂСЊ РЅРѕРІРѕРµ
+			Marker_Destroy(Biz[b][bMarker], true);     // с правками /markers: место теперь новое
 			Biz[b][bMarker] = -1;
 			Biz_Refresh(b);
-			return SendClientMessage(playerid, COLOR_ADMIN, "В«%sВ»: РІС…РѕРґ РїРµСЂРµСЃС‚Р°РІР»РµРЅ СЃСЋРґР°.", Biz[b][bName]);
+			return SendClientMessage(playerid, COLOR_ADMIN, "«%s»: вход переставлен сюда.", Biz[b][bName]);
 		}
-		else return SendClientMessage(playerid, COLOR_GREY, "Р’С‚РѕСЂРѕРµ СЃР»РѕРІРѕ: def (СЃС‚Р°РЅРґР°СЂС‚РЅС‹Р№ РёРЅС‚РµСЂСЊРµСЂ), off (Р±РµР· РёРЅС‚РµСЂСЊРµСЂР°) РёР»Рё out (РІС…РѕРґ СЃРЅР°СЂСѓР¶Рё).");
+		else return SendClientMessage(playerid, COLOR_GREY, "Второе слово: def (стандартный интерьер), off (без интерьера) или out (вход снаружи).");
 	}
 	if (mode == 1)
 	{
-		if (interior == 0) return SendClientMessage(playerid, COLOR_GREY, "Р’СЃС‚Р°РЅСЊ РІРЅСѓС‚СЂРё РёРЅС‚РµСЂСЊРµСЂР° Сѓ РґРІРµСЂРё (/gotoint) РёР»Рё РґРѕР±Р°РІСЊ def / off.");
+		if (interior == 0) return SendClientMessage(playerid, COLOR_GREY, "Встань внутри интерьера у двери (/gotoint) или добавь def / off.");
 		GetPlayerPos(playerid, x, y, z);
 		GetPlayerFacingAngle(playerid, a);
 	}
-	// РєС‚Рѕ РІРЅСѓС‚СЂРё вЂ” РЅР° СѓР»РёС†Сѓ: С‚РѕС‡РєР° Рё РјРёСЂ РјРѕРіСѓС‚ СЃРјРµРЅРёС‚СЊСЃСЏ
+	// кто внутри — на улицу: точка и мир могут смениться
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (IsPlayerConnected(i) && Biz_IsInside(i, b)) Biz_Exit(i, b);
@@ -795,8 +795,8 @@ stock bool:Cmd_SetBizInt(playerid, const params[])
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE businesses SET imode = %d, iint = %d, ix = %f, iy = %f, iz = %f, ia = %f WHERE id = %d",
 		Biz[b][bIntMode], interior, x, y, z, a, Biz[b][bDbId]));
 	Biz_Refresh(b);
-	if (mode == 1) SendClientMessage(playerid, COLOR_ADMIN, "В«%sВ»: РІС…РѕРґ С‚РµРїРµСЂСЊ РІРµРґС‘С‚ СЃСЋРґР° (РёРЅС‚РµСЂСЊРµСЂ %d).", Biz[b][bName], interior);
-	else if (mode == -1) SendClientMessage(playerid, COLOR_ADMIN, "В«%sВ»: СЃС‚Р°РЅРґР°СЂС‚РЅС‹Р№ РёРЅС‚РµСЂСЊРµСЂ РїРѕ С‚РёРїСѓ.", Biz[b][bName]);
-	else SendClientMessage(playerid, COLOR_ADMIN, "В«%sВ»: Р±РµР· РёРЅС‚РµСЂСЊРµСЂР°, С‚РѕСЂРіРѕРІР»СЏ Сѓ Р·РЅР°С‡РєР°.", Biz[b][bName]);
+	if (mode == 1) SendClientMessage(playerid, COLOR_ADMIN, "«%s»: вход теперь ведёт сюда (интерьер %d).", Biz[b][bName], interior);
+	else if (mode == -1) SendClientMessage(playerid, COLOR_ADMIN, "«%s»: стандартный интерьер по типу.", Biz[b][bName]);
+	else SendClientMessage(playerid, COLOR_ADMIN, "«%s»: без интерьера, торговля у значка.", Biz[b][bName]);
 	return true;
 }
