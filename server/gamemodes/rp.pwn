@@ -48,6 +48,7 @@
 #include "bastion/config.inc"
 #include "bastion/dialogs.inc"    // номера всех окон в одном месте
 #include "bastion/base.inc"
+#include "bastion/ui.inc"         // HTML-окна в клиенте Bastion: UI_Show, UI_Has
 #include "bastion/platform.inc"   // ПК или телефон: IsPlayerMobile[playerid]
 #include "bastion/anticheat.inc"  // античит; подменяет SetPlayerPos, GivePlayerWeapon и др., поэтому стоит до модулей
 #include "bastion/database.inc"
@@ -167,6 +168,7 @@ public OnPlayerConnect(playerid)
 {
 	Fps_Reset(playerid);
 	Platform_OnConnect(playerid);
+	UI_OnConnect(playerid);
 	AC_OnConnect(playerid);
 	Admin_OnConnect(playerid);
 	Law_OnConnect(playerid);
@@ -188,6 +190,7 @@ public OnPlayerDisconnect(playerid, reason)
 {
 	Law_OnDisconnect(playerid, reason); // метка задержания: вышел из игры — деморган (law.inc)
 	Platform_OnDisconnect(playerid);
+	UI_OnDisconnect(playerid);
 	Supply_ResetPlayer(playerid);
 	Admin_OnDisconnect(playerid);
 	Job_Stop(playerid);
