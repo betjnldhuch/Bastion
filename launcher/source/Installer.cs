@@ -18,7 +18,7 @@ namespace BastionLauncher
         const long MaxExtracted = 34359738368L; // 32 ГБ
 
         // Ключ уходит только по https и только на хост официального архива
-        static bool SendsKey(string url)
+        public static bool SendsKey(string url)
         {
             if (Secrets.DownloadKey.Length == 0 || Secrets.GameUrl.Length == 0) return false;
             try

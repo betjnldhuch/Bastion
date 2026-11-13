@@ -1,0 +1,103 @@
+name: Build Bastion UI for PC (CEF)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "client-mods/bastion-ui/**"
+      - "mobile/launcher/app/src/main/assets/ui/**"
+      - ".github/workflows/bastion-ui-pc.yml"
+  pull_request:
+    paths:
+      - "client-mods/bastion-ui/**"
+      - "mobile/launcher/app/src/main/assets/ui/**"
+      - ".github/workflows/bastion-ui-pc.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Последняя стабильная 32-битная сборка CEF (minimal) с cef-builds.spotifycdn.com.
+      # Можно закрепить версию переменной CEF_VERSION в настройках репозитория.
+      - name: Pick CEF version
+        id: cef
+        shell: pwsh
+        env:
+          CEF_VERSION: ${{ vars.CEF_VERSION }}
+        run: |
+          $idx = Invoke-RestMethod https://cef-builds.spotifycdn.com/index.json
+          $vers = $idx.windows32.versions
+          if ($env:CEF_VERSION) { $v = $vers | Where-Object { $_.cef_version -eq $env:CEF_VERSION } | Select-Object -First 1 }
+          else { $v = $vers | Where-Object { $_.channel -eq 'stable' } | Select-Object -First 1 }
+          if (-not $v) { throw "CEF windows32 не найден" }
+          $f = $v.files | Where-Object { $_.type -eq 'minimal' } | Select-Object -First 1
+          "name=$($f.name)" >> $env:GITHUB_OUTPUT
+          "sha1=$($f.sha1)" >> $env:GITHUB_OUTPUT
+          "dir=$($f.name -replace '\.tar\.bz2$','')" >> $env:GITHUB_OUTPUT
+          Write-Host "CEF $($v.cef_version) ($($v.chromium_version)): $($f.name)"
+
+      - name: Cache CEF
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: cef
+          key: ${{ steps.cef.outputs.name }}
+
+      - name: Download CEF
+        if: steps.cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force cef | Out-Null
+          $out = "cef\${{ steps.cef.outputs.name }}"
+          Invoke-WebRequest "https://cef-builds.spotifycdn.com/${{ steps.cef.outputs.name }}" -OutFile $out
+          $sha = (Get-FileHash $out -Algorithm SHA1).Hash.ToLower()
+          if ($sha -ne "${{ steps.cef.outputs.sha1 }}") { throw "SHA1 CEF не совпадает" }
+          tar -xjf $out -C cef
+          Remove-Item $out
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S client-mods/bastion-ui -B build -A Win32 "-DCEF_ROOT=$PWD/cef/${{ steps.cef.outputs.dir }}"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $cef = "cef\${{ steps.cef.outputs.dir }}"
+          $root = "dist\BastionUI"
+          $ui = "$root\bastion_ui"
+          New-Item -ItemType Directory -Force "$ui\locales", "$ui\ui", "$ui\fonts" | Out-Null
+          $asi = Get-ChildItem build -Recurse -Filter bastion_ui.asi | Select-Object -First 1
+          $sub = Get-ChildItem build -Recurse -Filter bastion_cef.exe | Select-Object -First 1
+          Copy-Item $asi.FullName $root
+          Copy-Item $sub.FullName $ui
+          Copy-Item "$cef\Release\*.dll", "$cef\Release\*.bin", "$cef\Release\*.json" $ui -ErrorAction SilentlyContinue
+          Copy-Item "$cef\Resources\*.pak", "$cef\Resources\icudtl.dat" $ui
+          Copy-Item "$cef\Resources\locales\ru.pak", "$cef\Resources\locales\en-US.pak" "$ui\locales"
+          Copy-Item mobile\launcher\app\src\main\assets\ui\index.html "$ui\ui"
+          Copy-Item launcher\fonts\RussoOne-Regular.ttf "$ui\fonts"
+          Copy-Item client-mods\bastion-ui\README.txt $root
+          # ASI Loader (ThirteenAG, MIT) — грузит bastion_ui.asi в игру
+          try {
+            Invoke-WebRequest https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases/latest/download/Ultimate-ASI-Loader.zip -OutFile asi.zip
+            Expand-Archive asi.zip asi -Force
+            $d = Get-ChildItem asi -Recurse -Filter dinput8.dll | Select-Object -First 1
+            if ($d) { Copy-Item $d.FullName $root }
+          } catch { Write-Warning "ASI Loader не скачан: $_" }
+          Get-ChildItem $root -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: BastionUI-PC
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30

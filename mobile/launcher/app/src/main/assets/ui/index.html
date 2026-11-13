@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Bastion UI</title>
 <!--
-  HTML-окна Bastion поверх игры (Android).
+  HTML-окна Bastion поверх игры (Android и ПК — bastion_ui.asi).
   Сервер (ui.inc) шлёт диалог с заголовком "[ui:ИМЯ]" и JSON в тексте.
   Клиент вызывает BastionUI.open({window, button1, button2, data}).
   Ответ: BastionNative.respond(кнопка 1/0, пункт списка, текст) — придёт в OnDialogResponse.
@@ -633,8 +633,20 @@ button { font: inherit; cursor: pointer; }
       fn(data, msg);
       root.classList.add('on');
     },
-    close: function () { respond(0, -1, ''); }
+    close: function () { respond(0, -1, ''); },
+    // Сервер закрыл диалог сам — убрать окно без ответа
+    hide: function () { current = null; root.classList.remove('on'); root.innerHTML = ''; }
   };
+
+  // ПК (bastion_ui.asi): крупнее на больших экранах, Esc закрывает окно
+  if (window.BastionNative && BastionNative.platform === 'pc') {
+    var fit = function () { document.body.style.zoom = Math.max(1, Math.min(2, innerHeight / 760)); };
+    fit();
+    addEventListener('resize', fit);
+    addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && current) { e.preventDefault(); respond(0, -1, ''); }
+    });
+  }
 
   // Предпросмотр в браузере ПК: index.html#login / #register / #gender / #donate / #inventory,
   // обычные диалоги: #samp0 … #samp5 (стиль диалога)
