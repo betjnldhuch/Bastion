@@ -487,4 +487,34 @@ if not gloss.exists():
     raise SystemExit("libGlossHook.so (ARM64) not found")
 shutil.copy2(gloss, main / "jniLibs/arm64-v8a/libGlossHook.so")
 
+# ---------------------------------------------------------------------------
+# 7. HTML windows (BastionWebUi): a dialog with caption "[ui:NAME]" opens
+#    assets/ui/index.html (shipped by the launcher module) instead of the stock
+#    dialog; the answer goes back as a normal dialog response.
+# ---------------------------------------------------------------------------
+samp_java = main / "java/com/gta/game/SAMP.java"
+shutil.copy2(Path(__file__).resolve().parent / "java/BastionWebUi.java", samp_java.parent / "BastionWebUi.java")
+replace_exact(samp_java, """    private DialogManager mDialog;
+""", """    private DialogManager mDialog;
+    private BastionWebUi mWebUi;
+""")
+replace_exact(samp_java, """        runOnUiThread(() -> { this.mDialog.show(dialogId, dialogTypeId, caption, content, leftBtnText, rightBtnText); });""",
+"""        runOnUiThread(() -> {
+            if (BastionWebUi.wants(caption)) {
+                this.mDialog.Hide();
+                this.mWebUi.show(dialogId, caption, content, leftBtnText, rightBtnText);
+                return;
+            }
+            this.mWebUi.hide();
+            this.mDialog.show(dialogId, dialogTypeId, caption, content, leftBtnText, rightBtnText);
+        });""")
+replace_exact(samp_java, """        mDialog     = new DialogManager(this);
+""", """        mDialog     = new DialogManager(this);
+        mWebUi      = new BastionWebUi(this, mDialog);
+""")
+replace_exact(samp_java, """                if (pause) {
+                    mDialog.hideWithoutReset();""", """                mWebUi.setPaused(pause);
+                if (pause) {
+                    mDialog.hideWithoutReset();""")
+
 print("SAMP-Mobile prepared for Bastion: library module, Bastion storage, :game process, no Firebase.")

@@ -51,9 +51,26 @@ stock Account_OnConnect(playerid)
 	return 1;
 }
 
-// Показать окно входа или регистрации
-stock Account_ShowAuth(playerid)
+// Показать окно входа или регистрации. error — текст ошибки в HTML-окне (ui.inc).
+stock Account_ShowAuth(playerid, const error[] = "")
 {
+	if (UI_Has(playerid))
+	{
+		new json[256], err[128];
+		UI_JsonEscape(err, error);
+		if (Player[playerid][pDbId] != 0)
+		{
+			format(json, sizeof json, "{\"name\":\"%s\",\"error\":\"%s\"}", GetRPName(playerid), err);
+			UI_Show(playerid, DIALOG_LOGIN, DIALOG_STYLE_PASSWORD, "login", json, "Войти", "Выход");
+		}
+		else
+		{
+			format(json, sizeof json, "{\"name\":\"%s\",\"min\":%d,\"max\":%d,\"error\":\"%s\"}",
+				GetRPName(playerid), MIN_PASSWORD_LEN, MAX_PASSWORD_LEN, err);
+			UI_Show(playerid, DIALOG_REGISTER, DIALOG_STYLE_PASSWORD, "register", json, "Далее", "Выход");
+		}
+		return;
+	}
 	if (Player[playerid][pDbId] != 0)
 	{
 		ShowPlayerDialog(playerid, DIALOG_LOGIN, DIALOG_STYLE_PASSWORD, "Вход",
@@ -96,7 +113,7 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			if (len < MIN_PASSWORD_LEN || len > MAX_PASSWORD_LEN)
 			{
 				SendClientMessage(playerid, COLOR_RED, "Пароль должен быть от %d до %d символов.", MIN_PASSWORD_LEN, MAX_PASSWORD_LEN);
-				Account_ShowAuth(playerid);
+				Account_ShowAuth(playerid, "Пароль слишком короткий или слишком длинный.");
 				return 1;
 			}
 
@@ -113,8 +130,12 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			Player[playerid][pMoney] = START_MONEY;
 			Player[playerid][pLevel] = 1;
 
-			ShowPlayerDialog(playerid, DIALOG_GENDER, DIALOG_STYLE_LIST, "Выбери пол персонажа",
-				"Мужской\nЖенский", "Выбрать", "");
+			if (UI_Has(playerid))
+				// По строке на пункт списка, чтобы клиент мог вернуть listitem 0 или 1
+				UI_Show(playerid, DIALOG_GENDER, DIALOG_STYLE_LIST, "gender", "{\"items\":[\n\"Мужской\",\n\"Женский\"]}", "Выбрать");
+			else
+				ShowPlayerDialog(playerid, DIALOG_GENDER, DIALOG_STYLE_LIST, "Выбери пол персонажа",
+					"Мужской\nЖенский", "Выбрать", "");
 			return 1;
 		}
 		case DIALOG_GENDER:
@@ -150,7 +171,9 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 				}
 				SendClientMessage(playerid, COLOR_RED, "Неверный пароль! Осталось попыток: %d",
 					MAX_LOGIN_TRIES - Player[playerid][pLoginTries]);
-				Account_ShowAuth(playerid);
+				new err[64];
+				format(err, sizeof err, "Неверный пароль. Осталось попыток: %d", MAX_LOGIN_TRIES - Player[playerid][pLoginTries]);
+				Account_ShowAuth(playerid, err);
 				return 1;
 			}
 
