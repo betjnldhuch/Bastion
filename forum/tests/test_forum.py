@@ -106,7 +106,7 @@ class ForumTest(unittest.TestCase):
 
     def test_pages_for_guest(self):
         c = Client(self.base)
-        for path in ("/", "/bans", "/team", "/search?q=test", "/login", "/news.txt", "/api/status.json",
+        for path in ("/", "/forum", "/map", "/donate", "/bans", "/team", "/search?q=test", "/login", "/news.txt", "/api/status.json",
                      "/static/style.css", f"/f/{self.forum_id('complaint')}"):
             code, _ = c.get(path)
             self.assertEqual(code, 200, path)
@@ -221,6 +221,47 @@ class ForumTest(unittest.TestCase):
         self.assertEqual(self.app.store.topic(tid)["posts_count"], 1)
         admin.post(f"/t/{tid}/mod", {"action": "delete"}, f"/t/{tid}")
         self.assertIsNone(self.app.store.topic(tid))
+
+    def test_site_home_and_map(self):
+        c = Client(self.base)
+        _, html = c.get("/")
+        for href in ('href="/map"', 'href="/forum"', 'href="/donate"'):
+            self.assertIn(href, html)
+        code, raw = c.get("/api/map.json")
+        self.assertEqual(code, 200)
+        import json
+        data = json.loads(raw)
+        peace = next(s for s in data["servers"] if s["key"] == "peace")
+        self.assertEqual(len(peace["houses"]), 7)  # дом в интерьере (oint=3) не показывается
+        self.assertEqual(peace["houses"][0]["owner"], "Carl_Johnson")
+        self.assertEqual(peace["houses"][1]["owner"], "")
+        self.assertIn("Ammu-Nation", [b["name"] for b in peace["businesses"]])
+        grove = next(t for t in peace["turfs"] if t["name"] == "Grove Street")
+        self.assertEqual(grove["faction"], "Grove Street Families")
+
+    def test_donate_flow(self):
+        server.DONATE_COOLDOWN = 0
+        guest, admin, player = Client(self.base), Client(self.base), Client(self.base)
+        _, html, _ = guest.post("/donate", {"name": "Nobody_Here", "coins": "300", "server": "peace"}, "/donate")
+        self.assertIn("нет аккаунта", html)
+        _, html, _ = guest.post("/donate", {"name": "ivan", "coins": "300", "server": "peace"}, "/donate")
+        self.assertIn("Имя_Фамилия", html)
+        _, html, _ = guest.post("/donate", {"name": "Ivan_Petrov", "coins": "1", "server": "peace"}, "/donate")
+        self.assertIn("Количество монет", html)
+        code, html, _ = guest.post("/donate", {"name": "Ivan_Petrov", "coins": "300", "server": "peace",
+                                               "contact": "<b>tg</b>"}, "/donate")
+        self.assertEqual(code, 200)
+        m = re.search(r"Заявка №(\d+)", html)
+        self.assertTrue(m)
+        req_id = m.group(1)
+        player.login("Ivan_Petrov")
+        self.assertEqual(player.get("/donate/requests")[0], 403)
+        admin.login("Pal_Layach")
+        code, html = admin.get("/donate/requests")
+        self.assertEqual(code, 200)
+        self.assertIn("&lt;b&gt;tg&lt;/b&gt;", html)
+        admin.post(f"/donate/requests/{req_id}", {"status": "done"}, "/donate/requests")
+        self.assertEqual(self.app.store.donate_request(int(req_id))["status"], "done")
 
     def test_open_redirect_blocked(self):
         self.assertEqual(server._safe_next("//evil.com"), "/")

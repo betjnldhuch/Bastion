@@ -36,6 +36,17 @@
     });
   });
 
+  // Донат: сумма к оплате при вводе количества монет
+  var donate = document.querySelector(".donate-form");
+  if (donate) {
+    var coins = donate.querySelector("input[name=coins]"), sum = document.getElementById("donate-sum");
+    var rate = parseFloat(donate.dataset.rate) || 0;
+    coins.addEventListener("input", function () {
+      var n = Math.round((parseInt(coins.value, 10) || 0) * rate);
+      sum.textContent = String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " \u20bd";
+    });
+  }
+
   document.addEventListener("submit", function (ev) {
     var form = ev.target;
     var btn = ev.submitter;

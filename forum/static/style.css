@@ -195,3 +195,53 @@ table.list td { padding: 8px; border-top: 1px solid var(--line); }
   .author .muted { display: none; }
   h1 { font-size: 21px; }
 }
+
+/* Сайт: главная */
+.site-hero { display: flex; justify-content: space-between; gap: 20px; align-items: center; margin: 24px 0 0; padding: 36px 28px; border-radius: var(--radius); flex-wrap: wrap;
+  background: radial-gradient(circle at 0 0, rgba(255,122,26,.25), transparent 60%), radial-gradient(circle at 100% 100%, rgba(58,139,255,.10), transparent 50%), var(--card); border: 1px solid var(--line); }
+.site-hero h1 { font-size: 44px; color: var(--orange); margin: 0; line-height: 1.1; }
+.site-hero p { color: var(--dim); margin: 8px 0 0; font-size: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 16px 0; }
+.tile { display: flex; flex-direction: column; gap: 6px; padding: 22px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); color: var(--text); transition: border-color .15s, transform .15s; }
+.tile:hover { text-decoration: none; color: var(--text); border-color: var(--orange); transform: translateY(-2px); }
+.tile b { font: 24px "Russo One", sans-serif; color: var(--orange); }
+.tile-ico { width: 44px; height: 44px; border-radius: 12px; background: rgba(255,122,26,.12) center / 26px no-repeat; }
+.tile-map .tile-ico { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ff7a1a' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14'/%3E%3C/svg%3E"); }
+.tile-forum .tile-ico { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ff7a1a' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M4 5h16v11H9l-5 4V5z'/%3E%3C/svg%3E"); }
+.tile-donate .tile-ico { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ff7a1a' stroke-width='2' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8'/%3E%3Cpath d='M12 7v10M15 9.5c-.5-1-1.6-1.5-3-1.5-1.7 0-3 .8-3 2s1.3 1.7 3 2 3 .8 3 2-1.3 2-3 2c-1.4 0-2.5-.5-3-1.5'/%3E%3C/svg%3E"); }
+
+/* Карта */
+.map-tools { display: flex; gap: 8px 18px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+.map-tools .chk { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--text); font-size: 14px; cursor: pointer; }
+.map-tools .chk input { width: auto; margin: 0; accent-color: var(--orange); }
+.map-srv { display: flex; align-items: center; gap: 8px; margin: 0; }
+.map-srv select { width: auto; margin: 0; padding: 5px 8px; }
+.lg { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+.lg-house { background: #3fbf6a; } .lg-biz { background: #ff7a1a; border-radius: 2px; }
+.lg-turf { background: rgba(176,64,255,.5); border: 1px solid #b040ff; border-radius: 2px; } .lg-free { background: var(--text); }
+.map-wrap { position: relative; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--bar); }
+#map { display: block; width: 100%; touch-action: none; cursor: grab; }
+#map:active { cursor: grabbing; }
+.map-info { position: absolute; left: 12px; top: 12px; max-width: 260px; background: rgba(9,10,12,.94); border: 1px solid var(--line); border-radius: 8px; padding: 12px 34px 12px 14px; font-size: 14px; }
+.map-info h4 { margin: 0 0 4px; font: 16px "Russo One", sans-serif; color: var(--orange); font-weight: 400; }
+.map-info .free { color: var(--green); }
+.map-close { position: absolute; top: 6px; right: 6px; background: none; border: 0; color: var(--dim); font-size: 20px; cursor: pointer; line-height: 1; }
+.map-zoom { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 6px; }
+.map-zoom button { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line); background: rgba(9,10,12,.9); color: var(--text); font-size: 20px; cursor: pointer; }
+.map-zoom button:hover { border-color: var(--orange); }
+
+/* Донат */
+.donate-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; align-items: start; }
+.donate-grid .card { margin: 16px 0 0; }
+.price .num, .list .num { text-align: right; white-space: nowrap; }
+.donate-total { font-size: 16px; margin-top: 4px; }
+.donate-total b { font: 22px "Russo One", sans-serif; color: var(--orange); }
+.card.narrow.wide { max-width: 560px; }
+.table-scroll { overflow-x: auto; }
+
+@media (max-width: 900px) {
+  .tiles, .donate-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .site-hero { padding: 22px 18px; } .site-hero h1 { font-size: 30px; }
+}

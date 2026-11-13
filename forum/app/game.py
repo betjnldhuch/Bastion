@@ -22,6 +22,8 @@ FACTIONS = {
     7: "Армия",
 }
 FACTION_COLORS = {1: "#3a6eff", 2: "#ff8080", 3: "#10a010", 4: "#b040ff", 5: "#00c8f0", 6: "#6c8cd5", 7: "#6b8e23"}
+# Должно совпадать с gBizTypeNames в server/gamemodes/bastion/business.inc
+BIZ_TYPES = {1: "Магазин 24/7", 2: "Бар", 3: "Магазин одежды", 4: "Оружейный магазин"}
 MAX_RANK = 10
 LEADER_RANK = MAX_RANK - 1  # 9 = заместитель, 10 = лидер (как Faction_NeedLeader в моде)
 RANK_NAMES = {
@@ -130,6 +132,57 @@ class GameDB:
 
     def admins(self):
         return self._query("SELECT id, name, admin FROM accounts WHERE admin > 0 ORDER BY admin DESC, name")
+
+    def map_data(self):
+        """Дома, бизнесы и территории банд для карты сайта (только уличные входы)."""
+        data = {"houses": [], "businesses": [], "turfs": []}
+        if not self.available():
+            return data
+        try:
+            con = self._connect()
+        except sqlite3.Error:
+            return data
+        try:
+            names = {}
+
+            def owner(oid):
+                oid = int(oid or 0)
+                if oid <= 0:
+                    return ""
+                if oid not in names:
+                    row = con.execute("SELECT name FROM accounts WHERE id = ?", (oid,)).fetchone()
+                    names[oid] = row[0] if row else ""
+                return names[oid]
+
+            hcols = self._columns(con, "houses")
+            if hcols:
+                where = " WHERE oint = 0 AND oworld = 0" if {"oint", "oworld"} <= hcols else ""
+                for r in con.execute(f"SELECT id, owner, price, x, y FROM houses{where} ORDER BY id"):
+                    data["houses"].append({"id": r["id"], "x": round(r["x"] or 0, 1), "y": round(r["y"] or 0, 1),
+                                           "price": int(r["price"] or 0), "owner": owner(r["owner"])})
+            if self._columns(con, "businesses"):
+                for r in con.execute("SELECT id, name, type, owner, price, x, y FROM businesses ORDER BY id"):
+                    t = int(r["type"] or 0)
+                    data["businesses"].append({"id": r["id"], "x": round(r["x"] or 0, 1), "y": round(r["y"] or 0, 1),
+                                               "name": r["name"] or BIZ_TYPES.get(t, "Бизнес"),
+                                               "type": BIZ_TYPES.get(t, "Бизнес"),
+                                               "price": int(r["price"] or 0), "owner": owner(r["owner"])})
+            if self._columns(con, "turfs"):
+                for r in con.execute("SELECT id, name, minx, miny, maxx, maxy, owner FROM turfs ORDER BY id"):
+                    f = int(r["owner"] or 0)
+                    data["turfs"].append({"id": r["id"], "name": r["name"] or "",
+                                          "box": [round(r[k] or 0, 1) for k in ("minx", "miny", "maxx", "maxy")],
+                                          "faction": FACTIONS.get(f, "") if f else "",
+                                          "color": FACTION_COLORS.get(f, "#808491")})
+        except sqlite3.Error:
+            pass
+        finally:
+            con.close()
+        return data
+
+    def account_exists(self, name):
+        rows = self._query("SELECT id FROM accounts WHERE name = ? COLLATE NOCASE LIMIT 1", (name,))
+        return bool(rows)
 
     def _query(self, sql, args=()):
         if not self.available():
