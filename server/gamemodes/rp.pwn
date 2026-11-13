@@ -54,6 +54,7 @@
 #include "bastion/database.inc"
 #include "bastion/markers.inc"    // все маркеры (значки и надписи) в одном месте
 #include "bastion/spawns.inc"     // точки появления игроков (вокзалы): /addspawn
+#include "bastion/referral.inc"   // правила для новичков и «кто пригласил»
 #include "bastion/accounts.inc"
 #include "bastion/vehicles.inc"
 #include "bastion/fuel.inc"
@@ -508,6 +509,7 @@ stock PayDay()
 			Player[i][pLevel]++;
 			SetPlayerScore(i, Player[i][pLevel]);
 			SendClientMessage(i, COLOR_GREEN, "Поздравляем! Твой уровень повышен до %d.", Player[i][pLevel]);
+			Referral_OnLevelUp(i);   // награда пригласившему (referral.inc)
 		}
 		Account_Save(i);
 	}

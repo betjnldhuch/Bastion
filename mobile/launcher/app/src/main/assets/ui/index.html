@@ -33,6 +33,7 @@ html, body { margin: 0; height: 100%; background: transparent; color: var(--text
 .card.wide { width: min(560px, 100%); }
 .brand { font-family: "Russo One", sans-serif; letter-spacing: .08em; font-size: 12px; color: var(--accent); }
 h1 { font-family: "Russo One", sans-serif; font-weight: 400; font-size: 24px; margin: 4px 0 6px; }
+@media (max-height: 420px) { .card { padding: 14px 18px 12px; } h1 { font-size: 20px; } p.sub { margin-bottom: 10px; } }
 p.sub { margin: 0 0 16px; color: var(--muted); }
 p.sub b { color: var(--text); font-weight: 600; }
 .close { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; border-radius: 8px;
@@ -61,6 +62,19 @@ button { font: inherit; cursor: pointer; }
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-size: 16px; }
 .choice .ico { font-size: 40px; line-height: 1; }
 .choice.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: rgba(255,122,26,.08); }
+.card.wide { display: flex; flex-direction: column; }
+.card.wide > * { flex: none; }
+.card.wide > .rules { flex: 1 1 auto; min-height: 64px; }
+.rules { list-style: none; margin: 0 0 14px; padding: 0; overflow: auto; border: 1px solid var(--line);
+  border-radius: 10px; background: #0e1013; }
+.rules li { display: flex; gap: 12px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.rules li:last-child { border-bottom: 0; }
+.rules .n { flex: none; width: 24px; height: 24px; border-radius: 6px; background: rgba(255,122,26,.14); color: var(--accent);
+  font-family: "Russo One", sans-serif; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+.rules b { display: block; font-weight: 600; margin-bottom: 2px; }
+.rules span { color: var(--muted); font-size: 13px; }
+.agree { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+.agree input { width: 20px; height: 20px; padding: 0; accent-color: var(--accent); flex: none; }
 .text { white-space: pre-wrap; color: var(--muted); margin-bottom: 14px; }
 </style>
 </head>
@@ -146,6 +160,38 @@ button { font: inherit; cursor: pointer; }
       });
       b1.onclick = function () { if (sel >= 0) respond(1, sel, ''); };
     },
+    rules: function (d, m) {
+      var items = (d.rules || []).map(function (r, i) {
+        return '<li><div class="n">' + (i + 1) + '</div><div><b>' + esc(r[0]) + '</b><span>' + esc(r[1]) + '</span></div></li>';
+      }).join('');
+      root.innerHTML = '<div class="card wide">' + closeBtn() + '<div class="brand">BASTION ONLINE</div><h1>Правила сервера</h1>' +
+        '<p class="sub">Прочитай перед началом игры. За нарушения дают предупреждения, тюрьму или бан.</p>' +
+        '<ul class="rules">' + items + '</ul>' +
+        '<label class="agree"><input type="checkbox" id="ok"> Я прочитал правила и согласен с ними</label>' +
+        '<div class="row"><button class="btn" id="b2">' + esc(m.button2 || 'Выход') + '</button>' +
+        '<button class="btn primary" id="b1" disabled>' + esc(m.button1 || 'Принимаю') + '</button></div></div>';
+      var b1 = document.getElementById('b1');
+      document.getElementById('ok').onchange = function () { b1.disabled = !this.checked; };
+      b1.onclick = function () { respond(1, -1, ''); };
+      document.getElementById('b2').onclick = document.getElementById('x').onclick = function () { respond(0, -1, ''); };
+    },
+    referral: function (d, m) {
+      root.innerHTML = '<form class="card" id="f" autocomplete="off"><div class="brand">BASTION ONLINE</div><h1>Кто тебя пригласил?</h1>' +
+        '<p class="sub">Если на сервер тебя позвал друг, впиши его ник. Никто не звал — просто пропусти.</p>' +
+        errorBox(d.error) +
+        '<label for="nick">Ник друга</label><div class="field"><input id="nick" placeholder="Имя_Фамилия" maxlength="24" autocapitalize="off" spellcheck="false"></div>' +
+        '<div class="row"><button type="button" class="btn" id="b2">' + esc(m.button2 || 'Пропустить') + '</button>' +
+        '<button type="submit" class="btn primary">' + esc(m.button1 || 'Далее') + '</button></div></form>';
+      var nick = document.getElementById('nick'), err = document.getElementById('err');
+      document.getElementById('b2').onclick = function () { respond(0, -1, ''); };
+      document.getElementById('f').onsubmit = function (e) {
+        e.preventDefault();
+        var v = nick.value.trim();
+        if (!v) { respond(0, -1, ''); return; }
+        if (!/^[A-Za-z]+_[A-Za-z_]+$/.test(v)) { err.textContent = 'Ник пишется как Имя_Фамилия, латиницей.'; err.classList.add('on'); return; }
+        respond(1, -1, v);
+      };
+    },
     // Запасное окно: заголовок + текст + кнопки
     message: function (d, m) {
       root.innerHTML = '<div class="card">' + closeBtn() + '<div class="brand">BASTION ONLINE</div>' +
@@ -173,7 +219,7 @@ button { font: inherit; cursor: pointer; }
   // Предпросмотр в браузере ПК: index.html#login / #register / #gender
   if (!window.BastionNative && location.hash) {
     BastionUI.open({ window: location.hash.slice(1), button1: 'Войти', button2: 'Выход',
-      data: { name: 'Ivan_Petrov', min: 6, max: 32 } });
+      data: { name: 'Ivan_Petrov', min: 6, max: 32, rules: [['Ролевая игра', 'Веди себя как житель города. Не выходи из роли без причины (NonRP).'], ['DM и DB', 'Нельзя убивать без RP-причины (DM) и давить игроков машиной (DB).'], ['Читы и баги', 'Запрещены читы, сторонние программы и использование ошибок сервера.']] } });
     document.body.style.background = '#2b3440';
   }
 })();

@@ -39,6 +39,8 @@ stock DB_Init()
 	DB_AddColumn("accounts", "jail", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "bank", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "phone", "INTEGER DEFAULT 0");
+	DB_AddColumn("accounts", "referrer", "INTEGER DEFAULT 0");   // кто пригласил (id аккаунта), referral.inc
+	DB_AddColumn("accounts", "ref_paid", "INTEGER DEFAULT 0");   // награда пригласившему уже выдана
 
 	// Баны, районы банд, банкоматы, бизнесы
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS bans (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, reason TEXT, admin TEXT, date INTEGER DEFAULT 0)"));
