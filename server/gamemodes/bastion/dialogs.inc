@@ -126,6 +126,12 @@ enum
 	DIALOG_REPORT_ANSWER,       // ввод ответа
 	DIALOG_REPORT_NEW,          // игрок пишет репорт
 
+	// --- Вход в админку (admin_auth.inc)
+	DIALOG_ALOGIN,              // ввод админ-пароля
+	DIALOG_ALOGIN_NEW,          // первый вход: придумать админ-пароль
+	DIALOG_APASS_OLD,           // /apass: текущий пароль
+	DIALOG_APASS_NEW,           // /apass: новый пароль
+
 	// --- Инструменты админов (admin_tools.inc, admin.inc)
 	DIALOG_TPLIST,
 	DIALOG_VEH_CAT,
@@ -156,6 +162,24 @@ enum
 	DIALOG_FCLOSE,
 	DIALOG_FMANAGE,
 	DIALOG_FTRANSFER,
+	DIALOG_LOCKER,
+
+	// --- Новые системы: наркотики, казино, лотерея, больница
+	DIALOG_DRUG_DEALER,
+	DIALOG_CASINO,
+	DIALOG_CASINO_PICK,
+	DIALOG_CASINO_BET,
+	DIALOG_LOTTO,
+	DIALOG_HOSPITAL,
+
+	// --- Донат (donate.inc)
+	DIALOG_DONATE,
+	DIALOG_DONATE_MONEY,
+	DIALOG_DONATE_INPUT,
+	DIALOG_DONATE_UI,            // HTML-окно доната (ui.inc)
+
+	// --- Аренда мопедов (rental.inc)
+	DIALOG_RENTAL,
 
 	// --- Окно семьи (/family, families.inc): от DIALOG_FAM_MENU до DIALOG_FAM_LEAVE
 	DIALOG_FAM_MENU,

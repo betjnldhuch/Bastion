@@ -578,6 +578,7 @@ stock bool:Cmd_SetWeather(playerid, const params[])
 	if (!NextIntParam(params, pos, weather) || weather < 0 || weather > 45)
 		return SendClientMessage(playerid, COLOR_GREY, "»спользование: /setweather [0-45]  (1 Ч €сно, 8 Ч дождь, 9 Ч туман, 19 Ч песчана€ бур€)");
 	SetWeather(weather);
+	gServerWeather = weather;      // drugs.inc: после эффекта игроку вернЄтс€ эта погода
 	Admin_Log(playerid, "setweather", INVALID_PLAYER_ID, "", weather);
 	SendClientMessage(playerid, COLOR_ADMIN, "ѕогода изменена на %d.", weather);
 	return true;

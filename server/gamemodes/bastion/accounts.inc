@@ -264,7 +264,7 @@ stock Account_Save(playerid)
 	DB_FreeResultSet(DB_ExecuteQuery(gDB,
 		"UPDATE accounts SET money = %d, level = %d, exp = %d, skin = %d, admin = %d, job = %d, faction = %d, frank = %d, wanted = %d, jail = %d, bank = %d, phone = %d WHERE id = %d",
 		Player[playerid][pMoney], Player[playerid][pLevel], Player[playerid][pExp],
-		Player[playerid][pSkin], Player[playerid][pAdmin], Player[playerid][pJob],
+		Player[playerid][pSkin], Admin_RealLevel(playerid), Player[playerid][pJob],
 		Player[playerid][pFaction], Player[playerid][pRank], Player[playerid][pWanted], Player[playerid][pJail],
 		Player[playerid][pBank], Player[playerid][pPhone],
 		Player[playerid][pDbId]));
@@ -286,6 +286,7 @@ stock Account_FinishLogin(playerid)
 	Families_OnLogin(playerid);         // семья игрока (families.inc)
 	Debts_OnLogin(playerid);            // долги по налогам и штрафам (debts.inc)
 	Spawns_LoadPlayer(playerid);        // выбор из /setspawn (spawns.inc)
+	Squad_Load(playerid);               // взвод во фракции (factions.inc)
 
 	Account_SetNormalSpawn(playerid);
 	TogglePlayerSpectating(playerid, false);  // выход из режима наблюдения = спавн
@@ -302,6 +303,7 @@ stock Account_SetNormalSpawn(playerid)
 		case SPAWN_STATION: chosen = Spawns_GetChosen(playerid, x, y, z, a);
 		case SPAWN_HOUSE:   chosen = Houses_GetSpawn(playerid, x, y, z, a);
 		case SPAWN_FACTION: chosen = Factions_GetSpawn(playerid, x, y, z, a);
+		case SPAWN_ANYSTATION: chosen = Spawns_Get(x, y, z, a);
 	}
 	if (!chosen)
 	{

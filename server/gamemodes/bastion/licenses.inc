@@ -329,6 +329,11 @@ stock Licenses_OnDialog(playerid, dialogid, response, listitem)
 			SendClientMessage(playerid, COLOR_GREY, "Лицензию на оружие выдают с %d уровня.", LIC_GUN_MIN_LEVEL);
 			return 1;
 		}
+		if (lic == LIC_GUN && !Hospital_HasMedcard(playerid))
+		{
+			SendClientMessage(playerid, COLOR_GREY, "Для лицензии на оружие нужна медкарта: регистратура больницы (/gps) или медик.");
+			return 1;
+		}
 		if (GetMoney(playerid) < gLicPrices[lic])
 		{
 			SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", gLicPrices[lic]);

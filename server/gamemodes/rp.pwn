@@ -66,15 +66,18 @@
 #include "bastion/chat.inc"
 #include "bastion/admin.inc"
 #include "bastion/admin_tools.inc"
+#include "bastion/admin_auth.inc"   // /alogin — админ-пароль, /alogout, /apass, /astats, /alist
 #include "bastion/backup.inc"      // копии базы раз в сутки, /backup
 #include "bastion/dev.inc"         // разработка в игре: /pos, /dev, маппинг /mo
 #include "bastion/textures.inc"    // перекраска объектов маппинга: /mt
 #include "bastion/doors.inc"       // входы в здания: LSPD
+#include "bastion/places.inc"     // точки новых систем, которые ставит админ: /place
 #include "bastion/factions.inc"   // после admin.inc: использует Admin_Check
 #include "bastion/law.inc"        // метка задержания, дверь участка, взятка
 #include "bastion/turfs.inc"
 #include "bastion/bank.inc"
 #include "bastion/phone.inc"
+#include "bastion/fbi.inc"        // ФБР: маскировка, прослушка, слежка, досье
 #include "bastion/business.inc"
 #include "bastion/garage.inc"
 #include "bastion/gps.inc"        // /markers — правка маркеров в игре, /gps
@@ -83,6 +86,14 @@
 #include "bastion/families.inc"   // семьи: организации игроков
 #include "bastion/wounded.inc"    // ранение вместо смерти, /revive, /aid
 #include "bastion/robbery.inc"    // /rob — ограбление магазинов
+#include "bastion/drugs.inc"      // наркотики: кусты, торговец, эффекты, ломка
+#include "bastion/worklife.inc"   // работы: рыбак, фермер, инкассатор, мусорщик
+#include "bastion/casino.inc"     // казино и лотерея
+#include "bastion/prison.inc"     // федеральная тюрьма и её охрана
+#include "bastion/hospital.inc"   // больница: лечение, страховка, медкарта
+#include "bastion/marriage.inc"   // свадьба, общий дом и семейный счёт
+#include "bastion/donate.inc"     // донат-меню: монеты, VIP
+#include "bastion/rental.inc"     // аренда мопедов: /addmoped, ALT у точки
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
 #include "bastion/fps.inc"
@@ -141,6 +152,15 @@ public OnGameModeInit()
 	Fuel_Init();          // после всех машин: им выдаётся бензин
 	Wound_Init();
 	Robbery_Init();
+	Places_Init();        // точки новых систем (places.inc)
+	Drugs_Init();
+	WorkLife_Init();      // после Places_Init: машины работ стоят в точках
+	Casino_Init();
+	Prison_Init();
+	Hospital_Init();
+	Marriage_Init();
+	Donate_Init();
+	Rental_Init();         // точки проката мопедов (rental.inc)
 	AC_Init();            // античит (anticheat.inc)
 	Social_Init();        // таблицы для ботов ВК/Telegram (social.inc)
 	Backup_Init();        // копия базы, если сегодняшней ещё нет
@@ -192,6 +212,10 @@ public OnPlayerConnect(playerid)
 public OnPlayerDisconnect(playerid, reason)
 {
 	Law_OnDisconnect(playerid, reason); // метка задержания: вышел из игры — деморган (law.inc)
+	Prison_OnDisconnect(playerid);      // до сохранения: сорванный побег добавляет срок
+	Drugs_OnDisconnect(playerid);
+	WorkLife_OnDisconnect(playerid);
+	Casino_OnDisconnect(playerid);
 	Platform_OnDisconnect(playerid);
 	UI_OnDisconnect(playerid);
 	Supply_ResetPlayer(playerid);
@@ -208,7 +232,9 @@ public OnPlayerDisconnect(playerid, reason)
 	Hud_OnDisconnect(playerid);
 	Gps_OnDisconnect(playerid);
 	Wound_Reset(playerid);
+	Fbi_OnDisconnect(playerid);         // ФБР: маскировка, прослушка, слежка
 	Rob_OnDisconnect(playerid);
+	Rental_OnDisconnect(playerid);
 	Player[playerid][pLogged] = false;
 	return 1;
 }
@@ -292,9 +318,7 @@ public OnPlayerSpawn(playerid)
 	{
 		Player[playerid][pDied] = false;
 		Needs_OnHospital(playerid);         // в больнице покормили (needs.inc)
-		GiveMoney(playerid, -HOSPITAL_FEE, "счёт больницы");
-		Econ_ToTreasury(HOSPITAL_FEE);
-		SendClientMessage(playerid, COLOR_WHITE, "Тебя вылечили в больнице. Счёт за лечение: $%d.", HOSPITAL_FEE);
+		Hospital_Bill(playerid);            // счёт больницы, со страховкой — бесплатно (hospital.inc)
 	}
 
 	Account_SetNormalSpawn(playerid);   // следующий спавн — снова обычный
@@ -325,6 +349,7 @@ public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 	Factions_OnDeath(playerid);
 	Phone_HangUp(playerid);
 	Inv_ResetMask(playerid);            // маска слетает (needs.inc)
+	Drugs_OnDeath(playerid);            // эффект наркотиков проходит
 	if (!Wound_IsWounded(playerid)) Turfs_OnDeath(playerid, killerid);   // раненого засчитали, когда он упал
 
 	if (Wound_OnDeath(playerid)) return 1;  // появится раненым на месте (wounded.inc)
@@ -393,6 +418,11 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Families_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (FrMenu_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Factions_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Drugs_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Casino_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Hospital_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Donate_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Rental_OnDialog(playerid, dialogid, response)) return 1;
 	return 0;
 }
 
@@ -401,6 +431,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 // =====================================================================
 public OnPlayerEnterCheckpoint(playerid)
 {
+	if (Prison_OnEnterCheckpoint(playerid)) return 1;   // работа заключённых (prison.inc)
 	Jobs_OnEnterCheckpoint(playerid);
 	return 1;
 }
@@ -419,6 +450,7 @@ public OnPlayerStateChange(playerid, PLAYER_STATE:newstate, PLAYER_STATE:oldstat
 		if (!Factions_OnBecomeDriver(playerid)) Vehicles_OnBecomeDriver(playerid);
 		Jobs_OnBecomeDriver(playerid);      // рабочие машины — только работникам
 		Licenses_OnBecomeDriver(playerid);  // учебная машина, предупреждение без прав
+		Rental_OnBecomeDriver(playerid);    // чужой прокатный мопед
 	}
 	else if (newstate == PLAYER_STATE_PASSENGER)
 	{
@@ -437,8 +469,10 @@ public OnPlayerKeyStateChange(playerid, KEY:newkeys, KEY:oldkeys)
 
 public OnVehicleSpawn(vehicleid)
 {
+	if (Rental_OnVehicleSpawn(vehicleid)) return 1;   // разбитый прокатный мопед пропадает
 	Fuel_OnVehicleSpawn(vehicleid);
 	Vehicles_OnSpawn(vehicleid);
+	WorkLife_OnVehicleSpawn(vehicleid); // инкассаторская машина вернулась — денег в ней нет
 	return 1;
 }
 
@@ -457,6 +491,9 @@ public OnMinuteTimer()
 	Needs_OnMinute();       // голод
 	Factions_OnMinute();    // тюремные сроки
 	Admin_OnMinute();       // деморган и муты
+	Drugs_OnMinute();       // кусты растут, ломка
+	Casino_OnMinute();      // розыгрыш лотереи
+	Rental_OnMinute();      // срок аренды мопедов
 
 	if (minute == 0 && hour != gLastPayDayHour)
 	{
@@ -505,6 +542,7 @@ stock PayDay()
 
 		Econ_PayDay(i, PAYDAY_SALARY + fpay);   // налоги (economy.inc)
 		Debts_PayDay(i);                        // напоминание о долгах, розыск должников (debts.inc)
+		Donate_PayDay(i);       // VIP: прибавка и двойной опыт (donate.inc)
 		Bank_PayDay(i);         // проценты по счёту и баланс (bank.inc)
 
 		if (Player[i][pExp] >= Player[i][pLevel] * EXP_PER_LEVEL)

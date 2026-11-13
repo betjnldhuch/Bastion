@@ -15,7 +15,7 @@
 #define MARKER_ADMIN        4
 #define MARKER_NEAR         4.0
 #define MARKER_STEP         0.25
-#define MARKER_ICON_SLOTS   99      // значки маркеров: слоты 0..98
+#define MARKER_ICON_SLOTS   98      // значки маркеров: слоты 0..98
 #define GPS_ICON_SLOT       99      // слот 99 — метка GPS
 #define GPS_ICON            41      // значок «путевая точка»
 #define GPS_ARRIVE          12.0
@@ -26,7 +26,7 @@
 
 static const gMkTypeNames[MK_TYPES][] =
 {
-	"Своё место", "Вход", "Дом", "Бизнес", "Банкомат", "АЗС", "СТО", "Фракция", "Работа", "Автосалон", "Автошкола"
+	"Своё место", "Вход", "Дом", "Бизнес", "Банкомат", "АЗС", "СТО", "Фракция", "Работа", "Автосалон", "Автошкола", "Точка систем", "Прокат"
 };
 
 static const gGpsCatNames[GPS_CATS][] =

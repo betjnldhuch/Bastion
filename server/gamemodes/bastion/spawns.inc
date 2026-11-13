@@ -29,11 +29,12 @@ enum
 	SPAWN_AUTO,         // дом, иначе фракция, иначе случайный вокзал
 	SPAWN_STATION,      // вокзал: ref = номер точки в базе
 	SPAWN_HOUSE,        // свой или съёмный дом
-	SPAWN_FACTION       // база фракции
+	SPAWN_FACTION,      // база фракции
+	SPAWN_ANYSTATION    // самый свободный вокзал
 }
 static gSpawnMode[MAX_PLAYERS];
 static gSpawnRef[MAX_PLAYERS];
-static gSpawnPick[MAX_PLAYERS][MAX_SPAWNS + 3][2];   // строка окна -> { режим, ref }
+static gSpawnPick[MAX_PLAYERS][MAX_SPAWNS + 3][2];   // +3: вокзал, дом, фракция   // строка окна -> { режим, ref }
 
 stock Spawns_Init()
 {
@@ -180,7 +181,7 @@ stock Spawns_LoadPlayer(playerid)
 		}
 		DB_FreeResultSet(r);
 	}
-	if (gSpawnMode[playerid] < SPAWN_AUTO || gSpawnMode[playerid] > SPAWN_FACTION) gSpawnMode[playerid] = SPAWN_AUTO;
+	if (gSpawnMode[playerid] < SPAWN_AUTO || gSpawnMode[playerid] > SPAWN_ANYSTATION) gSpawnMode[playerid] = SPAWN_AUTO;
 }
 
 stock Spawns_GetMode(playerid) { return gSpawnMode[playerid]; }
@@ -201,9 +202,9 @@ stock Spawns_GetChosen(playerid, &Float:x, &Float:y, &Float:z, &Float:a)
 stock Cmd_SetSpawn(playerid)
 {
 	new list[1024], line[64], n = 0;
-	gSpawnPick[playerid][n][0] = SPAWN_AUTO; gSpawnPick[playerid][n][1] = 0; n++;
-	strcat(list, "Как обычно: дом, иначе фракция, иначе свободный вокзал\n");
-	if (House_GetOwned(playerid) != -1 || House_GetRented(playerid) != -1)
+	gSpawnPick[playerid][n][0] = SPAWN_ANYSTATION; gSpawnPick[playerid][n][1] = 0; n++;
+	strcat(list, "{FFFFFF}Вокзал {AFAFAF}(где меньше людей)\n");
+	if (House_GetOwned(playerid) != -1 || House_GetRented(playerid) != -1 || Family_SpouseHouse(playerid) != -1 || Family_HouseOf(playerid) != -1)
 	{
 		gSpawnPick[playerid][n][0] = SPAWN_HOUSE; gSpawnPick[playerid][n][1] = 0; n++;
 		strcat(list, "{33CCFF}У своего дома\n");
@@ -218,6 +219,7 @@ stock Cmd_SetSpawn(playerid)
 		gSpawnPick[playerid][n][0] = SPAWN_STATION; gSpawnPick[playerid][n][1] = gSpawn[s][spDbId]; n++;
 		format(line, sizeof line, "%s\n", gSpawn[s][spName]);
 		strcat(list, line);
+		if (n >= sizeof (gSpawnPick[])) break;
 	}
 	for (new i = n; i < sizeof (gSpawnPick[]); i++) gSpawnPick[playerid][i][0] = -1;
 	ShowPlayerDialog(playerid, DIALOG_SETSPAWN, DIALOG_STYLE_LIST, "Где появляться", "%s", "Выбрать", "Закрыть", list);
@@ -243,7 +245,8 @@ stock Spawns_OnDialog(playerid, dialogid, response, listitem)
 			new s = Spawn_FindByDbId(gSpawnRef[playerid]);
 			if (s != -1) SendClientMessage(playerid, COLOR_GREEN, "Теперь ты появляешься здесь: %s.", gSpawn[s][spName]);
 		}
-		default: SendClientMessage(playerid, COLOR_GREEN, "Место появления выбирается как обычно: дом, иначе фракция, иначе вокзал.");
+		case SPAWN_ANYSTATION: SendClientMessage(playerid, COLOR_GREEN, "Теперь ты появляешься на вокзале, где меньше людей.");
+		default: SendClientMessage(playerid, COLOR_GREEN, "Место появления выбрано.");
 	}
 	return 1;
 }

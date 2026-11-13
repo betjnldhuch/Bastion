@@ -5,6 +5,8 @@
 //  1. ¬ config.json задай свой rcon-пароль.
 //  2. ¬ игре введи: /rcon login “¬ќ…_ѕј–ќЋ№
 //  3. ¬веди: /makeadmin [свой id] 7
+//  4. ѕри следующих входах админка включаетс€ через /alogin (админ-пароль
+//     придумываешь при первом /alogin или командой /apass).
 //
 //  ”ровни: 1 Ч хелпер, 2 Ч модератор, 3 Ч администратор,
 //          4 Ч старший администратор, 5 Ч куратор,
@@ -17,7 +19,9 @@
 //  - лог всех действий админов в таблице admin_log, просмотр: /alog;
 //  - репорты игроков: /report, у админов /reports и /ans;
 //  - /a-чат, /admins, /check, /spec, /freeze, /slap;
-//  - /amenu Ч панель через окна, удобна€ с телефона (не нужно вводить id).
+//  - /amenu Ч панель через окна, удобна€ с телефона (не нужно вводить id);
+//  - вход в админку по отдельному паролю /alogin, статистика /astats /alist
+//    (admin_auth.inc).
 //
 //  “аблицы и новые пол€ создаютс€ сами в Admin_Init (OnGameModeInit).
 // =====================================================================
@@ -27,6 +31,7 @@
 
 forward bool:Admin_IsOnDuty(playerid);   // admin_tools.inc
 forward bool:Cmd_Backup(playerid);       // backup.inc
+forward bool:AdminAuth_HasPassword(playerid);   // admin_auth.inc
 #define ADMIN_WARNS_FOR_BAN     3       // столько варнов Ч и автоматический бан...
 #define ADMIN_WARN_BAN_DAYS     3       // ...на столько дней
 #define ADMIN_MAX_MUTE          720     // максимум минут мута
@@ -131,6 +136,8 @@ stock Admin_Init()
 		print("[admin] Admin levels migrated: 5 -> 7");
 	}
 
+	AdminAuth_Init();       // пол€ админ-парол€ и учЄта времени (admin_auth.inc)
+
 	// Ћог действий админов
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, date INTEGER, admin TEXT, admin_id INTEGER DEFAULT 0, action TEXT, target TEXT DEFAULT '', target_id INTEGER DEFAULT 0, value INTEGER DEFAULT 0, reason TEXT DEFAULT '')"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE INDEX IF NOT EXISTS admin_log_target ON admin_log (target COLLATE NOCASE, id)"));
@@ -182,7 +189,7 @@ stock bool:Admin_CanPunish(playerid, target)
 		SendClientMessage(playerid, COLOR_GREY, "Ќельз€ применить к себе.");
 		return false;
 	}
-	if (Player[target][pAdmin] >= Player[playerid][pAdmin])
+	if (Admin_RealLevel(target) >= Player[playerid][pAdmin])
 	{
 		SendClientMessage(playerid, COLOR_GREY, "Ќельз€ наказать админа своего уровн€ или выше.");
 		return false;
@@ -254,6 +261,14 @@ stock Admin_LogName(const admin[], adminDb, const action[], const target[], targ
 	printf("[admin] %s: %s %s (%d) %s", admin, action, target, value, reason);
 }
 
+// ƒл€ доната (donate.inc): сколько предупреждений и сн€ть все
+stock Admin_GetWarns(playerid) { return gWarns[playerid]; }
+stock Admin_ClearWarns(playerid)
+{
+	gWarns[playerid] = 0;
+	Admin_SaveState(playerid);
+}
+
 // —охранить наказани€ игрока в базу сразу (не ждЄм Account_Save)
 static Admin_SaveState(playerid)
 {
@@ -276,6 +291,7 @@ stock Admin_OnConnect(playerid)
 	gSpecRestore[playerid] = false;
 	gAMenuTarget[playerid] = INVALID_PLAYER_ID;
 	AdminTools_OnConnect(playerid);     // admin_tools.inc
+	AdminAuth_OnConnect(playerid);      // admin_auth.inc
 }
 
 // ѕосле входа в аккаунт (accounts.inc, Account_FinishLogin)
@@ -302,18 +318,22 @@ stock Admin_OnLogin(playerid)
 	if (gWarns[playerid] > 0)
 		SendClientMessage(playerid, COLOR_ORANGE, "ѕредупреждений: %d из %d.", gWarns[playerid], ADMIN_WARNS_FOR_BAN);
 
-	if (Player[playerid][pAdmin] > 0)
-	{
-		new open = Reports_CountOpen();
-		SendClientMessage(playerid, COLOR_ADMIN, "“ы вошЄл как %s (уровень %d).  оманды: /ahelp, панель: /amenu.",
-			Admin_LevelName(Player[playerid][pAdmin]), Player[playerid][pAdmin]);
-		if (open > 0) SendClientMessage(playerid, COLOR_ADMIN, "ќткрытых репортов: %d Ч /reports", open);
+	// јдмин: права включаютс€ только после /alogin (admin_auth.inc)
+	if (Player[playerid][pAdmin] > 0) AdminAuth_OnLogin(playerid);
+}
 
-		new msg[144];
-		format(msg, sizeof msg, "[A] %s %s[%d]%s зашЄл на сервер.", Admin_LevelName(Player[playerid][pAdmin]),
-			GetRPName(playerid), playerid, Admin_PlatformTag(playerid));
-		SendAdminMessage(COLOR_ADMIN, msg);
-	}
+// јдмин получил права (после /alogin или сразу, если вход по паролю выключен)
+stock Admin_Welcome(playerid)
+{
+	new open = Reports_CountOpen();
+	SendClientMessage(playerid, COLOR_ADMIN, "“ы вошЄл как %s (уровень %d).  оманды: /ahelp, панель: /amenu.",
+		Admin_LevelName(Player[playerid][pAdmin]), Player[playerid][pAdmin]);
+	if (open > 0) SendClientMessage(playerid, COLOR_ADMIN, "ќткрытых репортов: %d Ч /reports", open);
+
+	new msg[144];
+	format(msg, sizeof msg, "[A] %s %s[%d]%s вошЄл в админку.", Admin_LevelName(Player[playerid][pAdmin]),
+		GetRPName(playerid), playerid, Admin_PlatformTag(playerid));
+	SendAdminMessage(COLOR_ADMIN, msg);
 }
 
 stock Admin_OnDisconnect(playerid)
@@ -389,6 +409,7 @@ stock bool:Admin_IsMuted(playerid)
 // –аз в минуту (OnMinuteTimer)
 stock Admin_OnMinute()
 {
+	AdminAuth_OnMinute();       // врем€ в админке (admin_auth.inc)
 	new now = gettime();
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
@@ -568,7 +589,7 @@ stock bool:Cmd_BanIp(playerid, const params[])
 		if (!IsPlayerConnected(i) || i == playerid) continue;
 		GetPlayerIp(i, other, sizeof other);
 		if (strcmp(other, ip) != 0 || other[0] == '\0') continue;
-		if (Player[i][pAdmin] >= Player[playerid][pAdmin]) continue;    // админа своего уровн€ и выше не трогаем
+		if (Admin_RealLevel(i) >= Player[playerid][pAdmin]) continue;    // админа своего уровн€ и выше не трогаем
 		Admin_ShowInfo(i, "Ѕан по IP", text);
 		KickWithDelay(i);
 		kicked++;
@@ -923,7 +944,7 @@ stock bool:Cmd_Check(playerid, const params[])
 		GetRPName(target), target, Player[target][pDbId], Player[target][pLevel],
 		platform, GetPlayerPing(target), Fps_Get(target), ip,
 		gWarns[target], ADMIN_WARNS_FOR_BAN, mute, gAJail[target], Player[target][pJail],
-		gFrozen[target] ? ("да") : ("нет"), Admin_LevelName(Player[target][pAdmin]),
+		gFrozen[target] ? ("да") : ("нет"), Admin_LevelName(Admin_RealLevel(target)),
 		GetMoney(target), Player[target][pBank]);
 	Admin_ShowInfo(playerid, "ѕроверка игрока", text);
 	return true;
@@ -1155,6 +1176,29 @@ stock bool:Cmd_GetHere(playerid, const params[])
 	return true;
 }
 
+// /spawn [id] Ч вернуть игрока на его место по€влени€ (застр€л, упал под карту и т.п.)
+stock bool:Cmd_ASpawn(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 2)) return true;
+	new pos = 0;
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "»спользование: /spawn [id] Ч заспавнить игрока (на его месте по€влени€)");
+	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "»грок ещЄ не вошЄл в аккаунт.");
+	if (gAJail[target] > 0) return SendClientMessage(playerid, COLOR_GREY, "»грок в деморгане. —начала /unajail.");
+	new PLAYER_STATE:st = GetPlayerState(target);
+	if (st == PLAYER_STATE_DRIVER || st == PLAYER_STATE_PASSENGER)
+	{
+		new Float:x, Float:y, Float:z;
+		GetPlayerPos(target, x, y, z);
+		SetPlayerPos(target, x, y, z + 1.5);    // из машины: иначе спавн не сработает
+	}
+	SpawnPlayer(target);
+	Admin_Log(playerid, "spawn", target);
+	SendClientMessage(target, COLOR_ADMIN, "јдминистратор %s заспавнил теб€.", GetRPName(playerid));
+	SendClientMessage(playerid, COLOR_ADMIN, "%s [%d] заспавнен.", GetRPName(target), target);
+	return true;
+}
+
 // =====================================================================
 //  јдмин-чат, список админов, назначение
 // =====================================================================
@@ -1196,17 +1240,19 @@ stock bool:Cmd_MakeAdmin(playerid, const params[])
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, level) || level < 0 || level > ADMIN_MAX_LEVEL)
 		return SendClientMessage(playerid, COLOR_GREY, "»спользование: /makeadmin [id] [уровень 0-%d]", ADMIN_MAX_LEVEL);
 	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "»грок ещЄ не вошЄл в аккаунт.");
-	if (!IsPlayerAdmin(playerid) && target != playerid && Player[target][pAdmin] >= Player[playerid][pAdmin])
+	if (!IsPlayerAdmin(playerid) && target != playerid && Admin_RealLevel(target) >= Player[playerid][pAdmin])
 		return SendClientMessage(playerid, COLOR_GREY, "ћен€ть уровень админа своего уровн€ можно только через RCON.");
 
-	new old = Player[target][pAdmin];
-	Player[target][pAdmin] = level;
+	new old = Admin_RealLevel(target);
+	AdminAuth_SetLevel(target, level);      // учитывает, вошЄл ли он в админку (admin_auth.inc)
 	Account_Save(target);
 	Admin_Log(playerid, "makeadmin", target, "", level);
 
 	if (level > 0)
 	{
 		SendClientMessage(target, COLOR_ADMIN, "%s назначил теб€: %s (уровень %d).  оманды: /ahelp", GetRPName(playerid), Admin_LevelName(level), level);
+		if (!AdminAuth_HasPassword(target))
+			SendClientMessage(target, COLOR_ADMIN, "ѕридумай админ-пароль: /apass. Ѕез него при следующем входе админка не включитс€, пока не введЄшь /alogin.");
 		new msg[144];
 		format(msg, sizeof msg, "[A] %s назначил %s: %s (было: %s).", GetRPName(playerid), GetRPName(target), Admin_LevelName(level), Admin_LevelName(old));
 		SendAdminMessage(COLOR_ADMIN, msg);
@@ -1448,6 +1494,7 @@ static bool:AMenu_TargetOk(playerid)
 stock Admin_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
 	if (AdminTools_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (AdminAuth_OnDialog(playerid, dialogid, response, inputtext)) return 1;
 	if (Admin_VehDialog(playerid, dialogid, response, listitem)) return 1;
 	if (dialogid < DIALOG_ADMIN_INFO || dialogid > DIALOG_REPORT_NEW) return 0;
 
@@ -1603,16 +1650,23 @@ stock Admin_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 stock bool:Cmd_AHelp(playerid)
 {
 	if (!Admin_Check(playerid, 1)) return true;
-	new text[2200];
+	new text[3800];
+	strcat(text, "{FF66FF}¬ход\n{FFFFFF}/alogin Ч включить админку (админ-пароль)   /alogout Ч выйти из админки   /apass Ч сменить пароль\n/astats Ч тво€ статистика (часы, репорты, наказани€)\n\n");
 	strcat(text, "{FF66FF}1 Ч ’елпер\n{FFFFFF}/a Ч админ-чат   /amenu Ч панель (удобно с телефона)   /reports /ans Ч репорты\n");
 	strcat(text, "/check /spec /specoff /specnext /specprev /goto /kick /mute /unmute /admins /aduty\n");
 	strcat(text, "“елепорт: метка на карте (выкл. /maptp), /tp Ч список точек, /back Ч назад\n\n");
-	strcat(text, "{FF66FF}2 Ч ћодератор\n{FFFFFF}/warn /ajail /unajail /freeze /unfreeze /slap /gethere /sethp /setskin /jail /unjail\n/sendto /gotocar /fixveh /flip\n\n");
+	strcat(text, "{FF66FF}2 Ч ћодератор\n{FFFFFF}/warn /ajail /unajail /freeze /unfreeze /slap /gethere /spawn /sethp /setskin /jail /unjail\n/sendto /gotocar /fixveh /flip\n\n");
 	strcat(text, "{FF66FF}3 Ч јдминистратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /moneylog /dveh\n/veh Ч меню машин, /veh infernus Ч по названию, /veh 411 Ч по номеру\n/ao /gotocoord /respawncars /setweather\n/givelic Ч выдать лицензию   /setfuel Ч заправить машину\n\n");
-	strcat(text, "{FF66FF}4 Ч —т. администратор\n{FFFFFF}/unban, бан навсегда (0 дней), /addtp /deltp, фракции, дома, бизнесы, ј«—, банкоматы, районы\n/givefood /giveitem Ч еда и вещи   /addexampoint /clearexam Ч маршрут экзамена\n/addgarage [1-2] /delgarage Ч —“ќ и штрафсто€нки\n/pos [название] /points /dev Ч координаты   /mo Ч маппинг (объекты, удаление зданий, выгрузка)\n\n");
-	strcat(text, "{FF66FF}5 Ч  уратор\n{FFFFFF}всЄ, что у 4 уровн€; старший над администраторами\n\n");
+	strcat(text, "{FF66FF}4 Ч —т. администратор\n{FFFFFF}/unban, бан навсегда (0 дней), /addtp /deltp, фракции, дома, бизнесы, ј«—, банкоматы, районы\n/givefood /giveitem Ч еда и вещи   /addexampoint /clearexam Ч маршрут экзамена\n/addgarage [1-2] /delgarage Ч —“ќ и штрафсто€нки\n/pos [название] /points /dev Ч координаты   /mo Ч маппинг (объекты, удаление зданий, выгрузка)\n");
+	strcat(text, "ƒома: /createhouse /delhouse /sethouseint /gotohouse, шкаф: /makestorage   ¬ходы: /adddoor /setdoor /deldoor /doors\n");
+	strcat(text, "Ѕизнесы: /createbiz /delbiz /setbizint   /addatm /delatm /addfuel /delfuel /addgate /delgate\n");
+	strcat(text, "—павн: /addspawn /delspawn /spawns   ѕрокат мопедов: /addmoped /delmoped /mopeds /mopedprice\n");
+	strcat(text, "‘ракции: /createfaction /delfaction /flist /fcolor /makeleader /setfaction /setrankname\n/setfspawn /setfduty /setfint /delfint /fintlock /addfcar /delfcar /setfstore /setarmystore\n");
+	strcat(text, "«аводы: /addfactory /setfpoint /setfowner /delfactory /factories   „Єрный рынок: /addbm /delbm /bmprice\n");
+	strcat(text, "–айоны: /addturf /setturf /delturf\n\n");
+	strcat(text, "{FF66FF}5 Ч  уратор\n{FFFFFF}/astats [ник] Ч статистика любого админа   /alist Ч весь состав (часы, последний вход)\n\n");
 	strcat(text, "{FF66FF}6 Ч «ам. гл. администратора\n{FFFFFF}/banip [id или IP] [дни] [причина]   /unbanip [IP]\n\n");
-	strcat(text, "{FF66FF}7 Ч √л. администратор\n{FFFFFF}/makeadmin /givemoney /settax Ч налоги   /backup Ч копи€ базы\n\n");
+	strcat(text, "{FF66FF}7 Ч √л. администратор\n{FFFFFF}/resetapass [id или ник] Ч сбросить админ-пароль   /makeadmin /givemoney /settax Ч налоги   /backup Ч копи€ базы\n\n");
 	strcat(text, "{AFAFAF}¬се наказани€ и выдачи пишутс€ в лог (/alog). Ќаказать админа своего уровн€ или выше нельз€.");
 	Admin_ShowInfo(playerid, " оманды администрации", text);
 	return true;
@@ -1812,6 +1866,7 @@ stock Admin_OnCommand(playerid, const cmd[], const params[])
 	if (!strcmp(cmd, "/report", true))      { Cmd_Report(playerid, params); return 1; }
 	if (!strcmp(cmd, "/admins", true))      { Cmd_Admins(playerid); return 1; }
 	if (!strcmp(cmd, "/makeadmin", true))   { Cmd_MakeAdmin(playerid, params); return 1; }
+	if (AdminAuth_OnCommand(playerid, cmd, params)) return 1;   // /alogin /alogout /apass /astats /alist
 
 	// ќстальное Ч только админам; игроку Ч "Ќеизвестна€ команда"
 	if (Player[playerid][pAdmin] < 1) return 0;
@@ -1828,6 +1883,7 @@ stock Admin_OnCommand(playerid, const cmd[], const params[])
 	if (!strcmp(cmd, "/specprev", true))    { Admin_SpecCycle(playerid, -1); return 1; }
 	if (!strcmp(cmd, "/goto", true))        { Cmd_Goto(playerid, params); return 1; }
 	if (!strcmp(cmd, "/gethere", true))     { Cmd_GetHere(playerid, params); return 1; }
+	if (!strcmp(cmd, "/spawn", true) || !strcmp(cmd, "/aspawn", true)) { Cmd_ASpawn(playerid, params); return 1; }
 	if (!strcmp(cmd, "/kick", true))        { Cmd_Kick(playerid, params); return 1; }
 	if (!strcmp(cmd, "/mute", true))        { Cmd_Mute(playerid, params); return 1; }
 	if (!strcmp(cmd, "/unmute", true))      { Cmd_Unmute(playerid, params); return 1; }

@@ -209,6 +209,15 @@ stock Keys_Interact(playerid)
 	// 0а. Заводы, ящики, склады организаций, чёрный рынок (factions.inc)
 	if (Factory_TryAlt(playerid)) return;
 
+	// 0б. Кусты и торговец, лотерея, регистратура, церковь, пост тюрьмы
+	if (Drugs_TryAlt(playerid)) return;
+	if (Casino_TryAlt(playerid)) return;
+	if (Hospital_TryAlt(playerid)) return;
+	if (Marriage_TryAlt(playerid)) return;
+	if (Prison_TryAlt(playerid)) return;
+	// 0б. Прокат мопедов (rental.inc)
+	if (Rental_TryAlt(playerid)) return;
+
 	// 1. Внутри дома у двери — выйти
 	new h = Player[playerid][pHouseInside];
 	if (h != -1 && IsPlayerInRangeOfPoint(playerid, 2.0, House[h][hIX], House[h][hIY], House[h][hIZ]))
@@ -252,7 +261,7 @@ stock Keys_Interact(playerid)
 	new f = Player[playerid][pFaction];
 	if (Faction_IsValid(f) && IsPlayerInRangeOfPoint(playerid, FACTION_DUTY_RANGE, Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ]))
 	{
-		Cmd_Duty(playerid);
+		Locker_Show(playerid);     // переодеться или взять снаряжение (factions.inc)
 		return;
 	}
 
@@ -320,7 +329,7 @@ stock Keys_OnKeyStateChange(playerid, newkeys, oldkeys)
 		{
 			// на АЗС — заправка, на СТО — меню СТО, иначе шлагбаум
 			// на складе организации с грузом — разгрузка (factions.inc)
-			if (!Fuel_TryFill(playerid) && !Garage_TryOpen(playerid) && !Factory_TryUnload(playerid, false)) Gates_TryOpen(playerid);
+			if (!Garage_TryTow(playerid) && !Fuel_TryFill(playerid) && !Garage_TryOpen(playerid) && !Factory_TryUnload(playerid, false)) Gates_TryOpen(playerid);   // эвакуатор полиции (garage.inc)
 			return 1;
 		}
 	}
