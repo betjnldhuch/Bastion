@@ -133,8 +133,32 @@ stock Atm_OnMarkerMoved(dbid, Float:x, Float:y, Float:z, Float:a)
 	}
 }
 
+// Зал банка (doors.inc): касса без комиссии, /bank и ALT работают везде в зале
+stock bool:Bank_IsInside(playerid)
+{
+	return GetPlayerVirtualWorld(playerid) == BANK_WORLD && GetPlayerInterior(playerid) == BANK_INTERIOR;
+}
+
+// У банкомата или в зале банка
+stock bool:Bank_CanUse(playerid)
+{
+	return Atm_GetNearby(playerid) != -1 || Bank_IsInside(playerid);
+}
+
+static Bank_FeePct(playerid)
+{
+	return Bank_IsInside(playerid) ? 0 : BANK_ATM_FEE_PCT;
+}
+
 stock Bank_Init()
 {
+	// Касса в зале банка: только значок и надпись, работает весь зал
+	{
+		new Float:x = 381.5, Float:y = 173.8, Float:z = 1008.38;
+		new m = Marker_Create(MK_ATM, 0, "Касса банка", 1274, x, y, z, BANK_WORLD, BANK_INTERIOR, GPS_NONE, 90.0);
+		Marker_SetLabel(m, "{33AA33}Касса банка\n{FFFFFF}ALT или /bank — счёт, переводы\nснятие без комиссии");
+	}
+
 	new count = 0;
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT COUNT(*) FROM atms");
 	if (r != DBResult:0)
@@ -507,7 +531,7 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		&& dialogid != DIALOG_BANK_ACC_IN && dialogid != DIALOG_BANK_ACC_OUT) return 0;
 	if (dialogid == DIALOG_BANK_HISTORY)
 	{
-		if (Atm_GetNearby(playerid) != -1) Bank_ShowMenu(playerid);
+		if (Bank_CanUse(playerid)) Bank_ShowMenu(playerid);
 		return 1;
 	}
 	if (!response)
@@ -518,7 +542,7 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		else if (dialogid != DIALOG_BANK) Bank_ShowMenu(playerid);
 		return 1;
 	}
-	if (Atm_GetNearby(playerid) == -1)
+	if (!Bank_CanUse(playerid))
 	{
 		SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от банкомата.");
 		return 1;
@@ -539,8 +563,8 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 				case 1: ShowPlayerDialog(playerid, DIALOG_BANK_DEPOSIT, DIALOG_STYLE_INPUT, "Положить деньги",
 					"{FFFFFF}Наличные: $%d\nСколько положить на счёт?", "Положить", "Назад", GetMoney(playerid));
 				case 2: ShowPlayerDialog(playerid, DIALOG_BANK_WITHDRAW, DIALOG_STYLE_INPUT, "Снять деньги",
-					"{FFFFFF}На счёте: $%d\nКомиссия банкомата: %d из каждых $100 (не меньше $1).\nСколько снять?", "Снять", "Назад",
-					Player[playerid][pBank], BANK_ATM_FEE_PCT);
+					"{FFFFFF}На счёте: $%d\nКомиссия: %d из каждых $100 (в кассе банка — без комиссии).\nСколько снять?", "Снять", "Назад",
+					Player[playerid][pBank], Bank_FeePct(playerid));
 				case 3: ShowPlayerDialog(playerid, DIALOG_BANK_TRANSFER, DIALOG_STYLE_INPUT, "Перевод игроку",
 					"{FFFFFF}На счёте: $%d\nВведи id игрока и сумму через пробел, например: 5 1000", "Перевести", "Назад", Player[playerid][pBank]);
 				case 4: ShowPlayerDialog(playerid, DIALOG_BANK_TRANSFER_ACC, DIALOG_STYLE_INPUT, "Перевод по номеру счёта",
@@ -572,7 +596,7 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		case DIALOG_BANK_WITHDRAW:
 		{
 			new amount = strval(inputtext);
-			new fee = Bank_Fee(amount, BANK_ATM_FEE_PCT);
+			new fee = Bank_Fee(amount, Bank_FeePct(playerid));
 			if (!IsNumeric(inputtext) || amount < 1 || amount > Player[playerid][pBank] || amount + fee > Player[playerid][pBank])
 			{
 				SendClientMessage(playerid, COLOR_GREY, "Неверная сумма. На счёте $%d (комиссия $%d).", Player[playerid][pBank], fee);
@@ -659,8 +683,8 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 // ---------------------------------------------------------------------
 stock bool:Cmd_Bank(playerid)
 {
-	if (Atm_GetNearby(playerid) == -1)
-		return SendClientMessage(playerid, COLOR_GREY, "Подойди к банкомату (зелёный значок $ или аппарат).");
+	if (!Bank_CanUse(playerid))
+		return SendClientMessage(playerid, COLOR_GREY, "Подойди к банкомату (зелёный значок $ или аппарат) или зайди в банк.");
 	Bank_ShowMenu(playerid);
 	return true;
 }

@@ -10,6 +10,9 @@
 //    /adddoor [название] Ч вход там, где стоишь (у двери, спиной к ней)
 //    /setdoor [є]        Ч точка внутри там, где стоишь; /setdoor [є] out Ч переставить вход
 //    /deldoor [є], /doors Ч убрать вход, список входов
+//    /doorfaction [є] [фракци€] [secret] Ч вход только дл€ фракции: значка нет, надпись вид€т
+//                        только свои; secret Ч тайный вход без надписи (ALT в нужном месте). 0 Ч дл€ всех.
+//    /offices            Ч участнику фракции: еЄ закрытые и тайные входы, метка GPS (/offices [є]).
 //  ќбе точки можно ставить и внутри дома или бизнеса (например, дверь из гостиной в подвал).
 //  “ак делаетс€, например, общежитие: вход с улицы в коридор, а в коридоре Ч двери комнат (/createhouse).
 // =====================================================================
@@ -29,13 +32,19 @@ enum E_DOOR
 	dOutInterior, dOutWorld                                 // где стоит вход (0, 0 Ч улица)
 }
 
+// Ѕанк: зал Planning Department (интерьер 3) в своЄм мире, чтобы не пересекатьс€ с мэрией
+#define BANK_INTERIOR       3
+#define BANK_WORLD          77
+
 static const gDoors[][E_DOOR] =
 {
 	// ѕолици€ Ћос-—антоса: главный вход со стороны Pershing Square -> интерьер 6
 	{ "ѕолици€ LSPD", 1553.90, -1675.60, 16.19, 90.0,   246.78, 63.90, 1003.64, 0.0,   6, 0,   0, 0 },
 	// ƒопросна€ LSPD: вход из коридора участка (комната в модели есть, но замурована).
 	// “очки сн€ты /pos в игре: маркер в коридоре Ч 221.54, 66.86; внутри Ч 227.96, 67.70 (пол 1005.03).
-	{ "ƒопросна€", 220.45, 67.74, 1005.03, 51.3,   227.96, 67.70, 1005.03, 253.9,   6, 0,   6, 0 }
+	{ "ƒопросна€", 220.45, 67.74, 1005.03, 51.3,   227.96, 67.70, 1005.03, 253.9,   6, 0,   6, 0 },
+	// Ѕанк Ћос-—антоса (Commerce, у банкомата). ¬ход снаружи можно передвинуть: /markers у стрелки
+	{ "Ѕанк", 1457.0, -1013.5, 26.84, 180.0,   388.0, 173.8, 1008.38, 90.0,   BANK_INTERIOR, BANK_WORLD,   0, 0 }
 };
 
 
@@ -139,7 +148,9 @@ enum E_PDOOR
 	Float:pdOX, Float:pdOY, Float:pdOZ, Float:pdOA, pdOInt, pdOWorld,
 	bool:pdIn,                  // точка внутри задана
 	Float:pdIX, Float:pdIY, Float:pdIZ, Float:pdIA, pdIInt, pdIWorld,
-	pdMkOut, pdMkIn
+	pdMkOut, pdMkIn,
+	pdFaction,                  // 0 Ч дл€ всех; иначе вход€т только свои (и админы 4+)
+	bool:pdSecret               // тайный: без надписи даже дл€ своих
 }
 static gPDoor[MAX_PDOORS][E_PDOOR];
 static gPDoorCount = 0;
@@ -166,9 +177,11 @@ static PDoor_Build(d)
 	new Float:x = gPDoor[d][pdOX], Float:y = gPDoor[d][pdOY], Float:z = gPDoor[d][pdOZ];
 	gPDoor[d][pdMkOut] = Marker_Create(MK_DOOR, PDOOR_REF + gPDoor[d][pdDbId] * 2, gPDoor[d][pdName], DOOR_PICKUP_MODEL, x, y, z,
 		PDoor_DecWorld(gPDoor[d][pdOWorld]), gPDoor[d][pdOInt], GPS_NONE, gPDoor[d][pdOA]);
-	if (gPDoor[d][pdIn]) format(label, sizeof label, "{FFFF66}%s\n{FFFFFF}ALT Ч войти", gPDoor[d][pdName]);
+	if (gPDoor[d][pdSecret] && gPDoor[d][pdIn]) label[0] = '\0';
+	else if (gPDoor[d][pdIn]) format(label, sizeof label, "{FFFF66}%s\n{FFFFFF}ALT Ч войти", gPDoor[d][pdName]);
 	else format(label, sizeof label, "{FFFF66}%s\n{AAAAAA}вход є%d ещЄ не готов: /setdoor %d внутри", gPDoor[d][pdName], gPDoor[d][pdDbId], gPDoor[d][pdDbId]);
 	Marker_SetLabel(gPDoor[d][pdMkOut], label);
+	Marker_SetFaction(gPDoor[d][pdMkOut], gPDoor[d][pdFaction]);
 	if (!gPDoor[d][pdIn]) return;
 
 	x = gPDoor[d][pdIX]; y = gPDoor[d][pdIY]; z = gPDoor[d][pdIZ];
@@ -177,6 +190,7 @@ static PDoor_Build(d)
 	gPDoor[d][pdMkIn] = Marker_Create(MK_DOOR, PDOOR_REF + gPDoor[d][pdDbId] * 2 + 1, name, DOOR_PICKUP_MODEL, x, y, z,
 		PDoor_DecWorld(gPDoor[d][pdIWorld]), gPDoor[d][pdIInt], GPS_NONE, gPDoor[d][pdIA]);
 	Marker_SetLabel(gPDoor[d][pdMkIn], "{FFFFFF}ALT Ч выйти", COLOR_WHITE, 10.0);
+	Marker_SetFaction(gPDoor[d][pdMkIn], gPDoor[d][pdFaction]);
 }
 
 static PDoor_Save(d)
@@ -207,7 +221,9 @@ static PDoor_FindByDbId(dbid)
 stock PDoors_Load()
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS doors (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, ox REAL DEFAULT 0, oy REAL DEFAULT 0, oz REAL DEFAULT 0, oa REAL DEFAULT 0, oint INTEGER DEFAULT 0, oworld INTEGER DEFAULT 0, has_in INTEGER DEFAULT 0, ix REAL DEFAULT 0, iy REAL DEFAULT 0, iz REAL DEFAULT 0, ia REAL DEFAULT 0, iint INTEGER DEFAULT 0, iworld INTEGER DEFAULT 0)"));
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, name, ox, oy, oz, oa, oint, oworld, has_in, ix, iy, iz, ia, iint, iworld FROM doors ORDER BY id");
+	DB_AddColumn("doors", "faction", "INTEGER DEFAULT 0");
+	DB_AddColumn("doors", "secret", "INTEGER DEFAULT 0");
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, name, ox, oy, oz, oa, oint, oworld, has_in, ix, iy, iz, ia, iint, iworld, faction, secret FROM doors ORDER BY id");
 	if (r != DBResult:0)
 	{
 		new rows = DB_GetRowCount(r);
@@ -231,6 +247,8 @@ stock PDoors_Load()
 			gPDoor[d][pdIWorld] = DB_GetFieldInt(r, 14);
 			gPDoor[d][pdMkOut] = -1;
 			gPDoor[d][pdMkIn] = -1;
+			gPDoor[d][pdFaction] = DB_GetFieldInt(r, 15);
+			gPDoor[d][pdSecret] = DB_GetFieldInt(r, 16) != 0;
 			PDoor_Build(d);
 			DB_SelectNextRow(r);
 		}
@@ -253,6 +271,13 @@ stock bool:PDoor_Try(playerid)
 		if (!gPDoor[d][pdIn]) continue;
 		if (Marker_InRange(playerid, gPDoor[d][pdMkOut], DOOR_RANGE))
 		{
+			// вход только дл€ своих: чужой его не замечает (тайный вход не выдаЄм сообщением)
+			if (gPDoor[d][pdFaction] != 0 && Player[playerid][pFaction] != gPDoor[d][pdFaction] && Player[playerid][pAdmin] < 4)
+			{
+				if (gPDoor[d][pdSecret]) continue;
+				SendClientMessage(playerid, COLOR_GREY, "«аперто. —юда пускают только своих.");
+				return true;
+			}
 			if (Law_TryLeave(playerid)) Door_SpawnAt(playerid, gPDoor[d][pdMkIn]);
 			return true;
 		}
@@ -287,6 +312,8 @@ stock bool:Cmd_AddDoor(playerid, const params[])
 	gPDoor[d][pdIn] = false;
 	gPDoor[d][pdMkOut] = -1;
 	gPDoor[d][pdMkIn] = -1;
+	gPDoor[d][pdFaction] = 0;
+	gPDoor[d][pdSecret] = false;
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO doors (name) VALUES ('%q')", name));
 	gPDoor[d][pdDbId] = DB_LastInsertId();
 	PDoor_Save(d);
@@ -367,5 +394,55 @@ stock bool:Cmd_Doors(playerid)
 			SendClientMessage(playerid, COLOR_WHITE, " є%d Ч %s (%.0f, %.0f), точки внутри ещЄ нет: /setdoor %d", gPDoor[d][pdDbId], gPDoor[d][pdName],
 				gPDoor[d][pdOX], gPDoor[d][pdOY], gPDoor[d][pdDbId]);
 	}
+	return true;
+}
+
+// /doorfaction [є] [фракци€] [secret] Ч вход только дл€ своих (0 Ч дл€ всех)
+stock bool:Cmd_DoorFaction(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, dbid, f, word[8];
+	if (!NextIntParam(params, pos, dbid) || !NextIntParam(params, pos, f))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "»спользование: /doorfaction [є входа] [фракци€] [secret] Ч вход€т только свои, значка нет, надпись вид€т только они.");
+		SendClientMessage(playerid, COLOR_GREY, "secret Ч тайный вход: без надписи даже дл€ своих (ALT в нужном месте). ‘ракци€ 0 Ч снова дл€ всех. є: /doors");
+		return true;
+	}
+	new d = PDoor_FindByDbId(dbid);
+	if (d == -1) return SendClientMessage(playerid, COLOR_GREY, "¬хода с таким номером нет. —писок: /doors");
+	if (f != 0 && !Faction_IsValid(f)) return SendClientMessage(playerid, COLOR_GREY, "“акой фракции нет. Ќомера: /flist");
+	new bool:secret = (f != 0 && NextParam(params, pos, word) && !strcmp(word, "secret", true));
+	gPDoor[d][pdFaction] = f;
+	gPDoor[d][pdSecret] = secret;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE doors SET faction = %d, secret = %d WHERE id = %d", f, secret ? 1 : 0, dbid));
+	PDoor_Build(d);
+	if (f == 0) SendClientMessage(playerid, COLOR_ADMIN, "¬ход є%d Ђ%sї снова дл€ всех.", dbid, gPDoor[d][pdName]);
+	else SendClientMessage(playerid, COLOR_ADMIN, "¬ход є%d Ђ%sї теперь только дл€ Ђ%sї%s.", dbid, gPDoor[d][pdName], Faction_GetName(f), secret ? (", тайный (без надписи)") : (""));
+	return true;
+}
+
+// /offices [є] Ч закрытые и тайные входы своей фракции; с номером Ч метка GPS
+stock bool:Cmd_Offices(playerid, const params[])
+{
+	new f = Player[playerid][pFaction];
+	if (!Faction_IsValid(f)) return SendClientMessage(playerid, COLOR_GREY, "“ы не состоишь во фракции.");
+	new pos = 0, dbid;
+	if (NextIntParam(params, pos, dbid))
+	{
+		new d = PDoor_FindByDbId(dbid);
+		if (d == -1 || gPDoor[d][pdFaction] != f) return SendClientMessage(playerid, COLOR_GREY, "“акого входа у твоей фракции нет. —писок: /offices");
+		new Float:x, Float:y, Float:z;
+		if (!Marker_GetPos(gPDoor[d][pdMkOut], x, y, z)) return true;
+		Gps_SetPoint(playerid, x, y, z, gPDoor[d][pdName]);
+		return true;
+	}
+	new n = 0;
+	for (new d = 0; d < gPDoorCount; d++)
+	{
+		if (gPDoor[d][pdFaction] != f) continue;
+		if (n++ == 0) SendClientMessage(playerid, Faction_GetColor(f), "¬ходы только дл€ своих (метка GPS: /offices [є]):");
+		SendClientMessage(playerid, COLOR_WHITE, " є%d Ч %s%s", gPDoor[d][pdDbId], gPDoor[d][pdName], gPDoor[d][pdSecret] ? (" {AAAAAA}(тайный: ALT у двери)") : (""));
+	}
+	if (n == 0) SendClientMessage(playerid, COLOR_GREY, "” твоей фракции нет закрытых входов.");
 	return true;
 }

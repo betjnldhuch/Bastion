@@ -68,7 +68,8 @@ enum
 	MA_NAME,
 	MA_LABEL,
 	MA_RESET,
-	MA_DELETE
+	MA_DELETE,
+	MA_FACTION
 }
 
 static gMkSel[MAX_PLAYERS] = { -1, ... };           // маркер в открытом меню
@@ -122,6 +123,7 @@ stock Markers_ShowIcons(playerid)
 	{
 		if (!gMarker[m][mkUsed] || gMarker[m][mkIcon] < 0) continue;
 		if (gMarker[m][mkWorld] != 0 || gMarker[m][mkInterior] != 0) continue;
+		if (!Marker_VisibleTo(playerid, m)) continue;   // точка только для своей фракции
 		SetPlayerMapIcon(playerid, slot++, gMarker[m][mkX], gMarker[m][mkY], gMarker[m][mkZ], gMarker[m][mkIcon], 0, MAPICON_LOCAL);
 	}
 }
@@ -277,6 +279,9 @@ static Mk_ShowMenu(playerid, m)
 	Mk_AddAct(playerid, text, MA_GPS, line);
 	format(line, sizeof line, "Название: {FFFF00}%s", gMarker[m][mkName]);
 	Mk_AddAct(playerid, text, MA_NAME, line);
+	if (gMarker[m][mkFaction] == 0) format(line, sizeof line, "Видят: {FFFF00}все");
+	else format(line, sizeof line, "Видят: {FFFF00}только фракция %d {AAAAAA}(%s)", gMarker[m][mkFaction], Faction_GetName(gMarker[m][mkFaction]));
+	Mk_AddAct(playerid, text, MA_FACTION, line);
 	if (custom)
 	{
 		Mk_AddAct(playerid, text, MA_LABEL, "Надпись над маркером");
@@ -349,6 +354,12 @@ static Mk_OnAction(playerid, m, act)
 		{
 			ShowPlayerDialog(playerid, DIALOG_MK_LABEL, DIALOG_STYLE_INPUT, "Надпись над маркером",
 				"{FFFFFF}Текст над маркером. Новая строка — символ |\n{AAAAAA}Пусто — без надписи.",
+				"Сохранить", "Назад");
+		}
+		case MA_FACTION:
+		{
+			ShowPlayerDialog(playerid, DIALOG_MK_FACTION, DIALOG_STYLE_INPUT, "Кто видит маркер",
+				"{FFFFFF}Номер фракции: маркер увидят только её участники (и админы).\nЗначок у такого маркера не показывается (его видели бы все), только надпись.\nСекретная точка — оставь надпись пустой: её не видит никто.\n\n{AAAAAA}0 — видят все. Номера: /flist",
 				"Сохранить", "Назад");
 		}
 		case MA_RESET:
@@ -489,7 +500,7 @@ stock bool:Cmd_Gps(playerid)
 	new count[GPS_CATS];
 	for (new m = 0; m < MAX_MARKERS; m++)
 	{
-		if (gMarker[m][mkUsed] && gMarker[m][mkGps] > 0 && gMarker[m][mkGps] < GPS_CATS) count[gMarker[m][mkGps]]++;
+		if (gMarker[m][mkUsed] && gMarker[m][mkGps] > 0 && gMarker[m][mkGps] < GPS_CATS && Marker_VisibleTo(playerid, m)) count[gMarker[m][mkGps]]++;
 	}
 	new text[800], line[80];
 	gGpsMenuCount[playerid] = 0;
@@ -517,7 +528,7 @@ static Gps_ShowCat(playerid, cat)
 	new Float:dist[GPS_LIST_MAX];
 	for (new m = 0; m < MAX_MARKERS && n < GPS_LIST_MAX; m++)
 	{
-		if (!gMarker[m][mkUsed] || gMarker[m][mkGps] != cat) continue;
+		if (!gMarker[m][mkUsed] || gMarker[m][mkGps] != cat || !Marker_VisibleTo(playerid, m)) continue;
 		new Float:d = VectorSize(px - gMarker[m][mkX], py - gMarker[m][mkY], pz - gMarker[m][mkZ]);
 		// вставка по возрастанию расстояния
 		new j = n;
@@ -783,6 +794,22 @@ stock Markers_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 				Mk_CleanInput(text, sizeof text, inputtext, true);
 				Marker_SetLabel(m, text);
 				Marker_Save(m);
+			}
+			Mk_ShowMenu(playerid, m);
+		}
+		case DIALOG_MK_FACTION:
+		{
+			if (response)
+			{
+				new f = strval(inputtext);
+				if (!IsNumeric(inputtext) || f < 0 || f >= MAX_FACTIONS || (f != 0 && !Faction_IsValid(f)))
+					SendClientMessage(playerid, COLOR_GREY, "Такой фракции нет. Номера: /flist");
+				else
+				{
+					Marker_SetFaction(m, f);
+					Marker_Save(m);
+					Markers_RefreshIcons();
+				}
 			}
 			Mk_ShowMenu(playerid, m);
 		}

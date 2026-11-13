@@ -49,14 +49,15 @@ enum
 	INV_WEED,           // марихуана, граммы (drugs.inc)
 	INV_COCAINE,        // кокаин, граммы (drugs.inc)
 	INV_FISH,           // рыба: сдать на работе рыбака (worklife.inc)
+	INV_JACK,           // домкрат: поставить машину на колёса, поменять пробитые шины
 	INV_TYPES
 }
 // Номера вещей (для /giveitem): 1 бургер, 2 хот-дог, 3 аптечка, 4 ремкомплект, 5 пицца, 6 вода,
 // 7 пиво, 8 сигареты, 9 бинт, 10 цветы, 11 кости, 12 маска, 13 материалы,
-// 14 семена конопли, 15 марихуана, 16 кокаин, 17 рыба
-static const gInvNames[INV_TYPES][] = { "", "Бургер", "Хот-дог", "Аптечка", "Ремкомплект", "Пицца", "Вода", "Пиво", "Сигареты", "Бинт", "Цветы", "Игральные кости", "Маска", "Материалы", "Семена конопли", "Марихуана", "Кокаин", "Рыба" };
-static const gInvHints[INV_TYPES][] = { "", "+40% сытости", "+25% сытости", "+50 HP", "чинит машину рядом", "+60% сытости", "+10% сытости, +5 HP", "+5 HP, пьянит", "покурить", "+20 HP", "букет в руки", "бросить кости (RP)", "прячет ник", "сделать оружие", "посадить куст", "покурить (эффект, +HP)", "употребить (эффект, бронь)", "сдать рыбаку" };
-static const gInvMax[INV_TYPES] = { 0, 5, 5, 3, 3, 3, 5, 5, 20, 5, 3, 1, 1, 500, 10, 50, 20, 30 };
+// 14 семена конопли, 15 марихуана, 16 кокаин, 17 рыба, 18 домкрат
+static const gInvNames[INV_TYPES][] = { "", "Бургер", "Хот-дог", "Аптечка", "Ремкомплект", "Пицца", "Вода", "Пиво", "Сигареты", "Бинт", "Цветы", "Игральные кости", "Маска", "Материалы", "Семена конопли", "Марихуана", "Кокаин", "Рыба", "Домкрат" };
+static const gInvHints[INV_TYPES][] = { "", "+40% сытости", "+25% сытости", "+50 HP", "чинит машину рядом", "+60% сытости", "+10% сытости, +5 HP", "+5 HP, пьянит", "покурить", "+20 HP", "букет в руки", "бросить кости (RP)", "прячет ник", "сделать оружие", "посадить куст", "покурить (эффект, +HP)", "употребить (эффект, бронь)", "сдать рыбаку", "перевернуть машину, сменить колёса" };
+static const gInvMax[INV_TYPES] = { 0, 5, 5, 3, 3, 3, 5, 5, 20, 5, 3, 1, 1, 500, 10, 50, 20, 30, 1 };
 
 enum E_DROP
 {
@@ -397,10 +398,48 @@ static Inv_Heal(playerid, Float:amount)
 	SetPlayerHealth(playerid, hp);
 }
 
+// Домкрат: перевернуть лежащую машину и поменять пробитые колёса. false — делать нечего.
+static bool:Jack_Use(playerid)
+{
+	if (IsPlayerInAnyVehicle(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Выйди из машины и встань рядом с ней."); return false; }
+	new Float:px, Float:py, Float:pz, v = INVALID_VEHICLE_ID, Float:best = 5.0;
+	GetPlayerPos(playerid, px, py, pz);
+	for (new i = 1; i < MAX_VEHICLES; i++)
+	{
+		if (!IsValidVehicle(i) || GetVehicleVirtualWorld(i) != GetPlayerVirtualWorld(playerid)) continue;
+		new Float:d = GetVehicleDistanceFromPoint(i, px, py, pz);
+		if (d < best) { best = d; v = i; }
+	}
+	if (v == INVALID_VEHICLE_ID) { SendClientMessage(playerid, COLOR_GREY, "Рядом нет машины."); return false; }
+	if (IsVehicleOccupied(v)) { SendClientMessage(playerid, COLOR_GREY, "В машине кто-то сидит."); return false; }
+
+	new VEHICLE_PANEL_STATUS:panels, VEHICLE_DOOR_STATUS:doors, VEHICLE_LIGHT_STATUS:lights, VEHICLE_TYRE_STATUS:tires;
+	GetVehicleDamageStatus(v, panels, doors, lights, tires);
+	new Float:qw, Float:qx, Float:qy, Float:qz;
+	GetVehicleRotationQuat(v, qw, qx, qy, qz);
+	new bool:flipped = (1.0 - 2.0 * (qx * qx + qy * qy)) < 0.5;   // крыша смотрит вбок или вниз
+	if (!flipped && tires == VEHICLE_TYRE_STATUS_NONE) { SendClientMessage(playerid, COLOR_GREY, "Машина стоит на колёсах, шины целы."); return false; }
+
+	if (flipped)
+	{
+		new Float:vx, Float:vy, Float:vz, Float:a;
+		GetVehiclePos(v, vx, vy, vz);
+		GetVehicleZAngle(v, a);
+		SetVehiclePos(v, vx, vy, vz + 1.0);
+		SetVehicleZAngle(v, a);         // сбрасывает наклон: машина встаёт на колёса
+	}
+	if (tires != VEHICLE_TYRE_STATUS_NONE) UpdateVehicleDamageStatus(v, panels, doors, lights, VEHICLE_TYRE_STATUS_NONE);
+	ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
+	if (flipped && tires != VEHICLE_TYRE_STATUS_NONE) SendClientMessage(playerid, COLOR_GREEN, "Машина снова на колёсах, пробитые шины заменены.");
+	else if (flipped) SendClientMessage(playerid, COLOR_GREEN, "Машина снова на колёсах.");
+	else SendClientMessage(playerid, COLOR_GREEN, "Пробитые шины заменены.");
+	return true;
+}
+
 static Inv_Use(playerid, item)
 {
 	if (gInv[playerid][item] <= 0) return;
-	if (item >= INV_SEEDS) { Drugs_UseItem(playerid, item); return; }    // семена, наркотики, рыба (drugs.inc)
+	if (item >= INV_SEEDS && item <= INV_FISH) { Drugs_UseItem(playerid, item); return; }    // семена, наркотики, рыба (drugs.inc)
 	new msg[128];
 	new bool:consume = true;
 	switch (item)
@@ -466,6 +505,12 @@ static Inv_Use(playerid, item)
 			RepairVehicle(v);
 			ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
 			format(msg, sizeof msg, "%s чинит машину ремкомплектом.", GetRPName(playerid));
+		}
+		case INV_JACK:
+		{
+			consume = false;
+			if (!Jack_Use(playerid)) return;
+			format(msg, sizeof msg, "%s ставит машину на домкрат и возится с колёсами.", GetRPName(playerid));
 		}
 		case INV_FLOWERS:
 		{
@@ -975,9 +1020,24 @@ stock bool:Cmd_GiveItem(playerid, const params[])
 	new pos = 0, item, amount = 1;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !Player[target][pLogged] || !NextIntParam(params, pos, item) || item <= INV_NONE || item >= INV_TYPES)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /giveitem [id] [вещь 1-13] [кол-во]. 1 бургер 2 хот-дог 3 аптечка 4 ремкомплект 5 пицца 6 вода 7 пиво 8 сигареты 9 бинт 10 цветы 11 кости 12 маска 13 материалы");
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Использование: /giveitem [id] [вещь 1-%d] [кол-во]. Вещи:", INV_TYPES - 1);
+		new line[144], part[40];
+		for (new it = 1; it < INV_TYPES; it++)
+		{
+			format(part, sizeof part, "%d %s (до %d)%s", it, gInvNames[it], gInvMax[it], (it < INV_TYPES - 1) ? (", ") : (""));
+			if (strlen(line) + strlen(part) >= sizeof line) { SendClientMessage(playerid, COLOR_WHITE, "%s", line); line[0] = '\0'; }
+			strcat(line, part);
+		}
+		if (line[0] != '\0') SendClientMessage(playerid, COLOR_WHITE, "%s", line);
+		return true;
+	}
 	NextIntParam(params, pos, amount);
 	if (amount < 1) amount = 1;
+	// не влезает всё — выдаём сколько поместится
+	new room = gInvMax[item] - gInv[target][item];
+	if (room <= 0) return SendClientMessage(playerid, COLOR_GREY, "У %s уже полно: %s %d/%d.", GetRPName(target), gInvNames[item], gInv[target][item], gInvMax[item]);
+	if (amount > room) amount = room;
 	if (!Inv_Add(target, item, amount)) return SendClientMessage(playerid, COLOR_GREY, "Не помещается (максимум %d штук).", gInvMax[item]);
 	Admin_Log(playerid, "giveitem", target, gInvNames[item], amount);
 	SendClientMessage(target, COLOR_ADMIN, "Администратор выдал тебе: %s x%d.", gInvNames[item], amount);
@@ -1022,9 +1082,9 @@ stock bool:Cmd_GiveItem(playerid, const params[])
 #define INV_UI_COL_TRACK    0x0E1013FF
 
 // Модели вещей для окна (по INV_*)
-static const gInvModels[INV_TYPES] = { 0, 2703, 19346, 11738, 19921, 2702, 19570, 1544, 19896, 11747, 325, 1851, 19801, 1271, 1577, 1578, 1575, 19630 };
-static const gInvNamesEn[INV_TYPES][] = { "", "Burger", "Hot dog", "Medkit", "Repair kit", "Pizza", "Water", "Beer", "Cigarettes", "Bandage", "Flowers", "Dice", "Mask", "Materials", "Weed seeds", "Marijuana", "Cocaine", "Fish" };
-static const gInvHintsEn[INV_TYPES][] = { "", "+40% food", "+25% food", "+50 HP", "Repairs a car nearby", "+60% food", "+10% food, +5 HP", "+5 HP, makes you drunk", "Have a smoke", "+20 HP", "Bouquet in your hands", "Roll the dice (RP)", "Hides your nickname", "Craft a weapon", "Plant a bush", "Smoke: effect, +HP", "Use: effect, armour", "Sell at the fishing job" };
+static const gInvModels[INV_TYPES] = { 0, 2703, 19346, 11738, 19921, 2702, 19570, 1544, 19896, 11747, 325, 1851, 19801, 1271, 1577, 1578, 1575, 19630, 18633 };
+static const gInvNamesEn[INV_TYPES][] = { "", "Burger", "Hot dog", "Medkit", "Repair kit", "Pizza", "Water", "Beer", "Cigarettes", "Bandage", "Flowers", "Dice", "Mask", "Materials", "Weed seeds", "Marijuana", "Cocaine", "Fish", "Car jack" };
+static const gInvHintsEn[INV_TYPES][] = { "", "+40% food", "+25% food", "+50 HP", "Repairs a car nearby", "+60% food", "+10% food, +5 HP", "+5 HP, makes you drunk", "Have a smoke", "+20 HP", "Bouquet in your hands", "Roll the dice (RP)", "Hides your nickname", "Craft a weapon", "Plant a bush", "Smoke: effect, +HP", "Use: effect, armour", "Sell at the fishing job", "Flip a car, change tyres" };
 
 // Постоянные текстдравы окна
 enum

@@ -83,6 +83,9 @@ enum
 #define BM_RANGE                4.0     // как близко подойти к торговцу чёрного рынка
 #define BM_SKIN                 28      // скин торговца
 #define BM_MAT_PRICE            2       // сколько торговец платит за 1 материал (меняется: /bmprice 0)
+#define BM_SEED_PRICE           90      // чёрный рынок: семена конопли (у уличного дилера дешевле)
+#define BM_WEED_PRICE           50      // чёрный рынок: 1 г марихуаны (продаётся по 5 г)
+#define BM_COKE_PRICE           300     // чёрный рынок: 1 г кокаина (всем, не только бандам)
 // Точки снабжения: их ставит админ (/setarmystore, /addbm) или двигает в /markers
 #define MAX_BM                  10      // сколько торговцев чёрного рынка
 #define BM_REF                  100000  // ref маркера торговца: 100000 + номер в базе
@@ -609,11 +612,13 @@ stock Faction_Message(f, colour, const message[])
 
 // Цвет ника и точки на карте: полиция и медики — только на смене, банды — всегда
 forward bool:Fbi_IsDisguised(playerid);
+forward bool:Faction_IsHidden(f);
 stock Faction_UpdateColor(playerid)
 {
 	new f = Player[playerid][pFaction];
 	new color = COLOR_CIVIL;
 	if (Faction_IsGang(f) || (Faction_IsValid(f) && Player[playerid][pDuty])) color = Faction_GetColor(f);
+	if (Faction_IsHidden(f)) color = COLOR_CIVIL;          // скрытую фракцию по цвету не узнать
 	if (Fbi_IsDisguised(playerid)) color = Fbi_DisguiseColor(playerid);  // агент ФБР в маскировке (fbi.inc)
 	if (Inv_IsMasked(playerid)) color &= 0xFFFFFF00;    // в маске: точки на карте нет ни у кого (needs.inc)
 	SetPlayerColor(playerid, color);
@@ -645,6 +650,7 @@ stock Faction_SetMember(playerid, f, rank)
 	Faction_UpdateColor(playerid);
 	Account_Save(playerid);
 	Account_SetNormalSpawn(playerid);
+	Markers_SyncPlayer(playerid);       // точки, которые видит только своя фракция
 }
 
 stock Faction_Uncuff(playerid)
@@ -653,6 +659,99 @@ stock Faction_Uncuff(playerid)
 	Player[playerid][pCuffed] = false;
 	SetPlayerSpecialAction(playerid, SPECIAL_ACTION_NONE);
 	TogglePlayerControllable(playerid, true);
+}
+
+// =====================================================================
+//  Скрытые фракции: их нет ни в одном списке, точки видят только свои
+//  (и главный админ), цвет ника у них всегда гражданский. /fhide [№] — админ 7.
+// =====================================================================
+#define FACTION_SECRET_ID       (MAX_FACTIONS - 1)  // последний номер: сюда переехала фракция 8
+static bool:gFHidden[MAX_FACTIONS];
+
+stock bool:Faction_IsHidden(f)
+{
+	return (f > FACTION_NONE && f < MAX_FACTIONS && gFHidden[f]);
+}
+
+// Чьи точки фракции f: скрытая — только своя (0 — видят все)
+static Faction_MarkerOwner(f)
+{
+	return Faction_IsHidden(f) ? f : 0;
+}
+
+static Factions_LoadHidden()
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_hidden (id INTEGER PRIMARY KEY, hidden INTEGER DEFAULT 0)"));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR IGNORE INTO faction_hidden (id, hidden) VALUES (%d, 1)", FACTION_SECRET_ID));
+	for (new f = 0; f < MAX_FACTIONS; f++) gFHidden[f] = false;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id FROM faction_hidden WHERE hidden = 1");
+	if (r == DBResult:0) return;
+	for (new i = 0, rows = DB_GetRowCount(r); i < rows; i++)
+	{
+		new f = DB_GetFieldInt(r, 0);
+		if (f > FACTION_NONE && f < MAX_FACTIONS) gFHidden[f] = true;
+		DB_SelectNextRow(r);
+	}
+	DB_FreeResultSet(r);
+}
+
+// /fhide [№] — скрыть фракцию или вернуть в списки
+stock bool:Cmd_FHide(playerid, const params[])
+{
+	if (!Admin_Check(playerid, ADMIN_MAX_LEVEL)) return true;
+	new pos = 0, f;
+	if (!NextIntParam(params, pos, f) || !Faction_IsValid(f))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /fhide [№ фракции] — скрыть из всех списков или вернуть. Номера: /flist");
+	gFHidden[f] = !gFHidden[f];
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO faction_hidden (id, hidden) VALUES (%d, %d)", f, gFHidden[f] ? 1 : 0));
+	Faction_CreateMarker(f);
+	FDoor_Build(f);
+	FStore_Build(f);
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && Player[i][pLogged] && Player[i][pFaction] == f) Faction_UpdateColor(i);
+	}
+	SendClientMessage(playerid, COLOR_ADMIN, "Фракция %d «%s» теперь %s.", f, Faction_GetName(f), gFHidden[f] ? ("скрыта: её точки видят только свои") : ("видна всем"));
+	return true;
+}
+
+// Перенос фракции на другой номер. Делается при запуске, до загрузки всего остального
+// (из OnGameModeInit сразу после DB_Init), один раз: строка в faction_moves помечается done.
+// Первый перенос — 8 -> последний номер, чтобы после 7 шли обычные 8, 9...
+stock Factions_RunMoves()
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_moves (from_id INTEGER NOT NULL, to_id INTEGER NOT NULL, done INTEGER DEFAULT 0)"));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO faction_moves (from_id, to_id) SELECT 8, %d WHERE NOT EXISTS (SELECT 1 FROM faction_moves WHERE from_id = 8 AND to_id = %d)",
+		FACTION_SECRET_ID, FACTION_SECRET_ID));
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT rowid, from_id, to_id FROM faction_moves WHERE done = 0 ORDER BY rowid");
+	if (r == DBResult:0) return;
+	new rows = DB_GetRowCount(r);
+	new ids[8][3], n = 0;
+	for (new i = 0; i < rows && n < sizeof ids; i++)
+	{
+		ids[n][0] = DB_GetFieldInt(r, 0);
+		ids[n][1] = DB_GetFieldInt(r, 1);
+		ids[n][2] = DB_GetFieldInt(r, 2);
+		n++;
+		DB_SelectNextRow(r);
+	}
+	DB_FreeResultSet(r);
+	for (new k = 0; k < n; k++)
+	{
+		new a = ids[k][1], b = ids[k][2];
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE faction_moves SET done = 1 WHERE rowid = %d", ids[k][0]));
+		if (a < FACTION_BUILTIN || b < FACTION_BUILTIN || a >= MAX_FACTIONS || b >= MAX_FACTIONS || a == b) continue;
+		new bool:hasA = false, bool:hasB = false;
+		r = DB_ExecuteQuery(gDB, "SELECT (SELECT COUNT(*) FROM factions WHERE id = %d), (SELECT COUNT(*) FROM factions WHERE id = %d)", a, b);
+		if (r != DBResult:0)
+		{
+			if (DB_GetRowCount(r) > 0) { hasA = DB_GetFieldInt(r, 0) > 0; hasB = DB_GetFieldInt(r, 1) > 0; }
+			DB_FreeResultSet(r);
+		}
+		if (!hasA || hasB) { printf("[Factions] move %d -> %d skipped (no faction %d or %d is taken).", a, b, a, b); continue; }
+		Faction_MoveRows(a, b);
+		printf("[Factions] Faction %d moved to number %d.", a, b);
+	}
 }
 
 // =====================================================================
@@ -675,6 +774,7 @@ stock Faction_CreateMarker(f)
 		Faction[f][fMarker] = true;
 	}
 	Marker_SetLabel(Faction[f][fMk], text, Faction_GetColor(f));
+	Marker_SetFaction(Faction[f][fMk], Faction_MarkerOwner(f));
 }
 
 // Админ перенёс маркер раздевалки (/markers)
@@ -720,6 +820,7 @@ stock Faction_SpawnVehicle(dbid, f, model, Float:x, Float:y, Float:z, Float:a, c
 stock Factions_Init()
 {
 	Factions_CreateTables();
+	Factions_LoadHidden();
 
 	// Какие фракции есть: 1..7 постоянные, остальные — созданные в игре (строка в базе)
 	for (new f = 1; f < MAX_FACTIONS; f++)
@@ -1204,7 +1305,8 @@ stock bool:Cmd_Members(playerid)
 	return true;
 }
 
-stock bool:Cmd_Duty(playerid)
+forward Fbi_SetPlain(playerid);    // fbi.inc: агент на смене в штатском
+stock bool:Cmd_Duty(playerid, bool:plain = false)
 {
 	new f = Player[playerid][pFaction];
 	if (!Faction_IsValid(f)) return SendClientMessage(playerid, COLOR_GREY, "Ты не состоишь во фракции.");
@@ -1223,9 +1325,21 @@ stock bool:Cmd_Duty(playerid)
 
 	new rank = Player[playerid][pRank];
 	if (rank < 1 || rank > MAX_RANK) rank = 1;
+	if (plain && f != FACTION_FBI) plain = false;
 	Player[playerid][pDuty] = true;
-	SetPlayerSkin(playerid, gRankSkin[f][rank - 1]);
 	ResetPlayerWeapons(playerid);
+	if (plain)
+	{
+		// ФБР в штатском: своя одежда, ник и точка как у гражданского, все команды фракции работают
+		Fbi_SetPlain(playerid);
+		SetPlayerSkin(playerid, Player[playerid][pSkin]);
+		GivePlayerWeapon(playerid, WEAPON_NITESTICK, 1);
+		Faction_UpdateColor(playerid);
+		SendClientMessage(playerid, Faction_GetColor(f), "Ты на смене в штатском (%s): для всех ты обычный гражданский, команды ФБР работают. Форма: /disguise", Faction_GetRankName(f, rank));
+		SendClientMessage(playerid, COLOR_WHITE, "Оружие и бронежилет лежат на складе фракции: /fstorage. Закончить смену: /duty в раздевалке.");
+		return true;
+	}
+	SetPlayerSkin(playerid, gRankSkin[f][rank - 1]);
 
 	// Оружие и броню на смене не выдаём: их берут со склада фракции (/fstorage).
 	// Силовикам остаётся только дубинка.
@@ -2562,6 +2676,8 @@ static FDoor_Build(f)
 	gFDoor[f][feMkIn] = Marker_Create(MK_DOOR, FDOOR_REF + f * 2 + 1, name, DOOR_PICKUP_MODEL, x, y, z,
 		gFDoor[f][feIWorld], gFDoor[f][feIInt], GPS_NONE, gFDoor[f][feIA]);
 	Marker_SetLabel(gFDoor[f][feMkIn], "{FFFFFF}ALT — выйти", COLOR_WHITE, 10.0);
+	Marker_SetFaction(gFDoor[f][feMkOut], Faction_MarkerOwner(f));
+	Marker_SetFaction(gFDoor[f][feMkIn], Faction_MarkerOwner(f));
 }
 
 static FDoor_Save(f)
@@ -2926,8 +3042,9 @@ stock bool:Cmd_FList(playerid)
 	for (new f = 1; f < MAX_FACTIONS; f++)
 	{
 		if (!Faction_IsValid(f)) continue;
-		SendClientMessage(playerid, Faction_GetColor(f), " %d — %s, %s, $%d, материалов %d", f, Faction_GetName(f),
-			gFTypeName[Faction[f][fType]], Faction[f][fBank], Faction[f][fMats]);
+		if (Faction_IsHidden(f) && Player[playerid][pAdmin] < ADMIN_MAX_LEVEL) continue;
+		SendClientMessage(playerid, Faction_GetColor(f), " %d — %s, %s, $%d, материалов %d%s", f, Faction_GetName(f),
+			gFTypeName[Faction[f][fType]], Faction[f][fBank], Faction[f][fMats], Faction_IsHidden(f) ? (" {AAAAAA}(скрыта)") : (""));
 	}
 	return true;
 }
@@ -3123,6 +3240,7 @@ stock FStore_Build(f)
 	gFsMk[f] = Marker_Create(MK_FACTION, STORE_REF + f, name, 1242, gFsX[f], gFsY[f], gFsZ[f], gFsW[f], gFsI[f], GPS_NONE);
 	format(text, sizeof text, "Склад: %s\n{FFFFFF}ALT — материалы и ящики\nЗа рулём с грузом: H — разгрузить", Faction_GetName(f));
 	Marker_SetLabel(gFsMk[f], text, Faction_GetColor(f));
+	Marker_SetFaction(gFsMk[f], Faction_MarkerOwner(f));
 }
 
 stock FStore_Save(f)
@@ -4025,6 +4143,7 @@ stock Factory_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			if (!response || !Faction_IsValid(f)) return 1;
 			if (!IsPlayerInRangeOfPoint(playerid, FACTION_DUTY_RANGE + 2.0, Faction[f][fDutyX], Faction[f][fDutyY], Faction[f][fDutyZ])) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от раздевалки."); return 1; }
 			if (listitem == 0) Cmd_Duty(playerid);
+			else if (listitem == 2) Cmd_Duty(playerid, true);
 			else Cmd_FStorage(playerid);
 		}
 		case DIALOG_FMANAGE:
@@ -4043,7 +4162,7 @@ stock Factory_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			new body[1800], line[48], n = 0;
 			for (new t = 1; t < MAX_FACTIONS; t++)
 			{
-				if (t == f || !Faction_IsValid(t)) continue;
+				if (t == f || !Faction_IsValid(t) || Faction_IsHidden(t)) continue;
 				format(line, sizeof line, "{%06x}%s\n", Faction_GetColor(t) >>> 8, Faction_GetName(t));
 				strcat(body, line);
 				gFcList[playerid][n++] = t;
@@ -4227,7 +4346,7 @@ stock bool:Cmd_BM(playerid)
 	if (BM_Near(playerid, BM_RANGE) == -1) return SendClientMessage(playerid, COLOR_GREY, "Здесь нет торговца. Чёрный рынок ещё надо найти.");
 	if (Faction_IsState(Player[playerid][pFaction]) && Player[playerid][pDuty])
 		return SendClientMessage(playerid, COLOR_GREY, "Торговец не разговаривает с людьми в форме.");
-	new body[900], line[96];
+	new body[1200], line[96];
 	strcat(body, "Товар\tЦена\n");
 	for (new it = 0; it < MAX_FITEMS; it++)
 	{
@@ -4235,6 +4354,13 @@ stock bool:Cmd_BM(playerid)
 		else format(line, sizeof line, "{AFAFAF}%s\t{AFAFAF}нет в продаже\n", gFItemName[it]);
 		strcat(body, line);
 	}
+	// наркотики: торговцу всё равно, кто ты (у уличного дилера кокаин — только бандам)
+	format(line, sizeof line, "Семена конопли\t{33AA33}$%d\n", BM_SEED_PRICE);
+	strcat(body, line);
+	format(line, sizeof line, "Марихуана, 5 г\t{33AA33}$%d\n", BM_WEED_PRICE * 5);
+	strcat(body, line);
+	format(line, sizeof line, "Кокаин, 1 г\t{33AA33}$%d\n", BM_COKE_PRICE);
+	strcat(body, line);
 	format(line, sizeof line, "{FFFF00}Продать материалы из сумки (%d шт.)\t$%d за 1 шт.", Inv_Count(playerid, INV_MATS), gBMMatPrice);
 	strcat(body, line);
 	ShowPlayerDialog(playerid, DIALOG_BM, DIALOG_STYLE_TABLIST_HEADERS, "Чёрный рынок", "%s", "Выбрать", "Уйти", body);
@@ -4262,6 +4388,20 @@ stock BM_OnDialog(playerid, dialogid, response, listitem)
 			default: GivePlayerWeapon(playerid, gFItemWeapon[listitem], gFItemAmmo[listitem]);
 		}
 		SendClientMessage(playerid, COLOR_GREEN, "Куплено: %s за $%d.", gFItemName[listitem], price);
+		Cmd_BM(playerid);
+		return 1;
+	}
+	if (listitem >= MAX_FITEMS && listitem < MAX_FITEMS + 3)
+	{
+		new d = listitem - MAX_FITEMS;
+		new item = (d == 0) ? INV_SEEDS : ((d == 1) ? INV_WEED : INV_COCAINE);
+		new amount = (d == 1) ? 5 : 1;
+		new price = (d == 0) ? BM_SEED_PRICE : ((d == 1) ? BM_WEED_PRICE * 5 : BM_COKE_PRICE);
+		if (GetMoney(playerid) < price) { SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", price); return 1; }
+		if (!Inv_Add(playerid, item, amount)) { SendClientMessage(playerid, COLOR_GREY, "Больше в сумку не влезет (%s: до %d).", Inv_GetName(item), Inv_GetMax(item)); return 1; }
+		GiveMoney(playerid, -price, "чёрный рынок: наркотики");
+		SendClientMessage(playerid, COLOR_GREEN, "Куплено: %s x%d за $%d. В сумке: %d.", Inv_GetName(item), amount, price, Inv_Count(playerid, item));
+		Account_Save(playerid);
 		Cmd_BM(playerid);
 		return 1;
 	}
@@ -4451,6 +4591,7 @@ stock Locker_Show(playerid)
 	if (Player[playerid][pDuty]) strcat(list, "Переодеться в свою одежду {AFAFAF}(закончить смену)\n");
 	else strcat(list, "Переодеться в форму {AFAFAF}(начать смену)\n");
 	strcat(list, "Взять снаряжение {AFAFAF}(оружие, бронежилет, аптечка)");
+	if (f == FACTION_FBI && !Player[playerid][pDuty]) strcat(list, "\nЗаступить в штатском {AFAFAF}(без формы, тайно)");
 	ShowPlayerDialog(playerid, DIALOG_LOCKER, DIALOG_STYLE_LIST, Faction_GetName(f), "%s", "Выбрать", "Закрыть", list);
 }
 
@@ -5001,4 +5142,27 @@ stock FrMenu_OnDialog(playerid, dialogid, response, listitem)
 		}
 	}
 	return 1;
+}
+
+// Перенос строк фракции a на номер b (из Factions_RunMoves)
+static Faction_MoveRows(a, b)
+{
+	static const tables[][] = { "faction_ranks", "faction_storage", "faction_logs", "faction_doors", "faction_door_defaults",
+		"fvehicles", "faction_stores", "faction_squads", "gates" };
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE factions SET id = %d WHERE id = %d", b, a));
+	for (new i = 0; i < sizeof tables; i++)
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE %s SET faction = %d WHERE faction = %d", tables[i], b, a));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET faction = %d WHERE faction = %d", b, a));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET fsquad = %d + (fsquad %% 10) WHERE fsquad / 10 = %d", b * 10, a));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE turfs SET owner = %d WHERE owner = %d", b, a));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE factories SET owner = %d WHERE owner = %d", b, a));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE doors SET faction = %d WHERE faction = %d", b, a));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE markers SET faction = %d WHERE faction = %d", b, a));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO faction_hidden (id, hidden) SELECT %d, hidden FROM faction_hidden WHERE id = %d", b, a));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM faction_hidden WHERE id = %d", a));
+	// правки маркеров из /markers: раздевалка, склад, вход в здание
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE markers SET ref = %d WHERE type = %d AND ref = %d", b, MK_FACTION, a));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE markers SET ref = %d WHERE type = %d AND ref = %d", STORE_REF + b, MK_FACTION, STORE_REF + a));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE markers SET ref = %d WHERE type = %d AND ref = %d", FDOOR_REF + b * 2, MK_DOOR, FDOOR_REF + a * 2));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE markers SET ref = %d WHERE type = %d AND ref = %d", FDOOR_REF + b * 2 + 1, MK_DOOR, FDOOR_REF + a * 2 + 1));
 }
