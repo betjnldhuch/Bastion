@@ -69,6 +69,9 @@ enum E_DROP
 }
 static gDrop[MAX_DROPS][E_DROP];
 static gInvSelected[MAX_PLAYERS];
+static gInvHtmlNote[MAX_PLAYERS][96];
+static bool:gInvHtmlOk[MAX_PLAYERS];
+static gInvHtmlSel[MAX_PLAYERS];
 static bool:gMasked[MAX_PLAYERS];
 
 static gHunger[MAX_PLAYERS];
@@ -92,6 +95,8 @@ stock Needs_Init()
 // После входа в аккаунт (из Vehicles_LoadForPlayer)
 stock Needs_LoadPlayer(playerid)
 {
+	gInvHtmlSel[playerid] = -1;
+	gInvHtmlNote[playerid][0] = '\0';
 	gHunger[playerid] = 100;
 	gHungerTick[playerid] = 0;
 	for (new i = 0; i < INV_TYPES; i++) gInv[playerid][i] = 0;
@@ -353,6 +358,7 @@ stock bool:Inv_ShowList(playerid)
 // Сумка: окно с моделями вещей (списком — /invlist)
 stock bool:Cmd_Inv(playerid)
 {
+	if (UI_Has(playerid)) { Inv_ShowHtml(playerid); return true; }
 	if (Inv_ShowUI(playerid)) return true;
 	return Inv_ShowList(playerid);
 }
@@ -752,7 +758,12 @@ static Inv_ShowActions(playerid, item)
 
 stock Needs_OnDialog(playerid, dialogid, response, listitem, const inputtext[] = "")
 {
-	if (dialogid < DIALOG_INVENTORY || dialogid > DIALOG_INV_DROP) return 0;
+	if (dialogid < DIALOG_INVENTORY || dialogid > DIALOG_INV_UI) return 0;
+	if (dialogid == DIALOG_INV_UI)
+	{
+		if (response) InvHtml_OnResponse(playerid, inputtext);
+		return 1;
+	}
 
 	if (dialogid == DIALOG_INVENTORY)
 	{
@@ -803,6 +814,143 @@ stock Needs_OnDialog(playerid, dialogid, response, listitem, const inputtext[] =
 		case DIALOG_INV_DROP: Inv_Drop(playerid, item, strval(inputtext));
 	}
 	return 1;
+}
+
+// ---------------------------------------------------------------------
+//  HTML-окно сумки (клиент Bastion, ui.inc)
+//  Ответ в DIALOG_INV_UI текстом "действие вещь [аргументы]":
+//    "u 3" — использовать, "g 3 5 2" — передать игроку 5 две штуки,
+//    "d 3 2" — выбросить две. Вещь: номер из gInvNames, 100+слот — одежда,
+//    0 — канистра. После действия окно открывается снова с итогом.
+// ---------------------------------------------------------------------
+
+static InvHtml_Note(playerid, bool:ok, const text[])
+{
+	gInvHtmlOk[playerid] = ok;
+	gInvHtmlNote[playerid][0] = '\0';
+	strcat(gInvHtmlNote[playerid], text, sizeof (gInvHtmlNote[]));
+}
+
+stock Inv_ShowHtml(playerid)
+{
+	new json[2600], part[200], name[48], hint[64];
+	new Float:hp;
+	GetPlayerHealth(playerid, hp);
+	format(json, sizeof json, "{\"hunger\":%d,\"hp\":%d,\"mask\":%d,\"outMax\":%d,\"sel\":%d,\"items\":[",
+		gHunger[playerid], floatround(hp), _:gMasked[playerid], MAX_OUTFITS, gInvHtmlSel[playerid]);
+	new n = 0;
+	for (new item = 1; item < INV_TYPES; item++)
+	{
+		if (gInv[playerid][item] <= 0) continue;
+		UI_JsonEscape(name, gInvNames[item]);
+		UI_JsonEscape(hint, gInvHints[item]);
+		format(part, sizeof part, "%s[%d,%d,%d,\"%s\",\"%s\"]", n ? "," : "", item, gInv[playerid][item], gInvMax[item], name, hint);
+		strcat(json, part);
+		n++;
+	}
+	strcat(json, "],\"outfits\":[");
+	n = 0;
+	for (new i = 0; i < MAX_OUTFITS; i++)
+	{
+		if (gOutfit[playerid][i] == -1) continue;
+		format(part, sizeof part, "%s[%d,%d]", n ? "," : "", INV_OUTFIT + i, gOutfit[playerid][i]);
+		strcat(json, part);
+		n++;
+	}
+	new note[192];
+	UI_JsonEscape(note, gInvHtmlNote[playerid]);
+	format(part, sizeof part, "],\"skin\":%d,\"canister\":%d,\"note\":\"%s\",\"ok\":%d}",
+		Player[playerid][pSkin], Fuel_GetCanister(playerid), note, _:gInvHtmlOk[playerid]);
+	strcat(json, part);
+	gInvHtmlNote[playerid][0] = '\0';
+	gInvHtmlSel[playerid] = -1;
+	UI_Show(playerid, DIALOG_INV_UI, DIALOG_STYLE_INPUT, "inventory", json, "Выбрать", "Закрыть");
+}
+
+// После «использовать» окно открываем снова только для вещей без своего меню и анимации
+static bool:InvHtml_ReopenAfterUse(item)
+{
+	switch (item)
+	{
+		case INV_BURGER, INV_HOTDOG, INV_PIZZA, INV_WATER, INV_BEER, INV_MEDKIT, INV_BANDAGE, INV_MASK, INV_DICE, INV_CIGARETTES, INV_FLOWERS: return true;
+	}
+	return false;
+}
+
+static InvHtml_OnResponse(playerid, const input[])
+{
+	new act = input[0], pos = 1, key;
+	if (!NextIntParam(input, pos, key)) return;
+	new text[96];
+	gInvHtmlSel[playerid] = key;
+
+	if (key == 0)
+	{
+		InvHtml_Note(playerid, false, "Канистру заливают командой /canister, стоя у машины.");
+		Inv_ShowHtml(playerid);
+		return;
+	}
+	if (key >= INV_OUTFIT)
+	{
+		new slot = key - INV_OUTFIT;
+		if (slot >= MAX_OUTFITS || gOutfit[playerid][slot] == -1) { gInvHtmlSel[playerid] = -1; Inv_ShowHtml(playerid); return; }
+		new skin = gOutfit[playerid][slot];
+		switch (act)
+		{
+			case 'u':
+			{
+				if (Outfit_Wear(playerid, slot)) { format(text, sizeof text, "Одежда сменена на скин %d, прежняя лежит в сумке.", skin); InvHtml_Note(playerid, true, text); }
+				else InvHtml_Note(playerid, false, "Сейчас переодеться нельзя, причина в чате.");
+			}
+			case 'g':
+			{
+				if (Outfit_Give(playerid, slot, input[pos])) { gInvHtmlSel[playerid] = -1; format(text, sizeof text, "Одежда (скин %d) передана.", skin); InvHtml_Note(playerid, true, text); }
+				else InvHtml_Note(playerid, false, "Не получилось передать, причина в чате.");
+			}
+			case 'd':
+			{
+				if (Outfit_Drop(playerid, slot)) { gInvHtmlSel[playerid] = -1; InvHtml_Note(playerid, true, "Одежда лежит на земле, поднять — ALT."); }
+				else InvHtml_Note(playerid, false, "Не получилось выбросить, причина в чате.");
+			}
+		}
+		Inv_ShowHtml(playerid);
+		return;
+	}
+	if (key >= INV_TYPES || gInv[playerid][key] <= 0) { gInvHtmlSel[playerid] = -1; Inv_ShowHtml(playerid); return; }
+
+	new before = gInv[playerid][key];
+	switch (act)
+	{
+		case 'u':
+		{
+			new bool:mask = gMasked[playerid];
+			Inv_Use(playerid, key);
+			if (!InvHtml_ReopenAfterUse(key)) { gInvHtmlSel[playerid] = -1; return; }
+			if (key == INV_MASK)
+			{
+				if (gMasked[playerid]) InvHtml_Note(playerid, mask != gMasked[playerid], "Маска надета, ник скрыт.");
+				else InvHtml_Note(playerid, mask != gMasked[playerid], "Маска снята.");
+			}
+			else if (key == INV_DICE) InvHtml_Note(playerid, true, "Кости брошены, результат в чате.");
+			else if (gInv[playerid][key] < before) { format(text, sizeof text, "Использовано: %s.", gInvNames[key]); InvHtml_Note(playerid, true, text); }
+			else InvHtml_Note(playerid, false, "Сейчас нельзя, причина в чате.");
+		}
+		case 'g':
+		{
+			if (Inv_Give(playerid, key, input[pos])) { format(text, sizeof text, "Передано: %s x%d.", gInvNames[key], before - gInv[playerid][key]); InvHtml_Note(playerid, true, text); }
+			else InvHtml_Note(playerid, false, "Не получилось передать, причина в чате.");
+		}
+		case 'd':
+		{
+			new amount;
+			if (!NextIntParam(input, pos, amount)) amount = 1;
+			if (Inv_Drop(playerid, key, amount)) { format(text, sizeof text, "Выброшено: %s x%d. Поднять — ALT.", gInvNames[key], amount); InvHtml_Note(playerid, true, text); }
+			else InvHtml_Note(playerid, false, "Не получилось выбросить, причина в чате.");
+		}
+		default: return;
+	}
+	if (gInv[playerid][key] <= 0) gInvHtmlSel[playerid] = -1;
+	Inv_ShowHtml(playerid);
 }
 
 // ---------------------------------------------------------------------
