@@ -18,6 +18,8 @@ enum
 	DIALOG_REGISTER,
 	DIALOG_LOGIN,
 	DIALOG_GENDER,
+	DIALOG_RULES,
+	DIALOG_REFERRAL,
 	DIALOG_BUYCAR,
 	DIALOG_HELP,
 	DIALOG_BANK,
@@ -26,6 +28,10 @@ enum
 	DIALOG_BANK_TRANSFER,
 	DIALOG_BANK_TRANSFER_ACC,
 	DIALOG_BANK_HISTORY,
+	DIALOG_BANK_ACCOUNTS,
+	DIALOG_BANK_ACC_MENU,
+	DIALOG_BANK_ACC_IN,
+	DIALOG_BANK_ACC_OUT,
 	DIALOG_BIZ_BUY,
 	DIALOG_BIZ_MENU,
 	DIALOG_CONFIRM_HOUSE,
@@ -119,6 +125,12 @@ enum
 	DIALOG_REPORT_ACT,          // действия с репортом
 	DIALOG_REPORT_ANSWER,       // ввод ответа
 	DIALOG_REPORT_NEW,          // игрок пишет репорт
+
+	// --- Вход в админку (admin_auth.inc)
+	DIALOG_ALOGIN,              // ввод админ-пароля
+	DIALOG_ALOGIN_NEW,          // первый вход: придумать админ-пароль
+	DIALOG_APASS_OLD,           // /apass: текущий пароль
+	DIALOG_APASS_NEW,           // /apass: новый пароль
 
 	// --- Инструменты админов (admin_tools.inc, admin.inc)
 	DIALOG_TPLIST,

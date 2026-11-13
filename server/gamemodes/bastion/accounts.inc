@@ -51,9 +51,32 @@ stock Account_OnConnect(playerid)
 	return 1;
 }
 
-// Показать окно входа или регистрации
-stock Account_ShowAuth(playerid)
+// Показать окно входа или регистрации. error — текст ошибки в HTML-окне (ui.inc).
+stock Account_ShowAuth(playerid, const error[] = "")
 {
+	// Новичок сначала принимает правила (referral.inc)
+	if (Player[playerid][pDbId] == 0 && !Player[playerid][pRulesOk])
+	{
+		Rules_Show(playerid);
+		return;
+	}
+	if (UI_Has(playerid))
+	{
+		new json[256], err[128];
+		UI_JsonEscape(err, error);
+		if (Player[playerid][pDbId] != 0)
+		{
+			format(json, sizeof json, "{\"name\":\"%s\",\"error\":\"%s\"}", GetRPName(playerid), err);
+			UI_Show(playerid, DIALOG_LOGIN, DIALOG_STYLE_PASSWORD, "login", json, "Войти", "Выход");
+		}
+		else
+		{
+			format(json, sizeof json, "{\"name\":\"%s\",\"min\":%d,\"max\":%d,\"error\":\"%s\"}",
+				GetRPName(playerid), MIN_PASSWORD_LEN, MAX_PASSWORD_LEN, err);
+			UI_Show(playerid, DIALOG_REGISTER, DIALOG_STYLE_PASSWORD, "register", json, "Далее", "Выход");
+		}
+		return;
+	}
 	if (Player[playerid][pDbId] != 0)
 	{
 		ShowPlayerDialog(playerid, DIALOG_LOGIN, DIALOG_STYLE_PASSWORD, "Вход",
@@ -68,6 +91,17 @@ stock Account_ShowAuth(playerid)
 	}
 }
 
+// Выбор пола после регистрации
+stock Account_ShowGender(playerid)
+{
+	if (UI_Has(playerid))
+		// По строке на пункт списка, чтобы клиент мог вернуть listitem 0 или 1
+		UI_Show(playerid, DIALOG_GENDER, DIALOG_STYLE_LIST, "gender", "{\"items\":[\n\"Мужской\",\n\"Женский\"]}", "Выбрать");
+	else
+		ShowPlayerDialog(playerid, DIALOG_GENDER, DIALOG_STYLE_LIST, "Выбери пол персонажа",
+			"Мужской\nЖенский", "Выбрать", "");
+}
+
 // Красивый вид города, пока игрок вводит пароль
 stock Account_ShowLoginCamera(playerid)
 {
@@ -78,7 +112,8 @@ stock Account_ShowLoginCamera(playerid)
 // Обработка окон аккаунта. Возвращает 1, если окно было наше.
 stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
-	if (dialogid != DIALOG_REGISTER && dialogid != DIALOG_LOGIN && dialogid != DIALOG_GENDER) return 0;
+	if (dialogid != DIALOG_REGISTER && dialogid != DIALOG_LOGIN && dialogid != DIALOG_GENDER
+		&& dialogid != DIALOG_RULES && dialogid != DIALOG_REFERRAL) return 0;
 	if (Player[playerid][pLogged]) return 1;   // защита: уже вошёл — окна входа игнорируем
 
 	switch (dialogid)
@@ -96,7 +131,7 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			if (len < MIN_PASSWORD_LEN || len > MAX_PASSWORD_LEN)
 			{
 				SendClientMessage(playerid, COLOR_RED, "Пароль должен быть от %d до %d символов.", MIN_PASSWORD_LEN, MAX_PASSWORD_LEN);
-				Account_ShowAuth(playerid);
+				Account_ShowAuth(playerid, "Пароль слишком короткий или слишком длинный.");
 				return 1;
 			}
 
@@ -113,8 +148,35 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			Player[playerid][pMoney] = START_MONEY;
 			Player[playerid][pLevel] = 1;
 
-			ShowPlayerDialog(playerid, DIALOG_GENDER, DIALOG_STYLE_LIST, "Выбери пол персонажа",
-				"Мужской\nЖенский", "Выбрать", "");
+			Referral_Show(playerid);   // кто пригласил, потом выбор пола
+			return 1;
+		}
+		case DIALOG_RULES:
+		{
+			if (Player[playerid][pDbId] != 0) return 1;
+			if (!response)
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Без согласия с правилами играть на сервере нельзя.");
+				KickWithDelay(playerid);
+				return 1;
+			}
+			Player[playerid][pRulesOk] = true;
+			Account_ShowAuth(playerid);
+			return 1;
+		}
+		case DIALOG_REFERRAL:
+		{
+			if (Player[playerid][pDbId] == 0) return 1;
+			if (response && inputtext[0] != '\0')
+			{
+				new error[96];
+				if (!Referral_Set(playerid, inputtext, error))
+				{
+					Referral_Show(playerid, error);
+					return 1;
+				}
+			}
+			Account_ShowGender(playerid);
 			return 1;
 		}
 		case DIALOG_GENDER:
@@ -150,7 +212,9 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 				}
 				SendClientMessage(playerid, COLOR_RED, "Неверный пароль! Осталось попыток: %d",
 					MAX_LOGIN_TRIES - Player[playerid][pLoginTries]);
-				Account_ShowAuth(playerid);
+				new err[64];
+				format(err, sizeof err, "Неверный пароль. Осталось попыток: %d", MAX_LOGIN_TRIES - Player[playerid][pLoginTries]);
+				Account_ShowAuth(playerid, err);
 				return 1;
 			}
 
@@ -198,7 +262,7 @@ stock Account_Save(playerid)
 	DB_FreeResultSet(DB_ExecuteQuery(gDB,
 		"UPDATE accounts SET money = %d, level = %d, exp = %d, skin = %d, admin = %d, job = %d, faction = %d, frank = %d, wanted = %d, jail = %d, bank = %d, phone = %d WHERE id = %d",
 		Player[playerid][pMoney], Player[playerid][pLevel], Player[playerid][pExp],
-		Player[playerid][pSkin], Player[playerid][pAdmin], Player[playerid][pJob],
+		Player[playerid][pSkin], Admin_RealLevel(playerid), Player[playerid][pJob],
 		Player[playerid][pFaction], Player[playerid][pRank], Player[playerid][pWanted], Player[playerid][pJail],
 		Player[playerid][pBank], Player[playerid][pPhone],
 		Player[playerid][pDbId]));

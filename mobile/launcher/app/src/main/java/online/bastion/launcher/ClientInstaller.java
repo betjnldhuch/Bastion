@@ -202,6 +202,8 @@ public final class ClientInstaller {
         setIni(lines, "client", "name", nick);
         setIni(lines, "client", "host", host);
         setIni(lines, "client", "port", String.valueOf(port));
+        // "-bui1": клиент умеет HTML-окна (сервер смотрит GetPlayerVersion, ui.inc).
+        setIni(lines, "client", "version", "0.3.7-bui1");
         setIni(lines, "gui", "FPSLimit", String.valueOf(fpsLimit));
         setIni(lines, "gui", "ChatMaxMessages", String.valueOf(chatLines));
         File tmp = new File(samp, "settings.ini.tmp");

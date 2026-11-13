@@ -10,6 +10,8 @@
 //    перевод игроку по id, перевод по номеру счёта, история операций.
 //  PayDay: зарплата приходит на счёт (PAYDAY_TO_BANK), на остаток
 //    начисляются проценты (BANK_INTEREST_PERMILLE, не больше BANK_INTEREST_MAX).
+//  Мои счета: можно открыть до BANK_MAX_EXTRA доп. счетов (по BANK_MAX_BALANCE
+//    на каждом) и перекладывать деньги между ними и основным.
 //  Все операции пишутся в таблицу bank_log.
 //
 //  Админы (4+): /addatm — банкомат там, где стоишь (аппарат появится
@@ -31,7 +33,9 @@ enum
 	BANKLOG_TRANSFER_IN,    // получил перевод
 	BANKLOG_SALARY,         // зарплата (PayDay)
 	BANKLOG_INTEREST,       // проценты на остаток
-	BANKLOG_FEE             // комиссия
+	BANKLOG_FEE,            // комиссия
+	BANKLOG_TO_EXTRA,       // переложил на доп. счёт
+	BANKLOG_FROM_EXTRA      // переложил с доп. счёта
 }
 
 static const gBankLogNames[][] =
@@ -43,7 +47,9 @@ static const gBankLogNames[][] =
 	"Получен перевод",
 	"Зарплата",
 	"Проценты",
-	"Комиссия"
+	"Комиссия",
+	"На доп. счёт",
+	"С доп. счёта"
 };
 
 enum E_ATM
@@ -248,12 +254,146 @@ stock Bank_PayDay(playerid)
 }
 
 // ---------------------------------------------------------------------
+//  Дополнительные счета (таблица bank_accounts)
+//  Основной счёт — pBank. Дополнительных можно открыть до BANK_MAX_EXTRA,
+//  на каждом до BANK_MAX_BALANCE. Деньги ходят только между основным и
+//  дополнительными счетами; снимать и переводить — с основного.
+// ---------------------------------------------------------------------
+static gBankAccIds[MAX_PLAYERS][BANK_MAX_EXTRA];   // id счетов в порядке строк списка
+static gBankAccCount[MAX_PLAYERS];
+static gBankAccSel[MAX_PLAYERS];                   // выбранный счёт (id в bank_accounts)
+
+// Баланс доп. счёта игрока, или -1, если счёт не его / не существует
+stock Bank_ExtraBalance(playerid, accid)
+{
+	new bal = -1;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT balance FROM bank_accounts WHERE id = %d AND owner = %d", accid, Player[playerid][pDbId]);
+	if (r != DBResult:0)
+	{
+		if (DB_GetRowCount(r) > 0) bal = DB_GetFieldInt(r, 0);
+		DB_FreeResultSet(r);
+	}
+	return bal;
+}
+
+// Номер строки счёта в списке (1, 2, ...) — для названия «Счёт 2»
+static Bank_ExtraIndex(playerid, accid)
+{
+	for (new i = 0; i < gBankAccCount[playerid]; i++) if (gBankAccIds[playerid][i] == accid) return i + 1;
+	return 0;
+}
+
+stock Bank_ShowAccounts(playerid)
+{
+	new body[512], line[80];
+	gBankAccCount[playerid] = 0;
+	format(body, sizeof (body), "Основной счёт №%d: {33AA33}$%d{FFFFFF}\n", Player[playerid][pDbId], Player[playerid][pBank]);
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, balance FROM bank_accounts WHERE owner = %d ORDER BY id LIMIT %d", Player[playerid][pDbId], BANK_MAX_EXTRA);
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new i = 0; i < rows; i++)
+		{
+			gBankAccIds[playerid][i] = DB_GetFieldInt(r, 0);
+			format(line, sizeof (line), "Доп. счёт %d: {33AA33}$%d{FFFFFF}\n", i + 1, DB_GetFieldInt(r, 1));
+			strcat(body, line);
+			gBankAccCount[playerid]++;
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	if (gBankAccCount[playerid] < BANK_MAX_EXTRA)
+	{
+		format(line, sizeof (line), "{33AA33}+ Открыть новый счёт{FFFFFF} ($%d)", BANK_OPEN_COST);
+		strcat(body, line);
+	}
+	ShowPlayerDialog(playerid, DIALOG_BANK_ACCOUNTS, DIALOG_STYLE_LIST, "Мои счета", "%s", "Выбрать", "Назад", body);
+	return 1;
+}
+
+static Bank_ShowAccMenu(playerid)
+{
+	new bal = Bank_ExtraBalance(playerid, gBankAccSel[playerid]);
+	if (bal < 0) return Bank_ShowAccounts(playerid);
+	ShowPlayerDialog(playerid, DIALOG_BANK_ACC_MENU, DIALOG_STYLE_LIST, "Доп. счёт",
+		"Баланс: $%d\nПереложить с основного счёта\nПереложить на основной счёт\nЗакрыть счёт", "Выбрать", "Назад", bal);
+	return 1;
+}
+
+static Bank_OpenExtra(playerid)
+{
+	new count = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT COUNT(*) FROM bank_accounts WHERE owner = %d", Player[playerid][pDbId]);
+	if (r != DBResult:0)
+	{
+		if (DB_GetRowCount(r) > 0) count = DB_GetFieldInt(r, 0);
+		DB_FreeResultSet(r);
+	}
+	if (count >= BANK_MAX_EXTRA)
+		return SendClientMessage(playerid, COLOR_GREY, "Можно открыть не больше %d доп. счетов.", BANK_MAX_EXTRA);
+	if (Player[playerid][pBank] < BANK_OPEN_COST)
+		return SendClientMessage(playerid, COLOR_GREY, "Открытие счёта стоит $%d, на основном счёте $%d.", BANK_OPEN_COST, Player[playerid][pBank]);
+#if BANK_OPEN_COST > 0
+	Player[playerid][pBank] -= BANK_OPEN_COST;
+	Bank_Log(Player[playerid][pDbId], BANKLOG_FEE, BANK_OPEN_COST);
+	Bank_MoneyLog(Player[playerid][pDbId], -BANK_OPEN_COST, Player[playerid][pMoney], "открытие доп. счёта");
+	Account_Save(playerid);
+#endif
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO bank_accounts (owner, balance, created) VALUES (%d, 0, %d)", Player[playerid][pDbId], gettime()));
+	SendClientMessage(playerid, COLOR_GREEN, "Ты открыл доп. счёт (%d из %d). На каждом можно хранить до $%d.", count + 1, BANK_MAX_EXTRA, BANK_MAX_BALANCE);
+	return 1;
+}
+
+// Переложить деньги: toExtra = true — с основного на доп., false — обратно
+static Bank_MoveExtra(playerid, accid, amount, bool:toExtra)
+{
+	new bal = Bank_ExtraBalance(playerid, accid);
+	if (bal < 0) return SendClientMessage(playerid, COLOR_GREY, "Счёт не найден.");
+	new n = Bank_ExtraIndex(playerid, accid);
+	if (toExtra)
+	{
+		if (amount < 1 || amount > Player[playerid][pBank])
+			return SendClientMessage(playerid, COLOR_GREY, "Неверная сумма. На основном счёте $%d.", Player[playerid][pBank]);
+		if (bal > BANK_MAX_BALANCE - amount)
+			return SendClientMessage(playerid, COLOR_GREY, "Не влезет: на доп. счёте можно хранить до $%d (сейчас $%d).", BANK_MAX_BALANCE, bal);
+		Player[playerid][pBank] -= amount;
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE bank_accounts SET balance = balance + %d WHERE id = %d", amount, accid));
+		Bank_Log(Player[playerid][pDbId], BANKLOG_TO_EXTRA, amount);
+		bal += amount;
+	}
+	else
+	{
+		if (amount < 1 || amount > bal)
+			return SendClientMessage(playerid, COLOR_GREY, "Неверная сумма. На доп. счёте $%d.", bal);
+		if (Player[playerid][pBank] > BANK_MAX_BALANCE - amount)
+			return SendClientMessage(playerid, COLOR_GREY, "Не влезет: на основном счёте можно хранить до $%d (сейчас $%d).", BANK_MAX_BALANCE, Player[playerid][pBank]);
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE bank_accounts SET balance = balance - %d WHERE id = %d", amount, accid));
+		Player[playerid][pBank] += amount;
+		Bank_Log(Player[playerid][pDbId], BANKLOG_FROM_EXTRA, amount);
+		bal -= amount;
+	}
+	Account_Save(playerid);
+	SendClientMessage(playerid, COLOR_GREEN, "Готово. Основной счёт: $%d, доп. счёт %d: $%d.", Player[playerid][pBank], n, bal);
+	return 1;
+}
+
+static Bank_CloseExtra(playerid, accid)
+{
+	new bal = Bank_ExtraBalance(playerid, accid);
+	if (bal < 0) return SendClientMessage(playerid, COLOR_GREY, "Счёт не найден.");
+	if (bal > 0) return SendClientMessage(playerid, COLOR_GREY, "Сначала переложи все деньги на основной счёт (на счёте $%d).", bal);
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM bank_accounts WHERE id = %d AND owner = %d", accid, Player[playerid][pDbId]));
+	SendClientMessage(playerid, COLOR_GREEN, "Доп. счёт закрыт.");
+	return 1;
+}
+
+// ---------------------------------------------------------------------
 //  Окна
 // ---------------------------------------------------------------------
 stock Bank_ShowMenu(playerid)
 {
 	ShowPlayerDialog(playerid, DIALOG_BANK, DIALOG_STYLE_LIST, "Bastion Bank",
-		"Баланс и номер счёта\nПоложить деньги\nСнять деньги\nПеревести игроку (по id)\nПеревести по номеру счёта\nИстория операций\nОплатить налоги ($%d)\nОплатить штрафы ($%d)",
+		"Баланс и номер счёта\nПоложить деньги\nСнять деньги\nПеревести игроку (по id)\nПеревести по номеру счёта\nМои счета\nИстория операций\nОплатить налоги ($%d)\nОплатить штрафы ($%d)",
 		"Выбрать", "Закрыть", Debts_Get(playerid, DEBT_TAX), Debts_Get(playerid, DEBT_FINE));
 }
 
@@ -276,7 +416,7 @@ stock Bank_ShowHistory(playerid)
 			DB_GetFieldString(r, 2, name, sizeof (name));
 			DB_GetFieldString(r, 3, when, sizeof (when));
 			if (type < 0 || type >= sizeof (gBankLogNames)) type = 0;
-			new bool:minus = (type == BANKLOG_WITHDRAW || type == BANKLOG_TRANSFER_OUT || type == BANKLOG_FEE);
+			new bool:minus = (type == BANKLOG_WITHDRAW || type == BANKLOG_TRANSFER_OUT || type == BANKLOG_FEE || type == BANKLOG_TO_EXTRA);
 			if (minus) format(line, sizeof (line), "%s  {FF6347}-$%d{FFFFFF}  %s", when, amount, gBankLogNames[type]);
 			else format(line, sizeof (line), "%s  {33AA33}+$%d{FFFFFF}  %s", when, amount, gBankLogNames[type]);
 			if (name[0] != '\0')
@@ -362,7 +502,9 @@ stock Bank_Transfer(playerid, dbid, amount)
 stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
 	if (dialogid != DIALOG_BANK && dialogid != DIALOG_BANK_DEPOSIT && dialogid != DIALOG_BANK_WITHDRAW
-		&& dialogid != DIALOG_BANK_TRANSFER && dialogid != DIALOG_BANK_TRANSFER_ACC && dialogid != DIALOG_BANK_HISTORY) return 0;
+		&& dialogid != DIALOG_BANK_TRANSFER && dialogid != DIALOG_BANK_TRANSFER_ACC && dialogid != DIALOG_BANK_HISTORY
+		&& dialogid != DIALOG_BANK_ACCOUNTS && dialogid != DIALOG_BANK_ACC_MENU
+		&& dialogid != DIALOG_BANK_ACC_IN && dialogid != DIALOG_BANK_ACC_OUT) return 0;
 	if (dialogid == DIALOG_BANK_HISTORY)
 	{
 		if (Atm_GetNearby(playerid) != -1) Bank_ShowMenu(playerid);
@@ -370,7 +512,10 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 	}
 	if (!response)
 	{
-		if (dialogid != DIALOG_BANK) Bank_ShowMenu(playerid);   // "Назад" — в меню
+		// "Назад": из окон доп. счёта — к нему, из остальных — в меню
+		if (dialogid == DIALOG_BANK_ACC_IN || dialogid == DIALOG_BANK_ACC_OUT) Bank_ShowAccMenu(playerid);
+		else if (dialogid == DIALOG_BANK_ACC_MENU) Bank_ShowAccounts(playerid);
+		else if (dialogid != DIALOG_BANK) Bank_ShowMenu(playerid);
 		return 1;
 	}
 	if (Atm_GetNearby(playerid) == -1)
@@ -400,9 +545,10 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 					"{FFFFFF}На счёте: $%d\nВведи id игрока и сумму через пробел, например: 5 1000", "Перевести", "Назад", Player[playerid][pBank]);
 				case 4: ShowPlayerDialog(playerid, DIALOG_BANK_TRANSFER_ACC, DIALOG_STYLE_INPUT, "Перевод по номеру счёта",
 					"{FFFFFF}На счёте: $%d\nВведи номер счёта и сумму через пробел, например: 12 1000\nПолучатель может быть не в игре.", "Перевести", "Назад", Player[playerid][pBank]);
-				case 5: Bank_ShowHistory(playerid);
-				case 6: { Debts_Pay(playerid, DEBT_TAX); Bank_ShowMenu(playerid); }     // debts.inc
-				case 7: { Debts_Pay(playerid, DEBT_FINE); Bank_ShowMenu(playerid); }
+				case 5: Bank_ShowAccounts(playerid);
+				case 6: Bank_ShowHistory(playerid);
+				case 7: { Debts_Pay(playerid, DEBT_TAX); Bank_ShowMenu(playerid); }     // debts.inc
+				case 8: { Debts_Pay(playerid, DEBT_FINE); Bank_ShowMenu(playerid); }
 			}
 		}
 		case DIALOG_BANK_DEPOSIT:
@@ -465,6 +611,44 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 				return 1;
 			}
 			Bank_Transfer(playerid, account, amount);
+		}
+		case DIALOG_BANK_ACCOUNTS:
+		{
+			if (listitem == 0) Bank_ShowMenu(playerid);                 // основной счёт — в главное меню
+			else if (listitem - 1 < gBankAccCount[playerid])
+			{
+				gBankAccSel[playerid] = gBankAccIds[playerid][listitem - 1];
+				Bank_ShowAccMenu(playerid);
+			}
+			else
+			{
+				Bank_OpenExtra(playerid);
+				Bank_ShowAccounts(playerid);
+			}
+		}
+		case DIALOG_BANK_ACC_MENU:
+		{
+			new bal = Bank_ExtraBalance(playerid, gBankAccSel[playerid]);
+			if (bal < 0) return Bank_ShowAccounts(playerid);
+			switch (listitem)
+			{
+				case 0: Bank_ShowAccMenu(playerid);
+				case 1: ShowPlayerDialog(playerid, DIALOG_BANK_ACC_IN, DIALOG_STYLE_INPUT, "Переложить на доп. счёт",
+					"{FFFFFF}На основном счёте: $%d\nНа доп. счёте: $%d (максимум $%d)\nСколько переложить?", "Переложить", "Назад",
+					Player[playerid][pBank], bal, BANK_MAX_BALANCE);
+				case 2: ShowPlayerDialog(playerid, DIALOG_BANK_ACC_OUT, DIALOG_STYLE_INPUT, "Переложить на основной счёт",
+					"{FFFFFF}На доп. счёте: $%d\nНа основном счёте: $%d (максимум $%d)\nСколько переложить?", "Переложить", "Назад",
+					bal, Player[playerid][pBank], BANK_MAX_BALANCE);
+				case 3: { Bank_CloseExtra(playerid, gBankAccSel[playerid]); Bank_ShowAccounts(playerid); }
+			}
+		}
+		case DIALOG_BANK_ACC_IN, DIALOG_BANK_ACC_OUT:
+		{
+			if (!IsNumeric(inputtext))
+				SendClientMessage(playerid, COLOR_GREY, "Введи сумму числом.");
+			else
+				Bank_MoveExtra(playerid, gBankAccSel[playerid], strval(inputtext), dialogid == DIALOG_BANK_ACC_IN);
+			Bank_ShowAccMenu(playerid);
 		}
 	}
 	return 1;

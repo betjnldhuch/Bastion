@@ -47,6 +47,7 @@ enum E_PLAYER
 	pPassHash[65],      // хеш парол€ из базы
 	pSalt[17],          // "соль" парол€ из базы
 	pLoginTries,        // сколько раз ошибс€ паролем
+	bool:pRulesOk,       // новичок прин€л правила (регистраци€)
 
 	pMoney,             // сохран€етс€
 	pLevel,             // сохран€етс€
@@ -109,6 +110,10 @@ stock GetRPName(playerid)
 //  reason Ч за что (пишетс€ в журнал денег, economy.inc: /moneylog).
 stock GiveMoney(playerid, amount, const reason[] = "")
 {
+	// ƒеньги в игре Ч 32-битное число: больше $2 147 483 647 не помещаетс€,
+	// без проверки сумма перевернулась бы в минус.
+	if (amount > 0 && Player[playerid][pMoney] > cellmax - amount) amount = cellmax - Player[playerid][pMoney];
+	if (amount < 0 && Player[playerid][pMoney] < cellmin - amount) amount = cellmin - Player[playerid][pMoney];
 	Player[playerid][pMoney] += amount;
 	ResetPlayerMoney(playerid);
 	GivePlayerMoney(playerid, Player[playerid][pMoney]);

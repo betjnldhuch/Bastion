@@ -23,6 +23,8 @@
 
 // ƒеньги и прогресс
 #define START_MONEY         5000             // деньги новичка
+#define REFERRAL_REWARD     5000             // пригласившему за новичка (referral.inc)
+#define REFERRAL_LEVEL      3                // ...когда новичок дойдЄт до этого уровн€
 #define PAYDAY_SALARY       500              // зарплата каждый час (в :00)
 #define EXP_PER_LEVEL       4                // опыта на уровень = уровень * это число
 
@@ -76,7 +78,9 @@
 
 // Ѕанк (bank.inc)
 #define BANK_MAX_TRANSFER   1000000          // максимум за один перевод
-#define BANK_MAX_BALANCE    1000000000       // максимум денег на одном счЄте
+#define BANK_MAX_BALANCE    2000000000       // максимум денег на одном счЄте
+#define BANK_MAX_EXTRA      5                // сколько дополнительных счетов можно открыть
+#define BANK_OPEN_COST      10000            // цена открыти€ доп. счЄта (списываетс€ с основного)
 #define BANK_ATM_FEE_PCT    1                // комисси€ за сн€тие в банкомате, % (0 Ч без комиссии)
 #define BANK_TRANSFER_FEE_PCT 1              // комисси€ за перевод, % (0 Ч без комиссии)
 #define BANK_INTEREST_PERMILLE 1             // проценты на остаток каждый PayDay, в дес€тых дол€х % (1 = 0.1%)
