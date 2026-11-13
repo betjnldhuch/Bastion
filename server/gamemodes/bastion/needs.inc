@@ -996,25 +996,30 @@ stock bool:Cmd_GiveItem(playerid, const params[])
 #define INV_UI_COLS         6
 
 // Окно
-#define INV_UI_X            120.0
-#define INV_UI_Y            112.0
-#define INV_UI_R            520.0
+#define INV_UI_X            110.0
+#define INV_UI_Y            104.0
+#define INV_UI_R            530.0
 #define INV_UI_CELL         44.0
 #define INV_UI_STEP         47.0
-#define INV_UI_GRID_X       127.0
-#define INV_UI_GRID_Y       138.0
-#define INV_UI_INFO_X       414.0       // карточка вещи справа
-#define INV_UI_INFO_R       514.0
+#define INV_UI_GRID_X       118.0
+#define INV_UI_GRID_Y       144.0
+#define INV_UI_INFO_X       410.0       // карточка вещи справа
+#define INV_UI_INFO_R       522.0
+#define INV_UI_BAR_W        44.0        // полоски HP и сытости в шапке
 
-#define INV_UI_COL_BG       0x0E1218E6
-#define INV_UI_COL_HEAD     0x1A212BFF
-#define INV_UI_COL_ACCENT   0xFFCC66FF
-#define INV_UI_COL_CELL     0x222A35FF
-#define INV_UI_COL_CELL_SEL 0x5A4A22FF
-#define INV_UI_COL_EMPTY    0x161C24FF
-#define INV_UI_COL_BTN      0x2E3846FF
-#define INV_UI_COL_BTN_OFF  0x1C222BFF
-#define INV_UI_COL_LABEL    0x9AA4B2FF
+// Цвета как у HTML-окон Bastion (assets/ui/index.html)
+#define INV_UI_COL_BG       0x14161AF2
+#define INV_UI_COL_HEAD     0x1B1E23FF
+#define INV_UI_COL_ACCENT   0xFF7A1AFF
+#define INV_UI_COL_CELL     0x1F2228FF
+#define INV_UI_COL_CELL_SEL 0x6B3510FF
+#define INV_UI_COL_WEAR     0x1D3326FF
+#define INV_UI_COL_EMPTY    0x0E1013FF
+#define INV_UI_COL_BTN      0x2A2D33FF
+#define INV_UI_COL_BTN_OFF  0x1B1E23FF
+#define INV_UI_COL_DROP     0x3A1D20FF
+#define INV_UI_COL_LABEL    0x8C9098FF
+#define INV_UI_COL_TRACK    0x0E1013FF
 
 // Модели вещей для окна (по INV_*)
 static const gInvModels[INV_TYPES] = { 0, 2703, 19346, 11738, 19921, 2702, 19570, 1544, 19896, 11747, 325, 1851, 19801, 1271, 1577, 1578, 1575, 19630 };
@@ -1040,6 +1045,12 @@ enum
 	IUI_BTN_USE,
 	IUI_BTN_GIVE,
 	IUI_BTN_DROP,
+	IUI_BRAND,
+	IUI_HP,
+	IUI_HP_TRACK,
+	IUI_HP_BAR,
+	IUI_FOOD_TRACK,
+	IUI_FOOD_BAR,
 	IUI_TD_COUNT
 }
 
@@ -1084,7 +1095,7 @@ static PlayerText:InvUi_Button(playerid, Float:cx, Float:y, const text[])
 {
 	new PlayerText:td = CreatePlayerTextDraw(playerid, cx, y, text);
 	PlayerTextDrawFont(playerid, td, TEXT_DRAW_FONT_2);
-	PlayerTextDrawLetterSize(playerid, td, 0.19, 0.95);
+	PlayerTextDrawLetterSize(playerid, td, 0.19, 1.0);
 	PlayerTextDrawAlignment(playerid, td, TEXT_DRAW_ALIGN_CENTER);
 	PlayerTextDrawColour(playerid, td, 0xFFFFFFFF);
 	PlayerTextDrawSetOutline(playerid, td, 0);
@@ -1092,7 +1103,7 @@ static PlayerText:InvUi_Button(playerid, Float:cx, Float:y, const text[])
 	PlayerTextDrawSetProportional(playerid, td, true);
 	PlayerTextDrawUseBox(playerid, td, true);
 	PlayerTextDrawBoxColour(playerid, td, INV_UI_COL_BTN);
-	PlayerTextDrawTextSize(playerid, td, 10.0, INV_UI_INFO_R - INV_UI_INFO_X - 12.0);   // по центру: высота, ширина
+	PlayerTextDrawTextSize(playerid, td, 11.0, INV_UI_INFO_R - INV_UI_INFO_X - 14.0);   // по центру: высота, ширина
 	PlayerTextDrawSetSelectable(playerid, td, true);
 	PlayerTextDrawShow(playerid, td);
 	return td;
@@ -1102,8 +1113,12 @@ static InvUi_SetButton(playerid, idx, const text[], bool:enabled)
 {
 	new PlayerText:td = gInvUiTD[playerid][idx];
 	PlayerTextDrawSetString(playerid, td, text);
-	PlayerTextDrawBoxColour(playerid, td, enabled ? INV_UI_COL_BTN : INV_UI_COL_BTN_OFF);
-	PlayerTextDrawColour(playerid, td, enabled ? 0xFFFFFFFF : 0x5C6672FF);
+	new box = INV_UI_COL_BTN, colour = 0xECECECFF;
+	if (idx == IUI_BTN_USE) box = INV_UI_COL_ACCENT, colour = 0xFFFFFFFF;
+	else if (idx == IUI_BTN_DROP) box = INV_UI_COL_DROP, colour = 0xFF9A9DFF;
+	if (!enabled) box = INV_UI_COL_BTN_OFF, colour = 0x5A5F68FF;
+	PlayerTextDrawBoxColour(playerid, td, box);
+	PlayerTextDrawColour(playerid, td, colour);
 	PlayerTextDrawShow(playerid, td);
 }
 
@@ -1173,10 +1188,26 @@ static InvUi_ShowInfo(playerid)
 	}
 }
 
+static InvUi_CellColour(playerid, cell)
+{
+	return gInvUiItem[playerid][cell] >= INV_OUTFIT ? INV_UI_COL_WEAR : INV_UI_COL_CELL;
+}
+
+// Полоска: дорожка и заливка на pct процентов
+static InvUi_Bar(playerid, Float:x, Float:y, pct, colour, track, bar)
+{
+	if (pct < 0) pct = 0;
+	if (pct > 100) pct = 100;
+	gInvUiTD[playerid][track] = InvUi_Box(playerid, x, y, x + INV_UI_BAR_W, -0.1, INV_UI_COL_TRACK);
+	new Float:w = INV_UI_BAR_W * float(pct) / 100.0;
+	if (w < 1.0) w = 1.0;
+	gInvUiTD[playerid][bar] = InvUi_Box(playerid, x, y, x + w, -0.1, pct < 20 ? 0xE5484DFF : (pct < 50 ? 0xFFC940FF : colour));
+}
+
 static InvUi_HighlightCell(playerid, cell, bool:on)
 {
 	if (cell < 0 || cell >= gInvUiCells[playerid]) return;
-	PlayerTextDrawBackgroundColour(playerid, gInvUiCell[playerid][cell], on ? INV_UI_COL_CELL_SEL : INV_UI_COL_CELL);
+	PlayerTextDrawBackgroundColour(playerid, gInvUiCell[playerid][cell], on ? INV_UI_COL_CELL_SEL : InvUi_CellColour(playerid, cell));
 	PlayerTextDrawShow(playerid, gInvUiCell[playerid][cell]);
 	if (gInvUiCount[playerid][cell] != INVALID_PLAYER_TEXT_DRAW) PlayerTextDrawShow(playerid, gInvUiCount[playerid][cell]);
 }
@@ -1234,23 +1265,34 @@ stock Inv_ShowUI(playerid, keepItem = -1)
 
 	new buf[48];
 	// Фон, шапка, полоска-акцент
-	gInvUiTD[playerid][IUI_BG]     = InvUi_Box(playerid, INV_UI_X, INV_UI_Y, INV_UI_R, 23.6, INV_UI_COL_BG);
-	gInvUiTD[playerid][IUI_HEAD]   = InvUi_Box(playerid, INV_UI_X, INV_UI_Y, INV_UI_R, 1.9, INV_UI_COL_HEAD);
-	gInvUiTD[playerid][IUI_ACCENT] = InvUi_Box(playerid, INV_UI_X, INV_UI_Y + 20.0, INV_UI_R, -0.3, INV_UI_COL_ACCENT);
-	gInvUiTD[playerid][IUI_TITLE]  = InvUi_Text(playerid, INV_UI_X + 7.0, INV_UI_Y + 3.0, "BAG", TEXT_DRAW_FONT_2, 0.30, 1.3, INV_UI_COL_ACCENT);
+	gInvUiTD[playerid][IUI_BG]     = InvUi_Box(playerid, INV_UI_X, INV_UI_Y, INV_UI_R, 25.2, INV_UI_COL_BG);
+	gInvUiTD[playerid][IUI_HEAD]   = InvUi_Box(playerid, INV_UI_X, INV_UI_Y, INV_UI_R, 2.9, INV_UI_COL_HEAD);
+	gInvUiTD[playerid][IUI_ACCENT] = InvUi_Box(playerid, INV_UI_X, INV_UI_Y + 29.0, INV_UI_R, -0.3, INV_UI_COL_ACCENT);
+	gInvUiTD[playerid][IUI_BRAND]  = InvUi_Text(playerid, INV_UI_X + 8.0, INV_UI_Y + 3.0, "BASTION ONLINE", TEXT_DRAW_FONT_2, 0.15, 0.7, INV_UI_COL_ACCENT);
+	gInvUiTD[playerid][IUI_TITLE]  = InvUi_Text(playerid, INV_UI_X + 8.0, INV_UI_Y + 11.0, "BAG", TEXT_DRAW_FONT_2, 0.30, 1.3, 0xECECECFF);
 	format(buf, sizeof buf, "%d / %d", n, INV_UI_CELLS);
-	gInvUiTD[playerid][IUI_SLOTS]  = InvUi_Text(playerid, INV_UI_X + 40.0, INV_UI_Y + 6.0, buf, TEXT_DRAW_FONT_1, 0.20, 0.9, INV_UI_COL_LABEL);
-	format(buf, sizeof buf, "FOOD ~%c~%d%%", gHunger[playerid] <= 20 ? 'r' : (gHunger[playerid] <= 50 ? 'y' : 'g'), gHunger[playerid]);
-	gInvUiTD[playerid][IUI_FOOD]   = InvUi_Text(playerid, INV_UI_R - 22.0, INV_UI_Y + 6.0, buf, TEXT_DRAW_FONT_2, 0.18, 0.85, 0xFFFFFFFF, TEXT_DRAW_ALIGN_RIGHT);
+	gInvUiTD[playerid][IUI_SLOTS]  = InvUi_Text(playerid, INV_UI_X + 42.0, INV_UI_Y + 15.0, buf, TEXT_DRAW_FONT_1, 0.20, 0.9, INV_UI_COL_LABEL);
+
+	// HP и сытость: подпись и полоска
+	new Float:hp;
+	GetPlayerHealth(playerid, hp);
+	new hpi = floatround(hp);
+	new Float:sx = INV_UI_R - 140.0;
+	format(buf, sizeof buf, "~h~~r~HP ~w~%d", hpi);
+	gInvUiTD[playerid][IUI_HP]   = InvUi_Text(playerid, sx, INV_UI_Y + 6.0, buf, TEXT_DRAW_FONT_2, 0.17, 0.8, 0xFFFFFFFF);
+	InvUi_Bar(playerid, sx, INV_UI_Y + 19.0, hpi, 0x4CD07DFF, IUI_HP_TRACK, IUI_HP_BAR);
+	format(buf, sizeof buf, "~y~FOOD ~w~%d%%", gHunger[playerid]);
+	gInvUiTD[playerid][IUI_FOOD] = InvUi_Text(playerid, sx + 56.0, INV_UI_Y + 6.0, buf, TEXT_DRAW_FONT_2, 0.17, 0.8, 0xFFFFFFFF);
+	InvUi_Bar(playerid, sx + 56.0, INV_UI_Y + 19.0, gHunger[playerid], 0x4CD07DFF, IUI_FOOD_TRACK, IUI_FOOD_BAR);
 
 	// Крестик
-	new PlayerText:td = InvUi_Text(playerid, INV_UI_R - 13.0, INV_UI_Y + 3.0, "X", TEXT_DRAW_FONT_1, 0.35, 1.3, 0xFF6347FF);
+	new PlayerText:td = InvUi_Text(playerid, INV_UI_R - 15.0, INV_UI_Y + 7.0, "X", TEXT_DRAW_FONT_1, 0.35, 1.4, 0x8C9098FF);
 	PlayerTextDrawTextSize(playerid, td, INV_UI_R - 2.0, 14.0);
 	PlayerTextDrawSetSelectable(playerid, td, true);
 	PlayerTextDrawShow(playerid, td);
 	gInvUiTD[playerid][IUI_CLOSE] = td;
 
-	gInvUiTD[playerid][IUI_FOOTER] = InvUi_Text(playerid, (INV_UI_X + INV_UI_R) / 2.0, INV_UI_Y + 196.0,
+	gInvUiTD[playerid][IUI_FOOTER] = InvUi_Text(playerid, (INV_UI_X + INV_UI_R) / 2.0, INV_UI_Y + 212.0,
 		"Click an item, then an action. ESC - close. List: /invlist", TEXT_DRAW_FONT_1, 0.17, 0.8, INV_UI_COL_LABEL, TEXT_DRAW_ALIGN_CENTER);
 
 	// Ячейки: занятые — 3D-модель, пустые — тёмная плашка
@@ -1266,7 +1308,7 @@ stock Inv_ShowUI(playerid, keepItem = -1)
 		PlayerTextDrawTextSize(playerid, td, INV_UI_CELL, INV_UI_CELL);
 		if (i < n)
 		{
-			PlayerTextDrawBackgroundColour(playerid, td, i == gInvUiSel[playerid] ? INV_UI_COL_CELL_SEL : INV_UI_COL_CELL);
+			PlayerTextDrawBackgroundColour(playerid, td, i == gInvUiSel[playerid] ? INV_UI_COL_CELL_SEL : InvUi_CellColour(playerid, i));
 			PlayerTextDrawSetPreviewModel(playerid, td, gInvUiModel[playerid][i]);
 			if (gInvUiItem[playerid][i] >= INV_OUTFIT) PlayerTextDrawSetPreviewRot(playerid, td, 0.0, 0.0, 0.0, 1.0);
 			else PlayerTextDrawSetPreviewRot(playerid, td, -15.0, 0.0, -30.0, 1.0);
@@ -1285,23 +1327,23 @@ stock Inv_ShowUI(playerid, keepItem = -1)
 		{
 			if (gInvUiItem[playerid][i] == INV_NONE) format(buf, sizeof buf, "%dL", gInvUiAmount[playerid][i]);
 			else format(buf, sizeof buf, "x%d", gInvUiAmount[playerid][i]);
-			gInvUiCount[playerid][i] = InvUi_Text(playerid, x + INV_UI_CELL - 2.0, y + INV_UI_CELL - 11.0, buf, TEXT_DRAW_FONT_1, 0.20, 0.9, 0xFFFFFFFF, TEXT_DRAW_ALIGN_RIGHT);
+			gInvUiCount[playerid][i] = InvUi_Text(playerid, x + INV_UI_CELL - 2.0, y + INV_UI_CELL - 11.0, buf, TEXT_DRAW_FONT_2, 0.17, 0.8, 0xFFFFFFFF, TEXT_DRAW_ALIGN_RIGHT);
 		}
 	}
 
 	// Карточка вещи справа
 	new Float:cx = (INV_UI_INFO_X + INV_UI_INFO_R) / 2.0;
-	gInvUiTD[playerid][IUI_INFO_BG] = InvUi_Box(playerid, INV_UI_INFO_X, INV_UI_GRID_Y, INV_UI_INFO_R, 20.1, INV_UI_COL_HEAD);
-	td = CreatePlayerTextDraw(playerid, INV_UI_INFO_X + 15.0, INV_UI_GRID_Y + 2.0, "_");
+	gInvUiTD[playerid][IUI_INFO_BG] = InvUi_Box(playerid, INV_UI_INFO_X, INV_UI_GRID_Y, INV_UI_INFO_R, 19.6, INV_UI_COL_HEAD);
+	td = CreatePlayerTextDraw(playerid, cx - 35.0, INV_UI_GRID_Y + 2.0, "_");
 	PlayerTextDrawFont(playerid, td, TEXT_DRAW_FONT_MODEL_PREVIEW);
 	PlayerTextDrawUseBox(playerid, td, true);
 	PlayerTextDrawBoxColour(playerid, td, 0x00000000);
 	PlayerTextDrawBackgroundColour(playerid, td, 0x00000000);
-	PlayerTextDrawTextSize(playerid, td, 70.0, 64.0);
+	PlayerTextDrawTextSize(playerid, td, 70.0, 62.0);
 	PlayerTextDrawSetPreviewModel(playerid, td, 19300);
 	gInvUiTD[playerid][IUI_PREVIEW] = td;
 	gInvUiTD[playerid][IUI_NAME]  = InvUi_Text(playerid, cx, INV_UI_GRID_Y + 70.0, "_", TEXT_DRAW_FONT_2, 0.20, 1.0, 0xFFFFFFFF, TEXT_DRAW_ALIGN_CENTER);
-	gInvUiTD[playerid][IUI_COUNT] = InvUi_Text(playerid, cx, INV_UI_GRID_Y + 82.0, "_", TEXT_DRAW_FONT_1, 0.20, 0.9, INV_UI_COL_ACCENT, TEXT_DRAW_ALIGN_CENTER);
+	gInvUiTD[playerid][IUI_COUNT] = InvUi_Text(playerid, cx, INV_UI_GRID_Y + 82.0, "_", TEXT_DRAW_FONT_2, 0.17, 0.8, INV_UI_COL_ACCENT, TEXT_DRAW_ALIGN_CENTER);
 	gInvUiTD[playerid][IUI_HINT]  = InvUi_Text(playerid, cx, INV_UI_GRID_Y + 93.0, "_", TEXT_DRAW_FONT_1, 0.17, 0.8, INV_UI_COL_LABEL, TEXT_DRAW_ALIGN_CENTER);
 	PlayerTextDrawTextSize(playerid, gInvUiTD[playerid][IUI_HINT], 0.0, INV_UI_INFO_R - INV_UI_INFO_X - 6.0);    // перенос строк по ширине карточки
 	gInvUiTD[playerid][IUI_BTN_USE]  = InvUi_Button(playerid, cx, INV_UI_GRID_Y + 116.0, "USE");
