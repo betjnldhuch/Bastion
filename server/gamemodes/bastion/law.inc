@@ -134,8 +134,18 @@ stock Law_Init()
 	for (new i = 0; i < CELL_BARS; i++)
 	{
 		gCellObj[i] = CreateObject(CELL_GATE_MODEL, gCellClosed[i][0], gCellClosed[i][1], gCellClosed[i][2], 0.0, 0.0, gCellClosed[i][3], 150.0);
+		Law_DarkenCellGate(gCellObj[i]);
 	}
-	CreateObject(CELL_GATE_MODEL, CELL_GATE_X, CELL_FAR_Y, CELL_GATE_Z, 0.0, 0.0, CELL_GATE_ROT, 150.0);
+	Law_DarkenCellGate(CreateObject(CELL_GATE_MODEL, CELL_GATE_X, CELL_FAR_Y, CELL_GATE_Z, 0.0, 0.0, CELL_GATE_ROT, 150.0));
+}
+
+// У 19302 своя светлая стальная текстура, а штатные решётки участка тёмные.
+// Красим дверь в тёмный цвет поверх её текстуры (модель -1 и "none" — текстура остаётся своя).
+#define CELL_GATE_COLOR     0xFF2E2E2E
+static Law_DarkenCellGate(objectid)
+{
+	for (new idx = 0; idx < 3; idx++)
+		SetObjectMaterial(objectid, idx, -1, "none", "none", CELL_GATE_COLOR);
 }
 
 stock bool:Law_NearCellGate(playerid, Float:range)
