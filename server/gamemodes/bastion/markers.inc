@@ -32,6 +32,7 @@ enum
 	MK_DEALER,
 	MK_SCHOOL,
 	MK_LIFE,        // точки новых систем (places.inc): ref = PLACE_REF + номер, базы новых работ
+	MK_RENTAL,      // прокат мопедов: ref = id точки в базе (rental.inc)
 	MK_TYPES
 }
 
@@ -390,6 +391,7 @@ stock Marker_OnMoved(m)
 		case MK_GARAGE:  Garage_OnMarkerMoved(ref, x, y, z);
 		case MK_FACTION: Faction_OnMarkerMoved(ref, x, y, z);
 		case MK_LIFE:    Place_OnMarkerMoved(ref, x, y, z);
+		case MK_RENTAL:  Rental_OnMarkerMoved(ref, x, y, z);
 		// Двери, работы, автосалон, автошкола и свои точки берут место прямо из маркера
 	}
 }

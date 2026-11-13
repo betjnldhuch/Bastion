@@ -1159,6 +1159,29 @@ stock bool:Cmd_GetHere(playerid, const params[])
 	return true;
 }
 
+// /spawn [id] Ч вернуть игрока на его место по€влени€ (застр€л, упал под карту и т.п.)
+stock bool:Cmd_ASpawn(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 2)) return true;
+	new pos = 0;
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "»спользование: /spawn [id] Ч заспавнить игрока (на его месте по€влени€)");
+	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "»грок ещЄ не вошЄл в аккаунт.");
+	if (gAJail[target] > 0) return SendClientMessage(playerid, COLOR_GREY, "»грок в деморгане. —начала /unajail.");
+	new PLAYER_STATE:st = GetPlayerState(target);
+	if (st == PLAYER_STATE_DRIVER || st == PLAYER_STATE_PASSENGER)
+	{
+		new Float:x, Float:y, Float:z;
+		GetPlayerPos(target, x, y, z);
+		SetPlayerPos(target, x, y, z + 1.5);    // из машины: иначе спавн не сработает
+	}
+	SpawnPlayer(target);
+	Admin_Log(playerid, "spawn", target);
+	SendClientMessage(target, COLOR_ADMIN, "јдминистратор %s заспавнил теб€.", GetRPName(playerid));
+	SendClientMessage(playerid, COLOR_ADMIN, "%s [%d] заспавнен.", GetRPName(target), target);
+	return true;
+}
+
 // =====================================================================
 //  јдмин-чат, список админов, назначение
 // =====================================================================
@@ -1607,13 +1630,19 @@ stock Admin_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 stock bool:Cmd_AHelp(playerid)
 {
 	if (!Admin_Check(playerid, 1)) return true;
-	new text[2200];
+	new text[3800];
 	strcat(text, "{FF66FF}1 Ч ’елпер\n{FFFFFF}/a Ч админ-чат   /amenu Ч панель (удобно с телефона)   /reports /ans Ч репорты\n");
 	strcat(text, "/check /spec /specoff /specnext /specprev /goto /kick /mute /unmute /admins /aduty\n");
 	strcat(text, "“елепорт: метка на карте (выкл. /maptp), /tp Ч список точек, /back Ч назад\n\n");
-	strcat(text, "{FF66FF}2 Ч ћодератор\n{FFFFFF}/warn /ajail /unajail /freeze /unfreeze /slap /gethere /sethp /setskin /jail /unjail\n/sendto /gotocar /fixveh /flip\n\n");
+	strcat(text, "{FF66FF}2 Ч ћодератор\n{FFFFFF}/warn /ajail /unajail /freeze /unfreeze /slap /gethere /spawn /sethp /setskin /jail /unjail\n/sendto /gotocar /fixveh /flip\n\n");
 	strcat(text, "{FF66FF}3 Ч јдминистратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /moneylog /dveh\n/veh Ч меню машин, /veh infernus Ч по названию, /veh 411 Ч по номеру\n/ao /gotocoord /respawncars /setweather\n/givelic Ч выдать лицензию   /setfuel Ч заправить машину\n\n");
-	strcat(text, "{FF66FF}4 Ч —т. администратор\n{FFFFFF}/unban, бан навсегда (0 дней), /addtp /deltp, фракции, дома, бизнесы, ј«—, банкоматы, районы\n/givefood /giveitem Ч еда и вещи   /addexampoint /clearexam Ч маршрут экзамена\n/addgarage [1-2] /delgarage Ч —“ќ и штрафсто€нки\n/pos [название] /points /dev Ч координаты   /mo Ч маппинг (объекты, удаление зданий, выгрузка)\n\n");
+	strcat(text, "{FF66FF}4 Ч —т. администратор\n{FFFFFF}/unban, бан навсегда (0 дней), /addtp /deltp, фракции, дома, бизнесы, ј«—, банкоматы, районы\n/givefood /giveitem Ч еда и вещи   /addexampoint /clearexam Ч маршрут экзамена\n/addgarage [1-2] /delgarage Ч —“ќ и штрафсто€нки\n/pos [название] /points /dev Ч координаты   /mo Ч маппинг (объекты, удаление зданий, выгрузка)\n");
+	strcat(text, "ƒома: /createhouse /delhouse /sethouseint /gotohouse, шкаф: /makestorage   ¬ходы: /adddoor /setdoor /deldoor /doors\n");
+	strcat(text, "Ѕизнесы: /createbiz /delbiz /setbizint   /addatm /delatm /addfuel /delfuel /addgate /delgate\n");
+	strcat(text, "—павн: /addspawn /delspawn /spawns   ѕрокат мопедов: /addmoped /delmoped /mopeds /mopedprice\n");
+	strcat(text, "‘ракции: /createfaction /delfaction /flist /fcolor /makeleader /setfaction /setrankname\n/setfspawn /setfduty /setfint /delfint /fintlock /addfcar /delfcar /setfstore /setarmystore\n");
+	strcat(text, "«аводы: /addfactory /setfpoint /setfowner /delfactory /factories   „Єрный рынок: /addbm /delbm /bmprice\n");
+	strcat(text, "–айоны: /addturf /setturf /delturf\n\n");
 	strcat(text, "{FF66FF}5 Ч  уратор\n{FFFFFF}всЄ, что у 4 уровн€; старший над администраторами\n\n");
 	strcat(text, "{FF66FF}6 Ч «ам. гл. администратора\n{FFFFFF}/banip [id или IP] [дни] [причина]   /unbanip [IP]\n\n");
 	strcat(text, "{FF66FF}7 Ч √л. администратор\n{FFFFFF}/makeadmin /givemoney /settax Ч налоги   /backup Ч копи€ базы\n\n");
@@ -1832,6 +1861,7 @@ stock Admin_OnCommand(playerid, const cmd[], const params[])
 	if (!strcmp(cmd, "/specprev", true))    { Admin_SpecCycle(playerid, -1); return 1; }
 	if (!strcmp(cmd, "/goto", true))        { Cmd_Goto(playerid, params); return 1; }
 	if (!strcmp(cmd, "/gethere", true))     { Cmd_GetHere(playerid, params); return 1; }
+	if (!strcmp(cmd, "/spawn", true) || !strcmp(cmd, "/aspawn", true)) { Cmd_ASpawn(playerid, params); return 1; }
 	if (!strcmp(cmd, "/kick", true))        { Cmd_Kick(playerid, params); return 1; }
 	if (!strcmp(cmd, "/mute", true))        { Cmd_Mute(playerid, params); return 1; }
 	if (!strcmp(cmd, "/unmute", true))      { Cmd_Unmute(playerid, params); return 1; }

@@ -163,5 +163,8 @@ enum
 	// --- Донат (donate.inc)
 	DIALOG_DONATE,
 	DIALOG_DONATE_MONEY,
-	DIALOG_DONATE_INPUT
+	DIALOG_DONATE_INPUT,
+
+	// --- Аренда мопедов (rental.inc)
+	DIALOG_RENTAL
 }

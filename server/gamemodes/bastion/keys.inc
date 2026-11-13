@@ -215,6 +215,8 @@ stock Keys_Interact(playerid)
 	if (Hospital_TryAlt(playerid)) return;
 	if (Marriage_TryAlt(playerid)) return;
 	if (Prison_TryAlt(playerid)) return;
+	// 0б. Прокат мопедов (rental.inc)
+	if (Rental_TryAlt(playerid)) return;
 
 	// 1. Внутри дома у двери — выйти
 	new h = Player[playerid][pHouseInside];

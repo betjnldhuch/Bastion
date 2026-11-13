@@ -89,6 +89,7 @@
 #include "bastion/hospital.inc"   // больница: лечение, страховка, медкарта
 #include "bastion/marriage.inc"   // свадьба, общий дом и семейный счЄт
 #include "bastion/donate.inc"     // донат-меню: монеты, VIP
+#include "bastion/rental.inc"     // аренда мопедов: /addmoped, ALT у точки
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
 #include "bastion/fps.inc"
@@ -155,6 +156,7 @@ public OnGameModeInit()
 	Hospital_Init();
 	Marriage_Init();
 	Donate_Init();
+	Rental_Init();         // точки проката мопедов (rental.inc)
 	AC_Init();            // античит (anticheat.inc)
 	Backup_Init();        // копи€ базы, если сегодн€шней ещЄ нет
 
@@ -225,6 +227,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Wound_Reset(playerid);
 	Fbi_OnDisconnect(playerid);         // ‘Ѕ–: маскировка, прослушка, слежка
 	Rob_OnDisconnect(playerid);
+	Rental_OnDisconnect(playerid);
 	Player[playerid][pLogged] = false;
 	return 1;
 }
@@ -410,6 +413,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Casino_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Hospital_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Donate_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Rental_OnDialog(playerid, dialogid, response)) return 1;
 	return 0;
 }
 
@@ -437,6 +441,7 @@ public OnPlayerStateChange(playerid, PLAYER_STATE:newstate, PLAYER_STATE:oldstat
 		if (!Factions_OnBecomeDriver(playerid)) Vehicles_OnBecomeDriver(playerid);
 		Jobs_OnBecomeDriver(playerid);      // рабочие машины Ч только работникам
 		Licenses_OnBecomeDriver(playerid);  // учебна€ машина, предупреждение без прав
+		Rental_OnBecomeDriver(playerid);    // чужой прокатный мопед
 	}
 	else if (newstate == PLAYER_STATE_PASSENGER)
 	{
@@ -455,6 +460,7 @@ public OnPlayerKeyStateChange(playerid, KEY:newkeys, KEY:oldkeys)
 
 public OnVehicleSpawn(vehicleid)
 {
+	if (Rental_OnVehicleSpawn(vehicleid)) return 1;   // разбитый прокатный мопед пропадает
 	Fuel_OnVehicleSpawn(vehicleid);
 	Vehicles_OnSpawn(vehicleid);
 	WorkLife_OnVehicleSpawn(vehicleid); // инкассаторска€ машина вернулась Ч денег в ней нет
@@ -478,6 +484,7 @@ public OnMinuteTimer()
 	Admin_OnMinute();       // деморган и муты
 	Drugs_OnMinute();       // кусты растут, ломка
 	Casino_OnMinute();      // розыгрыш лотереи
+	Rental_OnMinute();      // срок аренды мопедов
 
 	if (minute == 0 && hour != gLastPayDayHour)
 	{
