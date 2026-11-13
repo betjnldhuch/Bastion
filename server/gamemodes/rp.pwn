@@ -81,6 +81,14 @@
 #include "bastion/families.inc"   // семьи: организации игроков
 #include "bastion/wounded.inc"    // ранение вместо смерти, /revive, /aid
 #include "bastion/robbery.inc"    // /rob Ч ограбление магазинов
+#include "bastion/places.inc"     // точки новых систем, которые ставит админ: /place
+#include "bastion/drugs.inc"      // наркотики: кусты, торговец, эффекты, ломка
+#include "bastion/worklife.inc"   // работы: рыбак, фермер, инкассатор, мусорщик
+#include "bastion/casino.inc"     // казино и лотере€
+#include "bastion/prison.inc"     // федеральна€ тюрьма и еЄ охрана
+#include "bastion/hospital.inc"   // больница: лечение, страховка, медкарта
+#include "bastion/marriage.inc"   // свадьба, общий дом и семейный счЄт
+#include "bastion/donate.inc"     // донат-меню: монеты, VIP
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
 #include "bastion/fps.inc"
@@ -139,6 +147,14 @@ public OnGameModeInit()
 	Fuel_Init();          // после всех машин: им выдаЄтс€ бензин
 	Wound_Init();
 	Robbery_Init();
+	Places_Init();        // точки новых систем (places.inc)
+	Drugs_Init();
+	WorkLife_Init();      // после Places_Init: машины работ сто€т в точках
+	Casino_Init();
+	Prison_Init();
+	Hospital_Init();
+	Marriage_Init();
+	Donate_Init();
 	AC_Init();            // античит (anticheat.inc)
 	Backup_Init();        // копи€ базы, если сегодн€шней ещЄ нет
 
@@ -188,6 +204,10 @@ public OnPlayerConnect(playerid)
 public OnPlayerDisconnect(playerid, reason)
 {
 	Law_OnDisconnect(playerid, reason); // метка задержани€: вышел из игры Ч деморган (law.inc)
+	Prison_OnDisconnect(playerid);      // до сохранени€: сорванный побег добавл€ет срок
+	Drugs_OnDisconnect(playerid);
+	WorkLife_OnDisconnect(playerid);
+	Casino_OnDisconnect(playerid);
 	Platform_OnDisconnect(playerid);
 	Supply_ResetPlayer(playerid);
 	Admin_OnDisconnect(playerid);
@@ -288,9 +308,7 @@ public OnPlayerSpawn(playerid)
 	{
 		Player[playerid][pDied] = false;
 		Needs_OnHospital(playerid);         // в больнице покормили (needs.inc)
-		GiveMoney(playerid, -HOSPITAL_FEE, "счЄт больницы");
-		Econ_ToTreasury(HOSPITAL_FEE);
-		SendClientMessage(playerid, COLOR_WHITE, "“еб€ вылечили в больнице. —чЄт за лечение: $%d.", HOSPITAL_FEE);
+		Hospital_Bill(playerid);            // счЄт больницы, со страховкой Ч бесплатно (hospital.inc)
 	}
 
 	Account_SetNormalSpawn(playerid);   // следующий спавн Ч снова обычный
@@ -321,6 +339,7 @@ public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 	Factions_OnDeath(playerid);
 	Phone_HangUp(playerid);
 	Inv_ResetMask(playerid);            // маска слетает (needs.inc)
+	Drugs_OnDeath(playerid);            // эффект наркотиков проходит
 	if (!Wound_IsWounded(playerid)) Turfs_OnDeath(playerid, killerid);   // раненого засчитали, когда он упал
 
 	if (Wound_OnDeath(playerid)) return 1;  // по€витс€ раненым на месте (wounded.inc)
@@ -387,6 +406,10 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (BM_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Factory_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Factions_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Drugs_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Casino_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Hospital_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Donate_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	return 0;
 }
 
@@ -395,6 +418,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 // =====================================================================
 public OnPlayerEnterCheckpoint(playerid)
 {
+	if (Prison_OnEnterCheckpoint(playerid)) return 1;   // работа заключЄнных (prison.inc)
 	Jobs_OnEnterCheckpoint(playerid);
 	return 1;
 }
@@ -433,6 +457,7 @@ public OnVehicleSpawn(vehicleid)
 {
 	Fuel_OnVehicleSpawn(vehicleid);
 	Vehicles_OnSpawn(vehicleid);
+	WorkLife_OnVehicleSpawn(vehicleid); // инкассаторска€ машина вернулась Ч денег в ней нет
 	return 1;
 }
 
@@ -451,6 +476,8 @@ public OnMinuteTimer()
 	Needs_OnMinute();       // голод
 	Factions_OnMinute();    // тюремные сроки
 	Admin_OnMinute();       // деморган и муты
+	Drugs_OnMinute();       // кусты растут, ломка
+	Casino_OnMinute();      // розыгрыш лотереи
 
 	if (minute == 0 && hour != gLastPayDayHour)
 	{
@@ -499,6 +526,7 @@ stock PayDay()
 
 		Econ_PayDay(i, PAYDAY_SALARY + fpay);   // налоги (economy.inc)
 		Debts_PayDay(i);                        // напоминание о долгах, розыск должников (debts.inc)
+		Donate_PayDay(i);       // VIP: прибавка и двойной опыт (donate.inc)
 		Bank_PayDay(i);         // проценты по счЄту и баланс (bank.inc)
 
 		if (Player[i][pExp] >= Player[i][pLevel] * EXP_PER_LEVEL)

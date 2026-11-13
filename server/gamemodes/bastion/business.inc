@@ -6,7 +6,7 @@
 //  BIZ_SALE_SHARE% от каждой покупки и BIZ_PAYDAY_INCOME каждый PayDay.
 //  «абрать деньги из кассы: /bizcash (сто€ у своего бизнеса).
 //
-//  “ипы: 1 Ч магазин 24/7, 2 Ч бар, 3 Ч одежда, 4 Ч оружейный.
+//  “ипы: 1 Ч магазин 24/7, 2 Ч бар, 3 Ч одежда, 4 Ч оружейный, 5 Ч казино (casino.inc).
 //  јдмины (4+): /createbiz [тип] [цена] [название], /delbiz
 //
 //  »нтерьер: у каждого бизнеса стандартный интерьер GTA по его типу (временное решение).
@@ -30,21 +30,23 @@ enum
 	BIZ_SHOP,       // 1 Ч 24/7
 	BIZ_BAR,        // 2 Ч бар
 	BIZ_CLOTHES,    // 3 Ч одежда
-	BIZ_GUNS        // 4 Ч оружейный
+	BIZ_GUNS,       // 4 Ч оружейный
+	BIZ_CASINO      // 5 Ч казино (casino.inc)
 }
-#define BIZ_TYPES           5
+#define BIZ_TYPES           6
 
-static const gBizTypeNames[BIZ_TYPES][24] = { "-", "ћагазин 24/7", "Ѕар", "ћагазин одежды", "ќружейный магазин" };
+static const gBizTypeNames[BIZ_TYPES][24] = { "-", "ћагазин 24/7", "Ѕар", "ћагазин одежды", "ќружейный магазин", " азино" };
 
 // —тандартные интерьеры по типу бизнеса: номер интерьера и точка у двери (x, y, z, угол)
-static const gBizIntId[BIZ_TYPES] = { 0, 17, 11, 15, 1 };
+static const gBizIntId[BIZ_TYPES] = { 0, 17, 11, 15, 1, 10 };
 static const Float:gBizIntPos[BIZ_TYPES][4] =
 {
 	{ 0.0, 0.0, 0.0, 0.0 },
 	{ -25.88, -185.87, 1003.55, 0.0 },      // 24/7
 	{ 501.98, -69.15, 998.76, 180.0 },      // бар Ten Green Bottles
 	{ 207.74, -109.02, 1005.13, 0.0 },      // Binco
-	{ 286.15, -40.64, 1001.52, 0.0 }        // Ammu-Nation
+	{ 286.15, -40.64, 1001.52, 0.0 },       // Ammu-Nation
+	{ 2018.95, 1017.09, 996.88, 90.0 }      // казино Four Dragons
 };
 
 // „то можно купить
@@ -620,6 +622,7 @@ stock bool:Cmd_Buy(playerid)
 	new b = Biz_GetNearby(playerid);
 	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "ѕодойди к значку магазина (буква i).");
 	if (Biz[b][bInt] != 0 && !Biz_IsInside(playerid, b)) return SendClientMessage(playerid, COLOR_GREY, "“оргуют внутри. ¬ойти: ALT или /enter у значка.");
+	if (Biz[b][bType] == BIZ_CASINO) return Casino_Show(playerid, b);     // игры (casino.inc)
 
 	new list[1024] = "“овар\t÷ена\n", line[64], n = 0;
 	for (new i = 0; i < sizeof (gBizItems) && n < sizeof (gBuyList[]); i++)
@@ -707,7 +710,7 @@ stock bool:Cmd_CreateBiz(playerid, const params[])
 	new pos = 0, type, price, name[32];
 	if (!NextIntParam(params, pos, type) || type <= BIZ_NONE || type >= BIZ_TYPES
 		|| !NextIntParam(params, pos, price) || price < 1 || !RestParam(params, pos, name))
-		return SendClientMessage(playerid, COLOR_GREY, "»спользование: /createbiz [тип 1-4] [цена] [название]  (1 24/7, 2 бар, 3 одежда, 4 оружие)");
+		return SendClientMessage(playerid, COLOR_GREY, "»спользование: /createbiz [тип 1-5] [цена] [название]  (1 24/7, 2 бар, 3 одежда, 4 оружие, 5 казино)");
 	if (GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "Ѕизнес можно ставить только на улице.");
 	if (gBizCount >= MAX_BUSINESSES) return SendClientMessage(playerid, COLOR_GREY, "ƒостигнут лимит бизнесов (MAX_BUSINESSES).");
 

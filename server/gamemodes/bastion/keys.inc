@@ -209,6 +209,13 @@ stock Keys_Interact(playerid)
 	// 0а. Заводы, ящики, склады организаций, чёрный рынок (factions.inc)
 	if (Factory_TryAlt(playerid)) return;
 
+	// 0б. Кусты и торговец, лотерея, регистратура, церковь, пост тюрьмы
+	if (Drugs_TryAlt(playerid)) return;
+	if (Casino_TryAlt(playerid)) return;
+	if (Hospital_TryAlt(playerid)) return;
+	if (Marriage_TryAlt(playerid)) return;
+	if (Prison_TryAlt(playerid)) return;
+
 	// 1. Внутри дома у двери — выйти
 	new h = Player[playerid][pHouseInside];
 	if (h != -1 && IsPlayerInRangeOfPoint(playerid, 2.0, House[h][hIX], House[h][hIY], House[h][hIZ]))

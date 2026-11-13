@@ -135,6 +135,11 @@ stock Vehicles_LoadForPlayer(playerid)
 	Needs_LoadPlayer(playerid);         // сытость и инвентарь (needs.inc)
 	Houses_LoadPlayer(playerid);        // съёмная комната (houses.inc)
 	Garage_LoadPlayer(playerid);        // машина на штрафстоянке (garage.inc)
+	Drugs_LoadPlayer(playerid);         // зависимость (drugs.inc)
+	Prison_LoadPlayer(playerid);        // сидит ли в тюрьме (prison.inc)
+	Hospital_LoadPlayer(playerid);      // страховка и медкарта (hospital.inc)
+	Marriage_LoadPlayer(playerid);      // супруг (marriage.inc)
+	Donate_LoadPlayer(playerid);        // донат-монеты и VIP (donate.inc)
 }
 
 // При выходе игрока машина пропадает (и появится снова при входе)

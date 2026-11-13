@@ -11,8 +11,13 @@ enum
 	JOB_TAXI,       // таксист
 	JOB_BUS,        // водитель автобуса
 	JOB_TRUCKER,    // дальнобойщик
-	JOB_MECHANIC    // механик
+	JOB_MECHANIC,   // механик
+	JOB_FISHER,     // рыбак (worklife.inc)
+	JOB_FARMER,     // фермер
+	JOB_COLLECTOR,  // инкассатор
+	JOB_GARBAGE     // мусорщик
 }
+new gServerWeather = 1;         // погода сервера (/setweather); после эффекта наркотиков возвращаетс€ она (drugs.inc)
 
 // ‘ракции (подробности Ч в factions.inc)
 #define MAX_FACTIONS        51          // 0 = нет фракции, 1..7 Ч посто€нные, 8..50 Ч созданные в игре (/createfaction)
@@ -261,3 +266,19 @@ stock SendAdminMessage(colour, const message[])
 		}
 	}
 }
+
+// ‘ункции новых модулей с результатом bool:, которые вызываютс€ из файлов выше по списку
+forward bool:DB_TableExists(const table[]);
+forward bool:WorkLife_NeedsLicense(job);
+forward bool:WorkLife_StartWork(playerid);
+forward bool:WorkLife_OnHQAlt(playerid, job);
+forward bool:Casino_Show(playerid, b);
+forward bool:Prison_TryPutInCell(playerid);
+forward bool:Prison_TryRelease(playerid);
+forward bool:Prison_OnMinute(playerid);
+forward bool:Prison_IsGuardOnDuty(playerid);
+forward bool:Prison_OnEnterCheckpoint(playerid);
+forward bool:Hospital_HasMedcard(playerid);
+forward bool:Family_IsSpouseOf(playerid, dbid);
+forward bool:Family_IsHouseMember(playerid, h);
+forward bool:Donate_IsVip(playerid);

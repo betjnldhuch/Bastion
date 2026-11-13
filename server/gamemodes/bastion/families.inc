@@ -11,6 +11,9 @@
 //  Глава и заместитель принимают и выгоняют, глава меняет названия
 //  рангов, цвет и снимает деньги из общака.
 //
+//  Семейный дом: глава встаёт у своего дома и вводит /famhouse. Все в семье входят
+//  в него (даже закрытый), закрывают /lock и могут появляться у него (/setspawn).
+//  /famhouse off — убрать. Хранится в families.house (номер дома в базе).
 //  Команды: /famhelp
 //  Данные: таблицы families и family_ranks, поля accounts.family и famrank.
 // =====================================================================
@@ -29,7 +32,8 @@ enum E_FAMILY
 	famType[16],        // «Семья», «Банда» — как назвал создатель
 	famColor,
 	famBank,
-	famOwner            // аккаунт главы
+	famOwner,           // аккаунт главы
+	famHouse            // номер семейного дома в базе (0 — нет)
 }
 static Family[MAX_FAMILIES][E_FAMILY];
 static gFamRankName[MAX_FAMILIES][FAMILY_RANKS][24];
@@ -53,9 +57,10 @@ stock Families_Init()
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS family_ranks (family INTEGER NOT NULL, rank INTEGER NOT NULL, name TEXT, PRIMARY KEY (family, rank))"));
 	DB_AddColumn("accounts", "family", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "famrank", "INTEGER DEFAULT 0");
+	DB_AddColumn("families", "house", "INTEGER DEFAULT 0");
 
 	new loaded = 0;
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, name, type, color, bank, owner FROM families ORDER BY id LIMIT %d", MAX_FAMILIES);
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, name, type, color, bank, owner, house FROM families ORDER BY id LIMIT %d", MAX_FAMILIES);
 	if (r != DBResult:0)
 	{
 		for (new i = 0, rows = DB_GetRowCount(r); i < rows; i++)
@@ -66,6 +71,7 @@ stock Families_Init()
 			Family[loaded][famColor] = DB_GetFieldInt(r, 3);
 			Family[loaded][famBank] = DB_GetFieldInt(r, 4);
 			Family[loaded][famOwner] = DB_GetFieldInt(r, 5);
+			Family[loaded][famHouse] = DB_GetFieldInt(r, 6);
 			Family_DefaultRanks(loaded);
 			loaded++;
 			DB_SelectNextRow(r);
@@ -156,6 +162,34 @@ stock Family_GetPlayerText(playerid)
 	return text;
 }
 
+// Семейный дом игрока (индекс в House[], -1 — нет)
+stock Family_HouseOf(playerid)
+{
+	new s = gFam[playerid];
+	if (s == -1 || Family[s][famHouse] == 0) return -1;
+	for (new h = 0; h < gHouseCount; h++)
+	{
+		if (House[h][hDbId] != Family[s][famHouse]) continue;
+		if (House[h][hOwner] == 0) return -1;       // дом продали — семейного больше нет
+		return h;
+	}
+	return -1;
+}
+
+// Игрок может войти в закрытый дом h как член семьи
+stock bool:Family_IsHouseMember(playerid, h)
+{
+	return h != -1 && Family_HouseOf(playerid) == h;
+}
+
+static Family_HouseText(playerid)
+{
+	new t[24], h = Family_HouseOf(playerid);
+	if (h == -1) strcat(t, "нет (/famhouse)");
+	else format(t, sizeof t, "№%d", House[h][hDbId]);
+	return t;
+}
+
 static Family_SaveMember(playerid)
 {
 	new s = gFam[playerid];
@@ -191,6 +225,30 @@ static bool:Family_Need(playerid, rank)
 		else SendClientMessage(playerid, COLOR_GREY, "Это могут только глава и заместитель (ранг %d+).", rank);
 		return false;
 	}
+	return true;
+}
+
+static bool:Cmd_FamHouse(playerid, const params[])
+{
+	if (!Family_Need(playerid, FAMILY_RANKS)) return true;
+	new s = gFam[playerid], pos = 0, word[8], msg[144];
+	if (NextParam(params, pos, word) && !strcmp(word, "off", true))
+	{
+		if (Family[s][famHouse] == 0) return SendClientMessage(playerid, COLOR_GREY, "Семейного дома нет.");
+		Family[s][famHouse] = 0;
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE families SET house = 0 WHERE id = %d", Family[s][famDb]));
+		format(msg, sizeof msg, "[%s] %s убрал семейный дом.", Family[s][famType], GetRPName(playerid));
+		Family_Message(s, msg);
+		return true;
+	}
+	new h = House_GetNearby(playerid);
+	if (h == -1 && Player[playerid][pHouseInside] != -1 && House_IsInside(playerid, Player[playerid][pHouseInside])) h = Player[playerid][pHouseInside];
+	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Встань у двери своего дома (или зайди в него). Убрать семейный дом: /famhouse off");
+	if (House[h][hOwner] != Player[playerid][pDbId]) return SendClientMessage(playerid, COLOR_GREY, "Семейным можно сделать только свой дом.");
+	Family[s][famHouse] = House[h][hDbId];
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE families SET house = %d WHERE id = %d", Family[s][famHouse], Family[s][famDb]));
+	format(msg, sizeof msg, "[%s] %s сделал дом №%d семейным. Входить может вся семья, спавн: /setspawn.", Family[s][famType], GetRPName(playerid), House[h][hDbId]);
+	Family_Message(s, msg);
 	return true;
 }
 
@@ -429,8 +487,8 @@ static bool:Cmd_Fam(playerid)
 {
 	if (!Family_Need(playerid, 1)) return true;
 	new s = gFam[playerid], text[1200], line[96], online = 0;
-	format(text, sizeof text, "{FFFFFF}%s «%s»\nУчастников: %d\nОбщак: {33AA33}$%d{FFFFFF}\nТвой ранг: %s (%d)\n\n{FFFF00}Сейчас в игре\n{FFFFFF}",
-		Family[s][famType], Family[s][famName], Family_Members(s), Family[s][famBank], gFamRankName[s][gFamRank[playerid] - 1], gFamRank[playerid]);
+	format(text, sizeof text, "{FFFFFF}%s «%s»\nУчастников: %d\nОбщак: {33AA33}$%d{FFFFFF}\nТвой ранг: %s (%d)\nСемейный дом: %s\n\n{FFFF00}Сейчас в игре\n{FFFFFF}",
+		Family[s][famType], Family[s][famName], Family_Members(s), Family[s][famBank], gFamRankName[s][gFamRank[playerid] - 1], gFamRank[playerid], Family_HouseText(playerid));
 	for (new i = 0; i < MAX_PLAYERS && online < 25; i++)
 	{
 		if (!IsPlayerConnected(i) || !Player[i][pLogged] || gFam[i] != s) continue;
@@ -531,7 +589,7 @@ static bool:Cmd_FamHelp(playerid)
 	strcat(text, "{FFFF00}Глава и заместитель (ранг 5-6)\n{FFFFFF}");
 	strcat(text, "/faminvite [id]   /famkick [id]   /famoffkick [Имя_Фамилия]\n/famrank [id] [ранг]\n\n");
 	strcat(text, "{FFFF00}Только глава (ранг 6)\n{FFFFFF}");
-	strcat(text, "/fambank take [сумма] — снять из общака\n/famrankname [ранг] [название]   /famcolor [RRGGBB]\n");
+	strcat(text, "/fambank take [сумма] — снять из общака\n/famrankname [ранг] [название]   /famcolor [RRGGBB]\n/famhouse — свой дом сделать семейным (off — убрать)\n");
 	strcat(text, "/famleader [id] — передать семью   /famdisband — распустить");
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Семьи", "%s", "Закрыть", "", text);
 	return true;
@@ -557,5 +615,6 @@ stock Families_OnCommand(playerid, const cmd[], const params[])
 	if (!strcmp(cmd, "/fambank", true))     { Cmd_FamBank(playerid, params); return 1; }
 	if (!strcmp(cmd, "/famrankname", true)) { Cmd_FamRankName(playerid, params); return 1; }
 	if (!strcmp(cmd, "/famcolor", true))    { Cmd_FamColor(playerid, params); return 1; }
+	if (!strcmp(cmd, "/famhouse", true))    { Cmd_FamHouse(playerid, params); return 1; }
 	return 0;
 }
