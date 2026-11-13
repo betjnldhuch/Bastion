@@ -152,6 +152,19 @@ enum
 	DIALOG_FTRANSFER,
 	DIALOG_LOCKER,
 
+	// --- Новые системы: наркотики, казино, лотерея, больница
+	DIALOG_DRUG_DEALER,
+	DIALOG_CASINO,
+	DIALOG_CASINO_PICK,
+	DIALOG_CASINO_BET,
+	DIALOG_LOTTO,
+	DIALOG_HOSPITAL,
+
+	// --- Донат (donate.inc)
+	DIALOG_DONATE,
+	DIALOG_DONATE_MONEY,
+	DIALOG_DONATE_INPUT,
+
 	// --- Аренда мопедов (rental.inc)
 	DIALOG_RENTAL
 }

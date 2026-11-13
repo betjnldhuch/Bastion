@@ -91,7 +91,8 @@ static bool:Commands_IsAction(const cmd[])
 		"/buy", "/buycar", "/sellcar", "/park", "/engine", "/fill", "/canister",
 		"/tune", "/unimpound", "/bank", "/atm", "/pay", "/fbank", "/fstorage",
 		"/buybiz", "/sellbiz", "/bizcash", "/inv", "/i", "/invlist", "/pickup",
-		"/aid", "/carry"
+		"/aid", "/carry", "/fish", "/robvan", "/pwork", "/escape", "/marry", "/divorce",
+		"/sbank", "/selldrugs"
 	};
 	for (new i = 0; i < sizeof (list); i++)
 	{
@@ -162,6 +163,19 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/b", true))           { Cmd_OOC(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/pm", true))          { Cmd_PM(playerid, cmdtext[pos]); return 1; }
 
+	// --- новые системы: точки, наркотики, работы, казино, тюрьма, больница, свадьбы ---
+	if (!strcmp(cmd, "/place", true))       { Cmd_Place(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/places", true))      { Cmd_Places(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/unplace", true))     { Cmd_Unplace(playerid); return 1; }
+	if (!strcmp(cmd, "/gotoplace", true))   { Cmd_GotoPlace(playerid, cmdtext[pos]); return 1; }
+	if (Drugs_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
+	if (WorkLife_OnCommand(playerid, cmd)) return 1;
+	if (Casino_OnCommand(playerid, cmd)) return 1;
+	if (Prison_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
+	if (Hospital_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
+	if (Marriage_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
+	if (Donate_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
+
 	// --- работа (jobs.inc) ---
 	if (!strcmp(cmd, "/getjob", true))      { Cmd_GetJob(playerid); return 1; }
 	if (!strcmp(cmd, "/quitjob", true))     { Cmd_QuitJob(playerid); return 1; }
@@ -199,6 +213,14 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/exit", true))        { Cmd_Exit(playerid); return 1; }
 	if (!strcmp(cmd, "/lock", true))        { Cmd_Lock(playerid); return 1; }
 	if (!strcmp(cmd, "/house", true))       { Cmd_House(playerid); return 1; }
+	if (!strcmp(cmd, "/disguise", true))    { Cmd_Disguise(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/tap", true))         { Cmd_Tap(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/tapf", true))        { Cmd_TapF(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/fdisguise", true))   { Cmd_FDisguise(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/untap", true))       { Cmd_Untap(playerid); return 1; }
+	if (!strcmp(cmd, "/track", true))       { Cmd_Track(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/dossier", true))     { Cmd_Dossier(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/makestorage", true) || !strcmp(cmd, "/makestorgage", true)) { Cmd_MakeStorage(playerid); return 1; }
 	if (!strcmp(cmd, "/housepay", true))    { Cmd_HousePay(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/rent", true))        { Cmd_Rent(playerid); return 1; }
 	if (!strcmp(cmd, "/unrent", true))      { Cmd_Unrent(playerid); return 1; }
@@ -326,6 +348,10 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/buybiz", true))      { Cmd_BuyBiz(playerid); return 1; }
 	if (!strcmp(cmd, "/sellbiz", true))     { Cmd_SellBiz(playerid); return 1; }
 	if (!strcmp(cmd, "/bizinfo", true))     { Cmd_BizInfo(playerid); return 1; }
+	if (!strcmp(cmd, "/bizlock", true))     { Cmd_BizLock(playerid); return 1; }
+	if (!strcmp(cmd, "/gotobiz", true))     { Cmd_GotoBiz(playerid, cmdtext[pos], false); return 1; }
+	if (!strcmp(cmd, "/gotobizint", true))  { Cmd_GotoBiz(playerid, cmdtext[pos], true); return 1; }
+	if (!strcmp(cmd, "/bizlist", true))     { Cmd_BizList(playerid); return 1; }
 	if (!strcmp(cmd, "/bizcash", true))     { Cmd_BizCash(playerid); return 1; }
 	if (!strcmp(cmd, "/createbiz", true))   { Cmd_CreateBiz(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delbiz", true))      { Cmd_DelBiz(playerid); return 1; }

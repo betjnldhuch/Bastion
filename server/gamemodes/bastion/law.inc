@@ -125,12 +125,17 @@ static gCellObj[CELL_BARS] = { -1, ... };
 static gCellUntil[CELL_BARS];            // до какого времени открыта кажда€ решЄтка (0 Ч закрыта)
 static gCellSerial[CELL_BARS];           // номер открыти€: старый таймер не закроет новое
 
+// ƒальн€€ камера (у стены, там деморган): та же решЄтка 19302, но неподвижна€, ALT еЄ не открывает.
+// ћесто закрытой двери сн€то в игре (/pos). Ўтатную решЄтку интерьера там убирают через /mo remove.
+#define CELL_FAR_Y          76.82
+
 stock Law_Init()
 {
 	for (new i = 0; i < CELL_BARS; i++)
 	{
 		gCellObj[i] = CreateObject(CELL_GATE_MODEL, gCellClosed[i][0], gCellClosed[i][1], gCellClosed[i][2], 0.0, 0.0, gCellClosed[i][3], 150.0);
 	}
+	CreateObject(CELL_GATE_MODEL, CELL_GATE_X, CELL_FAR_Y, CELL_GATE_Z, 0.0, 0.0, CELL_GATE_ROT, 150.0);
 }
 
 stock bool:Law_NearCellGate(playerid, Float:range)

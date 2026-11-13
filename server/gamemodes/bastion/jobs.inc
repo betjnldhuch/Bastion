@@ -179,7 +179,13 @@ static Jobs_AddVehicle(job, model, Float:x, Float:y, Float:z, Float:a, c1, c2)
 	if (v != INVALID_VEHICLE_ID && v < MAX_VEHICLES) gVehJob[v] = job;
 }
 
-static gJobMk[JOB_MECHANIC + 1] = { -1, ... };     // маркеры работ (двигаются в игре: /markers)
+static gJobMk[JOB_MECHANIC + 1] = { -1, ... };
+
+// Записать машину за работой (worklife.inc ставит машины новых работ)
+stock Jobs_SetVehicleJob(v, job)
+{
+	if (v > 0 && v < MAX_VEHICLES) gVehJob[v] = job;
+}     // маркеры работ (двигаются в игре: /markers)
 
 static Jobs_AddHQ(job, Float:x, Float:y, Float:z, const title[], const hint[])
 {
@@ -228,7 +234,7 @@ stock Job_GetName(job)
 		case JOB_BUS:      strcat(name, "Водитель автобуса");
 		case JOB_TRUCKER:  strcat(name, "Дальнобойщик");
 		case JOB_MECHANIC: strcat(name, "Механик");
-		default:           strcat(name, "Безработный");
+		default:           strcat(name, WorkLife_JobName(job));    // новые работы (worklife.inc)
 	}
 	return name;
 }
@@ -240,7 +246,7 @@ stock Jobs_GetNearbyHQ(playerid)
 	{
 		if (Marker_InRange(playerid, gJobMk[j], 3.0)) return j;
 	}
-	return JOB_NONE;
+	return WorkLife_GetNearbyHQ(playerid);
 }
 
 // ---------------------------------------------------------------------
@@ -273,7 +279,7 @@ stock Job_GetBonus(playerid)
 }
 
 // Заплатить за выполненное задание с учётом стажа. Возвращает сумму.
-static Job_Pay(playerid, base)
+stock Job_Pay(playerid, base)
 {
 	new pay = base + base * Job_GetBonus(playerid) / 100;
 	GiveMoney(playerid, pay);
@@ -293,7 +299,7 @@ static Float:Jobs_Distance(Float:x1, Float:y1, Float:x2, Float:y2)
 //  Начало и конец смены
 // ---------------------------------------------------------------------
 // Поставить точку задания и запомнить, когда и как далеко она была (проверка на телепорт)
-static Jobs_Checkpoint(playerid, Float:x, Float:y, Float:z, Float:size)
+stock Jobs_Checkpoint(playerid, Float:x, Float:y, Float:z, Float:size)
 {
 	gJobCpTick[playerid] = GetTickCount();
 	gJobCpDist[playerid] = GetPlayerDistanceFromPoint(playerid, x, y, z);
@@ -309,6 +315,7 @@ stock Job_Stop(playerid)
 	Player[playerid][pWorkStep] = 0;
 	Player[playerid][pWorkVehicle] = INVALID_VEHICLE_ID;
 	gTaxiCaller[playerid] = INVALID_PLAYER_ID;
+	WorkLife_OnStop(playerid);
 	DisablePlayerCheckpoint(playerid);
 	if (IsPlayerConnected(playerid))
 	{
@@ -402,8 +409,12 @@ stock bool:Cmd_GetJob(playerid)
 {
 	new job = Jobs_GetNearbyHQ(playerid);
 	if (job == JOB_NONE) return SendClientMessage(playerid, COLOR_GREY, "Подойди к значку работы (оранжевая футболка).");
-	if (Player[playerid][pJob] == job) return SendClientMessage(playerid, COLOR_GREY, "Ты уже работаешь здесь.");
-	if (job != JOB_LOADER && job != JOB_PIZZA && !Licenses_Has(playerid, LIC_CAR))
+	if (Player[playerid][pJob] == job)
+	{
+		if (WorkLife_OnHQAlt(playerid, job)) return true;     // рыбак сдаёт улов (worklife.inc)
+		return SendClientMessage(playerid, COLOR_GREY, "Ты уже работаешь здесь.");
+	}
+	if (job != JOB_LOADER && job != JOB_PIZZA && (job < JOB_FISHER || WorkLife_NeedsLicense(job)) && !Licenses_Has(playerid, LIC_CAR))
 		return SendClientMessage(playerid, COLOR_GREY, "Сюда берут только с правами на авто. Автошкола — у мэрии (/exam).");
 
 	Job_Stop(playerid);
@@ -472,6 +483,7 @@ stock bool:Cmd_Work(playerid)
 		}
 		default:
 		{
+			if (WorkLife_StartWork(playerid)) return true;     // рыбак, фермер, инкассатор, мусорщик
 			return SendClientMessage(playerid, COLOR_GREY, "У тебя нет работы. Найди значок работы и введи /getjob");
 		}
 	}
@@ -745,6 +757,7 @@ stock Jobs_OnEnterCheckpoint(playerid)
 			}
 			Jobs_OnVehicleCheckpoint(playerid);
 		}
+		default: WorkLife_OnCheckpoint(playerid);   // новые работы (worklife.inc)
 	}
 	return 1;
 }

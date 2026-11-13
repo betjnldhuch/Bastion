@@ -254,6 +254,14 @@ stock Admin_LogName(const admin[], adminDb, const action[], const target[], targ
 	printf("[admin] %s: %s %s (%d) %s", admin, action, target, value, reason);
 }
 
+// Для доната (donate.inc): сколько предупреждений и снять все
+stock Admin_GetWarns(playerid) { return gWarns[playerid]; }
+stock Admin_ClearWarns(playerid)
+{
+	gWarns[playerid] = 0;
+	Admin_SaveState(playerid);
+}
+
 // Сохранить наказания игрока в базу сразу (не ждём Account_Save)
 static Admin_SaveState(playerid)
 {

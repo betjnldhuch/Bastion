@@ -84,6 +84,15 @@ stock Econ_ToTreasury(amount)
 
 stock Econ_GetTreasury() { return gTreasury; }
 
+// ¬з€ть из казны (премии, выплаты). false Ч в казне не хватает
+stock bool:Econ_FromTreasury(amount)
+{
+	if (amount <= 0 || gTreasury < amount) return false;
+	gTreasury -= amount;
+	Econ_SaveValue("treasury", gTreasury);
+	return true;
+}
+
 // ¬з€ть с игрока сумму: сначала со счЄта в банке, потом наличными. true Ч получилось
 static bool:Econ_Charge(playerid, sum, const reason[])
 {
