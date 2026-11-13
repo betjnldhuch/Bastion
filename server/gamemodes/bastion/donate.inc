@@ -11,6 +11,11 @@
 //    любой скин навсегда (в сумку как одежда),
 //    +1 уровень, снять предупреждения (/warn), смена номера телефона на свой.
 //  /vip — статус VIP.
+//
+//  На клиенте Bastion (UI_Has) /donate открывает HTML-окно "donate":
+//  ответ приходит в DIALOG_DONATE_UI текстом "товар аргумент"
+//  (например "0 2" — пачка №2, "2 105" — скин 105, "5 777" — номер).
+//  После покупки окно открывается снова с итогом и новым балансом.
 // =====================================================================
 
 #define DONATE_MONEY_RATE       1000    // $ за одну монету
@@ -25,6 +30,8 @@
 static gDonate[MAX_PLAYERS];            // монеты
 static gVipUntil[MAX_PLAYERS];
 static gDonateSel[MAX_PLAYERS];
+static gDonateNote[MAX_PLAYERS][128];    // итог последней покупки — показать в HTML-окне
+static bool:gDonateNoteOk[MAX_PLAYERS];
 
 static const gDonMoneyPacks[] = { 10, 50, 100, 500 };   // пачки монет на обмен в деньги
 
@@ -38,6 +45,7 @@ stock Donate_LoadPlayer(playerid)
 {
 	gDonate[playerid] = 0;
 	gVipUntil[playerid] = 0;
+	gDonateNote[playerid][0] = '\0';
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT donate, vip_until FROM accounts WHERE id = %d", Player[playerid][pDbId]);
 	if (r == DBResult:0) return;
 	if (DB_GetRowCount(r) > 0)
@@ -66,9 +74,23 @@ stock Donate_PayDay(playerid)
 	SendClientMessage(playerid, 0xFFD700FF, "VIP: прибавка $%d и двойной опыт.", DONATE_VIP_PAYDAY);
 }
 
+// Сообщение о покупке: в чат и в окно (если оно HTML)
+static Donate_Say(playerid, bool:ok, const text[])
+{
+	SendClientMessage(playerid, ok ? 0xFFD700FF : COLOR_GREY, "%s", text);
+	format(gDonateNote[playerid], sizeof gDonateNote[], "%s", text);
+	gDonateNoteOk[playerid] = ok;
+}
+
 static bool:Donate_Spend(playerid, coins, const what[])
 {
-	if (gDonate[playerid] < coins) { SendClientMessage(playerid, COLOR_GREY, "Не хватает монет: нужно %d, у тебя %d.", coins, gDonate[playerid]); return false; }
+	new msg[96];
+	if (gDonate[playerid] < coins)
+	{
+		format(msg, sizeof msg, "Не хватает монет: нужно %d, у тебя %d.", coins, gDonate[playerid]);
+		Donate_Say(playerid, false, msg);
+		return false;
+	}
 	gDonate[playerid] -= coins;
 	Donate_Save(playerid);
 	new log[64];
@@ -78,8 +100,29 @@ static bool:Donate_Spend(playerid, coins, const what[])
 }
 
 // ---------------------------------------------------------------------
+// HTML-окно (клиент Bastion)
+static Donate_ShowUI(playerid)
+{
+	new json[640], note[192], packs[48];
+	UI_JsonEscape(note, gDonateNote[playerid]);
+	for (new i = 0; i < sizeof (gDonMoneyPacks); i++)
+	{
+		format(json, sizeof json, "%s%d", i ? "," : "", gDonMoneyPacks[i]);
+		strcat(packs, json);
+	}
+	new vipDays = Donate_IsVip(playerid) ? (gVipUntil[playerid] - gettime()) / 86400 + 1 : 0;
+	format(json, sizeof json,
+		"{\"coins\":%d,\"vip\":%d,\"rate\":%d,\"packs\":[%s],\"vipDays\":%d,\"vipPayday\":%d,\"prices\":[0,%d,%d,%d,%d,%d],\"warns\":%d,\"phone\":%d,\"note\":\"%s\",\"ok\":%d}",
+		gDonate[playerid], vipDays, DONATE_MONEY_RATE, packs, DONATE_VIP_DAYS, DONATE_VIP_PAYDAY,
+		DONATE_VIP_PRICE, DONATE_SKIN_PRICE, DONATE_LEVEL_PRICE, DONATE_UNWARN_PRICE, DONATE_NUMBER_PRICE,
+		Admin_GetWarns(playerid), _:(Player[playerid][pPhone] != 0), note, _:gDonateNoteOk[playerid]);
+	gDonateNote[playerid][0] = '\0';
+	UI_Show(playerid, DIALOG_DONATE_UI, DIALOG_STYLE_INPUT, "donate", json, "Купить", "Закрыть");
+}
+
 stock bool:Cmd_Donate(playerid)
 {
+	if (UI_Has(playerid)) { Donate_ShowUI(playerid); return true; }
 	new list[640], line[96];
 	format(list, sizeof list, "Товар\tЦена\n");
 	format(line, sizeof line, "Игровые деньги\t1 монета = $%d\n", DONATE_MONEY_RATE); strcat(list, line);
@@ -120,6 +163,53 @@ stock bool:Cmd_GiveDonate(playerid, const params[])
 	return true;
 }
 
+static Donate_Exchange(playerid, pack)
+{
+	if (pack < 0 || pack >= sizeof (gDonMoneyPacks)) return;
+	new coins = gDonMoneyPacks[pack];
+	if (!Donate_Spend(playerid, coins, "обмен на деньги")) return;
+	GiveMoney(playerid, coins * DONATE_MONEY_RATE, "донат: обмен монет");
+	Account_Save(playerid);
+	new msg[96];
+	format(msg, sizeof msg, "Обмен: %d монет -> $%d.", coins, coins * DONATE_MONEY_RATE);
+	Donate_Say(playerid, true, msg);
+}
+
+// Покупки без ввода: VIP, уровень, снять варны
+static Donate_BuySimple(playerid, item)
+{
+	new msg[112];
+	switch (item)
+	{
+		case 1:
+		{
+			if (!Donate_Spend(playerid, DONATE_VIP_PRICE, "VIP")) return;
+			new now = gettime();
+			gVipUntil[playerid] = ((gVipUntil[playerid] > now) ? gVipUntil[playerid] : now) + DONATE_VIP_DAYS * 86400;
+			Donate_Save(playerid);
+			format(msg, sizeof msg, "VIP активирован: ещё %d дн. Спасибо за поддержку сервера!", (gVipUntil[playerid] - now) / 86400 + 1);
+			Donate_Say(playerid, true, msg);
+		}
+		case 3:
+		{
+			if (!Donate_Spend(playerid, DONATE_LEVEL_PRICE, "+1 уровень")) return;
+			Player[playerid][pLevel]++;
+			Player[playerid][pExp] = 0;
+			SetPlayerScore(playerid, Player[playerid][pLevel]);
+			Account_Save(playerid);
+			format(msg, sizeof msg, "Уровень повышен до %d.", Player[playerid][pLevel]);
+			Donate_Say(playerid, true, msg);
+		}
+		case 4:
+		{
+			if (Admin_GetWarns(playerid) <= 0) { Donate_Say(playerid, false, "Предупреждений нет."); return; }
+			if (!Donate_Spend(playerid, DONATE_UNWARN_PRICE, "снять предупреждения")) return;
+			Admin_ClearWarns(playerid);
+			Donate_Say(playerid, true, "Все предупреждения сняты.");
+		}
+	}
+}
+
 static Donate_Buy(playerid, item)
 {
 	switch (item)
@@ -134,67 +224,63 @@ static Donate_Buy(playerid, item)
 			}
 			ShowPlayerDialog(playerid, DIALOG_DONATE_MONEY, DIALOG_STYLE_TABLIST, "Обмен монет на деньги", "%s", "Обменять", "Назад", list);
 		}
-		case 1:
-		{
-			if (!Donate_Spend(playerid, DONATE_VIP_PRICE, "VIP")) return;
-			new now = gettime();
-			gVipUntil[playerid] = ((gVipUntil[playerid] > now) ? gVipUntil[playerid] : now) + DONATE_VIP_DAYS * 86400;
-			Donate_Save(playerid);
-			SendClientMessage(playerid, 0xFFD700FF, "VIP активирован: ещё %d дн. Спасибо за поддержку сервера!", (gVipUntil[playerid] - now) / 86400 + 1);
-		}
+		case 1, 3, 4: Donate_BuySimple(playerid, item);
 		case 2:
 		{
 			ShowPlayerDialog(playerid, DIALOG_DONATE_INPUT, DIALOG_STYLE_INPUT, "Скин", "{FFFFFF}Номер скина (1-311). Он ляжет в сумку как одежда.", "Купить", "Назад");
 		}
-		case 3:
-		{
-			if (!Donate_Spend(playerid, DONATE_LEVEL_PRICE, "+1 уровень")) return;
-			Player[playerid][pLevel]++;
-			Player[playerid][pExp] = 0;
-			SetPlayerScore(playerid, Player[playerid][pLevel]);
-			Account_Save(playerid);
-			SendClientMessage(playerid, 0xFFD700FF, "Уровень повышен до %d.", Player[playerid][pLevel]);
-		}
-		case 4:
-		{
-			if (Admin_GetWarns(playerid) <= 0) { SendClientMessage(playerid, COLOR_GREY, "Предупреждений нет."); return; }
-			if (!Donate_Spend(playerid, DONATE_UNWARN_PRICE, "снять предупреждения")) return;
-			Admin_ClearWarns(playerid);
-			SendClientMessage(playerid, 0xFFD700FF, "Все предупреждения сняты.");
-		}
 		case 5:
 		{
-			if (Player[playerid][pPhone] == 0) { SendClientMessage(playerid, COLOR_GREY, "Сначала купи телефон в магазине 24/7."); return; }
+			if (Player[playerid][pPhone] == 0) { Donate_Say(playerid, false, "Сначала купи телефон в магазине 24/7."); return; }
 			ShowPlayerDialog(playerid, DIALOG_DONATE_INPUT, DIALOG_STYLE_INPUT, "Свой номер", "{FFFFFF}Номер из 3-7 цифр, например 777 или 5550000:", "Купить", "Назад");
 		}
 	}
 }
 
-static Donate_Input(playerid, const input[])
+// Покупки с вводом: 2 — скин, 5 — номер телефона
+static Donate_Input(playerid, item, const input[])
 {
-	if (!IsNumeric(input) || input[0] == '\0') { SendClientMessage(playerid, COLOR_GREY, "Нужно ввести число."); return; }
-	new v = strval(input);
-	if (gDonateSel[playerid] == 2)
+	if (input[0] == '\0' || !IsNumeric(input)) { Donate_Say(playerid, false, "Нужно ввести число."); return; }
+	new v = strval(input), msg[96];
+	if (item == 2)
 	{
-		if (v < 1 || v > 311 || v == 74) { SendClientMessage(playerid, COLOR_GREY, "Скин от 1 до 311."); return; }
-		if (Outfit_FreeSlots(playerid) <= 0) { SendClientMessage(playerid, COLOR_GREY, "В сумке нет места для одежды."); return; }
+		if (v < 1 || v > 311 || v == 74) { Donate_Say(playerid, false, "Скин от 1 до 311."); return; }
+		if (Outfit_FreeSlots(playerid) <= 0) { Donate_Say(playerid, false, "В сумке нет места для одежды."); return; }
 		if (!Donate_Spend(playerid, DONATE_SKIN_PRICE, "скин")) return;
 		Outfit_Add(playerid, v);
-		SendClientMessage(playerid, 0xFFD700FF, "Скин %d в сумке. Надеть: /inv.", v);
+		format(msg, sizeof msg, "Скин %d в сумке. Надеть: /inv.", v);
+		Donate_Say(playerid, true, msg);
 	}
-	else if (gDonateSel[playerid] == 5)
+	else if (item == 5)
 	{
+		if (Player[playerid][pPhone] == 0) { Donate_Say(playerid, false, "Сначала купи телефон в магазине 24/7."); return; }
 		new len = strlen(input);
-		if (len < 3 || len > 7 || input[0] == '0') { SendClientMessage(playerid, COLOR_GREY, "Номер из 3-7 цифр, не с нуля."); return; }
+		if (len < 3 || len > 7 || input[0] == '0') { Donate_Say(playerid, false, "Номер из 3-7 цифр, не с нуля."); return; }
 		new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id FROM accounts WHERE phone = %d LIMIT 1", v);
 		new bool:busy = false;
 		if (r != DBResult:0) { busy = DB_GetRowCount(r) > 0; DB_FreeResultSet(r); }
-		if (busy) { SendClientMessage(playerid, COLOR_GREY, "Этот номер занят."); return; }
+		if (busy) { Donate_Say(playerid, false, "Этот номер занят."); return; }
 		if (!Donate_Spend(playerid, DONATE_NUMBER_PRICE, "номер телефона")) return;
 		Player[playerid][pPhone] = v;
 		Account_Save(playerid);
-		SendClientMessage(playerid, 0xFFD700FF, "Твой новый номер: %d.", v);
+		format(msg, sizeof msg, "Твой новый номер: %d.", v);
+		Donate_Say(playerid, true, msg);
 	}
+}
+
+// Ответ HTML-окна: "товар аргумент"
+static Donate_OnUI(playerid, const text[])
+{
+	new item = strval(text), arg[16], sp = strfind(text, " ");
+	if (sp != -1) strmid(arg, text, sp + 1, strlen(text), sizeof arg);
+	switch (item)
+	{
+		case 0: Donate_Exchange(playerid, strval(arg));
+		case 1, 3, 4: Donate_BuySimple(playerid, item);
+		case 2, 5: Donate_Input(playerid, item, arg);
+		default: return;
+	}
+	Donate_ShowUI(playerid);
 }
 
 stock Donate_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
@@ -211,18 +297,19 @@ stock Donate_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		case DIALOG_DONATE_MONEY:
 		{
 			if (!response) { Cmd_Donate(playerid); return 1; }
-			if (listitem < 0 || listitem >= sizeof (gDonMoneyPacks)) return 1;
-			new coins = gDonMoneyPacks[listitem];
-			if (!Donate_Spend(playerid, coins, "обмен на деньги")) return 1;
-			GiveMoney(playerid, coins * DONATE_MONEY_RATE, "донат: обмен монет");
-			Account_Save(playerid);
-			SendClientMessage(playerid, 0xFFD700FF, "Обмен: %d монет -> $%d.", coins, coins * DONATE_MONEY_RATE);
+			Donate_Exchange(playerid, listitem);
 			return 1;
 		}
 		case DIALOG_DONATE_INPUT:
 		{
 			if (!response) { Cmd_Donate(playerid); return 1; }
-			Donate_Input(playerid, inputtext);
+			Donate_Input(playerid, gDonateSel[playerid], inputtext);
+			return 1;
+		}
+		case DIALOG_DONATE_UI:
+		{
+			if (!response) return 1;
+			Donate_OnUI(playerid, inputtext);
 			return 1;
 		}
 	}
