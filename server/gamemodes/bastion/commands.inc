@@ -223,7 +223,8 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/fine", true))        { Cmd_Fine(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fhelp", true))       { Cmd_FHelp(playerid); return 1; }
 	if (!strcmp(cmd, "/f", true))           { Cmd_FactionChat(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/members", true))     { Cmd_Members(playerid); return 1; }
+	if (!strcmp(cmd, "/members", true))     { Cmd_MembersWindow(playerid); return 1; }
+	if (!strcmp(cmd, "/fr", true) || !strcmp(cmd, "/faction", true)) { FrMenu_Show(playerid); return 1; }
 	if (!strcmp(cmd, "/duty", true))        { Cmd_Duty(playerid); return 1; }
 	if (!strcmp(cmd, "/invite", true))      { Cmd_Invite(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/uninvite", true))    { Cmd_Uninvite(playerid, cmdtext[pos]); return 1; }

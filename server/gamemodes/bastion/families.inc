@@ -425,23 +425,6 @@ static bool:Cmd_FamDisband(playerid, const params[])
 	return true;
 }
 
-static bool:Cmd_Fam(playerid)
-{
-	if (!Family_Need(playerid, 1)) return true;
-	new s = gFam[playerid], text[1200], line[96], online = 0;
-	format(text, sizeof text, "{FFFFFF}%s «%s»\nУчастников: %d\nОбщак: {33AA33}$%d{FFFFFF}\nТвой ранг: %s (%d)\n\n{FFFF00}Сейчас в игре\n{FFFFFF}",
-		Family[s][famType], Family[s][famName], Family_Members(s), Family[s][famBank], gFamRankName[s][gFamRank[playerid] - 1], gFamRank[playerid]);
-	for (new i = 0; i < MAX_PLAYERS && online < 25; i++)
-	{
-		if (!IsPlayerConnected(i) || !Player[i][pLogged] || gFam[i] != s) continue;
-		format(line, sizeof line, "%s [%d] — %s\n", GetRPName(i), i, gFamRankName[s][gFamRank[i] - 1]);
-		strcat(text, line);
-		online++;
-	}
-	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, Family[s][famName], "%s", "Закрыть", "", text);
-	return true;
-}
-
 static bool:Cmd_FamChat(playerid, const params[])
 {
 	if (!Family_Need(playerid, 1)) return true;
@@ -525,7 +508,7 @@ static bool:Cmd_FamHelp(playerid)
 	strcat(text, "{FFFF00}Семьи\n{FFFFFF}Семью создаёт сам игрок. Можно состоять и во фракции, и в семье.\n\n");
 	format(line, sizeof line, "/famcreate [тип] [название] — создать ($%d, уровень %d+)\n", FAMILY_PRICE, FAMILY_MIN_LEVEL);
 	strcat(text, line);
-	strcat(text, "/fam — состав и общак   /fc [текст] — чат семьи\n");
+	strcat(text, "/family — окно семьи: состав, общак, ранги   /fc [текст] — чат семьи\n");
 	strcat(text, "/famaccept — принять приглашение   /famleave — выйти\n");
 	strcat(text, "/fambank put [сумма] — положить в общак\n\n");
 	strcat(text, "{FFFF00}Глава и заместитель (ранг 5-6)\n{FFFFFF}");
@@ -542,7 +525,7 @@ stock Families_OnCommand(playerid, const cmd[], const params[])
 {
 	if (strcmp(cmd, "/fam", true, 4) != 0 && strcmp(cmd, "/fc", true) != 0) return 0;
 
-	if (!strcmp(cmd, "/fam", true))         { Cmd_Fam(playerid); return 1; }
+	if (!strcmp(cmd, "/fam", true) || !strcmp(cmd, "/family", true)) { FamMenu_Show(playerid); return 1; }
 	if (!strcmp(cmd, "/fc", true))          { Cmd_FamChat(playerid, params); return 1; }
 	if (!strcmp(cmd, "/famhelp", true))     { Cmd_FamHelp(playerid); return 1; }
 	if (!strcmp(cmd, "/famcreate", true))   { Cmd_FamCreate(playerid, params); return 1; }
@@ -558,4 +541,375 @@ stock Families_OnCommand(playerid, const cmd[], const params[])
 	if (!strcmp(cmd, "/famrankname", true)) { Cmd_FamRankName(playerid, params); return 1; }
 	if (!strcmp(cmd, "/famcolor", true))    { Cmd_FamColor(playerid, params); return 1; }
 	return 0;
+}
+
+// =====================================================================
+//  Окно семьи: /family (и /fam). Информация, состав, общак, ранги.
+//  Глава и заместитель управляют участниками прямо из списка.
+//  Действия идут через те же команды (/famkick, /famrank...), поэтому
+//  все проверки и сообщения семье — в одном месте.
+// =====================================================================
+#define FAM_LIST_MAX        40
+
+static gFamListDb[MAX_PLAYERS][FAM_LIST_MAX];  // номера аккаунтов в списке «Весь состав»
+static gFamSelDb[MAX_PLAYERS];                  // выбранный участник
+static gFamSelRank[MAX_PLAYERS];                // выбранный ранг (окно «Ранги»)
+
+static Family_OnlineCount(s)
+{
+	new n = 0;
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && Player[i][pLogged] && gFam[i] == s) n++;
+	}
+	return n;
+}
+
+// Состоит ли игрок в семье (для /members)
+stock Family_Has(playerid)
+{
+	return (gFam[playerid] != -1) ? 1 : 0;
+}
+
+stock FamMenu_Show(playerid)
+{
+	if (!Family_Need(playerid, 1)) return 1;
+	new s = gFam[playerid], body[800], line[128], title[64];
+	format(line, sizeof line, "Информация\t{AFAFAF}твой ранг: %s\n", gFamRankName[s][gFamRank[playerid] - 1]);
+	strcat(body, line);
+	format(line, sizeof line, "Участники онлайн\t{33AA33}%d\n", Family_OnlineCount(s));
+	strcat(body, line);
+	format(line, sizeof line, "Весь состав\t%d чел.\n", Family_Members(s));
+	strcat(body, line);
+	format(line, sizeof line, "Общак\t{33AA33}$%d\n", Family[s][famBank]);
+	strcat(body, line);
+	strcat(body, "Ранги\t{AFAFAF}названия\n");
+	if (gFamRank[playerid] >= FAMILY_RANKS - 1) strcat(body, "Пригласить игрока\t{AFAFAF}по id, рядом\n");
+	else strcat(body, "{AFAFAF}Пригласить игрока\t{AFAFAF}глава и зам.\n");
+	strcat(body, "Все команды семьи\t{AFAFAF}/famhelp\n");
+	if (gFamRank[playerid] >= FAMILY_RANKS) strcat(body, "{FF6347}Распустить семью\t");
+	else strcat(body, "{FF6347}Покинуть семью\t");
+	format(title, sizeof title, "%s «%s»", Family[s][famType], Family[s][famName]);
+	ShowPlayerDialog(playerid, DIALOG_FAM_MENU, DIALOG_STYLE_TABLIST, title, "%s", "Выбрать", "Закрыть", body);
+	return 1;
+}
+
+static FamMenu_Info(playerid)
+{
+	new s = gFam[playerid], owner[MAX_PLAYER_NAME], created = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT a.name, f.created FROM families f LEFT JOIN accounts a ON a.id = f.owner WHERE f.id = %d", Family[s][famDb]);
+	if (r != DBResult:0)
+	{
+		if (DB_GetRowCount(r) > 0)
+		{
+			DB_GetFieldString(r, 0, owner, sizeof owner);
+			created = DB_GetFieldInt(r, 1);
+		}
+		DB_FreeResultSet(r);
+	}
+	if (owner[0] == '\0') strcat(owner, "—");
+
+	new text[1200], line[160];
+	format(line, sizeof line, "{AFAFAF}Название: {%06x}%s\n", Family[s][famColor] >>> 8, Family[s][famName]);
+	strcat(text, line);
+	format(line, sizeof line, "{AFAFAF}Тип: {FFFFFF}%s\n", Family[s][famType]);
+	strcat(text, line);
+	format(line, sizeof line, "{AFAFAF}Глава: {FFFFFF}%s\n", owner);
+	strcat(text, line);
+	if (created > 0)
+	{
+		format(line, sizeof line, "{AFAFAF}Основана: {FFFFFF}%d дн. назад\n", (gettime() - created) / 86400);
+		strcat(text, line);
+	}
+	format(line, sizeof line, "\n{AFAFAF}Участников: {FFFFFF}%d {AFAFAF}(в игре: {33AA33}%d{AFAFAF})\n", Family_Members(s), Family_OnlineCount(s));
+	strcat(text, line);
+	format(line, sizeof line, "{AFAFAF}Общак: {33AA33}$%d\n", Family[s][famBank]);
+	strcat(text, line);
+	format(line, sizeof line, "\n{AFAFAF}Твой ранг: {FFFFFF}%s (%d из %d)\n", gFamRankName[s][gFamRank[playerid] - 1], gFamRank[playerid], FAMILY_RANKS);
+	strcat(text, line);
+	if (gFamRank[playerid] >= FAMILY_RANKS) strcat(text, "{AFAFAF}Права: {FFFFFF}всё, включая общак, ранги и цвет\n");
+	else if (gFamRank[playerid] >= FAMILY_RANKS - 1) strcat(text, "{AFAFAF}Права: {FFFFFF}принимать, выгонять, менять ранги\n");
+	else strcat(text, "{AFAFAF}Права: {FFFFFF}чат, пополнять общак\n");
+	strcat(text, "\n{AFAFAF}Чат семьи: {FFFFFF}/fc [текст]");
+	ShowPlayerDialog(playerid, DIALOG_FAM_BACK, DIALOG_STYLE_MSGBOX, "Информация о семье", "%s", "Назад", "", text);
+}
+
+// Онлайн участники. fromMenu: «Назад» вернёт в меню семьи
+stock FamMenu_Online(playerid, bool:fromMenu)
+{
+	if (!Family_Need(playerid, 1)) return 1;
+	new s = gFam[playerid], body[3000], line[128], count = 0;
+	strcat(body, "Игрок\tРанг\tУровень\tТелефон\n");
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (!IsPlayerConnected(i) || !Player[i][pLogged] || gFam[i] != s) continue;
+		if (Player[i][pPhone] > 0)
+			format(line, sizeof line, "%s [%d]\t%d. %s\t%d\t%d\n", GetRPName(i), i, gFamRank[i], gFamRankName[s][gFamRank[i] - 1], Player[i][pLevel], Player[i][pPhone]);
+		else
+			format(line, sizeof line, "%s [%d]\t%d. %s\t%d\t{AFAFAF}нет\n", GetRPName(i), i, gFamRank[i], gFamRankName[s][gFamRank[i] - 1], Player[i][pLevel]);
+		if (strlen(body) + strlen(line) >= sizeof body) break;
+		strcat(body, line);
+		count++;
+	}
+	new title[64];
+	format(title, sizeof title, "%s «%s» — в игре %d", Family[s][famType], Family[s][famName], count);
+	ShowPlayerDialog(playerid, DIALOG_FAM_ONLINE, DIALOG_STYLE_TABLIST_HEADERS, title, "%s", fromMenu ? ("Назад") : ("Меню"), "Закрыть", body);
+	return 1;
+}
+
+static FamMenu_All(playerid)
+{
+	new s = gFam[playerid], body[3200], line[128], name[MAX_PLAYER_NAME], count = 0;
+	strcat(body, "Имя\tРанг\tСтатус\n");
+	for (new i = 0; i < FAM_LIST_MAX; i++) gFamListDb[playerid][i] = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, name, famrank, level FROM accounts WHERE family = %d ORDER BY famrank DESC, name LIMIT %d", Family[s][famDb], FAM_LIST_MAX);
+	if (r != DBResult:0)
+	{
+		for (new i = 0, rows = DB_GetRowCount(r); i < rows; i++)
+		{
+			new dbid = DB_GetFieldInt(r, 0);
+			DB_GetFieldString(r, 1, name, sizeof name);
+			new rank = DB_GetFieldInt(r, 2), online = Faction_FindOnline(dbid);
+			if (online != INVALID_PLAYER_ID) rank = gFamRank[online];
+			if (rank < 1 || rank > FAMILY_RANKS) rank = 1;
+			if (online != INVALID_PLAYER_ID)
+				format(line, sizeof line, "%s\t%d. %s\t{33AA33}в игре [%d]\n", name, rank, gFamRankName[s][rank - 1], online);
+			else
+				format(line, sizeof line, "%s\t%d. %s\t{AFAFAF}не в игре\n", name, rank, gFamRankName[s][rank - 1]);
+			strcat(body, line);
+			gFamListDb[playerid][count++] = dbid;
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	new title[64];
+	format(title, sizeof title, "Состав семьи (%d)", count);
+	ShowPlayerDialog(playerid, DIALOG_FAM_ALL, DIALOG_STYLE_TABLIST_HEADERS, title, "%s",
+		(gFamRank[playerid] >= FAMILY_RANKS - 1) ? ("Выбрать") : ("Назад"), "Закрыть", body);
+}
+
+// Имя и ранг участника семьи по номеру аккаунта. false — уже не в этой семье
+static bool:Family_GetMember(s, dbid, name[], &rank, size = sizeof (name))
+{
+	name[0] = '\0';
+	rank = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT name, famrank FROM accounts WHERE id = %d AND family = %d", dbid, Family[s][famDb]);
+	if (r == DBResult:0) return false;
+	new bool:ok = (DB_GetRowCount(r) > 0);
+	if (ok)
+	{
+		DB_GetFieldString(r, 0, name, size);
+		rank = DB_GetFieldInt(r, 1);
+	}
+	DB_FreeResultSet(r);
+	new online = Faction_FindOnline(dbid);
+	if (online != INVALID_PLAYER_ID) rank = gFamRank[online];
+	if (rank < 1 || rank > FAMILY_RANKS) rank = 1;
+	return ok;
+}
+
+static FamMenu_MemberActions(playerid)
+{
+	new s = gFam[playerid], name[MAX_PLAYER_NAME], rank;
+	if (!Family_GetMember(s, gFamSelDb[playerid], name, rank)) { FamMenu_All(playerid); return; }
+	new online = Faction_FindOnline(gFamSelDb[playerid]);
+	new title[64], body[256];
+	if (online != INVALID_PLAYER_ID) format(title, sizeof title, "%s [%d] — %s", name, online, gFamRankName[s][rank - 1]);
+	else format(title, sizeof title, "%s — %s (не в игре)", name, gFamRankName[s][rank - 1]);
+	strcat(body, "Изменить ранг\nВыгнать из семьи\n");
+	if (gFamRank[playerid] >= FAMILY_RANKS) strcat(body, "Передать главенство");
+	ShowPlayerDialog(playerid, DIALOG_FAM_ACT, DIALOG_STYLE_LIST, title, "%s", "Выбрать", "Назад", body);
+}
+
+static FamMenu_Ranks(playerid)
+{
+	new s = gFam[playerid], body[600], line[96];
+	strcat(body, "Ранг\tНазвание\tПрава\n");
+	for (new rk = FAMILY_RANKS; rk >= 1; rk--)
+	{
+		format(line, sizeof line, "%d\t%s\t{AFAFAF}%s\n", rk, gFamRankName[s][rk - 1],
+			(rk == FAMILY_RANKS) ? ("глава") : ((rk == FAMILY_RANKS - 1) ? ("заместитель") : ("участник")));
+		strcat(body, line);
+	}
+	ShowPlayerDialog(playerid, DIALOG_FAM_RANKS, DIALOG_STYLE_TABLIST_HEADERS, "Ранги семьи", "%s",
+		(gFamRank[playerid] >= FAMILY_RANKS) ? ("Изменить") : ("Назад"), "Закрыть", body);
+}
+
+static FamMenu_Bank(playerid)
+{
+	new s = gFam[playerid], title[64];
+	format(title, sizeof title, "Общак — $%d", Family[s][famBank]);
+	ShowPlayerDialog(playerid, DIALOG_FAM_BANK, DIALOG_STYLE_LIST, title,
+		"Положить деньги\nСнять деньги {AFAFAF}(глава)", "Выбрать", "Назад");
+}
+
+stock Families_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
+{
+	if (dialogid < DIALOG_FAM_MENU || dialogid > DIALOG_FAM_LEAVE) return 0;
+	if (gFam[playerid] == -1) return 1;     // пока окно было открыто, игрока выгнали
+	new s = gFam[playerid], cmd[64];
+
+	switch (dialogid)
+	{
+		case DIALOG_FAM_MENU:
+		{
+			if (!response) return 1;
+			switch (listitem)
+			{
+				case 0: FamMenu_Info(playerid);
+				case 1: FamMenu_Online(playerid, true);
+				case 2: FamMenu_All(playerid);
+				case 3: FamMenu_Bank(playerid);
+				case 4: FamMenu_Ranks(playerid);
+				case 5:
+				{
+					if (!Family_Need(playerid, FAMILY_RANKS - 1)) return 1;
+					ShowPlayerDialog(playerid, DIALOG_FAM_INVITE, DIALOG_STYLE_INPUT, "Пригласить в семью",
+						"Введи id игрока. Он должен стоять рядом с тобой.", "Пригласить", "Назад");
+				}
+				case 6: Cmd_FamHelp(playerid);
+				case 7:
+				{
+					if (gFamRank[playerid] >= FAMILY_RANKS)
+						ShowPlayerDialog(playerid, DIALOG_FAM_LEAVE, DIALOG_STYLE_MSGBOX, "Распустить семью",
+							"{FF6347}Семья будет удалена навсегда.{FFFFFF}\nВсе участники выйдут из неё, общак ($%d) вернётся тебе.\n\nТочно распустить?",
+							"Распустить", "Назад", Family[s][famBank]);
+					else
+						ShowPlayerDialog(playerid, DIALOG_FAM_LEAVE, DIALOG_STYLE_MSGBOX, "Покинуть семью",
+							"Точно выйти из «%s»?\nВернуться можно только по новому приглашению.", "Выйти", "Назад", Family[s][famName]);
+				}
+			}
+		}
+		case DIALOG_FAM_BACK:
+		{
+			FamMenu_Show(playerid);
+		}
+		case DIALOG_FAM_ONLINE:
+		{
+			if (response) FamMenu_Show(playerid);
+		}
+		case DIALOG_FAM_ALL:
+		{
+			if (!response) return 1;
+			if (gFamRank[playerid] < FAMILY_RANKS - 1) { FamMenu_Show(playerid); return 1; }
+			if (listitem < 0 || listitem >= FAM_LIST_MAX || gFamListDb[playerid][listitem] == 0) return 1;
+			gFamSelDb[playerid] = gFamListDb[playerid][listitem];
+			if (gFamSelDb[playerid] == Player[playerid][pDbId])
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Это ты. Выйти из семьи — в меню /family.");
+				FamMenu_All(playerid);
+				return 1;
+			}
+			FamMenu_MemberActions(playerid);
+		}
+		case DIALOG_FAM_ACT:
+		{
+			if (!response) { FamMenu_All(playerid); return 1; }
+			new name[MAX_PLAYER_NAME], rank;
+			if (!Family_GetMember(s, gFamSelDb[playerid], name, rank)) { SendClientMessage(playerid, COLOR_GREY, "Этот человек уже не в семье."); return 1; }
+			new online = Faction_FindOnline(gFamSelDb[playerid]);
+			switch (listitem)
+			{
+				case 0:
+				{
+					if (rank >= gFamRank[playerid]) { SendClientMessage(playerid, COLOR_GREY, "Нельзя менять ранг равному или старшему."); return 1; }
+					ShowPlayerDialog(playerid, DIALOG_FAM_RANKSET, DIALOG_STYLE_INPUT, "Изменить ранг",
+						"Новый ранг для %s (1-%d).\nСейчас: %d. %s", "Сохранить", "Назад", name, gFamRank[playerid] - 1, rank, gFamRankName[s][rank - 1]);
+				}
+				case 1:
+				{
+					if (online != INVALID_PLAYER_ID) format(cmd, sizeof cmd, "%d", online);
+					else format(cmd, sizeof cmd, "%s", name);
+					if (online != INVALID_PLAYER_ID) Cmd_FamKick(playerid, cmd);
+					else Cmd_FamOffKick(playerid, cmd);
+					FamMenu_All(playerid);
+				}
+				case 2:
+				{
+					if (online == INVALID_PLAYER_ID) { SendClientMessage(playerid, COLOR_GREY, "Передать семью можно только тому, кто сейчас в игре."); return 1; }
+					format(cmd, sizeof cmd, "%d", online);
+					Cmd_FamLeader(playerid, cmd);
+				}
+			}
+		}
+		case DIALOG_FAM_RANKSET:
+		{
+			if (!response) { FamMenu_MemberActions(playerid); return 1; }
+			new rank = strval(inputtext), name[MAX_PLAYER_NAME], cur;
+			if (!Family_GetMember(s, gFamSelDb[playerid], name, cur)) return 1;
+			if (cur >= gFamRank[playerid]) { SendClientMessage(playerid, COLOR_GREY, "Нельзя менять ранг равному или старшему."); return 1; }
+			if (rank < 1 || rank >= gFamRank[playerid])
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Ранг должен быть от 1 до %d.", gFamRank[playerid] - 1);
+				FamMenu_MemberActions(playerid);
+				return 1;
+			}
+			new online = Faction_FindOnline(gFamSelDb[playerid]);
+			if (online != INVALID_PLAYER_ID)
+			{
+				format(cmd, sizeof cmd, "%d %d", online, rank);
+				Cmd_FamRank(playerid, cmd);
+			}
+			else
+			{
+				DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET famrank = %d WHERE id = %d AND family = %d", rank, gFamSelDb[playerid], Family[s][famDb]));
+				new msg[144];
+				format(msg, sizeof msg, "[%s] %s назначил %s: «%s» (%d).", Family[s][famType], GetRPName(playerid), name, gFamRankName[s][rank - 1], rank);
+				Family_Message(s, msg);
+			}
+			FamMenu_All(playerid);
+		}
+		case DIALOG_FAM_BANK:
+		{
+			if (!response) { FamMenu_Show(playerid); return 1; }
+			if (listitem == 0)
+				ShowPlayerDialog(playerid, DIALOG_FAM_BANK_IN, DIALOG_STYLE_INPUT, "Положить в общак",
+					"Сколько положить в общак?\nУ тебя: $%d", "Положить", "Назад", GetMoney(playerid));
+			else
+			{
+				if (gFamRank[playerid] < FAMILY_RANKS) { SendClientMessage(playerid, COLOR_GREY, "Снимать деньги из общака может только глава."); FamMenu_Bank(playerid); return 1; }
+				ShowPlayerDialog(playerid, DIALOG_FAM_BANK_OUT, DIALOG_STYLE_INPUT, "Снять из общака",
+					"Сколько снять?\nВ общаке: $%d", "Снять", "Назад", Family[s][famBank]);
+			}
+		}
+		case DIALOG_FAM_BANK_IN, DIALOG_FAM_BANK_OUT:
+		{
+			if (!response) { FamMenu_Bank(playerid); return 1; }
+			new amount = strval(inputtext);
+			if (amount < 1) { SendClientMessage(playerid, COLOR_GREY, "Введи сумму больше нуля."); FamMenu_Bank(playerid); return 1; }
+			format(cmd, sizeof cmd, "%s %d", (dialogid == DIALOG_FAM_BANK_IN) ? ("put") : ("take"), amount);
+			Cmd_FamBank(playerid, cmd);
+			FamMenu_Bank(playerid);
+		}
+		case DIALOG_FAM_INVITE:
+		{
+			if (!response) { FamMenu_Show(playerid); return 1; }
+			Cmd_FamInvite(playerid, inputtext);
+		}
+		case DIALOG_FAM_RANKS:
+		{
+			if (!response) return 1;
+			if (gFamRank[playerid] < FAMILY_RANKS) { FamMenu_Show(playerid); return 1; }
+			if (listitem < 0 || listitem >= FAMILY_RANKS) return 1;
+			gFamSelRank[playerid] = FAMILY_RANKS - listitem;
+			ShowPlayerDialog(playerid, DIALOG_FAM_RANKNAME, DIALOG_STYLE_INPUT, "Название ранга",
+				"Новое название для ранга %d.\nСейчас: %s", "Сохранить", "Назад", gFamSelRank[playerid], gFamRankName[s][gFamSelRank[playerid] - 1]);
+		}
+		case DIALOG_FAM_RANKNAME:
+		{
+			if (response && inputtext[0] != '\0')
+			{
+				format(cmd, sizeof cmd, "%d %s", gFamSelRank[playerid], inputtext);
+				Cmd_FamRankName(playerid, cmd);
+			}
+			FamMenu_Ranks(playerid);
+		}
+		case DIALOG_FAM_LEAVE:
+		{
+			if (!response) { FamMenu_Show(playerid); return 1; }
+			if (gFamRank[playerid] >= FAMILY_RANKS) Cmd_FamDisband(playerid, "да");
+			else Cmd_FamLeave(playerid);
+		}
+	}
+	return 1;
 }

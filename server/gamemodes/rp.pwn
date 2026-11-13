@@ -388,6 +388,8 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (FColor_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (BM_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Factory_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Families_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (FrMenu_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Factions_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	return 0;
 }
