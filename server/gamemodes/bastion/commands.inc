@@ -136,6 +136,7 @@ stock Commands_Process(playerid, const input[])
 	// --- общее ---
 	if (!strcmp(cmd, "/help", true))        { Cmd_Help(playerid); return 1; }
 	if (!strcmp(cmd, "/stats", true))       { Cmd_Stats(playerid); return 1; }
+	if (!strcmp(cmd, "/bot", true))         { Cmd_Bot(playerid); return 1; }
 	if (!strcmp(cmd, "/time", true))        { Cmd_Time(playerid); return 1; }
 	if (!strcmp(cmd, "/taxes", true))       { Cmd_Taxes(playerid); return 1; }
 	if (!strcmp(cmd, "/debts", true))       { Cmd_Debts(playerid); return 1; }
@@ -250,7 +251,8 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/fine", true))        { Cmd_Fine(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fhelp", true))       { Cmd_FHelp(playerid); return 1; }
 	if (!strcmp(cmd, "/f", true))           { Cmd_FactionChat(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/members", true))     { Cmd_Members(playerid); return 1; }
+	if (!strcmp(cmd, "/members", true))     { Cmd_MembersWindow(playerid); return 1; }
+	if (!strcmp(cmd, "/fr", true) || !strcmp(cmd, "/faction", true)) { FrMenu_Show(playerid); return 1; }
 	if (!strcmp(cmd, "/duty", true))        { Cmd_Duty(playerid); return 1; }
 	if (!strcmp(cmd, "/invite", true))      { Cmd_Invite(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/uninvite", true))    { Cmd_Uninvite(playerid, cmdtext[pos]); return 1; }

@@ -207,6 +207,7 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 				{
 					SendClientMessage(playerid, COLOR_RED, "Слишком много неверных попыток. Вход с твоего адреса закрыт на %d мин.", LOGIN_LOCK_SECONDS / 60);
 					Login_Lock(playerid);
+					Social_OnBadPassword(playerid);   // уведомление в ВК/ТГ (social.inc)
 					KickWithDelay(playerid);
 					return 1;
 				}
@@ -219,6 +220,7 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			}
 
 			Account_Load(playerid);
+			Social_OnLogin(playerid);   // уведомление о входе в ВК/ТГ (social.inc)
 			SendClientMessage(playerid, COLOR_GREEN, "Ты успешно вошёл в аккаунт. Список команд: /help");
 			Account_FinishLogin(playerid);
 			return 1;

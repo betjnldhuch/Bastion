@@ -96,7 +96,8 @@ class Context:
         self.perm = Perm(app.cfg)
         self.csrf = ""
         self.flash = ""
-        self.local = handler.client_address[0] in ("127.0.0.1", "::1")
+        self.ip = handler.client_address[0]
+        self.local = self.ip in ("127.0.0.1", "::1")
         self.posts_per_page = POSTS_PER_PAGE
         self.appeal_forum = app.appeal_forum
 
@@ -396,7 +397,104 @@ def cooldown(app, ctx):
     app._last_post[ctx.user["id"]] = now
 
 
+# ---------- сайт: главная, карта, донат ----------
+
+NAME_RX = re.compile(r"[A-Za-z][A-Za-z]{1,19}_[A-Za-z][A-Za-z]{1,19}")
+DONATE_COOLDOWN = 60
+MAX_DONATE_COINS = 100000
+
+
+def map_image(app):
+    if app.cfg.map_image:
+        return app.cfg.map_image
+    return "/static/map.jpg" if os.path.isfile(os.path.join(STATIC_DIR, "map.jpg")) else ""
+
+
 @get("/")
+def page_site(app, ctx, query, form):
+    return views.site_home(ctx, app.store.latest_topics("news", 3))
+
+
+@get("/map")
+def page_map(app, ctx, query, form):
+    return views.map_page(ctx, map_image(app))
+
+
+@get("/api/map.json")
+def api_map(app, ctx, query, form):
+    data = {"servers": []}
+    for key, srv in app.cfg.servers.items():
+        data["servers"].append({"key": key, "name": srv.name, **app.games[key].map_data()})
+    return 200, json.dumps(data, ensure_ascii=False), "application/json; charset=utf-8"
+
+
+def donate_rub(app, coins):
+    return int(round(coins * app.cfg.donate_rub_per_coin))
+
+
+@get("/donate")
+def page_donate(app, ctx, query, form):
+    name = ctx.user["name"] if ctx.user else ""
+    server_key = ctx.user["server"] if ctx.user else ""
+    return views.donate(ctx, name=name, server=server_key)
+
+
+@post("/donate")
+def do_donate(app, ctx, query, form):
+    name = (form.get("name") or "").strip()
+    server_key = (form.get("server") or "").strip().lower()
+    contact = (form.get("contact") or "").strip()[:100]
+    coins = _int(form.get("coins"), 0)
+    if server_key not in app.games and len(app.games) == 1:
+        server_key = next(iter(app.games))
+
+    def fail(msg):
+        return views.donate(ctx, name=name, server=server_key, coins=coins, contact=contact, error=msg)
+
+    if not NAME_RX.fullmatch(name):
+        return fail("Ник пишется как в игре: Имя_Фамилия латиницей.")
+    gdb = app.games.get(server_key)
+    if not gdb:
+        return fail("Выберите сервер.")
+    if gdb.available() and not gdb.account_exists(name):
+        return fail(f"На сервере {app.cfg.servers[server_key].name} нет аккаунта {name}.")
+    if not app.cfg.donate_min_coins <= coins <= MAX_DONATE_COINS:
+        return fail(f"Количество монет: от {app.cfg.donate_min_coins} до {MAX_DONATE_COINS}.")
+    now = time.time()
+    key = "donate:" + ctx.ip
+    if now - app._last_post.get(key, 0) < DONATE_COOLDOWN:
+        return fail("Заявка уже отправлена. Новую можно через минуту.")
+    app._last_post[key] = now
+    req_id = app.store.add_donate_request(server_key, name, coins, donate_rub(app, coins), contact, ctx.ip)
+    return views.donate_done(ctx, app.store.donate_request(req_id))
+
+
+@get("/donate/requests")
+def page_donate_requests(app, ctx, query, form):
+    need_login(ctx)
+    if not ctx.perm.is_admin:
+        raise HttpError(403, "Только для администрации.")
+    return views.donate_requests(ctx, app.store.donate_requests())
+
+
+@post(r"/donate/requests/(\d+)")
+def do_donate_request(app, ctx, query, form, req_id):
+    need_login(ctx)
+    if not ctx.perm.is_admin:
+        raise HttpError(403, "Только для администрации.")
+    req = app.store.donate_request(_int(req_id))
+    if not req:
+        raise HttpError(404, "Заявка не найдена.")
+    status = form.get("status")
+    if status not in views.DONATE_STATUSES:
+        raise HttpError(400, "Неизвестный статус.")
+    app.store.set_donate_status(req["id"], status, ctx.user["name"])
+    raise Redirect("/donate/requests", [flash(f"Заявка №{req['id']}: {views.DONATE_STATUSES[status]}")])
+
+
+# ---------- форум ----------
+
+@get("/forum")
 def page_index(app, ctx, query, form):
     return views.index(ctx, app.store.categories(), app.store.totals(), app.store.online_users(),
                        app.store.recent_topics())

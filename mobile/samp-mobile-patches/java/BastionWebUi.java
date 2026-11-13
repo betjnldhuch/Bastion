@@ -24,6 +24,7 @@ import org.json.JSONObject;
  * text is JSON. Instead of the stock dialog we open NAME in assets/ui/index.html
  * and send the player's choice back as the normal dialog response, so the
  * gamemode handles it in OnDialogResponse like any other dialog.
+ * Every other dialog is drawn by the same page in the same style (window "samp").
  */
 public class BastionWebUi {
     private static final String TAG = "BastionWebUi";
@@ -47,9 +48,29 @@ public class BastionWebUi {
         return caption != null && caption.startsWith(PREFIX) && caption.indexOf(']') > PREFIX.length();
     }
 
-    /** Called on the UI thread. */
+    /** Called on the UI thread. A "[ui:NAME]" window with JSON data from ui.inc. */
     public void show(int id, String caption, String json, String button1, String button2) {
         String name = caption.substring(PREFIX.length(), caption.indexOf(']'));
+        open(id, name, json == null || json.isEmpty() ? "{}" : json, button1, button2);
+    }
+
+    /**
+     * Called on the UI thread. Any ordinary SA-MP dialog (MSGBOX/INPUT/LIST/PASSWORD/
+     * TABLIST/TABLIST_HEADERS) drawn in the Bastion style; {RRGGBB} colours kept.
+     */
+    public void showDialog(int id, int style, String caption, String text, String button1, String button2) {
+        try {
+            JSONObject data = new JSONObject();
+            data.put("style", style);
+            data.put("caption", caption == null ? "" : caption);
+            data.put("text", text == null ? "" : text);
+            open(id, "samp", data, button1, button2);
+        } catch (Exception e) {
+            Log.e(TAG, "bad dialog " + id, e);
+        }
+    }
+
+    private void open(int id, String name, Object data, String button1, String button2) {
         ensureView();
         dialogId = id;
         shown = true;
@@ -57,9 +78,9 @@ public class BastionWebUi {
         try {
             JSONObject msg = new JSONObject();
             msg.put("window", name);
-            msg.put("button1", button1);
-            msg.put("button2", button2);
-            msg.put("data", json == null || json.isEmpty() ? "{}" : json);
+            msg.put("button1", button1 == null ? "" : button1);
+            msg.put("button2", button2 == null ? "" : button2);
+            msg.put("data", data);
             js = "window.BastionUI && BastionUI.open(" + msg + ")";
         } catch (Exception e) {
             Log.e(TAG, "bad window " + name, e);

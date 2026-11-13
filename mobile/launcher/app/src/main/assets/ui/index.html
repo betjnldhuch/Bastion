@@ -126,6 +126,28 @@ button { font: inherit; cursor: pointer; }
   background: #0e1013; border: 1px solid var(--line); margin-bottom: 12px; font-size: 13px; color: var(--muted); }
 .total b { display: flex; align-items: center; gap: 6px; font-family: "Russo One", sans-serif; font-weight: 400; font-size: 16px; color: var(--gold); }
 .total.short b { color: var(--red); }
+/* Обычные диалоги SA-MP (окно "samp") */
+.card.samp { width: min(520px, 100%); display: flex; flex-direction: column; padding-top: 18px; }
+.card.samp > * { flex: none; }
+.card.samp h1 { font-size: 20px; margin: 4px 44px 12px 0; line-height: 1.25; }
+.card.samp .text { color: var(--text); flex: 0 1 auto; min-height: 24px; overflow: auto; font-size: 15px; line-height: 1.5;
+  background: #0e1013; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.card.samp .text.bare { background: none; border: 0; padding: 0 2px; }
+.card.samp .field { margin-top: 2px; }
+.card.samp input { padding-right: 14px; }
+.card.samp input.pw { padding-right: 46px; }
+.list { flex: 1 1 auto !important; min-height: 64px; overflow: auto; margin: 0 0 12px; border: 1px solid var(--line);
+  border-radius: 10px; background: #0e1013; }
+.list .r { display: grid; gap: 10px; align-items: center; padding: 11px 12px; border-bottom: 1px solid var(--line);
+  min-height: 44px; position: relative; }
+.list .r:last-child { border-bottom: 0; }
+.list .r > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list .r > div + div { color: var(--muted); }
+.list .r.sel { background: rgba(255,122,26,.1); box-shadow: inset 3px 0 0 var(--accent); }
+.list .r:active { background: rgba(255,255,255,.04); }
+.list .hd { position: sticky; top: 0; z-index: 1; background: var(--panel-hi); font-size: 12px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .04em; padding: 8px 12px; min-height: 0; }
+.list .hd > div + div { color: var(--muted); }
 </style>
 </head>
 <body>
@@ -139,6 +161,17 @@ button { font: inherit; cursor: pointer; }
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   // {RRGGBB} — цвета SA-MP в тексте: убираем
   function plain(s) { return String(s == null ? '' : s).replace(/\{[0-9a-fA-F]{6}\}/g, ''); }
+  // {RRGGBB} → цветной текст (как в игре: цвет действует до следующего тега)
+  function colorize(s) {
+    var out = '', parts = String(s == null ? '' : s).split(/\{([0-9a-fA-F]{6})\}/);
+    for (var i = 0; i < parts.length; i++) {
+      if (i % 2) continue;
+      if (!parts[i]) continue;
+      var col = i > 0 ? parts[i - 1] : null;
+      out += col ? '<span style="color:#' + col + '">' + esc(parts[i]) + '</span>' : esc(parts[i]);
+    }
+    return out;
+  }
 
   function respond(button, listitem, text) {
     if (!current) return;
@@ -150,7 +183,7 @@ button { font: inherit; cursor: pointer; }
   }
 
   function errorBox(msg) { return '<div class="error' + (msg ? ' on' : '') + '" id="err">' + esc(msg) + '</div>'; }
-  function closeBtn() { return '<button class="close" id="x" aria-label="Закрыть">✕</button>'; }
+  function closeBtn() { return '<button type="button" class="close" id="x" aria-label="Закрыть">✕</button>'; }
 
   function passwordForm(opt) {
     // opt: title, sub, button1, button2, min, max, error
@@ -339,6 +372,69 @@ button { font: inherit; cursor: pointer; }
 
       list(d.note, d.ok);
     },
+    // Любой обычный диалог SA-MP: 0 MSGBOX, 1 INPUT, 2 LIST, 3 PASSWORD, 4 TABLIST, 5 TABLIST_HEADERS
+    samp: function (d, m) {
+      var style = +d.style || 0, text = String(d.text || '').replace(/\r/g, '');
+      var isInput = style === 1 || style === 3, isList = style === 2 || style === 4 || style === 5;
+      var html = '<form class="card samp" id="f" autocomplete="off">' + closeBtn() +
+        '<div class="brand">BASTION ONLINE</div><h1>' + (colorize(d.caption) || '&nbsp;') + '</h1>';
+      var rows = [], sel = 0;
+      if (isList) {
+        var lines = text.split('\n');
+        if (lines.length && lines[lines.length - 1] === '') lines.pop();
+        var head = style === 5 ? lines.shift() : null;
+        var cols = 1;
+        rows = lines.map(function (l) {
+          var c = style === 2 ? [l] : l.split(/\t+/).slice(0, 4);
+          if (c.length > cols) cols = c.length;
+          return c;
+        });
+        var hc = head != null ? head.split(/\t+/).slice(0, 4) : null;
+        if (hc && hc.length > cols) cols = hc.length;
+        var grid = 'grid-template-columns:' + (cols > 1 ? 'minmax(0,1.6fr) repeat(' + (cols - 1) + ',minmax(0,1fr))' : 'minmax(0,1fr)');
+        html += '<div class="list" id="list">' +
+          (hc ? '<div class="r hd" style="' + grid + '">' + hc.map(function (c) { return '<div>' + colorize(c) + '</div>'; }).join('') + '</div>' : '') +
+          rows.map(function (c, i) {
+            return '<div class="r' + (i === 0 ? ' sel' : '') + '" data-i="' + i + '" style="' + grid + '">' +
+              c.map(function (x) { return '<div>' + colorize(x) + '</div>'; }).join('') + '</div>';
+          }).join('') + '</div>';
+      } else {
+        html += '<div class="text' + (isInput ? ' bare' : '') + '">' + colorize(text) + '</div>';
+        if (isInput) html += '<div class="field"><input id="in" class="' + (style === 3 ? 'pw' : '') + '" type="' + (style === 3 ? 'password' : 'text') +
+          '" maxlength="128" autocapitalize="off" spellcheck="false">' +
+          (style === 3 ? '<button type="button" class="eye" id="eye" aria-label="Показать пароль">👁</button>' : '') + '</div>';
+      }
+      html += '<div class="row">' +
+        (m.button2 ? '<button type="button" class="btn" id="b2">' + esc(plain(m.button2)) + '</button>' : '') +
+        '<button type="submit" class="btn primary" id="b1">' + esc(plain(m.button1) || 'OK') + '</button></div></form>';
+      root.innerHTML = html;
+
+      var input = document.getElementById('in');
+      function answer(btn) {
+        if (isList) {
+          var c = rows[sel] || [''];
+          respond(btn, rows.length ? sel : -1, plain(c[0]).trim());
+        } else respond(btn, -1, input ? input.value : '');
+      }
+      if (isList) {
+        var last = 0, lastI = -1;
+        Array.prototype.forEach.call(root.querySelectorAll('.list .r[data-i]'), function (el) {
+          el.onclick = function () {
+            var i = +el.getAttribute('data-i'), now = Date.now();
+            if (i === lastI && now - last < 400) { sel = i; answer(1); return; }
+            last = now; lastI = i; sel = i;
+            Array.prototype.forEach.call(root.querySelectorAll('.list .r.sel'), function (o) { o.classList.remove('sel'); });
+            el.classList.add('sel');
+          };
+        });
+      }
+      var eye = document.getElementById('eye');
+      if (eye) eye.onclick = function () { input.type = input.type === 'password' ? 'text' : 'password'; input.focus(); };
+      document.getElementById('x').onclick = function () { answer(0); };
+      var b2 = document.getElementById('b2'); if (b2) b2.onclick = function () { answer(0); };
+      document.getElementById('f').onsubmit = function (e) { e.preventDefault(); answer(1); };
+      if (input) setTimeout(function () { input.focus(); }, 50);
+    },
     // Запасное окно: заголовок + текст + кнопки
     message: function (d, m) {
       root.innerHTML = '<div class="card">' + closeBtn() + '<div class="brand">BASTION ONLINE</div>' +
@@ -363,8 +459,22 @@ button { font: inherit; cursor: pointer; }
     close: function () { respond(0, -1, ''); }
   };
 
-  // Предпросмотр в браузере ПК: index.html#login / #register / #gender / #donate
-  if (!window.BastionNative && location.hash) {
+  // Предпросмотр в браузере ПК: index.html#login / #register / #gender / #donate,
+  // обычные диалоги: #samp0 … #samp5 (стиль диалога)
+  var SAMPLE = {
+    0: ['{FF7A1A}Информация', 'Добро пожаловать на {FF7A1A}Bastion{FFFFFF}!\nВаш баланс: {4CD07D}$15 000\n{A9C4E4}Удачной игры.'],
+    1: ['Перевод денег', 'Введите сумму перевода игроку {FF7A1A}Ivan_Petrov{FFFFFF}:'],
+    2: ['Меню', '{FFFFFF}Статистика\n{FFFFFF}Настройки\n{4CD07D}Донат\n{E5484D}Репорт'],
+    3: ['Смена пароля', 'Введите новый пароль:'],
+    4: ['Магазин', 'Аптечка\t{4CD07D}$500\nБронежилет\t{4CD07D}$1500\nТелефон\t{4CD07D}$800'],
+    5: ['Игроки онлайн', 'Ник\tУровень\tПинг\nIvan_Petrov\t5\t42\nAnna_Smirnova\t12\t87']
+  };
+  var mh = /^#samp([0-5])$/.exec(location.hash);
+  if (!window.BastionNative && mh) {
+    BastionUI.open({ window: 'samp', button1: 'Выбрать', button2: +mh[1] ? 'Отмена' : '',
+      data: { style: +mh[1], caption: SAMPLE[mh[1]][0], text: SAMPLE[mh[1]][1] } });
+    document.body.style.background = '#2b3440';
+  } else if (!window.BastionNative && location.hash) {
     BastionUI.open({ window: location.hash.slice(1), button1: 'Войти', button2: 'Выход',
       data: { name: 'Ivan_Petrov', min: 6, max: 32, coins: 420, vip: 0, rate: 1000, packs: [10, 50, 100, 500], vipDays: 30, vipPayday: 2000,
         prices: [0, 300, 150, 200, 100, 150], warns: 1, phone: 1, note: 'Обмен: 50 монет -> $50000.', ok: 1, rules: [['Ролевая игра', 'Веди себя как житель города. Не выходи из роли без причины (NonRP).'], ['DM и DB', 'Нельзя убивать без RP-причины (DM) и давить игроков машиной (DB).'], ['Читы и баги', 'Запрещены читы, сторонние программы и использование ошибок сервера.']] } });

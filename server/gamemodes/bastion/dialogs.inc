@@ -179,5 +179,26 @@ enum
 	DIALOG_DONATE_UI,            // HTML-окно доната (ui.inc)
 
 	// --- Аренда мопедов (rental.inc)
-	DIALOG_RENTAL
+	DIALOG_RENTAL,
+
+	// --- Окно семьи (/family, families.inc): от DIALOG_FAM_MENU до DIALOG_FAM_LEAVE
+	DIALOG_FAM_MENU,
+	DIALOG_FAM_BACK,
+	DIALOG_FAM_ONLINE,
+	DIALOG_FAM_ALL,
+	DIALOG_FAM_ACT,
+	DIALOG_FAM_RANKSET,
+	DIALOG_FAM_BANK,
+	DIALOG_FAM_BANK_IN,
+	DIALOG_FAM_BANK_OUT,
+	DIALOG_FAM_INVITE,
+	DIALOG_FAM_RANKS,
+	DIALOG_FAM_RANKNAME,
+	DIALOG_FAM_LEAVE,
+
+	// --- Окно фракции (/fr, /members, factions.inc): от DIALOG_FR_MENU до DIALOG_FR_LEAVE
+	DIALOG_FR_MENU,
+	DIALOG_FR_BACK,
+	DIALOG_FR_ONLINE,
+	DIALOG_FR_LEAVE
 }

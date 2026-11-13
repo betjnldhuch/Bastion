@@ -488,9 +488,10 @@ if not gloss.exists():
 shutil.copy2(gloss, main / "jniLibs/arm64-v8a/libGlossHook.so")
 
 # ---------------------------------------------------------------------------
-# 7. HTML windows (BastionWebUi): a dialog with caption "[ui:NAME]" opens
-#    assets/ui/index.html (shipped by the launcher module) instead of the stock
-#    dialog; the answer goes back as a normal dialog response.
+# 7. HTML windows (BastionWebUi): every dialog is drawn by assets/ui/index.html
+#    (shipped by the launcher module) instead of the stock one. Caption "[ui:NAME]"
+#    opens a custom window, any other dialog the generic "samp" window.
+#    The answer goes back as a normal dialog response.
 # ---------------------------------------------------------------------------
 samp_java = main / "java/com/gta/game/SAMP.java"
 shutil.copy2(Path(__file__).resolve().parent / "java/BastionWebUi.java", samp_java.parent / "BastionWebUi.java")
@@ -505,8 +506,8 @@ replace_exact(samp_java, """        runOnUiThread(() -> { this.mDialog.show(dial
                 this.mWebUi.show(dialogId, caption, content, leftBtnText, rightBtnText);
                 return;
             }
-            this.mWebUi.hide();
-            this.mDialog.show(dialogId, dialogTypeId, caption, content, leftBtnText, rightBtnText);
+            this.mDialog.Hide();
+            this.mWebUi.showDialog(dialogId, dialogTypeId, caption, content, leftBtnText, rightBtnText);
         });""")
 replace_exact(samp_java, """        mDialog     = new DialogManager(this);
 """, """        mDialog     = new DialogManager(this);
