@@ -32,6 +32,20 @@ namespace BastionLauncher
             catch (Exception) { return false; }
         }
 
+        // Пути длиннее 260 знаков (глубокие папки модов в архиве): префикс \\?\ снимает
+        // ограничение Windows. Короткие пути не трогаем. Работает вместе с LongPaths.Enable().
+        static string L(string p)
+        {
+            if (p.Length < 240 || p.StartsWith(@"\\?\")) return p;
+            if (p.StartsWith(@"\\")) return @"\\?\UNC\" + p.Substring(2);
+            return @"\\?\" + p;
+        }
+
+        static void DeleteTree(string dir)
+        {
+            if (Directory.Exists(L(dir))) Directory.Delete(L(dir), true);
+        }
+
         // Скачанное лежит рядом с папкой игры: «<папка>.download.zip» (или части
         // «.download.partN») и «.download.info» с адресом и MD5. Если загрузка оборвалась
         // или лаунчер закрыли, эти файлы остаются, и следующая установка в ту же папку
@@ -79,7 +93,7 @@ namespace BastionLauncher
             string parent = Path.GetDirectoryName(dest);
             Directory.CreateDirectory(parent);
             string archive = ArchivePath(dest);
-            string staging = dest + ".installing";
+            string staging = dest + ".tmp"; // короче — меньше шансов упереться в 260 знаков
 
             // Недокачанное от другого архива (сменилась ссылка или MD5) — начинаем заново
             string info = "url=" + url.Trim() + "\r\nmd5=" + md5 + "\r\n";
@@ -107,7 +121,8 @@ namespace BastionLauncher
                                             "Скачанное удалено, нажми УСТАНОВИТЬ ещё раз.");
                     }
                 }
-                if (Directory.Exists(staging)) Directory.Delete(staging, true);
+                DeleteTree(staging);
+                try { DeleteTree(dest + ".installing"); } catch (Exception) { } // от версий до 2.4.1
                 Directory.CreateDirectory(staging);
                 try { Extract(archive, staging, progress); }
                 catch (InvalidDataException)
@@ -130,7 +145,7 @@ namespace BastionLauncher
             {
                 // Архив удаляется только после успешной установки — иначе остаётся для докачки
                 if (done) DeletePartial(archive);
-                try { if (Directory.Exists(staging)) Directory.Delete(staging, true); } catch (Exception) { }
+                try { DeleteTree(staging); } catch (Exception) { }
             }
         }
 
@@ -144,11 +159,11 @@ namespace BastionLauncher
             bool ready = File.Exists(Path.Combine(fresh, "gta_sa.exe")) && !HasPartial(fresh);
             if (!ready)
             {
-                if (Directory.Exists(fresh) && !HasPartial(fresh)) Directory.Delete(fresh, true);
+                if (Directory.Exists(fresh) && !HasPartial(fresh)) DeleteTree(fresh);
                 Install(url, md5, fresh, progress);
             }
             progress("Замена файлов игры…");
-            if (Directory.Exists(old)) Directory.Delete(old, true);
+            DeleteTree(old);
             try { Directory.Move(dest, old); }
             catch (IOException)
             {
@@ -157,7 +172,7 @@ namespace BastionLauncher
             }
             Directory.Move(fresh, dest);
             progress("Удаление старой версии…");
-            try { Directory.Delete(old, true); } catch (Exception) { }
+            try { DeleteTree(old); } catch (Exception) { }
         }
 
         // b2://бакет/путь → ссылка на файл в закрытом бакете Backblaze B2 и временный
@@ -483,11 +498,11 @@ namespace BastionLauncher
                     string path = Path.GetFullPath(Path.Combine(staging, rel.Replace('/', Path.DirectorySeparatorChar)));
                     if (!path.StartsWith(root, StringComparison.OrdinalIgnoreCase))
                         throw new Exception("Небезопасный путь в архиве: " + e.FullName);
-                    if (rel.EndsWith("/")) { Directory.CreateDirectory(path); continue; }
+                    if (rel.EndsWith("/")) { Directory.CreateDirectory(L(path)); continue; }
                     size += e.Length;
                     if (size > MaxExtracted) throw new Exception("Распакованная игра больше 32 ГБ.");
-                    Directory.CreateDirectory(Path.GetDirectoryName(path));
-                    e.ExtractToFile(path, true);
+                    Directory.CreateDirectory(L(Path.GetDirectoryName(path)));
+                    e.ExtractToFile(L(path), true);
                     int pct = (int)((long)done * 100 / count);
                     if (pct != last) { last = pct; progress("Распаковка: " + pct + "%"); }
                 }
