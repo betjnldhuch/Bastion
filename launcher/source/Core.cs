@@ -21,7 +21,7 @@ using Microsoft.Win32;
 
 [assembly: System.Reflection.AssemblyTitle("Bastion Online Launcher")]
 [assembly: System.Reflection.AssemblyProduct("Bastion Online")]
-[assembly: System.Reflection.AssemblyVersion("2.4.1.0")]
+[assembly: System.Reflection.AssemblyVersion("2.4.2.0")]
 
 namespace BastionLauncher
 {

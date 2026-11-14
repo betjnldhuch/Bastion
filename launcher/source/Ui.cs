@@ -1024,6 +1024,36 @@ namespace BastionLauncher
 
         // Лимит FPS перед запуском: до 90 — средствами SA-MP, выше — через пакет FPS.
         // Возвращает false, если запуск надо отменить.
+        // Windows 11 24H2: оригинальная GTA SA падает при загрузке, потому что у Skimmer
+        // в data\vehicles.ide не хватает полей колёс (игра читает мусор из памяти).
+        // Дописываем недостающее, как в известном фиксе: -1, 0.7, 0.7, -1.
+        static void FixSkimmer(string gta)
+        {
+            try
+            {
+                string path = Path.Combine(Path.Combine(gta, "data"), "vehicles.ide");
+                if (!File.Exists(path)) return;
+                Encoding enc = Encoding.GetEncoding(1252);
+                string[] lines = File.ReadAllLines(path, enc);
+                bool changed = false;
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    string t = lines[i].Trim();
+                    if (!t.StartsWith("460")) continue;
+                    string[] f = t.Split(',');
+                    if (f.Length != 11 || f[0].Trim() != "460" ||
+                        !string.Equals(f[1].Trim(), "skimmer", StringComparison.OrdinalIgnoreCase)) continue;
+                    lines[i] = lines[i].TrimEnd() + ",\t-1,\t0.7,\t0.7,\t-1";
+                    changed = true;
+                }
+                if (!changed) return;
+                string bak = path + ".bak";
+                if (!File.Exists(bak)) File.Copy(path, bak);
+                File.WriteAllLines(path, lines, enc);
+            }
+            catch (Exception) { } // не критично: просто не трогаем файл
+        }
+
         bool ApplyFps(string gta)
         {
             int want = segFps.Value;
@@ -1235,6 +1265,7 @@ namespace BastionLauncher
             if (tMods.Checked && !CheckMods(false)) return;
             SaveSettings(false);
             if (!ApplyFps(gta)) return;
+            FixSkimmer(gta);
 
             try
             {
