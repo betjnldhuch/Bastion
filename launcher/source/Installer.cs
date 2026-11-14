@@ -134,6 +134,32 @@ namespace BastionLauncher
             }
         }
 
+        // Обновление уже установленной игры целиком, как на телефоне: новый архив ставится
+        // рядом в «<папка>.new», потом папки меняются местами, старая удаляется.
+        public static void Reinstall(string url, string md5, string dest, Action<string> progress)
+        {
+            dest = Path.GetFullPath(dest.TrimEnd('\\', '/'));
+            string fresh = dest + ".new", old = dest + ".old";
+            // Прошлый раз новая игра уже распаковалась, но не успела встать на место
+            bool ready = File.Exists(Path.Combine(fresh, "gta_sa.exe")) && !HasPartial(fresh);
+            if (!ready)
+            {
+                if (Directory.Exists(fresh) && !HasPartial(fresh)) Directory.Delete(fresh, true);
+                Install(url, md5, fresh, progress);
+            }
+            progress("Замена файлов игры…");
+            if (Directory.Exists(old)) Directory.Delete(old, true);
+            try { Directory.Move(dest, old); }
+            catch (IOException)
+            {
+                throw new Exception("Не получилось заменить папку игры: закрой игру и все окна этой папки " +
+                                    "и нажми ещё раз. Новая версия уже скачана, повторно качать не придётся.");
+            }
+            Directory.Move(fresh, dest);
+            progress("Удаление старой версии…");
+            try { Directory.Delete(old, true); } catch (Exception) { }
+        }
+
         // b2://бакет/путь → ссылка на файл в закрытом бакете Backblaze B2 и временный
         // токен (b2_authorize_account, ключ только на чтение). Возвращает {url, token}.
         static string[] ResolveB2(string address)

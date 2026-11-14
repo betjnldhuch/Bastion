@@ -578,7 +578,7 @@ namespace BastionLauncher
             refresh.Interval = 10000;
             refresh.Tick += delegate { RefreshAll(); };
             refresh.Start();
-            Shown += delegate { RefreshAll(); ActiveControl = play; CheckUpdate(); };
+            Shown += delegate { RefreshAll(); ActiveControl = play; CheckUpdate(); CheckGameUpdate(); };
             if (Environment.GetCommandLineArgs().Length > 1 && Environment.GetCommandLineArgs()[1] == "--settings") ToggleSettings();
         }
 
@@ -1007,6 +1007,7 @@ namespace BastionLauncher
             {
                 if (!GameFound()) { Warn("Сначала укажи папку игры."); return; }
                 ToggleSettings();
+                if (cfg.EffectiveClientPackUrl.Length == 0) { OfferReinstall(false); return; }
                 SyncPack(gtaPath.Text.Trim(), true, false);
             };
             settings.Controls.Add(verify);
@@ -1331,21 +1332,63 @@ namespace BastionLauncher
             StartInstall(dest);
         }
 
-        void StartInstall(string dest)
+        // ---------------- обновление игры целиком (как на телефоне) ----------------
+        // Пока нет client-pack.json, обновление = новый архив игры (другой MD5 в сборке).
+        // MD5 установленного архива хранится в реестре (BastionGameMd5).
+        void CheckGameUpdate()
         {
-            try { Samp.SetValue("BastionInstallDir", dest); } catch (Exception) { }
+            if (installing || !GameFound() || cfg.EffectiveClientPackUrl.Length > 0) return;
+            string md5 = cfg.EffectiveGameMd5.Trim().ToLowerInvariant();
+            if (md5.Length == 0) return;
+            string have = Samp.GetValue("BastionGameMd5");
+            if (have.Length == 0)
+            {
+                // Игра поставлена до этой версии лаунчера — считаем её текущей
+                try { Samp.SetValue("BastionGameMd5", md5); } catch (Exception) { }
+                return;
+            }
+            if (have != md5) OfferReinstall(true);
+        }
+
+        void OfferReinstall(bool isUpdate)
+        {
+            if (cfg.EffectiveGameUrl.Length == 0)
+            {
+                SetStatus("Файлы игры проверять не с чем: в лаунчере нет архива игры.");
+                return;
+            }
+            string q = isUpdate
+                ? "Вышло обновление игры Bastion. Скачать и установить его сейчас?"
+                : "Скачать игру с Яндекс Диска заново и переустановить её?";
+            q += "\r\n\r\nПапка игры заменится целиком: моды и свои файлы в ней пропадут. " +
+                 "Ник и настройки лаунчера сохранятся.";
+            if (MessageBox.Show(this, q, cfg.Title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            {
+                if (isUpdate) SetStatus("Есть обновление игры: «Настройки» → «Проверить файлы».");
+                return;
+            }
+            StartInstall(gtaPath.Text.Trim(), true);
+        }
+
+        void StartInstall(string dest) { StartInstall(dest, false); }
+
+        void StartInstall(string dest, bool reinstall)
+        {
+            if (!reinstall) try { Samp.SetValue("BastionInstallDir", dest); } catch (Exception) { }
             string url = cfg.EffectiveGameUrl, md5 = cfg.EffectiveGameMd5;
             installing = true;
-            play.Text = "УСТАНОВКА…"; play.Enabled = false; play.Invalidate();
+            play.Text = reinstall ? "ОБНОВЛЕНИЕ…" : "УСТАНОВКА…"; play.Enabled = false; play.Invalidate();
             Thread th = new Thread(delegate ()
             {
                 string error = null;
                 try
                 {
-                    GameInstaller.Install(url, md5, dest, delegate (string msg)
+                    Action<string> report = delegate (string msg)
                     {
                         try { BeginInvoke(new MethodInvoker(delegate { SetStatus(msg); })); } catch (Exception) { }
-                    });
+                    };
+                    if (reinstall) GameInstaller.Reinstall(url, md5, dest, report);
+                    else GameInstaller.Install(url, md5, dest, report);
                 }
                 catch (Exception ex) { error = ex.Message; }
                 try
@@ -1359,7 +1402,9 @@ namespace BastionLauncher
                             gtaPath.Text = dest;
                             SaveSettings(false);
                             try { Samp.SetValue("BastionInstallDir", ""); } catch (Exception) { }
-                            SetStatus("Игра установлена: " + dest);
+                            try { Samp.SetValue("BastionGameMd5", md5.Trim().ToLowerInvariant()); } catch (Exception) { }
+                            packChecked = false;
+                            SetStatus((reinstall ? "Игра обновлена: " : "Игра установлена: ") + dest);
                             // Сразу докачать свежие файлы Bastion (client-pack.json)
                             if (cfg.EffectiveClientPackUrl.Length > 0)
                             {
@@ -1370,8 +1415,8 @@ namespace BastionLauncher
                         }
                         else
                         {
-                            SetStatus("Установка не удалась.");
-                            Warn("Не получилось установить игру: " + error);
+                            SetStatus(reinstall ? "Обновление не удалось." : "Установка не удалась.");
+                            Warn((reinstall ? "Не получилось обновить игру: " : "Не получилось установить игру: ") + error);
                         }
                         UpdatePlayLabel();
                     }));
