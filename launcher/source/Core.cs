@@ -21,7 +21,7 @@ using Microsoft.Win32;
 
 [assembly: System.Reflection.AssemblyTitle("Bastion Online Launcher")]
 [assembly: System.Reflection.AssemblyProduct("Bastion Online")]
-[assembly: System.Reflection.AssemblyVersion("2.4.2.0")]
+[assembly: System.Reflection.AssemblyVersion("2.5.0.0")]
 
 namespace BastionLauncher
 {
@@ -241,7 +241,7 @@ namespace BastionLauncher
 "\r\n" +
 "; Архив игры для кнопки УСТАНОВИТЬ (ZIP с gta_sa.exe и samp.exe) и его MD5.\r\n" +
 "; Пусто = архив Bastion, вшитый в лаунчер при сборке.\r\n" +
-"; Яндекс Диск: публичная ссылка disk.yandex.ru/d/… (несколько частей — через |).\r\n" +
+"; GitHub Releases, Яндекс Диск или прямая ссылка. Части — через |, зеркала — через ;\r\n" +
 "game_url =\r\n" +
 "game_md5 =\r\n" +
 "\r\n" +

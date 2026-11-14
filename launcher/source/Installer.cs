@@ -20,16 +20,57 @@ namespace BastionLauncher
         const long MaxExtracted = 34359738368L; // 32 ГБ
 
         // Ключ уходит только по https и только на хост официального архива
+        // (любого из его зеркал, кроме публичных Яндекс Диска и GitHub)
         public static bool SendsKey(string url)
         {
             if (Secrets.DownloadKey.Length == 0 || Secrets.GameUrl.Length == 0) return false;
             try
             {
-                Uri target = new Uri(url), official = new Uri(Secrets.GameUrl);
-                return target.Scheme == "https" && official.Scheme == "https" &&
-                       string.Equals(target.Host, official.Host, StringComparison.OrdinalIgnoreCase);
+                Uri target = new Uri(url);
+                if (target.Scheme != "https" || IsPublicHost(target.Host)) return false;
+                foreach (string src in Secrets.GameUrl.Split(Separators, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    Uri official;
+                    if (!Uri.TryCreate(src, UriKind.Absolute, out official) || official.Scheme != "https") continue;
+                    if (string.Equals(target.Host, official.Host, StringComparison.OrdinalIgnoreCase)) return true;
+                }
+                return false;
             }
             catch (Exception) { return false; }
+        }
+
+        static readonly char[] Separators = { ';', ' ', '|', '\n', '\r', '\t' };
+        static readonly char[] PartSeparators = { ' ', '|', '\n', '\r', '\t' };
+
+        // Яндекс Диск и GitHub: туда ключ лаунчера не отправляется
+        public static bool IsPublicHost(string host)
+        {
+            string h = host.ToLowerInvariant();
+            return h == "yadi.sk" || h.StartsWith("disk.") || h == "github.com" || h.EndsWith(".github.com") ||
+                   h.EndsWith(".githubusercontent.com");
+        }
+
+        // Источники архива: зеркала через «;», в каждом — части через пробел или |.
+        // У всех зеркал должно быть одинаковое число частей (одни и те же файлы).
+        public static string[][] ParseSources(string url)
+        {
+            string[] mirrors = url.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            System.Collections.Generic.List<string[]> list = new System.Collections.Generic.List<string[]>();
+            foreach (string m in mirrors)
+            {
+                string[] parts = m.Split(PartSeparators, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length == 0) continue;
+                if (parts.Length > 64) throw new Exception("Слишком много частей архива (больше 64).");
+                foreach (string p in parts)
+                    if (!p.StartsWith("http://") && !p.StartsWith("https://") && !p.StartsWith("b2://"))
+                        throw new Exception("Нужна прямая ссылка на ZIP (http:// или https://).");
+                if (list.Count > 0 && parts.Length != list[0].Length)
+                    throw new Exception("У зеркал архива разное число частей: на всех зеркалах должны лежать одни и те же файлы.");
+                list.Add(parts);
+            }
+            if (list.Count == 0) throw new Exception("Нужна прямая ссылка на ZIP (http:// или https://).");
+            if (list.Count > 16) throw new Exception("Слишком много зеркал архива (больше 16).");
+            return list.ToArray();
         }
 
         // Пути длиннее 260 знаков (глубокие папки модов в архиве): префикс \\?\ снимает
@@ -76,16 +117,14 @@ namespace BastionLauncher
         // dest — папка, куда ляжет игра (её не должно быть или она пустая).
         // progress вызывается из рабочего потока.
         // url может содержать несколько ссылок через пробел или | — это части одного ZIP
-        // (например, нарезка по 900 МБ для Яндекс Диска). Они скачиваются по порядку и
-        // склеиваются, MD5 сверяется у склеенного архива.
+        // (например, нарезка по 900 МБ). Они скачиваются по порядку и склеиваются,
+        // MD5 сверяется у склеенного архива. Через «;» — зеркала: если источник не
+        // отдаёт файл (лимит Яндекс Диска, 404, нет связи), лаунчер переходит к
+        // следующему и докачивает с того же места.
         public static void Install(string url, string md5, string dest, Action<string> progress)
         {
-            string[] parts = url.Split(new char[] { ' ', '|', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length == 0) throw new Exception("Нужна прямая ссылка на ZIP (http:// или https://).");
-            if (parts.Length > 64) throw new Exception("Слишком много частей архива (больше 64).");
-            foreach (string p in parts)
-                if (!p.StartsWith("http://") && !p.StartsWith("https://") && !p.StartsWith("b2://"))
-                    throw new Exception("Нужна прямая ссылка на ZIP (http:// или https://).");
+            string[][] sources = ParseSources(url);
+            int partCount = sources[0].Length;
             md5 = md5 == null ? "" : md5.Trim().ToLowerInvariant();
             dest = Path.GetFullPath(dest);
             if (Directory.Exists(dest) && Directory.GetFileSystemEntries(dest).Length > 0)
@@ -95,8 +134,10 @@ namespace BastionLauncher
             string archive = ArchivePath(dest);
             string staging = dest + ".tmp"; // короче — меньше шансов упереться в 260 знаков
 
-            // Недокачанное от другого архива (сменилась ссылка или MD5) — начинаем заново
-            string info = "url=" + url.Trim() + "\r\nmd5=" + md5 + "\r\n";
+            // Недокачанное от другого архива (сменился MD5, а без MD5 — ссылка) — начинаем
+            // заново. Новые зеркала с тем же MD5 скачанное не сбрасывают.
+            string info = md5.Length > 0 ? "md5=" + md5 + "\r\nparts=" + partCount + "\r\n"
+                                         : "url=" + url.Trim() + "\r\nmd5=\r\n";
             string infoFile = InfoPath(archive);
             string old = null;
             try { if (File.Exists(infoFile)) old = File.ReadAllText(infoFile); } catch (Exception) { }
@@ -109,8 +150,7 @@ namespace BastionLauncher
             bool done = false;
             try
             {
-                if (parts.Length == 1) Download(parts[0], archive, progress);
-                else DownloadParts(parts, archive, progress);
+                DownloadParts(sources, archive, progress);
                 if (md5.Length > 0)
                 {
                     progress("Проверка архива (MD5)…");
@@ -268,14 +308,22 @@ namespace BastionLauncher
             return href;
         }
 
-        // Части качаются каждая в свой файл (.partN) с докачкой и склеиваются в конце
-        static void DownloadParts(string[] parts, string target, Action<string> progress)
+        // Части качаются каждая в свой файл (.partN) с докачкой и склеиваются в конце.
+        // Каждая часть берётся с текущего зеркала, при отказе — со следующего.
+        static void DownloadParts(string[][] sources, string target, Action<string> progress)
         {
-            for (int i = 0; i < parts.Length; i++)
+            int count = sources[0].Length, mirror = 0;
+            if (count == 1)
             {
-                string prefix = "Часть " + (i + 1) + " из " + parts.Length + ". ";
-                Download(parts[i], PartPath(target, i), delegate (string msg) { progress(prefix + msg); });
+                DownloadMirrored(sources, 0, target, progress, ref mirror);
+                return;
             }
+            for (int i = 0; i < count; i++)
+            {
+                string prefix = "Часть " + (i + 1) + " из " + count + ". ";
+                DownloadMirrored(sources, i, PartPath(target, i), delegate (string msg) { progress(prefix + msg); }, ref mirror);
+            }
+            string[] parts = sources[0];
             progress("Склейка частей архива…");
             using (FileStream output = new FileStream(target, FileMode.Create, FileAccess.Write))
             {
@@ -296,21 +344,49 @@ namespace BastionLauncher
         }
 
         const int Attempts = 6;
+        const int MirrorAttempts = 2; // на зеркале, после которого есть ещё зеркала
 
-        static void Download(string url, string target, Action<string> progress)
+        // Часть index с зеркала mirror; не вышло — следующее зеркало (по кругу, каждое
+        // один раз). Удачное зеркало запоминается для следующих частей.
+        static void DownloadMirrored(string[][] sources, int index, string target, Action<string> progress, ref int mirror)
+        {
+            int n = sources.Length;
+            for (int k = 0; k < n; k++)
+            {
+                int m = (mirror + k) % n;
+                bool last = k == n - 1;
+                Action<string> report = n == 1 ? progress
+                    : delegate (string msg) { progress("Зеркало " + (m + 1) + " из " + n + ". " + msg); };
+                try
+                {
+                    Download(sources[m][index], target, report, last ? Attempts : MirrorAttempts);
+                    mirror = m;
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    if (last) throw;
+                    progress("Зеркало " + (m + 1) + " не отдаёт файл (" + ex.Message.TrimEnd('.') + "), переключаюсь на зеркало " +
+                             ((m + 1) % n + 1) + "…");
+                    Thread.Sleep(2000);
+                }
+            }
+        }
+
+        static void Download(string url, string target, Action<string> progress, int attempts)
         {
             for (int attempt = 1; ; attempt++)
             {
                 try { DownloadOnce(url, target, progress); return; }
                 catch (RetryException ex)
                 {
-                    if (attempt >= Attempts)
+                    if (attempt >= attempts)
                         throw new Exception(ex.Message + " Скачанное сохранено: нажми УСТАНОВИТЬ ещё раз " +
                                             "и выбери ту же папку — загрузка продолжится с места обрыва.");
                     int wait = Math.Min(30, attempt * 5);
                     for (int sec = wait; sec > 0; sec--)
                     {
-                        progress("Связь оборвалась, повтор через " + sec + " с (попытка " + (attempt + 1) + " из " + Attempts + ")…");
+                        progress("Связь оборвалась, повтор через " + sec + " с (попытка " + (attempt + 1) + " из " + attempts + ")…");
                         Thread.Sleep(1000);
                     }
                 }

@@ -391,8 +391,7 @@ public final class ClientInstaller {
                         report(callback, "Копирование архива…");
                         copyLocalArchive(android.net.Uri.parse(url), part, callback);
                     } else {
-                        report(callback, "Подключение к серверу…");
-                        downloadArchive(url, part, callback);
+                        downloadMirrored(url, part, callback);
                     }
                     if (archive.exists() && !archive.delete())
                         throw new IllegalStateException("Не удалось заменить старый архив.");
@@ -481,13 +480,60 @@ public final class ClientInstaller {
         if (target.length() == 0) throw new IllegalStateException("Выбранный файл пустой.");
     }
 
-    /** Ключ уходит только по https и только на хост архива по умолчанию. */
+    /** Источники архива: зеркала через «;» (те же файлы в разных местах). */
+    static String[] mirrors(String address) {
+        java.util.List<String> list = new java.util.ArrayList<String>();
+        for (String m : address.split("[;\\s|]+")) {
+            if (m.length() > 0) list.add(m);
+        }
+        return list.toArray(new String[0]);
+    }
+
+    /** Яндекс Диск и GitHub: туда ключ лаунчера не отправляется. */
+    static boolean isPublicHost(String host) {
+        String h = host.toLowerCase(java.util.Locale.ROOT);
+        return h.equals("yadi.sk") || h.startsWith("disk.") || h.equals("github.com") || h.endsWith(".github.com")
+                || h.endsWith(".githubusercontent.com");
+    }
+
+    /**
+     * Скачивает архив с первого зеркала, которое его отдаст: лимит Яндекс Диска,
+     * 404 или обрыв связи на одном — лаунчер пробует следующее.
+     */
+    private void downloadMirrored(String address, File target, Callback callback) throws Exception {
+        String[] list = mirrors(address);
+        if (list.length > 16) throw new IllegalArgumentException("Слишком много зеркал архива (больше 16).");
+        for (int i = 0; i < list.length; i++) {
+            String m = list[i];
+            if (!m.startsWith("http://") && !m.startsWith("https://") && !m.startsWith("b2://"))
+                throw new IllegalArgumentException("Нужна прямая ссылка на ZIP-архив (http:// или https://).");
+            report(callback, list.length == 1 ? "Подключение к серверу…"
+                    : "Подключение к зеркалу " + (i + 1) + " из " + list.length + "…");
+            try {
+                downloadArchive(m, target, callback);
+                return;
+            } catch (Exception e) {
+                if (i == list.length - 1) throw e;
+                report(callback, "Зеркало " + (i + 1) + " не отдаёт файл, переключаюсь на следующее…");
+                try { Thread.sleep(1500); } catch (InterruptedException ignored) { }
+            }
+        }
+    }
+
+    /** Ключ уходит только по https и только на хост архива по умолчанию (любого из зеркал). */
     private static boolean sendsDownloadKey(String address) {
         if (DOWNLOAD_KEY.length() == 0) return false;
         try {
-            URL target = new URL(address), official = new URL(GAME_ARCHIVE_URL);
-            return "https".equals(target.getProtocol()) && "https".equals(official.getProtocol())
-                    && target.getHost().equalsIgnoreCase(official.getHost());
+            URL target = new URL(address);
+            if (!"https".equals(target.getProtocol()) || isPublicHost(target.getHost())) return false;
+            for (String src : mirrors(GAME_ARCHIVE_URL)) {
+                try {
+                    URL official = new URL(src);
+                    if ("https".equals(official.getProtocol()) && target.getHost().equalsIgnoreCase(official.getHost()))
+                        return true;
+                } catch (Exception ignored) { }
+            }
+            return false;
         } catch (Exception e) {
             return false;
         }
