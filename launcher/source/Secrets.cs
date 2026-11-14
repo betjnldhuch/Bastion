@@ -14,5 +14,7 @@ namespace BastionLauncher
         // Закрытый бакет Backblaze B2 (GameUrl = b2://бакет/game.zip), ключ только на чтение
         public const string B2KeyId = "";
         public const string B2Key = "";
+        // Приватный релиз GitHub (GameUrl = gh://владелец/репо/тег/файл), токен только на чтение
+        public const string GitHubToken = "";
     }
 }

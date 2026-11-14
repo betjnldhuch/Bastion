@@ -33,6 +33,7 @@ jobs:
           BASTION_DOWNLOAD_KEY: ${{ secrets.BASTION_DOWNLOAD_KEY }}
           BASTION_B2_KEY_ID: ${{ secrets.BASTION_B2_KEY_ID }}
           BASTION_B2_KEY: ${{ secrets.BASTION_B2_KEY }}
+          BASTION_GH_TOKEN: ${{ secrets.BASTION_GH_TOKEN }}
         run: |
           function Lit([string]$v) { '"' + ($v.Trim() -replace '\\', '\\' -replace '"', '\"') + '"' }
           $src = @"
@@ -45,6 +46,7 @@ jobs:
                   public const string DownloadKey = $(Lit $env:BASTION_DOWNLOAD_KEY);
                   public const string B2KeyId = $(Lit $env:BASTION_B2_KEY_ID);
                   public const string B2Key = $(Lit $env:BASTION_B2_KEY);
+                  public const string GitHubToken = $(Lit $env:BASTION_GH_TOKEN);
               }
           }
           "@

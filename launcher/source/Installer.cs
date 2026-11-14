@@ -62,7 +62,7 @@ namespace BastionLauncher
                 if (parts.Length == 0) continue;
                 if (parts.Length > 64) throw new Exception("Слишком много частей архива (больше 64).");
                 foreach (string p in parts)
-                    if (!p.StartsWith("http://") && !p.StartsWith("https://") && !p.StartsWith("b2://"))
+                    if (!p.StartsWith("http://") && !p.StartsWith("https://") && !p.StartsWith("b2://") && !p.StartsWith("gh://"))
                         throw new Exception("Нужна прямая ссылка на ZIP (http:// или https://).");
                 if (list.Count > 0 && parts.Length != list[0].Length)
                     throw new Exception("У зеркал архива разное число частей: на всех зеркалах должны лежать одни и те же файлы.");
@@ -260,6 +260,66 @@ namespace BastionLauncher
             return new string[] { downloadUrl + "/file/" + Uri.EscapeDataString(bucket) + "/" + path, token };
         }
 
+        // gh://владелец/репо/тег/файл → временная прямая ссылка на файл релиза в
+        // приватном репозитории GitHub. Токен только на чтение (Contents: Read) уходит
+        // лишь на api.github.com, сама ссылка на файл его не требует.
+        static string ResolveGitHub(string address)
+        {
+            if (Secrets.GitHubToken.Length == 0)
+                throw new Exception("В этой сборке нет токена для приватного релиза GitHub.");
+            string[] p = address.Substring("gh://".Length).Split('/');
+            if (p.Length != 4 || p[0].Length == 0 || p[1].Length == 0 || p[2].Length == 0 || p[3].Length == 0)
+                throw new Exception("Ссылка GitHub должна быть вида gh://владелец/репо/тег/файл");
+            string api = "https://api.github.com/repos/" + Uri.EscapeDataString(p[0]) + "/" + Uri.EscapeDataString(p[1]);
+            string json;
+            try { json = GitHubGet(api + "/releases/tags/" + Uri.EscapeDataString(p[2]), "application/vnd.github+json", true).Body; }
+            catch (WebException ex) { throw GitHubError(ex, "релиз " + p[2]); }
+            System.Text.RegularExpressions.Match m = System.Text.RegularExpressions.Regex.Match(json,
+                "\"url\"\\s*:\\s*\"(https://api\\.github\\.com/repos/[^\"]+/releases/assets/\\d+)\"[^{}]*?\"name\"\\s*:\\s*\"" +
+                System.Text.RegularExpressions.Regex.Escape(p[3]) + "\"");
+            if (!m.Success) throw new Exception("В релизе " + p[2] + " на GitHub нет файла " + p[3] + ".");
+            GitHubResponse r;
+            try { r = GitHubGet(m.Groups[1].Value, "application/octet-stream", false); }
+            catch (WebException ex) { throw GitHubError(ex, "файл " + p[3]); }
+            if (r.Location == null || !r.Location.StartsWith("https://"))
+                throw new Exception("GitHub не выдал ссылку на файл " + p[3] + ".");
+            return r.Location;
+        }
+
+        class GitHubResponse { public string Body; public string Location; }
+
+        static GitHubResponse GitHubGet(string url, string accept, bool readBody)
+        {
+            HttpWebRequest rq = (HttpWebRequest)WebRequest.Create(url);
+            rq.UserAgent = "Bastion-Launcher-PC";
+            rq.Timeout = 30000;
+            rq.Accept = accept;
+            rq.AllowAutoRedirect = false; // токен не должен уйти дальше api.github.com
+            rq.Headers["Authorization"] = "Bearer " + Secrets.GitHubToken;
+            rq.Headers["X-GitHub-Api-Version"] = "2022-11-28";
+            using (HttpWebResponse rs = (HttpWebResponse)rq.GetResponse())
+            {
+                GitHubResponse r = new GitHubResponse();
+                r.Location = rs.Headers["Location"];
+                if (readBody)
+                    using (StreamReader sr = new StreamReader(rs.GetResponseStream(), Encoding.UTF8)) r.Body = sr.ReadToEnd();
+                return r;
+            }
+        }
+
+        static Exception GitHubError(WebException ex, string what)
+        {
+            HttpWebResponse er = ex.Response as HttpWebResponse;
+            if (er == null) return new RetryException("Нет связи с GitHub: " + ex.Message + ".");
+            int code = (int)er.StatusCode;
+            er.Close();
+            if (code == 401) return new Exception("GitHub не принял токен лаунчера (401): токен удалён или истёк.");
+            if (code == 404) return new Exception("GitHub: " + what + " не найден (404) или у токена нет доступа к репозиторию.");
+            if (code == 403 || code == 429) return new Exception("GitHub временно ограничил запросы (" + code + "). Попробуй позже.");
+            if (code >= 500) return new RetryException("GitHub ответил HTTP " + code + ".");
+            return new Exception("GitHub ответил HTTP " + code + ".");
+        }
+
         // Строковое поле верхнего уровня из JSON (без экранированных кавычек внутри)
         static string JsonString(string json, string key)
         {
@@ -402,6 +462,11 @@ namespace BastionLauncher
             {
                 progress("Получение ссылки Яндекс Диска…");
                 url = ResolveYandexDisk(url);
+            }
+            if (url.StartsWith("gh://"))
+            {
+                progress("Получение ссылки GitHub…");
+                url = ResolveGitHub(url);
             }
             string b2Token = null;
             if (url.StartsWith("b2://"))
