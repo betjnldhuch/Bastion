@@ -6,9 +6,23 @@
 переключается на Диск и докачивает с того же места.
 
 ## 1. Отдельный репозиторий
-github.com → **New repository**, например `bastion-files`, **Public**
-(у закрытого репозитория ссылки на релизы требуют входа). Код Bastion туда не клади:
-если на релиз пожалуются, пострадает только этот репозиторий.
+github.com → **New repository**, например `bastion-files`. Код Bastion туда не клади,
+только части архива.
+
+- **Public** — ссылки обычные (`https://github.com/…/releases/download/…`), токен не нужен.
+- **Private** — ссылки вида `gh://<ник>/bastion-files/game-1/game.zip.part1`, лаунчер
+  получает файл по токену только на чтение (см. ниже). Токен лежит внутри exe/APK,
+  поэтому вытащить его можно, но он даёт только чтение этого одного репозитория.
+
+### Токен для приватного репо
+github.com → Settings → Developer settings → **Fine-grained tokens** → Generate new token:
+- Expiration: максимальный срок (по истечении лаунчеры перестанут качать — выпусти новый и пересобери);
+- Repository access: **Only select repositories** → `bastion-files`;
+- Permissions → Repository → **Contents: Read-only** (больше ничего).
+
+Скопируй токен в секрет `BASTION_GH_TOKEN` репозитория bastion.
+Лимит API GitHub — 5000 запросов в час на токен (около 2 на каждую часть), для
+разработки с запасом.
 
 ## 2. Части архива
 Нарежь `game.zip` на части по 900 МБ командой из `cloud/yandex-disk/README.md`
@@ -19,8 +33,8 @@ github.com → **New repository**, например `bastion-files`, **Public**
 Репозиторий → **Releases** → **Create a new release** → тег `game-1` →
 перетащи части в **Attach binaries** → **Publish release**.
 
-Ссылка на часть: `https://github.com/<ник>/bastion-files/releases/download/game-1/game.zip.part1`
-(правой кнопкой по файлу в релизе → «Копировать адрес ссылки»).
+Ссылка на часть: публичный репо — `https://github.com/<ник>/bastion-files/releases/download/game-1/game.zip.part1`,
+приватный — `gh://<ник>/bastion-files/game-1/game.zip.part1`.
 
 ## 4. Секреты в репозитории bastion
 Settings → Secrets and variables → Actions:
@@ -36,7 +50,7 @@ Settings → Secrets and variables → Actions:
 https://github.com/<ник>/bastion-files/releases/download/game-1/game.zip.part1 | https://github.com/<ник>/bastion-files/releases/download/game-1/game.zip.part2 ; https://disk.yandex.ru/d/AAA | https://disk.yandex.ru/d/BBB
 ```
 У всех зеркал должно быть одинаковое число частей. Зеркал может быть до 16, в любом
-сочетании: GitHub, Яндекс Диск (в том числе с разных аккаунтов), прямая https-ссылка, `b2://`.
+сочетании: GitHub (`https://` или `gh://`), Яндекс Диск (в том числе с разных аккаунтов), прямая https-ссылка, `b2://`.
 
 ## 5. Пересборка
 Actions → **Build Bastion PC launcher** и **Build single Bastion Android APK** → Run workflow.

@@ -135,6 +135,8 @@ public final class ClientInstaller {
      */
     private static final String B2_KEY_ID = BuildConfig.B2_KEY_ID;
     private static final String B2_KEY = BuildConfig.B2_KEY;
+    /** Токен GitHub только на чтение для приватного релиза (секрет BASTION_GH_TOKEN). */
+    private static final String GH_TOKEN = BuildConfig.GH_TOKEN;
     /**
      * Папка внутри архива, содержимое которой кладётся в files/game. Если её нет,
      * корень игры ищется автоматически: папка, в которой лежит SAMP/ (так устроен
@@ -374,7 +376,7 @@ public final class ClientInstaller {
                 try {
                     String url = address == null ? "" : address.trim();
                     boolean local = url.startsWith("content://") || url.startsWith("file://");
-                    if (!local && !url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("b2://"))
+                    if (!local && !url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("b2://") && !url.startsWith("gh://"))
                         throw new IllegalArgumentException("Нужна прямая ссылка на ZIP-архив (http:// или https://).");
                     File external = context.getExternalFilesDir(null);
                     if (external == null) throw new IllegalStateException("Android не предоставил папку для файлов.");
@@ -505,7 +507,7 @@ public final class ClientInstaller {
         if (list.length > 16) throw new IllegalArgumentException("Слишком много зеркал архива (больше 16).");
         for (int i = 0; i < list.length; i++) {
             String m = list[i];
-            if (!m.startsWith("http://") && !m.startsWith("https://") && !m.startsWith("b2://"))
+            if (!m.startsWith("http://") && !m.startsWith("https://") && !m.startsWith("b2://") && !m.startsWith("gh://"))
                 throw new IllegalArgumentException("Нужна прямая ссылка на ZIP-архив (http:// или https://).");
             report(callback, list.length == 1 ? "Подключение к серверу…"
                     : "Подключение к зеркалу " + (i + 1) + " из " + list.length + "…");
@@ -583,6 +585,70 @@ public final class ClientInstaller {
         } finally { auth.disconnect(); }
     }
 
+    /**
+     * gh://владелец/репо/тег/файл → временная прямая ссылка на файл релиза в
+     * приватном репозитории GitHub. Токен уходит только на api.github.com.
+     */
+    private static String resolveGitHub(String address) throws Exception {
+        if (GH_TOKEN.length() == 0)
+            throw new IllegalStateException("В этой сборке нет токена для приватного релиза GitHub.");
+        String[] p = address.substring("gh://".length()).split("/");
+        if (p.length != 4 || p[0].isEmpty() || p[1].isEmpty() || p[2].isEmpty() || p[3].isEmpty())
+            throw new IllegalArgumentException("Ссылка GitHub должна быть вида gh://владелец/репо/тег/файл");
+        String api = "https://api.github.com/repos/" + java.net.URLEncoder.encode(p[0], "UTF-8") + "/"
+                + java.net.URLEncoder.encode(p[1], "UTF-8");
+        HttpURLConnection c = gitHub(api + "/releases/tags/" + java.net.URLEncoder.encode(p[2], "UTF-8"),
+                "application/vnd.github+json");
+        String assetUrl = null;
+        try {
+            int code = c.getResponseCode();
+            checkGitHub(code, "релиз " + p[2]);
+            InputStream in = c.getInputStream();
+            java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+            try {
+                byte[] b = new byte[8192];
+                int n;
+                while ((n = in.read(b)) != -1) buf.write(b, 0, n);
+            } finally { in.close(); }
+            JSONArray assets = new JSONObject(buf.toString("UTF-8")).getJSONArray("assets");
+            for (int i = 0; i < assets.length(); i++) {
+                JSONObject a = assets.getJSONObject(i);
+                if (p[3].equals(a.optString("name"))) { assetUrl = a.getString("url"); break; }
+            }
+        } finally { c.disconnect(); }
+        if (assetUrl == null || !assetUrl.startsWith("https://api.github.com/"))
+            throw new IllegalStateException("В релизе " + p[2] + " на GitHub нет файла " + p[3] + ".");
+        c = gitHub(assetUrl, "application/octet-stream");
+        try {
+            int code = c.getResponseCode();
+            if (code < 300 || code >= 400) checkGitHub(code, "файл " + p[3]);
+            String location = c.getHeaderField("Location");
+            if (location == null || !location.startsWith("https://"))
+                throw new IllegalStateException("GitHub не выдал ссылку на файл " + p[3] + ".");
+            return location;
+        } finally { c.disconnect(); }
+    }
+
+    private static HttpURLConnection gitHub(String url, String accept) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        c.setConnectTimeout(CONNECT_TIMEOUT);
+        c.setReadTimeout(READ_TIMEOUT);
+        c.setInstanceFollowRedirects(false); // токен не должен уйти дальше api.github.com
+        c.setRequestProperty("User-Agent", "Bastion-Launcher/0.4");
+        c.setRequestProperty("Accept", accept);
+        c.setRequestProperty("Authorization", "Bearer " + GH_TOKEN);
+        c.setRequestProperty("X-GitHub-Api-Version", "2022-11-28");
+        return c;
+    }
+
+    private static void checkGitHub(int code, String what) {
+        if (code >= 200 && code < 300) return;
+        if (code == 401) throw new IllegalStateException("GitHub не принял токен лаунчера (401): токен удалён или истёк.");
+        if (code == 404) throw new IllegalStateException("GitHub: " + what + " не найден (404) или у токена нет доступа к репозиторию.");
+        if (code == 403 || code == 429) throw new IllegalStateException("GitHub временно ограничил запросы (" + code + "). Попробуй позже.");
+        throw new IllegalStateException("GitHub ответил HTTP " + code + ".");
+    }
+
     /** Ссылка на Яндекс Диск (disk.yandex.ru/d/…, yadi.sk/…)? */
     private static boolean isYandexDisk(String address) {
         try {
@@ -624,6 +690,10 @@ public final class ClientInstaller {
         if (isYandexDisk(address)) {
             report(callback, "Получение ссылки Яндекс Диска…");
             address = resolveYandexDisk(address);
+        }
+        if (address.startsWith("gh://")) {
+            report(callback, "Получение ссылки GitHub…");
+            address = resolveGitHub(address);
         }
         String b2Token = null;
         if (address.startsWith("b2://")) {

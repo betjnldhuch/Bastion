@@ -38,6 +38,8 @@ android {
         // Закрытый бакет Backblaze B2: BASTION_GAME_URL = b2://бакет/game.zip и ключ только на чтение
         buildConfigField 'String', 'B2_KEY_ID', quoted(envOr('BASTION_B2_KEY_ID', ''))
         buildConfigField 'String', 'B2_KEY', quoted(envOr('BASTION_B2_KEY', ''))
+        // Приватный релиз GitHub: gh://владелец/репо/тег/файл и токен только на чтение
+        buildConfigField 'String', 'GH_TOKEN', quoted(envOr('BASTION_GH_TOKEN', ''))
     }
 
     buildFeatures {
