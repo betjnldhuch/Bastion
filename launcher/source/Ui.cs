@@ -1501,6 +1501,19 @@ namespace BastionLauncher
         [STAThread]
         static void Main()
         {
+            // Длинные пути (> 260 знаков) при распаковке игры: .NET 4.6.2+ по умолчанию
+            // их блокирует для программ, собранных под 4.0. Включаем до любой работы с файлами.
+            try
+            {
+                Type ac = Type.GetType("System.AppContext");
+                if (ac != null)
+                {
+                    System.Reflection.MethodInfo set = ac.GetMethod("SetSwitch");
+                    set.Invoke(null, new object[] { "Switch.System.IO.UseLegacyPathHandling", false });
+                    set.Invoke(null, new object[] { "Switch.System.IO.BlockLongPaths", false });
+                }
+            }
+            catch (Exception) { }
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Updater.CleanOld();     // следы прошлого обновления
