@@ -43,16 +43,16 @@ public final class Remote {
 
     /** Папка лаунчеров на сервере раздачи или пусто, если адрес архива не https. */
     public static String baseUrl() {
-        try {
-            URL u = new URL(ClientInstaller.GAME_ARCHIVE_URL);
-            if (!"https".equals(u.getProtocol())) return "";
-            // Яндекс Диск и GitHub не раздают папку launcher/ — удалённых файлов нет
-            String h = u.getHost().toLowerCase(java.util.Locale.ROOT);
-            if (h.equals("yadi.sk") || h.startsWith("disk.") || h.equals("github.com")) return "";
-            return "https://" + u.getAuthority() + "/launcher/";
-        } catch (Exception e) {
-            return "";
+        // Первый https-источник, который раздаёт папку launcher/ (сервер раздачи).
+        // Яндекс Диск и GitHub её не раздают — их пропускаем.
+        for (String src : ClientInstaller.mirrors(ClientInstaller.GAME_ARCHIVE_URL)) {
+            try {
+                URL u = new URL(src);
+                if (!"https".equals(u.getProtocol()) || ClientInstaller.isPublicHost(u.getHost())) continue;
+                return "https://" + u.getAuthority() + "/launcher/";
+            } catch (Exception ignored) { }
         }
+        return "";
     }
 
     private static File cache(Context ctx, String name) {
