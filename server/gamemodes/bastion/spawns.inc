@@ -9,6 +9,11 @@
 //    /addspawn [название] — точка там, где стоишь (взгляд запоминается)
 //    /delspawn [№]        — убрать точку
 //    /spawns              — список точек, /gotospawn [№] — телепорт
+//
+//  Дополнительные спавны фракций (секретный офис ФБР, подразделения и т.п.):
+//    /addfspawn [фракция] [с ранга] [название] — там, где стоишь (можно в интерьере)
+//    /delfspawn [№], /fspawns [фракция]
+//  Участник фракции с нужным рангом выбирает такой спавн в /setspawn.
 // =====================================================================
 
 #define MAX_SPAWNS          20
@@ -34,7 +39,22 @@ enum
 }
 static gSpawnMode[MAX_PLAYERS];
 static gSpawnRef[MAX_PLAYERS];
-static gSpawnPick[MAX_PLAYERS][MAX_SPAWNS + 3][2];   // +3: вокзал, дом, фракция   // строка окна -> { режим, ref }
+#define MAX_FSPAWNS         60      // доп. спавнов фракций на весь сервер
+#define FSPAWN_PICK_MAX     8       // сколько своих доп. спавнов показывать в /setspawn
+enum E_FSPAWN
+{
+	fsDbId,
+	fsFaction,
+	fsRank,                 // с какого ранга доступен
+	fsName[32],
+	Float:fsX, Float:fsY, Float:fsZ, Float:fsA,
+	fsInt, fsWorld
+}
+static gFSpawn[MAX_FSPAWNS][E_FSPAWN];
+static gFSpawnCount = 0;
+
+// строка окна -> { режим, ref }; +3: вокзал, дом, база фракции
+static gSpawnPick[MAX_PLAYERS][MAX_SPAWNS + 3 + FSPAWN_PICK_MAX][2];
 
 stock Spawns_Init()
 {
@@ -59,6 +79,30 @@ stock Spawns_Init()
 		DB_FreeResultSet(r);
 	}
 	printf("[Spawns] Loaded %d spawn points.", gSpawnCount);
+
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_spawns (id INTEGER PRIMARY KEY AUTOINCREMENT, faction INTEGER, rank INTEGER DEFAULT 1, name TEXT, x REAL, y REAL, z REAL, a REAL, interior INTEGER DEFAULT 0, world INTEGER DEFAULT 0)"));
+	r = DB_ExecuteQuery(gDB, "SELECT id, faction, rank, name, x, y, z, a, interior, world FROM faction_spawns ORDER BY id");
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new i = 0; i < rows && gFSpawnCount < MAX_FSPAWNS; i++)
+		{
+			new s = gFSpawnCount++;
+			gFSpawn[s][fsDbId] = DB_GetFieldInt(r, 0);
+			gFSpawn[s][fsFaction] = DB_GetFieldInt(r, 1);
+			gFSpawn[s][fsRank] = DB_GetFieldInt(r, 2);
+			DB_GetFieldString(r, 3, gFSpawn[s][fsName], 32);
+			gFSpawn[s][fsX] = DB_GetFieldFloat(r, 4);
+			gFSpawn[s][fsY] = DB_GetFieldFloat(r, 5);
+			gFSpawn[s][fsZ] = DB_GetFieldFloat(r, 6);
+			gFSpawn[s][fsA] = DB_GetFieldFloat(r, 7);
+			gFSpawn[s][fsInt] = DB_GetFieldInt(r, 8);
+			gFSpawn[s][fsWorld] = DB_GetFieldInt(r, 9);
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	printf("[Spawns] Loaded %d faction spawn points.", gFSpawnCount);
 }
 
 // Самый свободный вокзал: где рядом меньше всего игроков (при равенстве — случайный из них).
@@ -163,6 +207,95 @@ stock Cmd_GotoSpawn(playerid, const params[])
 }
 
 // ---------------------------------------------------------------------
+//  Дополнительные спавны фракций
+// ---------------------------------------------------------------------
+static FSpawn_FindByDbId(dbid)
+{
+	for (new s = 0; s < gFSpawnCount; s++) if (gFSpawn[s][fsDbId] == dbid) return s;
+	return -1;
+}
+
+static bool:FSpawn_Allowed(playerid, s)
+{
+	return (Player[playerid][pFaction] == gFSpawn[s][fsFaction] && Player[playerid][pRank] >= gFSpawn[s][fsRank]);
+}
+
+// Выбранный в /setspawn доп. спавн фракции. 0 — не выбран, убран или нет доступа (тогда — основная база).
+stock Spawns_GetFactionExtra(playerid, &Float:x, &Float:y, &Float:z, &Float:a, &interior, &world)
+{
+	if (gSpawnMode[playerid] != SPAWN_FACTION || gSpawnRef[playerid] <= 0) return 0;
+	new s = FSpawn_FindByDbId(gSpawnRef[playerid]);
+	if (s == -1 || !FSpawn_Allowed(playerid, s)) return 0;
+	x = gFSpawn[s][fsX]; y = gFSpawn[s][fsY]; z = gFSpawn[s][fsZ]; a = gFSpawn[s][fsA];
+	interior = gFSpawn[s][fsInt];
+	world = gFSpawn[s][fsWorld];
+	return 1;
+}
+
+stock bool:Cmd_AddFSpawn(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, f, rank, name[32];
+	if (!NextIntParam(params, pos, f) || !NextIntParam(params, pos, rank) || !RestParam(params, pos, name) || !Faction_IsValid(f))
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /addfspawn [фракция] [с ранга 1-%d] [название] — доп. спавн фракции там, где стоишь", MAX_RANK);
+	if (rank < 1) rank = 1;
+	if (rank > MAX_RANK) rank = MAX_RANK;
+	if (gFSpawnCount >= MAX_FSPAWNS) return SendClientMessage(playerid, COLOR_GREY, "Достигнут лимит доп. спавнов фракций (%d).", MAX_FSPAWNS);
+	new mine = 0;
+	for (new i = 0; i < gFSpawnCount; i++) if (gFSpawn[i][fsFaction] == f) mine++;
+	if (mine >= FSPAWN_PICK_MAX) return SendClientMessage(playerid, COLOR_GREY, "У фракции уже %d доп. спавнов: больше не поместится в /setspawn.", FSPAWN_PICK_MAX);
+
+	new s = gFSpawnCount++;
+	gFSpawn[s][fsFaction] = f;
+	gFSpawn[s][fsRank] = rank;
+	gFSpawn[s][fsName][0] = '\0';
+	strcat(gFSpawn[s][fsName], name, 32);
+	GetPlayerPos(playerid, gFSpawn[s][fsX], gFSpawn[s][fsY], gFSpawn[s][fsZ]);
+	GetPlayerFacingAngle(playerid, gFSpawn[s][fsA]);
+	gFSpawn[s][fsInt] = GetPlayerInterior(playerid);
+	gFSpawn[s][fsWorld] = GetPlayerVirtualWorld(playerid);
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO faction_spawns (faction, rank, name, x, y, z, a, interior, world) VALUES (%d, %d, '%q', %f, %f, %f, %f, %d, %d)",
+		f, rank, name, gFSpawn[s][fsX], gFSpawn[s][fsY], gFSpawn[s][fsZ], gFSpawn[s][fsA], gFSpawn[s][fsInt], gFSpawn[s][fsWorld]));
+	gFSpawn[s][fsDbId] = DB_LastInsertId();
+	SendClientMessage(playerid, COLOR_ADMIN, "Доп. спавн №%d «%s» для «%s» (с ранга %d) создан. Игроки выбирают его в /setspawn.",
+		gFSpawn[s][fsDbId], name, Faction_GetName(f), rank);
+	return true;
+}
+
+stock bool:Cmd_DelFSpawn(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 4)) return true;
+	new pos = 0, dbid;
+	if (!NextIntParam(params, pos, dbid)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /delfspawn [№] (номера: /fspawns)");
+	new s = FSpawn_FindByDbId(dbid);
+	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "Доп. спавна с таким номером нет. Список: /fspawns");
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM faction_spawns WHERE id = %d", dbid));
+	SendClientMessage(playerid, COLOR_ADMIN, "Доп. спавн №%d «%s» убран. Кто его выбрал, появится на основной базе фракции.", dbid, gFSpawn[s][fsName]);
+	new last = gFSpawnCount - 1;
+	if (s != last) gFSpawn[s] = gFSpawn[last];
+	gFSpawnCount--;
+	return true;
+}
+
+stock bool:Cmd_FSpawns(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 3)) return true;
+	new pos = 0, f = 0;
+	NextIntParam(params, pos, f);
+	new shown = 0;
+	SendClientMessage(playerid, COLOR_YELLOW, "Доп. спавны фракций (основная база — /setfspawn):");
+	for (new s = 0; s < gFSpawnCount; s++)
+	{
+		if (f > 0 && gFSpawn[s][fsFaction] != f) continue;
+		SendClientMessage(playerid, COLOR_WHITE, " №%d — %s: %s, с ранга %d (инт. %d, мир %d)", gFSpawn[s][fsDbId], Faction_GetName(gFSpawn[s][fsFaction]),
+			gFSpawn[s][fsName], gFSpawn[s][fsRank], gFSpawn[s][fsInt], gFSpawn[s][fsWorld]);
+		shown++;
+	}
+	if (shown == 0) SendClientMessage(playerid, COLOR_GREY, "Пусто. Добавить: /addfspawn [фракция] [с ранга] [название]");
+	return true;
+}
+
+// ---------------------------------------------------------------------
 //  /setspawn — игрок выбирает, где появляться
 // ---------------------------------------------------------------------
 
@@ -213,6 +346,13 @@ stock Cmd_SetSpawn(playerid)
 	{
 		gSpawnPick[playerid][n][0] = SPAWN_FACTION; gSpawnPick[playerid][n][1] = 0; n++;
 		strcat(list, "{FFFF66}На базе фракции\n");
+		for (new s = 0, k = 0; s < gFSpawnCount && k < FSPAWN_PICK_MAX; s++)
+		{
+			if (!FSpawn_Allowed(playerid, s)) continue;
+			gSpawnPick[playerid][n][0] = SPAWN_FACTION; gSpawnPick[playerid][n][1] = gFSpawn[s][fsDbId]; n++; k++;
+			format(line, sizeof line, "{FFFF66}%s\n", gFSpawn[s][fsName]);
+			strcat(list, line);
+		}
 	}
 	for (new s = 0; s < gSpawnCount; s++)
 	{
@@ -239,7 +379,12 @@ stock Spawns_OnDialog(playerid, dialogid, response, listitem)
 	switch (gSpawnMode[playerid])
 	{
 		case SPAWN_HOUSE:   SendClientMessage(playerid, COLOR_GREEN, "Теперь ты появляешься у своего дома.");
-		case SPAWN_FACTION: SendClientMessage(playerid, COLOR_GREEN, "Теперь ты появляешься на базе фракции.");
+		case SPAWN_FACTION:
+		{
+			new s = (gSpawnRef[playerid] > 0) ? FSpawn_FindByDbId(gSpawnRef[playerid]) : -1;
+			if (s != -1) SendClientMessage(playerid, COLOR_GREEN, "Теперь ты появляешься здесь: %s.", gFSpawn[s][fsName]);
+			else SendClientMessage(playerid, COLOR_GREEN, "Теперь ты появляешься на базе фракции.");
+		}
 		case SPAWN_STATION:
 		{
 			new s = Spawn_FindByDbId(gSpawnRef[playerid]);

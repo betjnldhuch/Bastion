@@ -163,6 +163,7 @@ static const gHelp[][E_HELP] =
 
 	// --- Дом
 	{ HT_HOUSE, "/setspawn", "выбрать, где появляться: вокзал, дом или база фракции" },
+	{ HT_HOUSE, "/rec", "перезайти на сервер, не закрывая игру" },
 	{ HT_HOUSE, "/buyhouse", "купить дом" },
 	{ HT_HOUSE, "/sellhouse", "продать дом" },
 	{ HT_HOUSE, "/house", "меню дома: счёт, аренда; шкаф и сейф — ALT у шкафа" },
@@ -357,6 +358,7 @@ static const gHelp[][E_HELP] =
 	{ HT_ADMIN4, "/makeleader [id] [фракция]", "назначить лидера" },
 	{ HT_ADMIN4, "/setfaction [id] [фр] [ранг]", "поставить во фракцию (0 — выгнать)" },
 	{ HT_ADMIN4, "/setfspawn [фракция]", "спавн фракции здесь (можно внутри здания)" },
+	{ HT_ADMIN4, "/addfspawn [фр.] [ранг] [назв.]", "доп. спавн фракции здесь (секретный офис и т.п.), /delfspawn [№], /fspawns" },
 	{ HT_ADMIN4, "/setfduty [фракция]", "раздевалка фракции здесь (можно внутри здания)" },
 	{ HT_ADMIN4, "/setfint [фракция]", "вход в здание фракции: на улице у двери, потом внутри" },
 	{ HT_ADMIN4, "/adddoor [название]", "общий вход в здание здесь; потом внутри: /setdoor [№]" },
@@ -436,6 +438,7 @@ static const gHelp[][E_HELP] =
 	// --- Разработка
 	{ HT_DEV, "/place [вид]", "dealer fish field barn bin dump vault cell pwork escape release pguard clinic church lottery" },
 	{ HT_DEV, "/place kpz", "своя камера КПЗ в LSPD (можно несколько)" },
+	{ HT_DEV, "/place weed", "поле конопли: сажать можно только в 40 м от такой точки" },
 	{ HT_DEV, "/place car [работа]", "в машине: рабочая машина fisher|farmer|collector|garbage" },
 	{ HT_DEV, "/places, /unplace, /gotoplace [№]", "список точек, удалить ближайшую, телепорт" },
 	{ HT_DEV, "/pos [название]", "координаты; с названием — сохранить точку (scriptfiles/bastion_points.txt)" },
