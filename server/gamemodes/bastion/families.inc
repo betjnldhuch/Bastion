@@ -53,7 +53,8 @@ static gFamInviteDb[MAX_PLAYERS];           // номер семьи в базе на момент приг
 #define FMP_HOUSE           6
 #define FMP_RANKNAMES       7
 #define FMP_LOG             8
-#define FMP_COUNT           9
+#define FMP_MUTE            9
+#define FMP_COUNT           10
 #define FMP_ALL             ((1 << FMP_COUNT) - 1)
 #define FAMILY_MAX_WARNS    3           // на третьем выговоре — выгоняют из семьи
 
@@ -67,7 +68,8 @@ static const gFamPermName[FMP_COUNT][36] =
 	"Общак: снять",
 	"Семейный дом: вход, замок, спавн",
 	"Названия рангов",
-	"Журнал"
+	"Журнал",
+	"Мут чата /fc"
 };
 static gFamRankPerm[MAX_FAMILIES][FAMILY_RANKS];   // права рангов (индекс: ранг - 1)
 static gFamPOn[MAX_PLAYERS];                        // личные права: включено
@@ -77,6 +79,7 @@ static gFamMgOff[MAX_PLAYERS];
 static gFamInfoBack[MAX_PLAYERS];                   // куда вернуться из окна-информации
 static gFamLogKind[MAX_PLAYERS];
 static gFamLogName[MAX_PLAYERS][MAX_PLAYER_NAME];
+static gFamMuteUntil[MAX_PLAYERS];                 // мут чата /fc до (unix-время)
 static gFamDisabled[MAX_FAMILIES];                  // права, отключённые владельцем для всей семьи (/orgs)
 
 static const gFamDefRanks[FAMILY_RANKS][24] =
@@ -535,6 +538,8 @@ static bool:Cmd_FamChat(playerid, const params[])
 	if (!Family_Need(playerid, 1)) return true;
 	new text[110], msg[144], s = gFam[playerid];
 	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /fc [текст]");
+	if (gFamMuteUntil[playerid] > gettime())
+		return SendClientMessage(playerid, COLOR_GREY, "Тебе запретили писать в чат семьи ещё на %d мин.", (gFamMuteUntil[playerid] - gettime()) / 60 + 1);
 	format(msg, sizeof msg, "[%s] %s %s: %s", Family[s][famType], gFamRankName[s][gFamRank[playerid] - 1], GetRPName(playerid), text);
 	Family_Message(s, msg);
 	return true;
@@ -619,6 +624,7 @@ static bool:Cmd_FamHelp(playerid)
 	strcat(text, "/fambank put [сумма] — положить в общак\n\n");
 	strcat(text, "{FFFF00}По правам (их раздают глава и зам: /family > Управление)\n{FFFFFF}");
 	strcat(text, "/faminvite [id]   /famkick [id]   /famoffkick [Имя_Фамилия]\n/famrank [id] [ранг]   /fambank take [сумма]   /famrankname [ранг] [название]\n");
+	strcat(text, "/fammute [id] [минуты] [причина] — мут чата /fc (0 — снять)\n");
 	strcat(text, "В «Управлении»: карточки участников, выговоры, права рангов и личные, журнал\n\n");
 	strcat(text, "{FFFF00}Только глава (ранг 6)\n{FFFFFF}");
 	strcat(text, "/famcolor [RRGGBB]   /famhouse — свой дом сделать семейным (off — убрать)\n");
@@ -628,6 +634,34 @@ static bool:Cmd_FamHelp(playerid)
 }
 
 // Из commands.inc. Возвращает 1, если команда наша.
+// /fammute [id] [минуты] [причина] — мут чата семьи, 0 — снять
+static bool:Cmd_FamMute(playerid, const params[])
+{
+	if (!FamPerm_Need(playerid, FMP_MUTE)) return true;
+	new s = gFam[playerid], pos = 0, mins, reason[64], msg[144];
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, mins) || mins < 0 || mins > 1440)
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /fammute [id] [минуты 1-1440, 0 — снять] [причина]");
+	if (!Player[target][pLogged] || gFam[target] != s) return SendClientMessage(playerid, COLOR_GREY, "Игрок не в твоей семье.");
+	if (target == playerid || gFamRank[target] >= gFamRank[playerid]) return SendClientMessage(playerid, COLOR_GREY, "Нельзя управлять равным или старшим по рангу.");
+	if (!RestParam(params, pos, reason)) format(reason, sizeof reason, "без причины");
+	gFamMuteUntil[target] = (mins > 0) ? (gettime() + mins * 60) : 0;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET fammute_until = %d WHERE id = %d", gFamMuteUntil[target], Player[target][pDbId]));
+	if (mins > 0)
+	{
+		format(msg, sizeof msg, "%s запретил %s писать в чат семьи на %d мин. Причина: %s", GetRPName(playerid), GetRPName(target), mins, reason);
+		SendClientMessage(target, COLOR_RED, "%s запретил тебе писать в чат семьи на %d мин. Причина: %s", GetRPName(playerid), mins, reason);
+	}
+	else
+	{
+		format(msg, sizeof msg, "%s снял мут чата семьи с %s.", GetRPName(playerid), GetRPName(target));
+		SendClientMessage(target, COLOR_GREEN, "%s разрешил тебе снова писать в чат семьи.", GetRPName(playerid));
+	}
+	Fam_Log(s, FLOG_STAFF, msg);
+	SendClientMessage(playerid, COLOR_GREEN, "Готово.");
+	return true;
+}
+
 stock Families_OnCommand(playerid, const cmd[], const params[])
 {
 	if (strcmp(cmd, "/fam", true, 4) != 0 && strcmp(cmd, "/fc", true) != 0) return 0;
@@ -648,6 +682,7 @@ stock Families_OnCommand(playerid, const cmd[], const params[])
 	if (!strcmp(cmd, "/famrankname", true)) { Cmd_FamRankName(playerid, params); return 1; }
 	if (!strcmp(cmd, "/famcolor", true))    { Cmd_FamColor(playerid, params); return 1; }
 	if (!strcmp(cmd, "/famhouse", true))    { Cmd_FamHouse(playerid, params); return 1; }
+	if (!strcmp(cmd, "/fammute", true))     { Cmd_FamMute(playerid, params); return 1; }
 	return 0;
 }
 
@@ -1026,6 +1061,7 @@ static FamPerm_Init()
 	DB_AddColumn("accounts", "famwarns", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "famjoin", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "famnote", "TEXT");
+	DB_AddColumn("accounts", "fammute_until", "INTEGER DEFAULT 0");
 	DB_AddColumn("families", "disabled", "INTEGER DEFAULT 0");
 	for (new s = 0; s < MAX_FAMILIES; s++) { FamPerm_ResetSlot(s); gFamDisabled[s] = 0; }
 	r = DB_ExecuteQuery(gDB, "SELECT id, disabled FROM families");
@@ -1056,12 +1092,14 @@ static FamPerm_LoadPlayer(playerid)
 {
 	gFamPOn[playerid] = 0;
 	gFamPOff[playerid] = 0;
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT famperm_on, famperm_off FROM accounts WHERE id = %d", Player[playerid][pDbId]);
+	gFamMuteUntil[playerid] = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT famperm_on, famperm_off, fammute_until FROM accounts WHERE id = %d", Player[playerid][pDbId]);
 	if (r == DBResult:0) return;
 	if (DB_GetRowCount(r) > 0)
 	{
 		gFamPOn[playerid] = DB_GetFieldInt(r, 0) & FMP_ALL;
 		gFamPOff[playerid] = DB_GetFieldInt(r, 1) & FMP_ALL;
+		gFamMuteUntil[playerid] = DB_GetFieldInt(r, 2);
 	}
 	DB_FreeResultSet(r);
 }
@@ -1069,10 +1107,11 @@ static FamPerm_LoadPlayer(playerid)
 // Вступил в семью или вышел из неё: личные права, выговоры и заметка — с нуля
 static FamPerm_OnJoinLeave(playerid, bool:joined)
 {
+	gFamMuteUntil[playerid] = 0;
 	gFamPOn[playerid] = 0;
 	gFamPOff[playerid] = 0;
 	if (Player[playerid][pDbId] == 0) return;
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET famperm_on = 0, famperm_off = 0, famwarns = 0, famnote = NULL, famjoin = %d WHERE id = %d",
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET famperm_on = 0, famperm_off = 0, famwarns = 0, famnote = NULL, fammute_until = 0, famjoin = %d WHERE id = %d",
 		joined ? gettime() : 0, Player[playerid][pDbId]));
 }
 

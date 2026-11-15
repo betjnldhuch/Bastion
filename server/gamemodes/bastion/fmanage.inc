@@ -46,12 +46,14 @@ static const gFPermName[FP_COUNT][32] =
 	"Взводы",
 	"Ранги, зарплаты, скины",
 	"Журнал",
-	"Завод: передать и закрыть"
+	"Завод: передать и закрыть",
+	"Мут рации /f"
 };
 
 new gFRankPerm[MAX_FACTIONS][MAX_RANK];         // права рангов (индекс: ранг - 1)
 static gFPermOn[MAX_PLAYERS];                   // личные права игрока: включено
 static gFPermOff[MAX_PLAYERS];                  // личные права игрока: выключено
+static gFMuteUntil[MAX_PLAYERS];                // мут рации /f до (unix-время)
 static gFmRank[MAX_PLAYERS];                    // какой ранг правит игрок в «Права рангов»
 static gFmOn[MAX_PLAYERS];                      // личные права выбранного участника (копия для окна)
 static gFmOff[MAX_PLAYERS];
@@ -86,6 +88,7 @@ stock FPerm_Init()
 	DB_AddColumn("accounts", "fjoin", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "last_seen", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "fnote", "TEXT");
+	DB_AddColumn("accounts", "fmute_until", "INTEGER DEFAULT 0");
 	DB_AddColumn("faction_logs", "kind", "INTEGER DEFAULT 0");
 
 	for (new f = 0; f < MAX_FACTIONS; f++)
@@ -125,13 +128,15 @@ stock FPerm_OnLogin(playerid)
 {
 	gFPermOn[playerid] = 0;
 	gFPermOff[playerid] = 0;
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT fperm_on, fperm_off FROM accounts WHERE id = %d", Player[playerid][pDbId]);
+	gFMuteUntil[playerid] = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT fperm_on, fperm_off, fmute_until FROM accounts WHERE id = %d", Player[playerid][pDbId]);
 	if (r != DBResult:0)
 	{
 		if (DB_GetRowCount(r) > 0)
 		{
 			gFPermOn[playerid] = DB_GetFieldInt(r, 0) & FP_ALL;
 			gFPermOff[playerid] = DB_GetFieldInt(r, 1) & FP_ALL;
+			gFMuteUntil[playerid] = DB_GetFieldInt(r, 2);
 		}
 		DB_FreeResultSet(r);
 	}
@@ -151,16 +156,17 @@ stock FPerm_OnFactionChange(playerid, f)
 {
 	gFPermOn[playerid] = 0;
 	gFPermOff[playerid] = 0;
+	gFMuteUntil[playerid] = 0;
 	if (Player[playerid][pDbId] == 0) return;
 	Org_ClearSpec(Player[playerid][pDbId]);
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET fperm_on = 0, fperm_off = 0, fnote = NULL, fjoin = %d WHERE id = %d",
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET fperm_on = 0, fperm_off = 0, fnote = NULL, fmute_until = 0, fjoin = %d WHERE id = %d",
 		(f == FACTION_NONE) ? 0 : gettime(), Player[playerid][pDbId]));
 }
 
 // Уволен оффлайн: то же самое прямо в базе
 stock FPerm_ClearOffline(dbid)
 {
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET fperm_on = 0, fperm_off = 0, fnote = NULL, fjoin = 0 WHERE id = %d", dbid));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET fperm_on = 0, fperm_off = 0, fnote = NULL, fmute_until = 0, fjoin = 0 WHERE id = %d", dbid));
 	Org_ClearSpec(dbid);
 }
 
@@ -442,7 +448,7 @@ stock Faction_ShowMemberActions(playerid)
 	strcat(body, "Информация\n");
 	format(line, sizeof line, "%sИзменить ранг {AFAFAF}(сейчас %d. %s)\n", (younger && ((my >> FP_RANK) & 1)) ? ("") : FM_GRAY, rank, Faction_GetRankName(f, rank));
 	strcat(body, line);
-	format(line, sizeof line, "%sВыдать выговор {AFAFAF}(%d/%d)\n", (younger && ((my >> FP_WARN) & 1)) ? ("") : FM_GRAY, Faction_GetWarns(dbid), FACTION_MAX_WARNS);
+	format(line, sizeof line, "%sВыдать выговор {AFAFAF}(%d/%d)\n", (younger && ((my >> FP_WARN) & 1)) ? ("") : FM_GRAY, Faction_GetWarns(dbid), Org_WarnLimit(f));
 	strcat(body, line);
 	format(line, sizeof line, "%sСнять выговор\n", (younger && ((my >> FP_WARN) & 1)) ? ("") : FM_GRAY);
 	strcat(body, line);
@@ -498,7 +504,7 @@ static FM_ShowCardInfo(playerid)
 	if (online != INVALID_PLAYER_ID) format(line, sizeof line, "{AFAFAF}Статус: {33AA33}в игре [%d]%s\n", online, Player[online][pDuty] ? (", на смене") : (""));
 	else format(line, sizeof line, "{AFAFAF}Последний вход: {FFFFFF}%s\n", d2);
 	strcat(text, line);
-	format(line, sizeof line, "{AFAFAF}Выговоры: {FFFFFF}%d / %d {AFAFAF}(из них спец: %d)\n", Faction_GetWarns(dbid), FACTION_MAX_WARNS, Org_SpecCount(dbid, f));
+	format(line, sizeof line, "{AFAFAF}Выговоры: {FFFFFF}%d / %d\n{AFAFAF}Спец-выговоры: {FFFFFF}%d / %d\n", Faction_GetWarns(dbid), Org_WarnLimit(f), Org_SpecCount(dbid, f), Org_SpecLimit(f));
 	strcat(text, line);
 	format(line, sizeof line, "{AFAFAF}Заметка: {FFFFFF}%s\n", (note[0] != '\0') ? note : ("нет"));
 	strcat(text, line);
@@ -624,25 +630,19 @@ static FM_OnCard(playerid, listitem)
 			if (!FM_CanAct(playerid, FP_WARN, name, rank)) { Faction_ShowMemberActions(playerid); return; }
 			ShowPlayerDialog(playerid, DIALOG_LMEMBER_WARN, DIALOG_STYLE_INPUT, "Выговор",
 				"Выговор для %s. Напиши причину.\nНа %d-м выговоре игрок будет уволен.", "Выдать", "Назад",
-				name, FACTION_MAX_WARNS);
+				name, Org_WarnLimit(f));
 		}
 		case 3:
 		{
 			if (!FM_CanAct(playerid, FP_WARN, name, rank)) { Faction_ShowMemberActions(playerid); return; }
 			new warns = Faction_GetWarns(gLSelMember[playerid]);
 			if (warns <= 0) { SendClientMessage(playerid, COLOR_GREY, "У него нет выговоров."); Faction_ShowMemberActions(playerid); return; }
-			if (warns <= Org_SpecCount(gLSelMember[playerid], f))
-			{
-				SendClientMessage(playerid, COLOR_GREY, "Остались только спец-выговоры. Их снимает организация, которая выдала (/unswarn).");
-				Faction_ShowMemberActions(playerid);
-				return;
-			}
 			Faction_SetWarns(gLSelMember[playerid], warns - 1);
-			format(msg, sizeof msg, "%s снял выговор с %s (%d/%d).", GetRPName(playerid), name, warns - 1, FACTION_MAX_WARNS);
+			format(msg, sizeof msg, "%s снял выговор с %s (%d/%d).", GetRPName(playerid), name, warns - 1, Org_WarnLimit(f));
 			Faction_Log(f, msg, FLOG_WARN);
-			SendClientMessage(playerid, COLOR_GREEN, "Выговор снят. Осталось: %d/%d.", warns - 1, FACTION_MAX_WARNS);
+			SendClientMessage(playerid, COLOR_GREEN, "Выговор снят. Осталось: %d/%d.", warns - 1, Org_WarnLimit(f));
 			new target = Faction_FindOnline(gLSelMember[playerid]);
-			if (target != INVALID_PLAYER_ID) SendClientMessage(target, COLOR_GREEN, "%s снял с тебя выговор (%d/%d).", GetRPName(playerid), warns - 1, FACTION_MAX_WARNS);
+			if (target != INVALID_PLAYER_ID) SendClientMessage(target, COLOR_GREEN, "%s снял с тебя выговор (%d/%d).", GetRPName(playerid), warns - 1, Org_WarnLimit(f));
 			Faction_ShowMemberActions(playerid);
 		}
 		case 4:
@@ -814,4 +814,41 @@ stock FM_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		default: return 0;
 	}
 	return 1;
+}
+
+// ---------------------------------------------------------------------
+//  Мут рации /f: /fmute [id] [минуты] [причина], 0 минут — снять
+// ---------------------------------------------------------------------
+stock FPerm_IsMuted(playerid)
+{
+	if (gFMuteUntil[playerid] <= gettime()) return 0;
+	SendClientMessage(playerid, COLOR_GREY, "Тебе запретили писать в рацию ещё на %d мин.", (gFMuteUntil[playerid] - gettime()) / 60 + 1);
+	return 1;
+}
+
+stock bool:Cmd_FMute(playerid, const params[])
+{
+	new f = Player[playerid][pFaction], pos = 0, mins, reason[64], msg[144];
+	if (!FPerm_Need(playerid, FP_MUTE)) return true;
+	new target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, mins) || mins < 0 || mins > 1440)
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /fmute [id] [минуты 1-1440, 0 — снять] [причина]");
+	if (!Player[target][pLogged] || Player[target][pFaction] != f) return SendClientMessage(playerid, COLOR_GREY, "Этот игрок не в твоей фракции.");
+	if (target == playerid || Player[target][pRank] >= Player[playerid][pRank]) return SendClientMessage(playerid, COLOR_GREY, "Нельзя управлять равным или старшим по рангу.");
+	if (!RestParam(params, pos, reason)) format(reason, sizeof reason, "без причины");
+	gFMuteUntil[target] = (mins > 0) ? (gettime() + mins * 60) : 0;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET fmute_until = %d WHERE id = %d", gFMuteUntil[target], Player[target][pDbId]));
+	if (mins > 0)
+	{
+		format(msg, sizeof msg, "%s запретил %s писать в рацию на %d мин. Причина: %s", GetRPName(playerid), GetRPName(target), mins, reason);
+		SendClientMessage(target, COLOR_RED, "%s запретил тебе писать в рацию на %d мин. Причина: %s", GetRPName(playerid), mins, reason);
+	}
+	else
+	{
+		format(msg, sizeof msg, "%s снял мут рации с %s.", GetRPName(playerid), GetRPName(target));
+		SendClientMessage(target, COLOR_GREEN, "%s разрешил тебе снова писать в рацию.", GetRPName(playerid));
+	}
+	Faction_Log(f, msg, FLOG_STAFF);
+	SendClientMessage(playerid, COLOR_GREEN, "Готово.");
+	return true;
 }

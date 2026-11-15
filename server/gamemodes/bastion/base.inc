@@ -40,7 +40,8 @@ new gServerWeather = 1;         // погода сервера (/setweather); после эффекта н
 #define FP_RANKS        12
 #define FP_LOG          13
 #define FP_FACTORY      14
-#define FP_COUNT        15
+#define FP_MUTE         15
+#define FP_COUNT        16
 #define FP_ALL          ((1 << FP_COUNT) - 1)
 
 // Виды записей журнала (faction_logs.kind), для фильтра

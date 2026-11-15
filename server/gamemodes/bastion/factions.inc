@@ -63,6 +63,9 @@ forward bool:Cmd_LMenu(playerid);
 forward bool:Cmd_Orgs(playerid);
 forward bool:Cmd_SWarn(playerid, const params[]);
 forward bool:Cmd_UnSWarn(playerid, const params[]);
+forward bool:Cmd_FMute(playerid, const params[]);
+forward bool:Cmd_DeptAccess(playerid, const params[]);
+forward bool:Cmd_FLimit(playerid, const params[]);
 
 // Тип фракции: от него зависят права (а не от номера фракции)
 enum
@@ -1304,6 +1307,7 @@ stock bool:Cmd_FactionChat(playerid, const params[])
 	if (!Faction_IsValid(f)) return SendClientMessage(playerid, COLOR_GREY, "Ты не состоишь во фракции.");
 	new text[100], msg[144];
 	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /f [текст] — рация фракции");
+	if (FPerm_IsMuted(playerid)) return true;  // мут рации (fmanage.inc, /fmute)
 	format(msg, sizeof msg, "[Рация] %s %s: %s", Faction_GetRankName(f, Player[playerid][pRank]), GetRPName(playerid), text);
 	Faction_Message(f, Faction_GetColor(f), msg);
 	Fbi_OnRadio(f, msg);        // прослушка ФБР (fbi.inc)
@@ -1869,9 +1873,9 @@ stock Faction_ShowMembers(playerid)
 			new online = Faction_FindOnline(dbid);
 			if (online != INVALID_PLAYER_ID) rank = Player[online][pRank];
 			if (online != INVALID_PLAYER_ID)
-				format(line, sizeof line, "%s\t%d. %s\t%d/%d\t{33AA33}онлайн [%d]\n", name, rank, Faction_GetRankName(f, rank), DB_GetFieldInt(r, 3), FACTION_MAX_WARNS, online);
+				format(line, sizeof line, "%s\t%d. %s\t%d/%d\t{33AA33}онлайн [%d]\n", name, rank, Faction_GetRankName(f, rank), DB_GetFieldInt(r, 3), Org_WarnLimit(f), online);
 			else
-				format(line, sizeof line, "%s\t%d. %s\t%d/%d\t{AFAFAF}оффлайн\n", name, rank, Faction_GetRankName(f, rank), DB_GetFieldInt(r, 3), FACTION_MAX_WARNS);
+				format(line, sizeof line, "%s\t%d. %s\t%d/%d\t{AFAFAF}оффлайн\n", name, rank, Faction_GetRankName(f, rank), DB_GetFieldInt(r, 3), Org_WarnLimit(f));
 			strcat(body, line);
 			gLMemberIds[playerid][count++] = dbid;
 			DB_SelectNextRow(r);
@@ -2154,19 +2158,19 @@ stock Factions_OnDialog(playerid, dialogid, response, listitem, const inputtext[
 			}
 			new warns = Faction_GetWarns(gLSelMember[playerid]) + 1;
 			new target = Faction_FindOnline(gLSelMember[playerid]);
-			if (warns >= FACTION_MAX_WARNS)
+			if (warns >= Org_WarnLimit(f))
 			{
 				new why[96];
-				format(why, sizeof why, "%d/%d выговоров (последний: %s)", warns, FACTION_MAX_WARNS, reason);
+				format(why, sizeof why, "%d/%d выговоров (последний: %s)", warns, Org_WarnLimit(f), reason);
 				Faction_Fire(playerid, gLSelMember[playerid], name, why);
 				return 1;
 			}
 			Faction_SetWarns(gLSelMember[playerid], warns);
-			format(msg, sizeof msg, "%s выдал выговор %s (%d/%d). Причина: %s", GetRPName(playerid), name, warns, FACTION_MAX_WARNS, reason);
+			format(msg, sizeof msg, "%s выдал выговор %s (%d/%d). Причина: %s", GetRPName(playerid), name, warns, Org_WarnLimit(f), reason);
 			Faction_Log(f, msg, FLOG_WARN);
-			SendClientMessage(playerid, COLOR_WHITE, "Выговор выдан (%d/%d).", warns, FACTION_MAX_WARNS);
+			SendClientMessage(playerid, COLOR_WHITE, "Выговор выдан (%d/%d).", warns, Org_WarnLimit(f));
 			if (target != INVALID_PLAYER_ID)
-				SendClientMessage(target, COLOR_RED, "%s выдал тебе выговор (%d/%d). Причина: %s", GetRPName(playerid), warns, FACTION_MAX_WARNS, reason);
+				SendClientMessage(target, COLOR_RED, "%s выдал тебе выговор (%d/%d). Причина: %s", GetRPName(playerid), warns, Org_WarnLimit(f), reason);
 			Faction_ShowMemberActions(playerid);
 		}
 		case DIALOG_LRANKS:
@@ -2322,6 +2326,9 @@ stock Factions_OnCommand(playerid, const cmd[], const params[])
 	if (!strcmp(cmd, "/orgs", true))        { Cmd_Orgs(playerid); return 1; }      // orgs.inc
 	if (!strcmp(cmd, "/swarn", true))       { Cmd_SWarn(playerid, params); return 1; }
 	if (!strcmp(cmd, "/unswarn", true))     { Cmd_UnSWarn(playerid, params); return 1; }
+	if (!strcmp(cmd, "/fmute", true))       { Cmd_FMute(playerid, params); return 1; }     // fmanage.inc
+	if (!strcmp(cmd, "/deptaccess", true))  { Cmd_DeptAccess(playerid, params); return 1; } // orgs.inc
+	if (!strcmp(cmd, "/flimit", true))      { Cmd_FLimit(playerid, params); return 1; }      // orgs.inc
 	if (!strcmp(cmd, "/fbank", true))       { Cmd_FBank(playerid); return 1; }
 	if (!strcmp(cmd, "/fstorage", true) || !strcmp(cmd, "/fsklad", true)) { Cmd_FStorage(playerid); return 1; }
 	if (!strcmp(cmd, "/fedit", true))       { Cmd_FEdit(playerid, params); return 1; }
@@ -2341,6 +2348,7 @@ stock bool:Cmd_FHelp(playerid)
 	strcat(text, "{FFFF00}Лидер и заместитель (ранг 9-10)\n");
 	strcat(text, "{FFFFFF}/lmenu — «Управление»: состав и карточки, права рангов и личные, выговоры, ранги, склад, журнал\n");
 	strcat(text, "{FFFFFF}/swarn [id] [причина], /unswarn [id] — спец-выговор сотруднику другой организации (если есть доступ)\n");
+	strcat(text, "{FFFFFF}/fmute [id] [минуты] [причина] — мут рации /f (0 — снять), /deptaccess — доступ другой фракции к /d, /flimit — её лимиты выговоров\n");
 	strcat(text, "/invite [id]   /uninvite [id]   /giverank [id] [ранг]\n\n");
 	strcat(text, "{3A6EFF}Полиция LSPD\n");
 	strcat(text, "{FFFFFF}/su [id] [звёзды] [причина] — розыск   /clear [id] — снять розыск   /wanted — список\n");
@@ -4345,7 +4353,8 @@ stock bool:Cmd_BMPrice(playerid, const params[])
 stock bool:Cmd_DeptChat(playerid, const params[])
 {
 	new f = Player[playerid][pFaction];
-	if (!Org_InDept(f)) return SendClientMessage(playerid, COLOR_GREY, "Этот чат только для госструктур.");
+	if (!Org_DeptCanWrite(f))
+		return SendClientMessage(playerid, COLOR_GREY, Org_DeptCanRead(f) ? ("Твоей организации можно только читать /d.") : ("Этот чат только для госструктур."));
 	new text[90], msg[160];
 	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /d [текст] — общий чат госструктур");
 	new squad[24];
@@ -4355,7 +4364,7 @@ stock bool:Cmd_DeptChat(playerid, const params[])
 	msg[143] = '\0';
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
-		if (IsPlayerConnected(i) && Player[i][pLogged] && Org_InDept(Player[i][pFaction])) SendClientMessage(i, 0xFF9E7AFF, "%s", msg);
+		if (IsPlayerConnected(i) && Player[i][pLogged] && Org_DeptCanRead(Player[i][pFaction])) SendClientMessage(i, 0xFF9E7AFF, "%s", msg);
 	}
 	return true;
 }
@@ -4912,7 +4921,7 @@ static FrMenu_Info(playerid)
 	strcat(text, line);
 	format(line, sizeof line, "{AFAFAF}Зарплата: {33AA33}$%d {AFAFAF}за PayDay (из общака)\n", salary);
 	strcat(text, line);
-	format(line, sizeof line, "{AFAFAF}Выговоры: {FFFFFF}%d / %d\n", Faction_GetWarns(Player[playerid][pDbId]), FACTION_MAX_WARNS);
+	format(line, sizeof line, "{AFAFAF}Выговоры: {FFFFFF}%d / %d\n", Faction_GetWarns(Player[playerid][pDbId]), Org_WarnLimit(f));
 	strcat(text, line);
 	format(line, sizeof line, "{AFAFAF}Смена: %s\n", Player[playerid][pDuty] ? ("{33AA33}на смене") : ("{FFFFFF}не на смене {AFAFAF}(/duty в раздевалке)"));
 	strcat(text, line);

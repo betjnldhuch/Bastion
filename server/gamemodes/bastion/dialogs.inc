@@ -14,7 +14,7 @@ enum
 {
 	DIALOG_NONE,
 
-	// --- /orgs (orgs.inc): от DIALOG_ORGS до DIALOG_ORGS_FAMDIS
+	// --- /orgs (orgs.inc): от DIALOG_ORGS до DIALOG_ORGS_FLCTL
 	DIALOG_ORGS,
 	DIALOG_ORGS_F,
 	DIALOG_ORGS_INFO,
@@ -24,6 +24,10 @@ enum
 	DIALOG_ORGS_FDIS,
 	DIALOG_ORGS_FAMS,
 	DIALOG_ORGS_FAMDIS,
+	DIALOG_ORGS_FWLIM,
+	DIALOG_ORGS_FSLIM,
+	DIALOG_ORGS_FDCTL,
+	DIALOG_ORGS_FLCTL,
 
 	// --- Аккаунт, банк, бизнес, действия с игроком
 	DIALOG_REGISTER,
