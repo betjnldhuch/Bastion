@@ -16,6 +16,8 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -78,8 +80,21 @@ jobs:
 
       - name: Upload launcher
         uses: actions/upload-artifact@v4
+        continue-on-error: true # квота артефактов не должна ронять сборку
         with:
           name: BastionLauncher-PC
           path: dist/
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7
+
+      # Ручной запуск: exe кладётся в релиз «builds» (не занимает место артефактов Actions)
+      - name: Publish to builds release
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          Compress-Archive -Path dist\BastionLauncher -DestinationPath BastionLauncher-PC.zip -Force
+          gh release view builds *> $null
+          if ($LASTEXITCODE -ne 0) { gh release create builds --prerelease --title "Свежие сборки" --notes "Последние ручные сборки лаунчеров." }
+          gh release upload builds BastionLauncher-PC.zip --clobber

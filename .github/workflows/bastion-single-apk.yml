@@ -26,7 +26,7 @@ on:
       - ".github/workflows/bastion-single-apk.yml"
 
 permissions:
-  contents: read
+  contents: write # ручной запуск выкладывает APK в релиз «builds»
 
 concurrency:
   group: bastion-single-apk-${{ github.ref }}
@@ -179,16 +179,28 @@ jobs:
 
       - name: Upload single Bastion APK
         uses: actions/upload-artifact@v4
+        continue-on-error: true # квота артефактов не должна ронять сборку
         with:
           name: Bastion-Launcher-SAMP-Mobile-debug
           path: mobile/artifacts/Bastion-Launcher-SAMP-Mobile-debug.apk
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7
 
       - name: Upload native libraries for crash symbolization
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: Bastion-native-symbols
           path: mobile/symbols/*.so
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 3
+
+      # Ручной запуск: APK кладётся в релиз «builds» (не занимает место артефактов Actions)
+      - name: Publish to builds release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view builds >/dev/null 2>&1 || \
+            gh release create builds --prerelease --title "Свежие сборки" --notes "Последние ручные сборки лаунчеров."
+          gh release upload builds mobile/artifacts/Bastion-Launcher-SAMP-Mobile-debug.apk --clobber
