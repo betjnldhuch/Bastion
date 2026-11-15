@@ -155,6 +155,7 @@ button { font: inherit; cursor: pointer; }
 .slot.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), 0 0 16px rgba(255,122,26,.25);
   background: linear-gradient(160deg, rgba(255,122,26,.18), var(--panel-hi)); }
 .slot.wear { border-color: rgba(76,208,125,.5); }
+.slot.ground { border-style: dashed; border-color: rgba(169,196,228,.55); background: rgba(169,196,228,.05); }
 .slot.empty { background: transparent; border-style: dashed; border-color: #23262c; }
 .slot:not(.empty):active { transform: scale(.97); }
 .slots .none { grid-column: 1 / -1; padding: 28px 10px; text-align: center; color: var(--muted); font-size: 13px; }
@@ -197,6 +198,10 @@ button { font: inherit; cursor: pointer; }
 .card.samp .field { margin-top: 2px; }
 .card.samp input { padding-right: 14px; }
 .card.samp input.pw { padding-right: 46px; }
+.card.samp input.search { height: 38px; margin: 0 0 8px; font-size: 14px; padding: 0 12px 0 34px;
+  background: #0e1013 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%238c9098' stroke-width='2'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='m11 11 4 4'/%3E%3C/svg%3E") no-repeat 11px 50%; }
+.list .r.hide { display: none; }
+.list .nothing { padding: 14px 12px; color: var(--muted); font-size: 13px; }
 .list { flex: 1 1 auto !important; min-height: 64px; overflow: auto; margin: 0 0 12px; border: 1px solid var(--line);
   border-radius: 10px; background: #0e1013; }
 .list .r { display: grid; gap: 10px; align-items: center; padding: 11px 12px; border-bottom: 1px solid var(--line);
@@ -217,6 +222,7 @@ button { font: inherit; cursor: pointer; }
 (function () {
   var root = document.getElementById('root');
   var current = null;
+  var keyHandler = null;     // клавиши текущего окна (ПК): стрелки, Enter в списках
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -445,21 +451,31 @@ button { font: inherit; cursor: pointer; }
       (d.items || []).forEach(function (it) {
         all.push({ k: it[0], n: it[1], max: it[2], t: plain(it[3]), s: plain(it[4]), ico: ICO[it[0]] || '📦', cat: CAT[it[0]] || 'misc' });
       });
-      if (d.canister > 0) all.push({ k: 0, n: d.canister, max: 0, t: 'Канистра бензина', s: 'Заливают командой /canister, стоя у машины.', ico: '⛽', cat: 'misc', fixed: 1 });
+      if (d.canister > 0) all.push({ k: 0, n: d.canister, max: 0, t: 'Канистра бензина', s: 'Встань рядом с машиной и залей бензин в бак.', ico: '⛽', cat: 'misc', fixed: 1 });
       (d.outfits || []).forEach(function (o) {
         all.push({ k: o[0], n: 1, max: 1, t: 'Одежда', s: 'Скин ' + o[1] + '. Снятая одежда ляжет на её место в сумке.', ico: '👕', cat: 'wear', skin: o[1] });
       });
+      // Рядом на земле: [номер, вещь (100 — одежда), кол-во или скин, название]
+      (d.ground || []).forEach(function (g) {
+        var wear = g[1] === 100;
+        all.push({ k: 'p' + g[0], drop: g[0], n: wear ? 1 : g[2], max: 0, t: plain(g[3]), ico: wear ? '👕' : ICO[g[1]] || '📦', cat: 'ground',
+          skin: wear ? g[2] : 0, s: 'Лежит на земле рядом с тобой. Через несколько минут исчезнет.' });
+      });
+      // Что даёт: только у еды, питья и лечения, у остального — просто подсказка
+      var GIVES = { 1: 1, 2: 1, 3: 1, 5: 1, 6: 1, 7: 1, 9: 1 };
       var tabs = [['all', 'Всё'], ['food', 'Еда'], ['misc', 'Вещи'], ['wear', 'Одежда']];
+      if ((d.ground || []).length) tabs.push(['ground', 'Рядом']);
       var tab = 'all', sel = null, sheet = '';
       all.forEach(function (it) { if (it.k === d.sel) sel = it; });
 
-      function count(c) { return all.filter(function (it) { return c === 'all' || it.cat === c; }).length; }
+      function inTab(it, c) { return c === 'all' ? it.cat !== 'ground' : it.cat === c; }
+      function count(c) { return all.filter(function (it) { return inTab(it, c); }).length; }
       function meter(v) { return '<span class="meter' + (v < 20 ? ' low' : v < 50 ? ' warn' : '') + '"><i style="width:' + Math.max(0, Math.min(100, v)) + '%"></i></span>'; }
 
       function render(note, ok) {
-        var list = all.filter(function (it) { return tab === 'all' || it.cat === tab; });
+        var list = all.filter(function (it) { return inTab(it, tab); });
         var cells = list.map(function (it, i) {
-          return '<button type="button" class="slot' + (it === sel ? ' sel' : '') + (it.cat === 'wear' ? ' wear' : '') + '" data-i="' + all.indexOf(it) + '">' +
+          return '<button type="button" class="slot' + (it === sel ? ' sel' : '') + (it.cat === 'wear' ? ' wear' : '') + (it.cat === 'ground' ? ' ground' : '') + '" data-i="' + all.indexOf(it) + '">' +
             (it.k === 12 && d.mask ? '<em class="badge">НАДЕТА</em>' : '') +
             '<span class="ico">' + it.ico + '</span>' + (it.n > 1 || it.max > 1 ? '<span class="qty">' + it.n + '</span>' : '') +
             (it.max > 1 ? '<span class="lvl"><i style="width:' + Math.round(100 * it.n / it.max) + '%"></i></span>' : '') + '</button>';
@@ -475,6 +491,7 @@ button { font: inherit; cursor: pointer; }
           '<div class="pill">❤️ <b>' + (d.hp | 0) + '</b>' + meter(d.hp | 0) + '</div>' +
           '<div class="pill">🍗 <b>' + (d.hunger | 0) + '%</b>' + meter(d.hunger | 0) + '</div>' +
           '<div class="pill">👕 <b>' + outs + '/' + (d.outMax || 5) + '</b></div>' +
+          (d.money != null ? '<div class="pill">💵 <b>$' + String(d.money | 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + '</b></div>' : '') +
           (d.mask ? '<div class="pill gold">🎭 <b>в маске</b></div>' : '') + '</div></div>' +
           (note ? '<div class="note ' + (ok ? 'ok' : 'bad') + '">' + esc(plain(note)) + '</div>' : '') +
           '<div class="chips">' + tabs.map(function (t) {
@@ -497,6 +514,8 @@ button { font: inherit; cursor: pointer; }
       }
 
       function useLabel(it) {
+        if (it.cat === 'ground') return 'Поднять';
+        if (it.fixed) return 'Залить в машину';
         if (it.cat === 'wear') return 'Надеть';
         if (it.k === 12) return d.mask ? 'Снять маску' : 'Надеть маску';
         return USE[it.k] || '';
@@ -507,8 +526,8 @@ button { font: inherit; cursor: pointer; }
         if (!sel) { det.innerHTML = '<div class="ph"><b>👆</b>Выбери вещь, чтобы использовать, передать или выбросить.</div>'; return; }
         var it = sel, use = useLabel(it);
         var html = '<div class="top"><div class="big">' + it.ico + '</div><div><h2>' + esc(it.t) + '</h2><div class="cnt">' +
-          (it.cat === 'wear' ? 'Скин <b>' + it.skin + '</b>' : it.fixed ? '<b>' + it.n + '</b> л' : '<b>' + it.n + '</b> / ' + it.max + ' шт.') + '</div></div></div>' +
-          '<div class="what' + (sheet ? ' fold' : '') + '">' + (it.cat === 'wear' || it.fixed || !it.s ? esc(it.s) : 'Даёт: <b>' + esc(it.s) + '</b>') + '</div>';
+          (it.skin ? 'Скин <b>' + it.skin + '</b>' : it.fixed ? '<b>' + it.n + '</b> л' : it.cat === 'ground' ? '<b>' + it.n + '</b> шт. на земле' : '<b>' + it.n + '</b> / ' + it.max + ' шт.') + '</div></div></div>' +
+          '<div class="what' + (sheet ? ' fold' : '') + '">' + (GIVES[it.k] && it.cat !== 'ground' ? 'Даёт: <b>' + esc(it.s) + '</b>' : esc(it.s.charAt(0).toUpperCase() + it.s.slice(1))) + '</div>';
         if (sheet === 'g' || sheet === 'd') {
           html += '<form class="sheet" id="sf" autocomplete="off">' +
             (sheet === 'g' ? '<label for="pid">ID игрока рядом</label><input id="pid" type="tel" inputmode="numeric" maxlength="4" placeholder="Например, 5">' : '') +
@@ -517,13 +536,15 @@ button { font: inherit; cursor: pointer; }
             '<div class="error" id="err"></div>' +
             '<div class="row" style="margin:0"><button type="button" class="btn" id="cn">Отмена</button><button type="submit" class="btn primary">' +
             (sheet === 'g' ? 'Передать' : 'Выбросить') + '</button></div></form>';
-        } else if (!it.fixed) {
+        } else if (it.fixed || it.cat === 'ground') {
+          html += '<div class="acts"><button type="button" class="btn primary" id="bu">' + use + '</button></div>';
+        } else {
           html += '<div class="acts">' + (use ? '<button type="button" class="btn primary" id="bu">' + use + '</button>' : '') +
             '<button type="button" class="btn" id="bg">Передать</button><button type="button" class="btn danger" id="bd">Выбросить</button></div>';
         }
         det.innerHTML = html;
         var bu = document.getElementById('bu'), bg = document.getElementById('bg'), bd = document.getElementById('bd');
-        if (bu) bu.onclick = function () { respond(1, it.k, 'u ' + it.k); };
+        if (bu) bu.onclick = function () { if (it.cat === 'ground') respond(1, -1, 'p ' + it.drop); else respond(1, it.k, 'u ' + it.k); };
         if (bg) bg.onclick = function () { sheet = 'g'; detail(); };
         if (bd) bd.onclick = function () { if (it.n > 1 || it.cat === 'wear') { sheet = 'd'; detail(); } else respond(1, it.k, 'd ' + it.k + ' 1'); };
         var sf = document.getElementById('sf');
@@ -569,12 +590,13 @@ button { font: inherit; cursor: pointer; }
         var hc = head != null ? head.split(/\t+/).slice(0, 4) : null;
         if (hc && hc.length > cols) cols = hc.length;
         var grid = 'grid-template-columns:' + (cols > 1 ? 'minmax(0,1.6fr) repeat(' + (cols - 1) + ',minmax(0,1fr))' : 'minmax(0,1fr)');
+        if (rows.length > 12) html += '<input id="q" class="search" type="text" placeholder="Поиск по списку" autocapitalize="off" spellcheck="false">';
         html += '<div class="list" id="list">' +
           (hc ? '<div class="r hd" style="' + grid + '">' + hc.map(function (c) { return '<div>' + colorize(c) + '</div>'; }).join('') + '</div>' : '') +
           rows.map(function (c, i) {
             return '<div class="r' + (i === 0 ? ' sel' : '') + '" data-i="' + i + '" style="' + grid + '">' +
               c.map(function (x) { return '<div>' + colorize(x) + '</div>'; }).join('') + '</div>';
-          }).join('') + '</div>';
+          }).join('') + '<div class="nothing" id="none" hidden>Ничего не найдено</div></div>';
       } else {
         html += '<div class="text' + (isInput ? ' bare' : '') + '">' + colorize(text) + '</div>';
         if (isInput) html += '<div class="field"><input id="in" class="' + (style === 3 ? 'pw' : '') + '" type="' + (style === 3 ? 'password' : 'text') +
@@ -600,10 +622,44 @@ button { font: inherit; cursor: pointer; }
             var i = +el.getAttribute('data-i'), now = Date.now();
             if (i === lastI && now - last < 400) { sel = i; answer(1); return; }
             last = now; lastI = i; sel = i;
-            Array.prototype.forEach.call(root.querySelectorAll('.list .r.sel'), function (o) { o.classList.remove('sel'); });
-            el.classList.add('sel');
+            pick(i);
           };
         });
+        var rowEls = root.querySelectorAll('.list .r[data-i]');
+        var pick = function (i, scroll) {
+          sel = i;
+          Array.prototype.forEach.call(rowEls, function (o) { o.classList.toggle('sel', +o.getAttribute('data-i') === i); });
+          if (scroll && rowEls[i]) rowEls[i].scrollIntoView({ block: 'nearest' });
+        };
+        var visible = function () {
+          return Array.prototype.filter.call(rowEls, function (o) { return !o.classList.contains('hide'); })
+            .map(function (o) { return +o.getAttribute('data-i'); });
+        };
+        // Поиск в длинных списках: прячет строки, ответ — исходный номер строки
+        var q = document.getElementById('q');
+        if (q) q.oninput = function () {
+          var s = q.value.trim().toLowerCase();
+          Array.prototype.forEach.call(rowEls, function (o, i) {
+            o.classList.toggle('hide', !!s && plain(rows[i].join(' ')).toLowerCase().indexOf(s) === -1);
+          });
+          var v = visible();
+          document.getElementById('none').hidden = v.length > 0;
+          if (v.length && v.indexOf(sel) === -1) pick(v[0], true);
+        };
+        // Клавиатура: ↑ ↓ PgUp PgDn Home End — выбор, Enter — выбрать, буквы — в поиск
+        keyHandler = function (e) {
+          var v = visible(), at = v.indexOf(sel), step = 0;
+          if (e.key === 'ArrowDown') step = 1; else if (e.key === 'ArrowUp') step = -1;
+          else if (e.key === 'PageDown') step = 8; else if (e.key === 'PageUp') step = -8;
+          else if (e.key === 'Home' && e.target !== q) step = -1e4; else if (e.key === 'End' && e.target !== q) step = 1e4;
+          if (step && v.length) {
+            e.preventDefault();
+            pick(v[Math.max(0, Math.min(v.length - 1, (at < 0 ? 0 : at + step)))], true);
+          } else if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') {
+            e.preventDefault();
+            if (v.length && v.indexOf(sel) !== -1) answer(1);
+          } else if (q && e.target !== q && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) q.focus();
+        };
       }
       var eye = document.getElementById('eye');
       if (eye) eye.onclick = function () { input.type = input.type === 'password' ? 'text' : 'password'; input.focus(); };
@@ -630,13 +686,15 @@ button { font: inherit; cursor: pointer; }
       try { data = typeof msg.data === 'string' ? JSON.parse(msg.data) : (msg.data || {}); } catch (e) { data = { text: msg.data }; }
       var fn = WINDOWS[msg.window] || WINDOWS.message;
       current = msg.window;
+      keyHandler = null;
       fn(data, msg);
       root.classList.add('on');
     },
     close: function () { respond(0, -1, ''); },
     // Сервер закрыл диалог сам — убрать окно без ответа
-    hide: function () { current = null; root.classList.remove('on'); root.innerHTML = ''; }
+    hide: function () { current = null; keyHandler = null; root.classList.remove('on'); root.innerHTML = ''; }
   };
+  addEventListener('keydown', function (e) { if (current && keyHandler) keyHandler(e); });
 
   // ПК (bastion_ui.asi): крупнее на больших экранах, Esc закрывает окно
   if (window.BastionNative && BastionNative.platform === 'pc') {
@@ -656,7 +714,8 @@ button { font: inherit; cursor: pointer; }
     2: ['Меню', '{FFFFFF}Статистика\n{FFFFFF}Настройки\n{4CD07D}Донат\n{E5484D}Репорт'],
     3: ['Смена пароля', 'Введите новый пароль:'],
     4: ['Магазин', 'Аптечка\t{4CD07D}$500\nБронежилет\t{4CD07D}$1500\nТелефон\t{4CD07D}$800'],
-    5: ['Игроки онлайн', 'Ник\tУровень\tПинг\nIvan_Petrov\t5\t42\nAnna_Smirnova\t12\t87']
+    5: ['Игроки онлайн', 'Ник\tУровень\tПинг\nIvan_Petrov\t5\t42\nAnna_Smirnova\t12\t87\nOleg_Sokolov\t3\t51\nMaria_Volkova\t8\t64\nDenis_Orlov\t21\t33\n' +
+      'Sergey_Lebedev\t2\t120\nIrina_Kozlova\t15\t47\nPavel_Morozov\t6\t58\nOlga_Popova\t9\t71\nNikita_Fedorov\t4\t39\nAlina_Egorova\t11\t44\nRoman_Pavlov\t7\t95\nKirill_Zaitsev\t13\t62']
   };
   var mh = /^#samp([0-5])$/.exec(location.hash);
   if (!window.BastionNative && mh) {
@@ -667,7 +726,7 @@ button { font: inherit; cursor: pointer; }
     BastionUI.open({ window: location.hash.slice(1), button1: 'Войти', button2: 'Выход',
       data: { name: 'Ivan_Petrov', min: 6, max: 32, coins: 420, vip: 0, rate: 1000, packs: [10, 50, 100, 500], vipDays: 30, vipPayday: 2000,
         prices: [0, 300, 150, 200, 100, 150], warns: 1,
-        hunger: 64, hp: 87, mask: 0, outMax: 5, sel: 3, skin: 60, canister: 10, outfits: [[100, 105], [101, 230]],
+        hunger: 64, hp: 87, mask: 0, outMax: 5, sel: 3, skin: 60, canister: 10, money: 15400, outfits: [[100, 105], [101, 230]], ground: [[4, 6, 2, 'Вода'], [9, 100, 230, 'Одежда']],
         items: [[1, 2, 5, 'Бургер', '+40% сытости'], [6, 4, 5, 'Вода', '+10% сытости, +5 HP'], [3, 1, 3, 'Аптечка', '+50 HP'],
           [4, 2, 3, 'Ремкомплект', 'чинит машину рядом'], [8, 14, 20, 'Сигареты', 'покурить'], [11, 1, 1, 'Игральные кости', 'бросить кости (RP)'],
           [12, 1, 1, 'Маска', 'прячет ник'], [17, 7, 30, 'Рыба', 'сдать рыбаку']], phone: 1, note: 'Обмен: 50 монет -> $50000.', ok: 1, rules: [['Ролевая игра', 'Веди себя как житель города. Не выходи из роли без причины (NonRP).'], ['DM и DB', 'Нельзя убивать без RP-причины (DM) и давить игроков машиной (DB).'], ['Читы и баги', 'Запрещены читы, сторонние программы и использование ошибок сервера.']] } });
