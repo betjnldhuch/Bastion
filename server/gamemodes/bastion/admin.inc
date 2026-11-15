@@ -32,6 +32,11 @@
 forward bool:Admin_IsOnDuty(playerid);   // admin_tools.inc
 forward bool:Cmd_Backup(playerid);       // backup.inc
 forward bool:AdminAuth_HasPassword(playerid);   // admin_auth.inc
+forward AdminGive_OnCommand(playerid, const cmd[], const params[]);   // admin_give.inc
+forward bool:Cmd_GiveGun(playerid, const params[]);
+forward bool:Cmd_Disarm(playerid, const params[]);
+forward bool:Cmd_SetArmour(playerid, const params[]);
+forward bool:Cmd_AHeal(playerid, const params[]);
 #define ADMIN_WARNS_FOR_BAN     3       // столько варнов Ч и автоматический бан...
 #define ADMIN_WARN_BAN_DAYS     3       // ...на столько дней
 #define ADMIN_MAX_MUTE          720     // максимум минут мута
@@ -61,7 +66,11 @@ enum
 	AMENU_MUTE,
 	AMENU_WARN,
 	AMENU_AJAIL,
-	AMENU_BAN
+	AMENU_BAN,
+	AMENU_HEAL,
+	AMENU_ARMOUR,
+	AMENU_DISARM,
+	AMENU_GIVEGUN
 }
 
 static gMuteUntil[MAX_PLAYERS];         // unix-врем€ конца мута (0 = нет)
@@ -1476,7 +1485,7 @@ static AMenu_ShowActions(playerid)
 	new target = gAMenuTarget[playerid], title[48];
 	format(title, sizeof title, "%s [%d]", GetRPName(target), target);
 	ShowPlayerDialog(playerid, DIALOG_AMENU_ACT, DIALOG_STYLE_LIST, title,
-		"“елепорт к игроку\n“елепорт к себе\n—ледить\nѕроверить\n«аморозить / разморозить\nѕодкинуть\n икнуть\nћут\nѕредупреждение\nƒеморган\nЅан",
+		"“елепорт к игроку\n“елепорт к себе\n—ледить\nѕроверить\n«аморозить / разморозить\nѕодкинуть\n икнуть\nћут\nѕредупреждение\nƒеморган\nЅан\n¬ылечить\nЅрон€ 100\n«абрать оружие\n¬ыдать оружие",
 		"¬ыбрать", "Ќазад");
 }
 
@@ -1603,6 +1612,14 @@ stock Admin_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 				case AMENU_CHECK:   Cmd_Check(playerid, params);
 				case AMENU_FREEZE:  Cmd_Freeze(playerid, params, !gFrozen[t]);
 				case AMENU_SLAP:    Cmd_Slap(playerid, params);
+				case AMENU_HEAL:    Cmd_AHeal(playerid, params);
+				case AMENU_DISARM:  Cmd_Disarm(playerid, params);
+				case AMENU_ARMOUR:
+				{
+					new p[16];
+					format(p, sizeof p, "%d 100", t);
+					Cmd_SetArmour(playerid, p);
+				}
 				default:
 				{
 					new hint[160];
@@ -1613,11 +1630,12 @@ stock Admin_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 						case AMENU_WARN:  strcat(hint, "ѕричина предупреждени€:");
 						case AMENU_AJAIL: format(hint, sizeof hint, "ћинуты (1-%d) и причина.\nЌапример: 60 DM", ADMIN_MAX_AJAIL);
 						case AMENU_BAN:   strcat(hint, "ƒни (0 Ч навсегда) и причина.\nЌапример: 7 читы");
+						case AMENU_GIVEGUN: strcat(hint, "ќружие и патроны.\nЌапример: deagle 200, m4 500, 31 300\n—писок: /givegun");
 						default: return 1;
 					}
 					new body[220];
 					format(body, sizeof body, "{FFFFFF}%s [%d]\n\n%s", GetRPName(t), t, hint);
-					ShowPlayerDialog(playerid, DIALOG_AMENU_INPUT, DIALOG_STYLE_INPUT, "Ќаказание", "%s", "√отово", "Ќазад", body);
+					ShowPlayerDialog(playerid, DIALOG_AMENU_INPUT, DIALOG_STYLE_INPUT, (listitem == AMENU_GIVEGUN) ? ("¬ыдать оружие") : ("Ќаказание"), "%s", "√отово", "Ќазад", body);
 				}
 			}
 			return 1;
@@ -1637,6 +1655,7 @@ stock Admin_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 				case AMENU_WARN:  Cmd_Warn(playerid, params);
 				case AMENU_AJAIL: Cmd_AJail(playerid, params);
 				case AMENU_BAN:   Cmd_Ban(playerid, params);
+				case AMENU_GIVEGUN: Cmd_GiveGun(playerid, params);
 			}
 			return 1;
 		}
@@ -1655,8 +1674,8 @@ stock bool:Cmd_AHelp(playerid)
 	strcat(text, "{FF66FF}1 Ч ’елпер\n{FFFFFF}/a Ч админ-чат   /amenu Ч панель (удобно с телефона)   /reports /ans Ч репорты\n");
 	strcat(text, "/check /spec /specoff /specnext /specprev /goto /kick /mute /unmute /admins /aduty\n");
 	strcat(text, "“елепорт: метка на карте (выкл. /maptp), /tp Ч список точек, /back Ч назад\n\n");
-	strcat(text, "{FF66FF}2 Ч ћодератор\n{FFFFFF}/warn /ajail /unajail /freeze /unfreeze /slap /gethere /spawn /sethp /setskin /jail /unjail\n/sendto /gotocar /fixveh /flip\n\n");
-	strcat(text, "{FF66FF}3 Ч јдминистратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /moneylog /dveh\n/veh Ч меню машин, /veh infernus Ч по названию, /veh 411 Ч по номеру\n/ao /gotocoord /respawncars /setweather\n/givelic Ч выдать лицензию   /setfuel Ч заправить машину\n\n");
+	strcat(text, "{FF66FF}2 Ч ћодератор\n{FFFFFF}/warn /ajail /unajail /freeze /unfreeze /slap /gethere /spawn /sethp /setskin /jail /unjail\n/sendto /gotocar /fixveh /flip   /aheal Ч вылечить   /setarmour Ч брон€   /disarm Ч забрать оружие\n\n");
+	strcat(text, "{FF66FF}3 Ч јдминистратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /moneylog /dveh\n/veh Ч меню машин, /veh infernus Ч по названию, /veh 411 Ч по номеру\n/ao /gotocoord /respawncars /setweather\n/givelic Ч выдать лицензию   /setfuel Ч заправить машину\n/givegun [id] [оружие] [патроны] Ч выдать оружие (т€жЄлое с 6 ур.)\n\n");
 	strcat(text, "{FF66FF}4 Ч —т. администратор\n{FFFFFF}/unban, бан навсегда (0 дней), /addtp /deltp, фракции, дома, бизнесы, ј«—, банкоматы, районы\n/givefood /giveitem Ч еда и вещи   /addexampoint /clearexam Ч маршрут экзамена\n/addgarage [1-2] /delgarage Ч —“ќ и штрафсто€нки\n/pos [название] /points /dev Ч координаты   /mo Ч маппинг (объекты, удаление зданий, выгрузка)\n");
 	strcat(text, "ƒома: /createhouse /delhouse /sethouseint /gotohouse, шкаф: /makestorage   ¬ходы: /adddoor /setdoor /deldoor /doors\n");
 	strcat(text, "Ѕизнесы: /createbiz /delbiz /setbizint   /addatm /delatm /addfuel /delfuel /addgate /delgate\n");
@@ -1664,9 +1683,9 @@ stock bool:Cmd_AHelp(playerid)
 	strcat(text, "‘ракции: /createfaction /delfaction /flist /fcolor /makeleader /setfaction /setrankname\n/setfspawn /setfduty /setfint /delfint /fintlock /addfcar /delfcar /setfstore /setarmystore\n");
 	strcat(text, "«аводы: /addfactory /setfpoint /setfowner /delfactory /factories   „Єрный рынок: /addbm /delbm /bmprice\n");
 	strcat(text, "–айоны: /addturf /setturf /delturf\n\n");
-	strcat(text, "{FF66FF}5 Ч  уратор\n{FFFFFF}/astats [ник] Ч статистика любого админа   /alist Ч весь состав (часы, последний вход)\n\n");
+	strcat(text, "{FF66FF}5 Ч  уратор\n{FFFFFF}/astats [ник] Ч статистика любого админа   /alist Ч весь состав (часы, последний вход)   /healall Ч вылечить всех\n\n");
 	strcat(text, "{FF66FF}6 Ч «ам. гл. администратора\n{FFFFFF}/banip [id или IP] [дни] [причина]   /unbanip [IP]\n\n");
-	strcat(text, "{FF66FF}7 Ч √л. администратор\n{FFFFFF}/resetapass [id или ник] Ч сбросить админ-пароль   /makeadmin /givemoney /settax Ч налоги   /backup Ч копи€ базы\n\n");
+	strcat(text, "{FF66FF}7 Ч √л. администратор\n{FFFFFF}/resetapass [id или ник] Ч сбросить админ-пароль   /makeadmin /givemoney /takemoney /settax Ч налоги   /backup Ч копи€ базы\n\n");
 	strcat(text, "{AFAFAF}¬се наказани€ и выдачи пишутс€ в лог (/alog). Ќаказать админа своего уровн€ или выше нельз€.");
 	Admin_ShowInfo(playerid, " оманды администрации", text);
 	return true;
@@ -1906,5 +1925,6 @@ stock Admin_OnCommand(playerid, const cmd[], const params[])
 	if (!strcmp(cmd, "/givemoney", true))   { Cmd_GiveMoney(playerid, params); return 1; }
 	if (!strcmp(cmd, "/sethp", true))       { Cmd_SetHP(playerid, params); return 1; }
 	if (!strcmp(cmd, "/setskin", true))     { Cmd_SetSkin(playerid, params); return 1; }
+	if (AdminGive_OnCommand(playerid, cmd, params)) return 1;   // оружие, брон€, лечение
 	return AdminTools_OnCommand(playerid, cmd, params);   // телепорты и инструменты
 }
