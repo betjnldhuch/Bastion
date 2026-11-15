@@ -534,4 +534,82 @@ replace_exact(samp_java, """                if (pause) {
                 if (pause) {
                     mDialog.hideWithoutReset();""")
 
+# ---------------------------------------------------------------------------
+# 8. Server objects (CreateObject / mapping). Upstream GTA-2.11 stubbed CObject
+#    (empty constructor/destructor/Process) and the object RPC handlers, so the
+#    phone never showed any server object. Bodies come from cpp/*.cpp; a model the
+#    client lacks is skipped, objects are visible in every interior like on PC.
+#    Attachments and SetObjectMaterial are not supported yet.
+# ---------------------------------------------------------------------------
+patch_dir = Path(__file__).resolve().parent / "cpp"
+object_cpp = cpp / "game/object.cpp"
+text = read(object_cpp)
+start = text.find("CObject::CObject(int iModel")
+end = text.find("// 0.3.7\nvoid CObject::SetRotation")
+if start < 0 or end < 0 or "{/*" not in text[start:end]:
+    raise SystemExit("object.cpp: stubbed CObject constructor/Process not found")
+write(object_cpp, text[:start] + read(patch_dir / "object_core.cpp") + "\n" + text[end:])
+replace_exact(object_cpp, """void CObject::MoveTo(float fX, float fY, float fZ, float fSpeed, float fRotX, float fRotY, float fRotZ)
+{
+""", """void CObject::MoveTo(float fX, float fY, float fZ, float fSpeed, float fRotX, float fRotY, float fRotZ)
+{
+	if (!m_pEntity) return;
+""")
+replace_exact(object_cpp, """void CObject::StopMoving()
+{
+""", """void CObject::StopMoving()
+{
+	if (!m_pEntity) { m_byteMoving &= ~1; return; }
+""")
+replace_exact(object_cpp, """void CObject::SetPos(float x, float y, float z)
+{
+    if (GamePool_Object_GetAt(m_dwGTAId))""", """void CObject::SetPos(float x, float y, float z)
+{
+    if (m_pEntity && GamePool_Object_GetAt(m_dwGTAId))""")
+replace_exact(object_cpp, """void CObject::AttachToObject(CObject* pObject)
+{
+    if (GamePool_Object_GetAt(m_dwGTAId)) {""", """void CObject::AttachToObject(CObject* pObject)
+{
+    if (m_pEntity && pObject && pObject->m_pEntity && GamePool_Object_GetAt(m_dwGTAId)) {""")
+
+replace_exact(cpp / "net/objectpool.h", "if (ObjectID <= MAX_OBJECTS && m_bObjectSlotState[ObjectID])",
+              "if (ObjectID < MAX_OBJECTS && m_bObjectSlotState[ObjectID])")
+
+script_rpc = cpp / "net/scriptrpc.cpp"
+text = read(script_rpc)
+rpc = read(patch_dir / "object_rpc.cpp")
+start = text.find("void ScrCreateObject(RPCParameters* rpcParams)")
+end = text.find("void ScrDestroyObject(RPCParameters *rpcParams)")
+if start < 0 or end < 0 or "/*" not in text[start:end]:
+    raise SystemExit("scriptrpc.cpp: commented ScrCreateObject not found")
+create_end = rpc.find("void ScrSetObjectPos")
+text = text[:start] + rpc[:create_end] + text[end:]
+for name in ("ScrSetObjectPos", "ScrSetObjectRotation", "ScrMoveObject", "ScrStopObject"):
+    stub = "void %s(RPCParameters* rpcParams)\n{\n\n}\n" % name
+    if text.count(stub) != 1:
+        raise SystemExit("scriptrpc.cpp: empty " + name + " not found")
+    m = re.search(r"^void " + name + r"\(RPCParameters\* rpcParams\)\n\{.*?\n\}\n", rpc, re.S | re.M)
+    text = text.replace(stub, m.group(0))
+write(script_rpc, text)
+
+# ---------------------------------------------------------------------------
+# 9. 3D text labels (text over markers, houses, doors). Upstream receives them
+#    (C3DTextLabelPool) but never calls Render, so no label was ever drawn.
+#    Draw them with the player tags; {RRGGBB} colours are kept, width is
+#    measured without the colour codes so lines stay centred.
+# ---------------------------------------------------------------------------
+replace_exact(cpp / "gui/gui.cpp", """    if (pPlayerTags) pPlayerTags->Render(renderer());
+""", """    if (pPlayerTags) pPlayerTags->Render(renderer());
+    if (pNetGame && pNetGame->GetTextLabelPool()) pNetGame->GetTextLabelPool()->Render(renderer());
+""")
+label_cpp = cpp / "net/textlabelpool.cpp"
+replace_exact(label_cpp, """                    ImVec2 sz = renderer->calculateTextSize(s_row, fontSize);""",
+"""                    std::string plainRow;
+                    for (size_t c = 0; c < s_row.size(); c++) {
+                        if (s_row[c] == '{' && c + 7 < s_row.size() && s_row[c + 7] == '}') { c += 7; continue; }
+                        plainRow += s_row[c];
+                    }
+                    if (plainRow.empty()) continue;
+                    ImVec2 sz = renderer->calculateTextSize(plainRow, fontSize);""")
+
 print("SAMP-Mobile prepared for Bastion: library module, Bastion storage, :game process, no Firebase.")
