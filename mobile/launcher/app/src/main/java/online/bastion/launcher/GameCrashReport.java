@@ -27,6 +27,15 @@ public final class GameCrashReport {
     /** Пишет встроенный клиент (патч NvFOpen): пути файлов, которые не открылись. */
     static final String MISSING_FILE = "bastion_missing_files.txt";
 
+    /** Необязательные файлы GTA SA: их отсутствие при запуске нормально. */
+    static boolean isOptionalGameFile(String path) {
+        String p = path.trim().toLowerCase(java.util.Locale.ROOT).replace('\\', '/');
+        String name = p.substring(p.lastIndexOf('/') + 1);
+        return name.isEmpty() || name.equals("adjustable.cfg") || name.startsWith("gtasasf")
+                || name.equals("scache.txt") || name.equals("scache_small.txt") || name.equals("gta3.ini")
+                || p.contains("texdb/cutscene") || p.contains("audio/sfx/spc_") || p.endsWith("audio/sfx/script.osw");
+    }
+
     /** Вызывается перед запуском игры. */
     public static void markLaunch(Context ctx) {
         prefs(ctx).edit().putLong(KEY_LAUNCH, System.currentTimeMillis()).apply();
@@ -78,11 +87,15 @@ public final class GameCrashReport {
         if (!crashed) return null;
         File root = ClientInstaller.findSampStorageRoot(ctx);
         String missingFiles = root == null ? null : readTail(new File(root, MISSING_FILE), 3000);
-        if (missingFiles != null && missingFiles.trim().length() > 0) {
-            String[] lines = missingFiles.trim().split("\n");
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        // Файлы, которые GTA SA пробует открыть при каждом запуске и без которых
+        // работает штатно (сейвы, кэш, катсцены, озвучка других языков), не причина.
+        if (missingFiles != null)
+            for (String line : missingFiles.trim().split("\n")) if (!isOptionalGameFile(line)) lines.add(line);
+        if (!lines.isEmpty()) {
             StringBuilder m = new StringBuilder("[Игра не нашла файлы — последний, скорее всего, причина падения]\n");
-            for (int i = Math.max(0, lines.length - 15); i < lines.length; i++) {
-                String path = lines[i];
+            for (int i = Math.max(0, lines.size() - 15); i < lines.size(); i++) {
+                String path = lines.get(i);
                 String rootPath = root.getAbsolutePath() + "/";
                 m.append("• ").append(path.startsWith(rootPath) ? path.substring(rootPath.length()) : path).append('\n');
             }
