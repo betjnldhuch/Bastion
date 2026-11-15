@@ -4652,6 +4652,7 @@ stock Squad_Load(playerid)
 }
 
 stock Squad_Of(playerid) { return gSquad[playerid]; }
+stock Squads_Max() { return MAX_SQUADS; }
 
 stock Squad_Set(playerid, q)
 {

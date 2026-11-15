@@ -345,8 +345,8 @@ stock bool:Cmd_FSpawns(playerid, const params[])
 stock bool:Cmd_FSpawnSquad(playerid, const params[])
 {
 	new pos = 0, dbid, q;
-	if (!NextIntParam(params, pos, dbid) || !NextIntParam(params, pos, q) || q < 0 || q > MAX_SQUADS)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /fspawnsquad [№ спавна] [взвод 1-%d, 0 — никому]. Номера: /fspawns", MAX_SQUADS);
+	if (!NextIntParam(params, pos, dbid) || !NextIntParam(params, pos, q) || q < 0 || q > Squads_Max())
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /fspawnsquad [№ спавна] [взвод 1-%d, 0 — никому]. Номера: /fspawns", Squads_Max());
 	new s = FSpawn_FindByDbId(dbid);
 	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "Доп. спавна с таким номером нет. Список: /fspawns");
 	if (!FSpawn_IsLeader(playerid, gFSpawn[s][fsFaction]) && Player[playerid][pAdmin] < 4)
