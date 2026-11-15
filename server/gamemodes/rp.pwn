@@ -73,6 +73,7 @@
 #include "bastion/doors.inc"       // входы в здани€: LSPD
 #include "bastion/places.inc"     // точки новых систем, которые ставит админ: /place
 #include "bastion/factions.inc"   // после admin.inc: использует Admin_Check
+#include "bastion/fmanage.inc"    // Ђ”правлениеї фракцией: права рангов и личные, карточки, журнал
 #include "bastion/law.inc"        // метка задержани€, дверь участка, вз€тка
 #include "bastion/turfs.inc"
 #include "bastion/bank.inc"
@@ -84,6 +85,7 @@
 #include "bastion/debts.inc"      // долги штату: налоги и штрафы отдельными счетами
 #include "bastion/economy.inc"
 #include "bastion/families.inc"   // семьи: организации игроков
+#include "bastion/orgs.inc"       // /orgs Ч панель владельца по всем организаци€м, спец-выговоры
 #include "bastion/wounded.inc"    // ранение вместо смерти, /revive, /aid
 #include "bastion/admin_give.inc" // админ: /givegun /aheal /setarmour /disarm /healall /takemoney
 #include "bastion/robbery.inc"    // /rob Ч ограбление магазинов
@@ -222,6 +224,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Platform_OnDisconnect(playerid);
 	UI_OnDisconnect(playerid);
 	Supply_ResetPlayer(playerid);
+	FPerm_OnDisconnect(playerid);
 	Admin_OnDisconnect(playerid);
 	Job_Stop(playerid);
 	Jobs_OnDisconnect(playerid);
@@ -421,6 +424,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Factory_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Families_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (FrMenu_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Orgs_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Factions_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Drugs_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Casino_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;

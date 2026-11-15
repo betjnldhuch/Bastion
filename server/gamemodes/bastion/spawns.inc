@@ -260,8 +260,9 @@ static bool:FSpawn_CanManage(playerid, s)
 {
 	if (Player[playerid][pAdmin] >= 4) return true;
 	if (Player[playerid][pFaction] != gFSpawn[s][fsFaction]) return false;
+	if (!FPerm_Has(playerid, FP_SPAWNS)) return false;    // право «Раздавать спавны» (fmanage.inc)
 	if (Player[playerid][pRank] >= FSPAWN_LEADER_RANK) return true;
-	return (Player[playerid][pRank] >= FSPAWN_DEPUTY_RANK && FSpawn_Allowed(playerid, s));
+	return FSpawn_Allowed(playerid, s);
 }
 
 // Выбранный в /setspawn доп. спавн фракции. 0 — не выбран, убран или нет доступа (тогда — главный офис).
@@ -328,8 +329,8 @@ stock bool:Cmd_FSpawns(playerid, const params[])
 	new bool:admin = (Player[playerid][pAdmin] >= 3);
 	if (!admin)
 	{
-		if (Player[playerid][pRank] < FSPAWN_DEPUTY_RANK || !Faction_IsValid(Player[playerid][pFaction]))
-			return SendClientMessage(playerid, COLOR_GREY, "Доступно лидеру и заму фракции (ранг %d+).", FSPAWN_DEPUTY_RANK);
+		if (!Faction_IsValid(Player[playerid][pFaction]) || !FPerm_Has(playerid, FP_SPAWNS))
+			return SendClientMessage(playerid, COLOR_GREY, "Нужно право «Раздавать спавны». Его выдают лидер и зам: /fr > Управление.");
 		f = Player[playerid][pFaction];
 	}
 	new shown = 0, sq[24];
@@ -390,8 +391,8 @@ stock bool:Cmd_FSpawnAccess(playerid, const params[])
 	new bool:admin = (Player[playerid][pAdmin] >= 4);
 	if (!admin)
 	{
-		if (Player[playerid][pFaction] != f || Player[playerid][pRank] < FSPAWN_DEPUTY_RANK)
-			return SendClientMessage(playerid, COLOR_GREY, "Это может лидер или зам его фракции.");
+		if (Player[playerid][pFaction] != f || !FPerm_Has(playerid, FP_SPAWNS))
+			return SendClientMessage(playerid, COLOR_GREY, "Нужно право «Раздавать спавны» в его фракции (/fr > Управление).");
 		if (Player[t][pRank] >= Player[playerid][pRank])
 			return SendClientMessage(playerid, COLOR_GREY, "Спавны можно раздавать только рангам ниже себя.");
 	}
