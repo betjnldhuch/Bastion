@@ -280,7 +280,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/setfspawn", true))   { Cmd_SetFSpawn(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/addfspawn", true))   { Cmd_AddFSpawn(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delfspawn", true))   { Cmd_DelFSpawn(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/fspawns", true))     { Cmd_FSpawns(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/fspawns", true) || !strcmp(cmd, "/fspawnlist", true)) { Cmd_FSpawns(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fspawnaccess", true)) { Cmd_FSpawnAccess(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fspawnsquad", true)) { Cmd_FSpawnSquad(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/setfduty", true))    { Cmd_SetFDuty(playerid, cmdtext[pos]); return 1; }
