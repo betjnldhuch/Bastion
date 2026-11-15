@@ -96,8 +96,9 @@ jobs:
 
       - name: Upload
         uses: actions/upload-artifact@v4
+        continue-on-error: true # квота артефактов не должна ронять сборку
         with:
           name: BastionUI-PC
           path: dist/
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7

@@ -1126,12 +1126,22 @@ stock Factions_PayDayBudget()
 // Где спавнится член фракции (дом игрока важнее — см. Account_SetNormalSpawn)
 stock Factions_GetSpawn(playerid, &Float:x, &Float:y, &Float:z, &Float:a)
 {
+	new interior, world;
+	return Factions_GetSpawnEx(playerid, x, y, z, a, interior, world);
+}
+
+// То же с интерьером и миром: доп. спавн, выбранный в /setspawn (spawns.inc), иначе основная база
+stock Factions_GetSpawnEx(playerid, &Float:x, &Float:y, &Float:z, &Float:a, &interior, &world)
+{
 	new f = Player[playerid][pFaction];
 	if (!Faction_IsValid(f)) return 0;
+	if (Spawns_GetFactionExtra(playerid, x, y, z, a, interior, world)) return 1;
 	x = Faction[f][fSpawnX];
 	y = Faction[f][fSpawnY];
 	z = Faction[f][fSpawnZ];
 	a = Faction[f][fSpawnA];
+	interior = Faction[f][fSpawnInt];
+	world = Faction[f][fSpawnWorld];
 	return 1;
 }
 
@@ -1174,12 +1184,12 @@ stock Factions_OnSpawn(playerid)
 	SetPlayerWantedLevel(playerid, Player[playerid][pWanted]);
 
 	// Спавн фракции может стоять внутри здания (/setfspawn): OnPlayerSpawn уже вернул игрока на улицу
-	new f = Player[playerid][pFaction];
-	if (Faction_IsValid(f) && (Faction[f][fSpawnInt] != 0 || Faction[f][fSpawnWorld] != 0)
-		&& IsPlayerInRangeOfPoint(playerid, 3.0, Faction[f][fSpawnX], Faction[f][fSpawnY], Faction[f][fSpawnZ]))
+	new Float:sx, Float:sy, Float:sz, Float:sa, sint, sworld;
+	if (Factions_GetSpawnEx(playerid, sx, sy, sz, sa, sint, sworld) && (sint != 0 || sworld != 0)
+		&& IsPlayerInRangeOfPoint(playerid, 3.0, sx, sy, sz))
 	{
-		SetPlayerInterior(playerid, Faction[f][fSpawnInt]);
-		SetPlayerVirtualWorld(playerid, Faction[f][fSpawnWorld]);
+		SetPlayerInterior(playerid, sint);
+		SetPlayerVirtualWorld(playerid, sworld);
 	}
 
 	if (Player[playerid][pJail] > 0)
