@@ -36,26 +36,35 @@ enum
 	PL_CHURCH,      // церковь: свадьба, развод
 	PL_LOTTERY,     // ларёк лотереи
 	PL_KPZ,         // камера КПЗ в LSPD (короткие сроки); нет ни одной — старые камеры из кода
+	PL_WEED,        // поле, где растёт конопля (drugs.inc): сажать можно только рядом
 	PL_KINDS
 }
 static const gPlaceKey[PL_KINDS][] =
 {
 	"dealer", "fish", "field", "barn", "bin", "dump", "vault", "car",
-	"cell", "pwork", "escape", "release", "pguard", "clinic", "church", "lottery", "kpz"
+	"cell", "pwork", "escape", "release", "pguard", "clinic", "church", "lottery", "kpz", "weed"
 };
 static const gPlaceName[PL_KINDS][] =
 {
 	"Торговец наркотиками", "Место рыбалки", "Грядка фермы", "Амбар фермы", "Мусорный бак", "Свалка",
 	"Хранилище банка", "Рабочая машина", "Камера тюрьмы", "Работа в тюрьме", "Лаз для побега",
-	"Выход из тюрьмы", "Пост охраны тюрьмы", "Стойка больницы", "Церковь", "Лотерея", "Камера КПЗ"
+	"Выход из тюрьмы", "Пост охраны тюрьмы", "Стойка больницы", "Церковь", "Лотерея", "Камера КПЗ", "Поле конопли"
 };
 // Нужен ли значок с надписью (остальные точки видны только как метка задания)
 static const bool:gPlaceMarker[PL_KINDS] =
 {
 	true, false, false, true, false, true, true, false,
-	false, false, false, false, true, true, true, true, false
+	false, false, false, false, true, true, true, true, false, false
 };
-static const gPlaceModel[PL_KINDS] = { 0, 0, 0, 1318, 0, 1318, 1274, 0, 0, 0, 0, 0, 1247, 1240, 1239, 1274, 0 };
+static const gPlaceModel[PL_KINDS] = { 0, 0, 0, 1318, 0, 1318, 1274, 0, 0, 0, 0, 0, 1247, 1240, 1239, 1274, 0, 0 };
+
+// Поля конопли по умолчанию: ставятся, если в базе нет ни одного (глухие места за городом)
+static const Float:gWeedDefs[][3] =
+{
+	{ -1180.0, -1060.0, 129.2 },    // Flint County, край большой фермы
+	{ 1040.0, -330.0, 74.0 },       // Red County, Hilltop Farm
+	{ -90.0, 20.0, 3.1 }            // Red County, Blueberry Acres
+};
 
 enum E_PLACE
 {
@@ -217,6 +226,8 @@ stock Places_Init()
 	{
 		for (new d = 0; d < sizeof (gPlaceDefs); d++)
 			Place_Insert(gPlaceDefs[d][pdKind], gPlaceDefs[d][pdArg], gPlaceDefs[d][pdX], gPlaceDefs[d][pdY], gPlaceDefs[d][pdZ], gPlaceDefs[d][pdA], 0, 0);
+		for (new d = 0; d < sizeof (gWeedDefs); d++)
+			Place_Insert(PL_WEED, 0, gWeedDefs[d][0], gWeedDefs[d][1], gWeedDefs[d][2], 0.0, 0, 0);
 		print("[Places] default places created.");
 		return;
 	}
@@ -233,6 +244,24 @@ stock Places_Init()
 	}
 	DB_FreeResultSet(r);
 	printf("[Places] %d places.", rows);
+	if (Place_Count(PL_WEED) == 0)
+	{
+		for (new d = 0; d < sizeof (gWeedDefs); d++)
+			Place_Insert(PL_WEED, 0, gWeedDefs[d][0], gWeedDefs[d][1], gWeedDefs[d][2], 0.0, 0, 0);
+		print("[Places] default weed fields created.");
+	}
+}
+
+// Ближайшая точка вида на улице по расстоянию на карте (без высоты). -1 — нет в радиусе.
+stock Place_NearXY(kind, Float:x, Float:y, Float:range)
+{
+	for (new i = 0; i < MAX_PLACES; i++)
+	{
+		if (!gPlace[i][plUsed] || gPlace[i][plKind] != kind || gPlace[i][plWorld] != 0 || gPlace[i][plInt] != 0) continue;
+		new Float:dx = gPlace[i][plX] - x, Float:dy = gPlace[i][plY] - y;
+		if (dx * dx + dy * dy <= range * range) return i;
+	}
+	return -1;
 }
 
 // Есть ли таблица (для первого запуска)

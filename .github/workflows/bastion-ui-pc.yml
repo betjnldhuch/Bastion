@@ -101,7 +101,7 @@ jobs:
           name: BastionUI-PC
           path: dist/
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7
 
       # main и ручной запуск: архив в релиз bastion-ui (не занимает место артефактов).
       # ПК-лаунчер сверяет BastionUI-PC.sha256 и сам ставит новую версию в папку игры.

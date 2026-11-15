@@ -183,7 +183,14 @@ stock AdminTools_OnClickMap(playerid, Float:x, Float:y, Float:z)
 
 	SetPlayerInterior(playerid, 0);
 	SetPlayerVirtualWorld(playerid, 0);
-	SetPlayerPosFindZ(playerid, x, y, (z < 1.0) ? 300.0 : z + 1.0);
+	// Телефон: SetPlayerPosFindZ ронял старый мобильный клиент (порча стека в
+	// get_ground_z). Клиент и так присылает z земли (+1.5), берём её как есть.
+	if (IsPlayerMobile[playerid])
+	{
+		if (z < 1.0) { GivePlayerWeapon(playerid, 46, 1); z = 300.0; } // место не прогружено — с парашютом
+		SetPlayerPos(playerid, x, y, z + 0.5);
+	}
+	else SetPlayerPosFindZ(playerid, x, y, (z < 1.0) ? 300.0 : z + 1.0);
 	Player[playerid][pHouseInside] = -1;
 
 	if (driver)

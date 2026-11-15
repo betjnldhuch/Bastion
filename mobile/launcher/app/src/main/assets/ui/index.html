@@ -616,11 +616,14 @@ button { font: inherit; cursor: pointer; }
         } else respond(btn, -1, input ? input.value : '');
       }
       if (isList) {
+        // Телефон: одно нажатие на строку = выбор (как кнопка 1), иначе игрок
+        // думает, что пункт не работает (/help, /mk). ПК: выделение, двойной клик = выбор.
+        var tapChooses = !(window.BastionNative && BastionNative.platform === 'pc');
         var last = 0, lastI = -1;
         Array.prototype.forEach.call(root.querySelectorAll('.list .r[data-i]'), function (el) {
           el.onclick = function () {
             var i = +el.getAttribute('data-i'), now = Date.now();
-            if (i === lastI && now - last < 400) { sel = i; answer(1); return; }
+            if (tapChooses || (i === lastI && now - last < 400)) { sel = i; answer(1); return; }
             last = now; lastI = i; sel = i;
             pick(i);
           };

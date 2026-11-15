@@ -2,7 +2,7 @@
 //  drugs.inc — наркотики: выращивание, торговля, эффекты, ломка, изъятие.
 //
 //  Семена конопли продаёт торговец (точка /place dealer, ALT рядом с ним).
-//  Посадить: сумка (/inv) > Семена > Использовать. Куст растёт PLANT_GROW_MIN минут,
+//  Посадить: сумка (/inv) > Семена > Использовать, только на поле конопли (/place weed, 40 м). Куст растёт PLANT_GROW_MIN минут,
 //  потом ALT рядом — собрать урожай (собрать может любой, кто нашёл куст).
 //  Полицейский на смене ALT у куста — уничтожить.
 //  Торговец покупает марихуану и продаёт кокаин (кокаин — только членам банд).
@@ -18,6 +18,7 @@
 
 
 #define DRUG_PLANT_MODEL        19473
+#define WEED_FIELD_RANGE        40.0    // сажать можно не дальше этого от поля (/place weed)
 #define MAX_PLANTS              150
 #define PLANT_GROW_MIN          40      // минут до урожая
 #define PLANT_ROT_MIN           180     // столько минут после созревания куст ещё стоит
@@ -375,6 +376,12 @@ static Plant_Try(playerid)
 {
 	if (IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Выйди из машины.");
 	if (GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "Сажать можно только на улице.");
+	{
+		new Float:px, Float:py, Float:pz;
+		GetPlayerPos(playerid, px, py, pz);
+		if (Place_NearXY(PL_WEED, px, py, WEED_FIELD_RANGE) == -1)
+			return SendClientMessage(playerid, COLOR_GREY, "Конопля здесь не приживётся. Ищи глухие поля за городом (спроси у торговца).");
+	}
 	if (Plant_Nearby(playerid, 3.0) != -1) return SendClientMessage(playerid, COLOR_GREY, "Слишком близко к другому кусту.");
 	new mine = 0;
 	for (new p = 0; p < MAX_PLANTS; p++) if (gPlant[p][plnUsed] && gPlant[p][plnOwner] == Player[playerid][pDbId]) mine++;

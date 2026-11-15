@@ -50,6 +50,7 @@ enum
 #define GPS_CATS        10
 
 #define MK_TEXT_LEN     160
+#define MK_ALLOW_CELLS  ((MAX_FACTIONS + 31) / 32)
 
 enum E_MARKER
 {
@@ -76,6 +77,7 @@ enum E_MARKER
 	Float:mkTextDist,
 	Float:mkTextZ,
 	mkFaction,              // 0 Ч вид€т все; иначе только эта фракци€ (и админы): без значка, надпись у каждого сво€
+	mkAllow[MK_ALLOW_CELLS],// какие ещЄ фракции вид€т точку (выбирает админ в /mk, биты по номеру фракции)
 	mkPriv                  // слот своих надписей (-1 Ч нет)
 }
 new gMarker[MAX_MARKERS][E_MARKER];
@@ -125,6 +127,7 @@ stock Markers_Init()
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS markers (type INTEGER NOT NULL, ref INTEGER NOT NULL, x REAL, y REAL, z REAL, a REAL, world INTEGER DEFAULT 0, interior INTEGER DEFAULT 0, moved INTEGER DEFAULT 0, model INTEGER DEFAULT -1, zoff REAL DEFAULT 0, icon INTEGER DEFAULT -1, gps INTEGER DEFAULT -1, name TEXT DEFAULT '', label TEXT DEFAULT '', PRIMARY KEY (type, ref))"));
 	DB_AddColumn("markers", "faction", "INTEGER DEFAULT 0");
+	DB_AddColumn("markers", "allow", "TEXT DEFAULT ''");
 
 	for (new m = 0; m < MAX_MARKERS; m++)
 	{
@@ -192,6 +195,7 @@ stock Marker_Create(type, ref, const name[], model, &Float:x, &Float:y, &Float:z
 	gMarker[m][mkTextDist] = 15.0;
 	gMarker[m][mkTextZ] = 0.6;
 	gMarker[m][mkFaction] = 0;
+	for (new c = 0; c < MK_ALLOW_CELLS; c++) gMarker[m][mkAllow][c] = 0;
 	gMarker[m][mkPriv] = -1;
 
 	Marker_LoadSaved(m);
@@ -204,7 +208,7 @@ stock Marker_Create(type, ref, const name[], model, &Float:x, &Float:y, &Float:z
 
 static Marker_LoadSaved(m)
 {
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT x, y, z, a, world, interior, moved, model, zoff, icon, gps, name, label, faction FROM markers WHERE type = %d AND ref = %d",
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT x, y, z, a, world, interior, moved, model, zoff, icon, gps, name, label, faction, allow FROM markers WHERE type = %d AND ref = %d",
 		gMarker[m][mkType], gMarker[m][mkRef]);
 	if (r == DBResult:0) return;
 	if (DB_GetRowCount(r) > 0)
@@ -234,8 +238,12 @@ static Marker_LoadSaved(m)
 		}
 		if (gMarker[m][mkType] == MK_CUSTOM)
 			DB_GetFieldString(r, 12, gMarker[m][mkText], MK_TEXT_LEN);
-		gMarker[m][mkFaction] = DB_GetFieldInt(r, 13);
-		if (gMarker[m][mkFaction] < 0 || gMarker[m][mkFaction] >= MAX_FACTIONS) gMarker[m][mkFaction] = 0;
+		//  то видит точку: список фракций через зап€тую. —тара€ база Ч одна фракци€ в колонке faction.
+		new allow[160];
+		DB_GetFieldString(r, 14, allow, sizeof allow);
+		Marker_ParseAllow(m, allow);
+		new old = DB_GetFieldInt(r, 13);
+		if (allow[0] == '\0' && old > 0 && old < MAX_FACTIONS) Marker_SetAllowBit(m, old, true);
 	}
 	DB_FreeResultSet(r);
 }
@@ -244,14 +252,15 @@ static Marker_LoadSaved(m)
 stock Marker_Save(m)
 {
 	if (!Marker_IsValid(m)) return;
-	new name[32], label[MK_TEXT_LEN];
+	new name[32], label[MK_TEXT_LEN], allow[160];
+	Marker_AllowString(m, allow, sizeof allow);
 	if (gMarker[m][mkNameSet] || gMarker[m][mkType] == MK_CUSTOM) strcat(name, gMarker[m][mkName]);
 	if (gMarker[m][mkType] == MK_CUSTOM) strcat(label, gMarker[m][mkText]);
 	DB_FreeResultSet(DB_ExecuteQuery(gDB,
-		"INSERT OR REPLACE INTO markers (type, ref, x, y, z, a, world, interior, moved, model, zoff, icon, gps, name, label, faction) VALUES (%d, %d, %f, %f, %f, %f, %d, %d, %d, %d, %f, %d, %d, '%q', '%q', %d)",
+		"INSERT OR REPLACE INTO markers (type, ref, x, y, z, a, world, interior, moved, model, zoff, icon, gps, name, label, faction, allow) VALUES (%d, %d, %f, %f, %f, %f, %d, %d, %d, %d, %f, %d, %d, '%q', '%q', 0, '%q')",
 		gMarker[m][mkType], gMarker[m][mkRef], gMarker[m][mkX], gMarker[m][mkY], gMarker[m][mkZ], gMarker[m][mkA],
 		gMarker[m][mkWorld], gMarker[m][mkInterior], gMarker[m][mkMoved] ? 1 : 0, gMarker[m][mkModel], gMarker[m][mkZOff],
-		gMarker[m][mkIcon], gMarker[m][mkGps], name, label, gMarker[m][mkFaction]));
+		gMarker[m][mkIcon], gMarker[m][mkGps], name, label, allow));
 }
 
 // «абыть правки маркера (строка в базе)
@@ -292,7 +301,7 @@ stock Marker_Build(m)
 		gMarker[m][mkPickup] = -1;
 	}
 	new model = Marker_Model(m);
-	if (model > 0 && gMarker[m][mkFaction] == 0)
+	if (model > 0 && !Marker_IsSecret(m))
 	{
 		gMarker[m][mkPickup] = CreatePickup(model, 1, gMarker[m][mkX], gMarker[m][mkY],
 			gMarker[m][mkZ] + Marker_StyleZ(model) + gMarker[m][mkZOff], gMarker[m][mkWorld]);
@@ -309,7 +318,7 @@ stock Marker_BuildLabel(m)
 		gMarker[m][mkLabel] = INVALID_3DTEXT_ID;
 	}
 	Marker_PrivSync(m);
-	if (gMarker[m][mkFaction] != 0) return;     // только дл€ своих: надписи у каждого свои
+	if (Marker_IsSecret(m)) return;             // только дл€ своих: надписи у каждого свои
 	if (gMarker[m][mkText][0] == '\0') return;
 	gMarker[m][mkLabel] = Create3DTextLabel(gMarker[m][mkText], gMarker[m][mkTextColor],
 		gMarker[m][mkX], gMarker[m][mkY], gMarker[m][mkZ] + gMarker[m][mkTextZ], gMarker[m][mkTextDist], gMarker[m][mkWorld], true);
@@ -362,6 +371,7 @@ stock Marker_Destroy(m, bool:forget = false)
 	gMarker[m][mkPickup] = -1;
 	gMarker[m][mkLabel] = INVALID_3DTEXT_ID;
 	gMarker[m][mkFaction] = 0;
+	for (new c = 0; c < MK_ALLOW_CELLS; c++) gMarker[m][mkAllow][c] = 0;
 	Marker_PrivSync(m);         // убрать свои надписи и освободить слот
 	gMarker[m][mkUsed] = false;
 	if (gMarker[m][mkIcon] >= 0) Markers_RefreshIcons();
@@ -370,12 +380,81 @@ stock Marker_Destroy(m, bool:forget = false)
 // ---------------------------------------------------------------------
 //  ћаркеры Ђтолько дл€ своихї (фракци€)
 // ---------------------------------------------------------------------
-// ¬идит ли игрок маркер: обычный Ч все, фракционный Ч участники и админы 4+
+// —екретна€ точка: еЄ вид€т и могут ей пользоватьс€ только выбранные фракции (и главный админ)
+stock bool:Marker_IsSecret(m)
+{
+	if (gMarker[m][mkFaction] != 0) return true;
+	for (new c = 0; c < MK_ALLOW_CELLS; c++) if (gMarker[m][mkAllow][c] != 0) return true;
+	return false;
+}
+
+stock bool:Marker_AllowHas(m, f)
+{
+	if (f <= 0 || f >= MAX_FACTIONS) return false;
+	return (gMarker[m][mkAllow][f / 32] & (1 << (f % 32))) != 0;
+}
+
+stock Marker_SetAllowBit(m, f, bool:on)
+{
+	if (f <= 0 || f >= MAX_FACTIONS) return;
+	if (on) gMarker[m][mkAllow][f / 32] |= (1 << (f % 32));
+	else gMarker[m][mkAllow][f / 32] &= ~(1 << (f % 32));
+}
+
+static Marker_ParseAllow(m, const s[])
+{
+	for (new c = 0; c < MK_ALLOW_CELLS; c++) gMarker[m][mkAllow][c] = 0;
+	new v = 0, bool:num = false;
+	for (new i = 0; ; i++)
+	{
+		if (s[i] >= '0' && s[i] <= '9') { v = v * 10 + (s[i] - '0'); num = true; continue; }
+		if (num) Marker_SetAllowBit(m, v, true);
+		v = 0; num = false;
+		if (s[i] == '\0') break;
+	}
+}
+
+static Marker_AllowString(m, dest[], len)
+{
+	dest[0] = '\0';
+	new part[8];
+	for (new f = 1; f < MAX_FACTIONS; f++)
+	{
+		if (!Marker_AllowHas(m, f)) continue;
+		if (dest[0] != '\0') strcat(dest, ",", len);
+		valstr(part, f);
+		strcat(dest, part, len);
+	}
+}
+
+// ¬идит ли игрок маркер: обычный Ч все, секретный Ч выбранные фракции и главный админ.
+//  то не видит точку, не может ей и пользоватьс€ (Marker_InRange дл€ него всегда 0).
 stock bool:Marker_VisibleTo(playerid, m)
 {
 	if (!Marker_IsValid(m)) return false;
-	new f = gMarker[m][mkFaction];
-	return (f == 0 || Player[playerid][pFaction] == f || Player[playerid][pAdmin] >= MARKER_SEE_ALL);
+	if (!Marker_IsSecret(m) || Player[playerid][pAdmin] >= MARKER_SEE_ALL) return true;
+	new f = Player[playerid][pFaction];
+	if (f <= 0) return false;
+	return (f == gMarker[m][mkFaction] || Marker_AllowHas(m, f));
+}
+
+// јдмин в /mk включил или выключил фракцию в списке тех, кто видит точку
+stock Marker_ToggleAllow(m, f)
+{
+	if (!Marker_IsValid(m)) return;
+	Marker_SetAllowBit(m, f, !Marker_AllowHas(m, f));
+	Marker_Build(m);
+	Marker_Save(m);
+	Markers_RefreshIcons();
+}
+
+stock Marker_ClearAllow(m)
+{
+	if (!Marker_IsValid(m)) return;
+	for (new c = 0; c < MK_ALLOW_CELLS; c++) gMarker[m][mkAllow][c] = 0;
+	Marker_Build(m);
+	Marker_Save(m);
+	Markers_RefreshIcons();
 }
 
 stock Marker_GetFaction(m) { return Marker_IsValid(m) ? gMarker[m][mkFaction] : 0; }
@@ -397,11 +476,13 @@ static Marker_PrivFor(playerid, s)
 		gMkPLabelOn[playerid][s] = false;
 	}
 	new m = gMkPrivM[s];
-	if (m == -1 || !Marker_IsValid(m) || gMarker[m][mkFaction] == 0) return;
+	if (m == -1 || !Marker_IsValid(m) || !Marker_IsSecret(m)) return;
 	if (!Player[playerid][pLogged] || !Marker_VisibleTo(playerid, m)) return;
 	new text[MK_TEXT_LEN + 24];
+	new f = Player[playerid][pFaction];
+	new bool:own = (f > 0 && (f == gMarker[m][mkFaction] || Marker_AllowHas(m, f)));
 	if (gMarker[m][mkText][0] != '\0') strcat(text, gMarker[m][mkText]);
-	else if (Player[playerid][pAdmin] >= MARKER_SEE_ALL && Player[playerid][pFaction] != gMarker[m][mkFaction]) strcat(text, "{AAAAAA}(скрыта€ точка)");
+	else if (!own) strcat(text, "{AAAAAA}(скрыта€ точка)");
 	else return;
 	gMkPLabel[playerid][s] = CreatePlayer3DTextLabel(playerid, text, gMarker[m][mkTextColor],
 		gMarker[m][mkX], gMarker[m][mkY], gMarker[m][mkZ] + gMarker[m][mkTextZ], gMarker[m][mkTextDist]);
@@ -412,7 +493,8 @@ static Marker_PrivFor(playerid, s)
 static Marker_PrivSync(m)
 {
 	new s = gMarker[m][mkPriv];
-	if (gMarker[m][mkFaction] != 0 && gMarker[m][mkUsed] && s == -1)
+	new bool:secret = gMarker[m][mkUsed] && Marker_IsSecret(m);
+	if (secret && s == -1)
 	{
 		for (new i = 0; i < MK_PRIV_MAX; i++)
 		{
@@ -423,12 +505,12 @@ static Marker_PrivSync(m)
 		gMarker[m][mkPriv] = s;
 	}
 	if (s == -1) return;
-	if (gMarker[m][mkFaction] == 0) gMkPrivM[s] = -1;   // снова общий: слот свободен (надписи уберЄт цикл ниже)
+	if (!secret) gMkPrivM[s] = -1;   // снова общий: слот свободен (надписи уберЄт цикл ниже)
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (IsPlayerConnected(i)) Marker_PrivFor(i, s);
 	}
-	if (gMarker[m][mkFaction] == 0) gMarker[m][mkPriv] = -1;
+	if (!secret) gMarker[m][mkPriv] = -1;
 }
 
 // ¬ход, смена фракции или админки: показать игроку его фракционные надписи
@@ -449,6 +531,7 @@ stock Markers_OnConnect(playerid)
 stock Marker_InRange(playerid, m, Float:range)
 {
 	if (!Marker_IsValid(m)) return 0;
+	if (!Marker_VisibleTo(playerid, m)) return 0;      // секретна€ точка чужой фракции: войти нельз€
 	if (GetPlayerVirtualWorld(playerid) != gMarker[m][mkWorld] || GetPlayerInterior(playerid) != gMarker[m][mkInterior]) return 0;
 	return IsPlayerInRangeOfPoint(playerid, range, gMarker[m][mkX], gMarker[m][mkY], gMarker[m][mkZ]) ? 1 : 0;
 }
