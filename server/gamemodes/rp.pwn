@@ -52,6 +52,7 @@
 #include "bastion/platform.inc"   // ѕ  или телефон: IsPlayerMobile[playerid]
 #include "bastion/anticheat.inc"  // античит; подмен€ет SetPlayerPos, GivePlayerWeapon и др., поэтому стоит до модулей
 #include "bastion/database.inc"
+#include "bastion/logs.inc"       // общий журнал всех событий: scriptfiles/logs.db, /logs
 #include "bastion/social.inc"     // боты ¬  и Telegram: /bot, уведомлени€ (папка bots/)
 #include "bastion/markers.inc"    // все маркеры (значки и надписи) в одном месте
 #include "bastion/spawns.inc"     // точки по€влени€ игроков (вокзалы): /addspawn
@@ -120,6 +121,7 @@ public OnGameModeInit()
 {
 	SetGameModeText(MODE_TEXT);
 	DB_Init();
+	Log_Init();           // журнал событий (logs.db)
 	Factions_RunMoves();  // перенос фракций на другой номер (один раз, до загрузки всего)
 	Markers_Init();       // таблица markers: правки маркеров из игры
 	Admin_Init();         // таблицы admin_log, reports, сроки банов
@@ -184,6 +186,7 @@ public OnGameModeExit()
 		if (IsPlayerConnected(i)) Account_Save(i);
 	}
 	Fuel_Exit();
+	Log_Exit();
 	DB_Shutdown();
 	return 1;
 }
@@ -210,12 +213,14 @@ public OnPlayerConnect(playerid)
 		Player[playerid][pAuthShown] = true;    // игрока кикают Ч окно входа не показываем
 		return 1;
 	}
+	Log_OnConnect(playerid);
 	SendClientMessage(playerid, COLOR_BLUE, "ƒобро пожаловать на %s!", SERVER_NAME);
 	return 1;
 }
 
 public OnPlayerDisconnect(playerid, reason)
 {
+	Log_OnDisconnect(playerid, reason);
 	Law_OnDisconnect(playerid, reason); // метка задержани€: вышел из игры Ч деморган (law.inc)
 	Prison_OnDisconnect(playerid);      // до сохранени€: сорванный побег добавл€ет срок
 	Drugs_OnDisconnect(playerid);
@@ -342,6 +347,7 @@ public OnPlayerTakeDamage(playerid, issuerid, Float:amount, WEAPON:weaponid, bod
 {
 	new bool:was = Wound_IsWounded(playerid);
 	Wound_OnDamage(playerid, amount);
+	Log_OnDamage(playerid, issuerid, amount, weaponid, bodypart, !was && Wound_IsWounded(playerid));
 	// ”пал раненым от чужой пули Ч в войне за район это считаетс€ убийством (turfs.inc)
 	if (!was && Wound_IsWounded(playerid)) Turfs_OnDeath(playerid, issuerid);
 	return 1;
@@ -349,6 +355,7 @@ public OnPlayerTakeDamage(playerid, issuerid, Float:amount, WEAPON:weaponid, bod
 
 public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 {
+	Log_OnDeath(playerid, killerid, reason);
 	AC_OnDeath(playerid);
 	Job_Stop(playerid);
 	Licenses_Abort(playerid);
@@ -375,6 +382,7 @@ public OnPlayerText(playerid, text[])
 	// »гроки не могут красить текст кодами {RRGGBB}: так подделывают системные сообщени€
 	if (Player[playerid][pAdmin] < 1) StripColorCodes(text);
 	if (text[0] == '\0') return 0;
+	Log_OnText(playerid, text);
 	Chat_OnText(playerid, text);
 	return 0;   // 0 = не отправл€ть стандартный глобальный чат
 }
@@ -382,6 +390,7 @@ public OnPlayerText(playerid, text[])
 public OnPlayerCommandText(playerid, cmdtext[])
 {
 	if (!strcmp(cmdtext, "/__bui")) return UI_OnPcHello(playerid);   // ѕ -плагин HTML-окон (ui.inc)
+	if (Player[playerid][pLogged]) Log_OnCommand(playerid, cmdtext);
 	return Commands_Process(playerid, cmdtext);
 }
 
@@ -455,6 +464,7 @@ public OnPlayerStateChange(playerid, PLAYER_STATE:newstate, PLAYER_STATE:oldstat
 	AC_OnStateChange(playerid, newstate);
 	if (newstate == PLAYER_STATE_DRIVER)
 	{
+		Log_OnDriver(playerid);
 		if (!Factions_OnBecomeDriver(playerid)) Vehicles_OnBecomeDriver(playerid);
 		Jobs_OnBecomeDriver(playerid);      // рабочие машины Ч только работникам
 		Licenses_OnBecomeDriver(playerid);  // учебна€ машина, предупреждение без прав

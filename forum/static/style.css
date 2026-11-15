@@ -245,3 +245,20 @@ table.list td { padding: 8px; border-top: 1px solid var(--line); }
 @media (max-width: 640px) {
   .site-hero { padding: 22px 18px; } .site-hero h1 { font-size: 30px; }
 }
+
+/* Журнал сервера /logs */
+.logs-form .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 4px 10px; border: 1px solid var(--line); border-radius: 20px; cursor: pointer; color: var(--text); font-size: 13px; }
+.chip input { display: inline; width: auto; margin: 0; }
+.chip:has(input:checked) { border-color: var(--orange); background: rgba(255,122,26,.12); }
+.scroll-x { overflow-x: auto; }
+table.logs td { padding: 5px 8px; vertical-align: top; font-size: 13px; }
+table.logs .logtext { word-break: break-word; min-width: 240px; }
+.nowrap { white-space: nowrap; }
+.pager-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.badge.lt-conn { background: rgba(58,139,255,.15); color: var(--blue); }
+.badge.lt-chat { background: var(--sel); color: var(--text); }
+.badge.lt-money { background: rgba(63,191,106,.15); color: var(--green); }
+.badge.lt-item { background: rgba(232,185,49,.15); color: var(--yellow); }
+.badge.lt-admin { background: rgba(224,83,63,.18); color: #ff8a78; }
+.badge.lt-kill { background: rgba(224,83,63,.12); color: var(--red); }

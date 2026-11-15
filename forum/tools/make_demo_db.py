@@ -63,6 +63,35 @@ def make_rp_db(path, prefix=""):
     con.close()
 
 
+def make_logs_db(path):
+    """Журнал logs.db как у мода (logs.inc): текст в Windows-1251."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    for suffix in ("", "-wal", "-shm"):
+        if os.path.exists(path + suffix):
+            os.remove(path + suffix)
+    con = sqlite3.connect(path)
+    con.execute("CREATE TABLE logs (id INTEGER PRIMARY KEY AUTOINCREMENT, time INTEGER NOT NULL, type TEXT NOT NULL,"
+                " acc INTEGER DEFAULT 0, name TEXT DEFAULT '', tacc INTEGER DEFAULT 0, tname TEXT DEFAULT '',"
+                " amount INTEGER DEFAULT 0, ip TEXT DEFAULT '', text TEXT DEFAULT '')")
+    con.execute("CREATE INDEX logs_time ON logs (time)")
+    now = int(time.time())
+    rows = [
+        (now - 90000, "item", 5, "Carl_Johnson", 0, "", 1, "10.0.0.5", "+1 Аптечка (стало 2)"),
+        (now - 7200, "conn", 2, "Ivan_Petrov", 0, "", 0, "10.0.0.2", "подключился"),
+        (now - 7100, "chat", 2, "Ivan_Petrov", 0, "", 0, "10.0.0.2", "Привет всем, кто продаст машину?"),
+        (now - 7000, "cmd", 7, "Cheater_Boy", 2, "Ivan_Petrov", 0, "10.0.0.7", "/pm 1 дай денег"),
+        (now - 6900, "money", 2, "Ivan_Petrov", 0, "", -500, "10.0.0.2", "-500$ /pay -> Tony Ballas (на руках $1500)"),
+        (now - 6800, "kill", 6, "Tony_Ballas", 2, "Ivan_Petrov", 24, "10.0.0.6", "убил игрока (Desert Eagle)"),
+        (now - 6700, "admin", 1, "Pal_Layach", 7, "Cheater_Boy", 30, "", "ban Cheater_Boy (30) — Чит на деньги"),
+    ]
+    con.executemany("INSERT INTO logs (time, type, acc, name, tacc, tname, amount, ip, text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    [r[:8] + (r[8].encode("cp1251"),) for r in rows])
+    # Мод пишет байты как TEXT, а не BLOB
+    con.execute("UPDATE logs SET text = CAST(text AS TEXT)")
+    con.commit()
+    con.close()
+
+
 DEMO_TOPICS = [
     # раздел (kind, faction) или его название, автор, заголовок, текст, ответы [(автор, текст)], статус
     (("news", 0), 0, "Открытие Bastion Peace",
@@ -113,6 +142,8 @@ def make_demo(cfg):
         srv.db = os.path.join(demo_dir, f"rp-{key}.db")
         srv.address = "127.0.0.1"
         make_rp_db(srv.db)
+        srv.logs = os.path.join(demo_dir, f"logs-{key}.db")
+        make_logs_db(srv.logs)
     cfg.data_dir = demo_dir
     forum_db = os.path.join(demo_dir, "forum.db")
     for suffix in ("", "-wal", "-shm"):

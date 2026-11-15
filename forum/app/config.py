@@ -12,6 +12,7 @@ class GameServer:
     db: str
     address: str = "127.0.0.1"
     port: int = 7777
+    logs: str = ""          # журнал сервера logs.db (по умолчанию рядом с rp.db)
 
 
 @dataclass
@@ -25,6 +26,7 @@ class Config:
     owners: list = field(default_factory=list)
     moderator_level: int = 1
     admin_level: int = 4
+    logs_level: int = 3     # с какого уровня игровой админки видна страница /logs
     discord: str = ""
     map_image: str = ""
     donate_rub_per_coin: float = 1.0
@@ -45,6 +47,12 @@ def _int(value, default):
         return default
 
 
+def _sibling(path, name):
+    """Файл name в той же папке, что path (путь может быть виндовым и на Linux)."""
+    cut = max(path.rfind("/"), path.rfind("\\"))
+    return path[:cut + 1] + name if cut >= 0 else name
+
+
 def load(path, base_dir=None):
     base_dir = base_dir or os.path.dirname(os.path.abspath(path))
     parser = configparser.ConfigParser(interpolation=None, inline_comment_prefixes=None)
@@ -62,6 +70,7 @@ def load(path, base_dir=None):
     cfg.owners = [n.strip().lower() for n in f.get("owners", "").split(",") if n.strip()]
     cfg.moderator_level = max(1, _int(f.get("moderator_level"), 1))
     cfg.admin_level = max(cfg.moderator_level, _int(f.get("admin_level"), 4))
+    cfg.logs_level = max(1, _int(f.get("logs_level"), cfg.logs_level))
     cfg.discord = f.get("discord", "").strip()
     cfg.data_dir = os.path.join(base_dir, "data")
 
@@ -85,8 +94,14 @@ def load(path, base_dir=None):
         db = s.get("db", "").strip()
         if db and not os.path.isabs(db) and not (len(db) > 1 and db[1] == ":"):
             db = os.path.normpath(os.path.join(base_dir, db))
+        logs = s.get("logs", "").strip()
+        if logs and not os.path.isabs(logs) and not (len(logs) > 1 and logs[1] == ":"):
+            logs = os.path.normpath(os.path.join(base_dir, logs))
+        if not logs and db:
+            logs = _sibling(db, "logs.db")
         cfg.servers[key] = GameServer(
             key=key,
+            logs=logs,
             name=s.get("name", key).strip() or key,
             db=db,
             address=s.get("address", "127.0.0.1").strip(),

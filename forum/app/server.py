@@ -1,6 +1,8 @@
 """HTTP-сервер форума: маршруты, вход, права."""
 
+import csv
 import hmac
+import io
 import http.cookies
 import json
 import mimetypes
@@ -45,6 +47,8 @@ class Perm:
         self.faction = int(self.account.get("faction") or 0)
         self.is_leader = self.faction > 0 and int(self.account.get("frank") or 0) >= game.LEADER_RANK
         self.forum_banned = bool(user) and user["forum_ban_until"] > time.time()
+        self.is_owner = owner
+        self.can_view_logs = owner or (bool(user) and admin >= cfg.logs_level)
 
     def can_moderate(self, forum):
         if not self.user:
@@ -119,6 +123,7 @@ class App:
         self.cfg = cfg
         self.store = Storage(os.path.join(cfg.data_dir, "forum.db"))
         self.games = {k: game.GameDB(s) for k, s in cfg.servers.items()}
+        self.logs = {k: game.LogDB(s.logs) for k, s in cfg.servers.items()}
         self._acc_cache = {}
         self._lock = threading.Lock()
         self._login_fails = {}
@@ -273,7 +278,8 @@ def make_handler(app):
             self._new_anon = None
             url = urllib.parse.urlsplit(self.path)
             path = url.path
-            query = {k: v[0] for k, v in urllib.parse.parse_qs(url.query).items()}
+            # Повторяющийся параметр (галочки ?type=a&type=b) склеиваем через запятую
+            query = {k: ",".join(v) if k == "type" else v[0] for k, v in urllib.parse.parse_qs(url.query).items()}
             ctx = None
             extra = []
             try:
@@ -289,7 +295,10 @@ def make_handler(app):
                     form = self._form()
                     self._check_csrf(ctx, form)
                 result = route(app, ctx, method, path, query, form)
-                if isinstance(result, tuple) and len(result) == 3:
+                if isinstance(result, tuple) and len(result) == 4:
+                    code, body, ctype, more = result
+                    extra.extend(more.items())
+                elif isinstance(result, tuple) and len(result) == 3:
                     code, body, ctype = result
                 else:
                     code, body = result
@@ -806,6 +815,86 @@ def page_modlog(app, ctx, query, form):
     if not ctx.perm.is_moderator:
         raise HttpError(403, "Только для администрации.")
     return views.modlog(ctx, app.store.mod_log())
+
+
+# ---------- журнал игрового сервера ----------
+
+LOGS_PER_PAGE = 200
+LOGS_CSV_MAX = 20000
+
+
+def _parse_when(value, end=False):
+    """«2026-11-15» или «2026-11-15T20:07» (местное время) -> unix-время. end — конец дня/минуты."""
+    value = (value or "").strip()
+    for fmt, step in (("%Y-%m-%dT%H:%M", 60), ("%Y-%m-%d %H:%M", 60), ("%Y-%m-%d", 86400), ("%d.%m.%Y", 86400)):
+        try:
+            ts = int(time.mktime(time.strptime(value, fmt)))
+        except ValueError:
+            continue
+        return ts + step if end else ts
+    return 0
+
+
+def _logs_filters(app, ctx, query):
+    need_login(ctx)
+    if not ctx.perm.can_view_logs:
+        raise HttpError(403, "Журнал сервера — только для администрации.")
+    # Админ видит журнал своего сервера, владелец — любого
+    servers = list(app.cfg.servers) if ctx.perm.is_owner else [ctx.user["server"]]
+    servers = [k for k in servers if k in app.logs]
+    if not servers:
+        raise HttpError(404, "Сервер не найден.")
+    key = query.get("server") if query.get("server") in servers else servers[0]
+    raw_types = query.get("type") or ""
+    f = {
+        "server": key,
+        "name": (query.get("name") or "").strip()[:32],
+        "types": [t for t in raw_types.split(",") if t in game.LOG_TYPES],
+        "text": (query.get("text") or "").strip()[:100],
+        "ip": (query.get("ip") or "").strip()[:20],
+        "from": (query.get("from") or "").strip()[:20],
+        "to": (query.get("to") or "").strip()[:20],
+    }
+    return f, servers
+
+
+def _logs_search(app, f, before=0, limit=LOGS_PER_PAGE):
+    return app.logs[f["server"]].search(name=f["name"], types=f["types"], text=f["text"], ip=f["ip"],
+                                        since=_parse_when(f["from"]), until=_parse_when(f["to"], end=True),
+                                        before=before, limit=limit)
+
+
+@get("/logs")
+def page_logs(app, ctx, query, form):
+    f, servers = _logs_filters(app, ctx, query)
+    ldb = app.logs[f["server"]]
+    error, rows, more = "", [], False
+    if not ldb.available():
+        error = f"Файл журнала не найден: {ldb.path}. Обнови мод сервера (logs.inc) или укажи путь logs в forum.ini."
+    else:
+        try:
+            rows, more = _logs_search(app, f, before=_int(query.get("before")))
+        except game.LogQueryTooSlow:
+            error = "Запрос идёт слишком долго. Укажи ник, тип или даты."
+    return views.logs(ctx, f, servers, rows, more, error, ldb.size())
+
+
+@get("/logs.csv")
+def logs_csv(app, ctx, query, form):
+    f, _ = _logs_filters(app, ctx, query)
+    try:
+        rows, _ = _logs_search(app, f, before=_int(query.get("before")), limit=LOGS_CSV_MAX)
+    except game.LogQueryTooSlow:
+        raise HttpError(400, "Запрос идёт слишком долго. Укажи ник, тип или даты.")
+    out = io.StringIO()
+    w = csv.writer(out, delimiter=";")
+    w.writerow(["id", "время", "тип", "игрок", "кому", "сумма", "ip", "текст"])
+    for r in rows:
+        w.writerow([r["id"], time.strftime("%d.%m.%Y %H:%M:%S", time.localtime(r["time"])), r["type"],
+                    r["name"], r["tname"], r["amount"], r["ip"], r["text"]])
+    # BOM — чтобы Excel открыл русский текст правильно
+    return 200, "\ufeff" + out.getvalue(), "text/csv; charset=utf-8", {
+        "Content-Disposition": 'attachment; filename="logs.csv"'}
 
 
 # ---------- для лаунчеров ----------

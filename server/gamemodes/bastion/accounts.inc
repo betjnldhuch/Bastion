@@ -203,6 +203,7 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			if (inputtext[0] == '\0' || strcmp(hash, Player[playerid][pPassHash]) != 0)
 			{
 				Player[playerid][pLoginTries]++;
+				Log_OnBadPassword(playerid, Player[playerid][pLoginTries]);
 				if (Player[playerid][pLoginTries] >= MAX_LOGIN_TRIES)
 				{
 					SendClientMessage(playerid, COLOR_RED, "—лишком много неверных попыток. ¬ход с твоего адреса закрыт на %d мин.", LOGIN_LOCK_SECONDS / 60);
@@ -275,6 +276,7 @@ stock Account_Save(playerid)
 stock Account_FinishLogin(playerid)
 {
 	Player[playerid][pLogged] = true;
+	Log_OnLogin(playerid);
 
 	ResetPlayerMoney(playerid);
 	GivePlayerMoney(playerid, Player[playerid][pMoney]);

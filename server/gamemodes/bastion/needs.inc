@@ -245,6 +245,7 @@ stock bool:Inv_Add(playerid, item, amount = 1)
 	if (gInv[playerid][item] + amount > gInvMax[item]) return false;
 	gInv[playerid][item] += amount;
 	Inv_Save(playerid, item);
+	Log_OnItem(playerid, gInvNames[item], amount, gInv[playerid][item]);
 	return true;
 }
 
@@ -253,6 +254,7 @@ static Inv_Take(playerid, item, amount)
 	gInv[playerid][item] -= amount;
 	if (gInv[playerid][item] < 0) gInv[playerid][item] = 0;
 	Inv_Save(playerid, item);
+	Log_OnItem(playerid, gInvNames[item], -amount, gInv[playerid][item]);
 }
 
 // Забрать несколько штук (для материалов). false — столько нет

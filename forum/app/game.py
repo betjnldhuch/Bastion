@@ -247,3 +247,120 @@ def server_status(server):
     with _status_lock:
         _status_cache[key] = (now, status)
     return status
+
+
+# ------------------------------------------------------------------
+#  Журнал сервера logs.db (server/gamemodes/bastion/logs.inc), только чтение
+# ------------------------------------------------------------------
+
+# Должно совпадать с gLogTypeKeys в logs.inc
+LOG_TYPES = {
+    "conn": "Входы", "chat": "Чат", "cmd": "Команды", "money": "Деньги", "bank": "Банк", "item": "Вещи",
+    "admin": "Админы", "kill": "Убийства", "dmg": "Урон", "veh": "Транспорт", "faction": "Фракции",
+    "family": "Семьи", "ac": "Античит",
+}
+LOG_QUERY_SECONDS = 15          # дольше запрос не идёт — просим сузить фильтры
+
+
+class LogQueryTooSlow(Exception):
+    pass
+
+
+class LogDB:
+    def __init__(self, path):
+        self.path = path
+
+    def available(self):
+        return bool(self.path) and os.path.exists(self.path)
+
+    def size(self):
+        try:
+            return sum(os.path.getsize(self.path + s) for s in ("", "-wal") if os.path.exists(self.path + s))
+        except OSError:
+            return 0
+
+    def _connect(self):
+        path = os.path.abspath(self.path).replace("\\", "/")
+        if not path.startswith("/"):
+            path = "/" + path
+        uri = "file:" + urllib.parse.quote(path, safe="/:") + "?mode=ro"
+        con = sqlite3.connect(uri, uri=True, timeout=5)
+        con.row_factory = sqlite3.Row
+        # Мод пишет текст в Windows-1251
+        con.text_factory = lambda b: b.decode("cp1251", "replace")
+        con.create_function("has_text", 2, _has_text, deterministic=True)
+        return con
+
+    def search(self, name="", types=(), text="", ip="", since=0, until=0, before=0, limit=100):
+        """Записи от новых к старым. before — id, с которого продолжать («Ещё»).
+
+        Возвращает (rows, more): more — есть ли записи дальше.
+        """
+        if not self.available():
+            return [], False
+        where, args = [], []
+        name = (name or "").strip()
+        if name:
+            if "*" in name:
+                pat = name.replace("_", "\\_").replace("*", "%")
+                where.append("(name LIKE ? ESCAPE '\\' OR tname LIKE ? ESCAPE '\\')")
+                args += [pat, pat]
+            else:
+                where.append("(name = ? COLLATE NOCASE OR tname = ? COLLATE NOCASE)")
+                args += [name, name]
+        types = [t for t in types if t in LOG_TYPES]
+        if types and len(types) < len(LOG_TYPES):
+            where.append("type IN (%s)" % ",".join("?" * len(types)))
+            args += types
+        ip = (ip or "").strip()
+        if ip:
+            where.append("ip LIKE ?" if ip.endswith("*") else "ip = ?")
+            args.append(ip[:-1] + "%" if ip.endswith("*") else ip)
+        if before:
+            where.append("id < ?")
+            args.append(int(before))
+        text = (text or "").strip()
+        if text:
+            where.append("has_text(CAST(text AS BLOB), ?)")
+            args.append(text.lower())
+        try:
+            con = self._connect()
+        except sqlite3.Error:
+            return [], False
+        deadline = time.monotonic() + LOG_QUERY_SECONDS
+        con.set_progress_handler(lambda: 1 if time.monotonic() > deadline else 0, 20000)
+        try:
+            # Дата -> границы id по индексу времени: дальше всё ищется по id, это быстро
+            if since:
+                lo = con.execute("SELECT MIN(id) FROM logs WHERE time >= ?", (int(since),)).fetchone()[0]
+                if lo is None:
+                    return [], False
+                where.append("id >= ? AND time >= ?")
+                args += [lo, int(since)]
+            if until:
+                hi = con.execute("SELECT MAX(id) FROM logs WHERE time < ?", (int(until),)).fetchone()[0]
+                if hi is None:
+                    return [], False
+                where.append("id <= ? AND time < ?")
+                args += [hi, int(until)]
+            sql = ("SELECT id, time, type, acc, name, tacc, tname, amount, ip, text FROM logs"
+                   + (" WHERE " + " AND ".join(where) if where else "") + " ORDER BY id DESC LIMIT ?")
+            rows = [dict(r) for r in con.execute(sql, args + [int(limit) + 1])]
+        except sqlite3.OperationalError as err:
+            if "interrupt" in str(err).lower():
+                raise LogQueryTooSlow() from err
+            return [], False
+        except sqlite3.Error:
+            return [], False
+        finally:
+            con.close()
+        return rows[:limit], len(rows) > limit
+
+
+def _has_text(value, needle):
+    # Аргумент — байты Windows-1251: так регистр не важен и для русских букв
+    if not value:
+        return False
+    if isinstance(value, (bytes, bytearray)):
+        value = bytes(value).decode("cp1251", "replace")
+    return needle in value.lower()
