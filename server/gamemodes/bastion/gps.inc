@@ -377,27 +377,21 @@ static Mk_OnAction(playerid, m, act)
 	}
 }
 
-// Кто видит секретную точку: список фракций с галочками, нажатие включает/выключает
-static gMkAllowMap[MAX_PLAYERS][MAX_FACTIONS + 1];
-
+// Кто видит секретную точку: номера фракций через запятую
 static Mk_ShowAllow(playerid, m)
 {
-	new text[2600], line[96], n = 0;
-	strcat(text, "{FFFFFF}Видят все {AAAAAA}(сбросить список)\n");
-	gMkAllowMap[playerid][n++] = 0;
-	for (new f = 1; f < MAX_FACTIONS; f++)
+	new cur[160], text[600];
+	Marker_AllowString(m, cur, sizeof cur);
+	if (cur[0] == '\0') strcat(cur, "все");
+	format(text, sizeof text, "{FFFFFF}Номера фракций через запятую, например: {FFFF00}1,7,50\n{FFFFFF}Остальные не увидят ни значок, ни надпись и не смогут войти.\n\nСейчас: {FFFF00}%s\n{AAAAAA}0 или пусто — видят все. Номера: /flist",
+		cur);
+	if (gMarker[m][mkFaction] != 0)
 	{
-		if (!Faction_IsValid(f)) continue;
-		new bool:own = (f == gMarker[m][mkFaction]);
-		if (own) format(line, sizeof line, "{33CC33}[+] %d. %s {AAAAAA}(владелец точки)\n", f, Faction_GetName(f));
-		else if (Marker_AllowHas(m, f)) format(line, sizeof line, "{33CC33}[+] {FFFFFF}%d. %s\n", f, Faction_GetName(f));
-		else format(line, sizeof line, "{777777}[  ] {FFFFFF}%d. %s\n", f, Faction_GetName(f));
-		strcat(text, line);
-		gMkAllowMap[playerid][n++] = f;
+		new add[96];
+		format(add, sizeof add, "\n{AAAAAA}Своя точка фракции %s: её участники видят её всегда.", Faction_GetName(gMarker[m][mkFaction]));
+		strcat(text, add);
 	}
-	gMkAllowMap[playerid][n] = -1;
-	ShowPlayerDialog(playerid, DIALOG_MK_FACTION, DIALOG_STYLE_LIST,
-		"Кто видит точку (можно несколько)", "%s", "Отметить", "Назад", text);
+	ShowPlayerDialog(playerid, DIALOG_MK_FACTION, DIALOG_STYLE_INPUT, "Кто видит точку", "%s", "Сохранить", "Назад", text);
 }
 
 static Mk_Reset(m)
@@ -824,22 +818,12 @@ stock Markers_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 		}
 		case DIALOG_MK_FACTION:
 		{
-			if (!response || listitem < 0 || listitem > MAX_FACTIONS || gMkAllowMap[playerid][listitem] == -1)
+			if (response)
 			{
-				Mk_ShowMenu(playerid, m);
-				return 1;
+				new bad = Marker_SetAllowList(m, inputtext);
+				if (bad > 0) SendClientMessage(playerid, COLOR_GREY, "Номера, которых нет среди фракций, пропущены (%d). Номера: /flist", bad);
 			}
-			new f = gMkAllowMap[playerid][listitem];
-			if (f == 0)
-			{
-				Marker_ClearAllow(m);
-				if (gMarker[m][mkFaction] != 0)
-					SendClientMessage(playerid, COLOR_GREY, "Эта точка принадлежит скрытой фракции %s: её участники видят её всегда.", Faction_GetName(gMarker[m][mkFaction]));
-			}
-			else if (f == gMarker[m][mkFaction])
-				SendClientMessage(playerid, COLOR_GREY, "Это точка самой фракции: её участники видят её всегда.");
-			else Marker_ToggleAllow(m, f);
-			Mk_ShowAllow(playerid, m);
+			Mk_ShowMenu(playerid, m);
 		}
 		case DIALOG_MK_DELETE:
 		{

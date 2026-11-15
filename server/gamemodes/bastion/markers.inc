@@ -414,7 +414,7 @@ static Marker_ParseAllow(m, const s[])
 	}
 }
 
-static Marker_AllowString(m, dest[], len)
+stock Marker_AllowString(m, dest[], len)
 {
 	dest[0] = '\0';
 	new part[8];
@@ -446,6 +446,29 @@ stock Marker_ToggleAllow(m, f)
 	Marker_Build(m);
 	Marker_Save(m);
 	Markers_RefreshIcons();
+}
+
+// Админ в /mk ввёл список фракций («1,7,50»). Возвращает, сколько номеров пропущено.
+stock Marker_SetAllowList(m, const s[])
+{
+	if (!Marker_IsValid(m)) return 0;
+	for (new c = 0; c < MK_ALLOW_CELLS; c++) gMarker[m][mkAllow][c] = 0;
+	new v = 0, bool:num = false, bad = 0;
+	for (new i = 0; ; i++)
+	{
+		if (s[i] >= '0' && s[i] <= '9') { v = v * 10 + (s[i] - '0'); num = true; if (v > 100000) v = 100000; continue; }
+		if (num && v != 0)
+		{
+			if (v > 0 && v < MAX_FACTIONS && Faction_IsValid(v)) Marker_SetAllowBit(m, v, true);
+			else bad++;
+		}
+		v = 0; num = false;
+		if (s[i] == '\0') break;
+	}
+	Marker_Build(m);
+	Marker_Save(m);
+	Markers_RefreshIcons();
+	return bad;
 }
 
 stock Marker_ClearAllow(m)
