@@ -132,6 +132,20 @@ replace_exact(cpp / "game/game.cpp",
               "        iModel = 1239;\n"
               "    }\n    // upstream fallback was 18631:")
 
+# SetPlayerPosFindZ (admin map teleport) crashed the game on arm64: ScriptCommand
+# 'v' refs are uintptr* and RetrieveRefs() writes 8 bytes, but get_ground_z got
+# &fGroundZ (a 4-byte float on the stack) -> stack smash -> abort. Give it an
+# 8-byte slot and take the low 32 bits as the float.
+replace_exact(cpp / "game/game.cpp",
+              "    float fGroundZ;\n    ScriptCommand(&get_ground_z, fX, fY, fZ, &fGroundZ);\n    return fGroundZ;",
+              "    // Bastion: refs are written as uintptr (8 bytes) on arm64, a float is 4.\n"
+              "    uintptr groundRef = 0;\n"
+              "    ScriptCommand(&get_ground_z, fX, fY, fZ, &groundRef);\n"
+              "    uint32_t groundBits = (uint32_t)groundRef;\n"
+              "    float fGroundZ;\n"
+              "    memcpy(&fGroundZ, &groundBits, sizeof(fGroundZ));\n"
+              "    return fGroundZ;")
+
 # A missing game file makes the engine call OS_FileRead(NULL, ...) and crash
 # with SIGSEGV at 0x10 (seen on device). Record every file NvFOpen could not
 # find, so the launcher can name it in the crash report.
