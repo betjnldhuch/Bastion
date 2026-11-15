@@ -111,6 +111,14 @@ stock FPerm_Init()
 		DB_FreeResultSet(r);
 	}
 	printf("[Factions] Loaded %d rank permission rows.", loaded);
+	Orgs_Init();            // настройки владельца и спец-выговоры (orgs.inc)
+}
+
+stock FPerm_Name(p)
+{
+	new s[32];
+	if (p >= 0 && p < FP_COUNT) strcat(s, gFPermName[p]);
+	return s;
 }
 
 stock FPerm_OnLogin(playerid)
@@ -144,6 +152,7 @@ stock FPerm_OnFactionChange(playerid, f)
 	gFPermOn[playerid] = 0;
 	gFPermOff[playerid] = 0;
 	if (Player[playerid][pDbId] == 0) return;
+	Org_ClearSpec(Player[playerid][pDbId]);
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET fperm_on = 0, fperm_off = 0, fnote = NULL, fjoin = %d WHERE id = %d",
 		(f == FACTION_NONE) ? 0 : gettime(), Player[playerid][pDbId]));
 }
@@ -152,6 +161,7 @@ stock FPerm_OnFactionChange(playerid, f)
 stock FPerm_ClearOffline(dbid)
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET fperm_on = 0, fperm_off = 0, fnote = NULL, fjoin = 0 WHERE id = %d", dbid));
+	Org_ClearSpec(dbid);
 }
 
 // ---------------------------------------------------------------------
@@ -160,8 +170,8 @@ stock FPerm_ClearOffline(dbid)
 stock FPerm_MaskOf(f, rank, on, off)
 {
 	if (!Faction_IsValid(f) || rank < 1) return 0;
-	if (rank >= MAX_RANK) return FP_ALL;
-	return (gFRankPerm[f][rank - 1] | on) & ~off & FP_ALL;
+	if (rank >= MAX_RANK) return FP_ALL & ~Org_Disabled(f);
+	return (gFRankPerm[f][rank - 1] | on) & ~off & ~Org_Disabled(f) & FP_ALL;
 }
 
 stock FPerm_Mask(playerid)
@@ -488,7 +498,7 @@ static FM_ShowCardInfo(playerid)
 	if (online != INVALID_PLAYER_ID) format(line, sizeof line, "{AFAFAF}Статус: {33AA33}в игре [%d]%s\n", online, Player[online][pDuty] ? (", на смене") : (""));
 	else format(line, sizeof line, "{AFAFAF}Последний вход: {FFFFFF}%s\n", d2);
 	strcat(text, line);
-	format(line, sizeof line, "{AFAFAF}Выговоры: {FFFFFF}%d / %d\n", Faction_GetWarns(dbid), FACTION_MAX_WARNS);
+	format(line, sizeof line, "{AFAFAF}Выговоры: {FFFFFF}%d / %d {AFAFAF}(из них спец: %d)\n", Faction_GetWarns(dbid), FACTION_MAX_WARNS, Org_SpecCount(dbid, f));
 	strcat(text, line);
 	format(line, sizeof line, "{AFAFAF}Заметка: {FFFFFF}%s\n", (note[0] != '\0') ? note : ("нет"));
 	strcat(text, line);
@@ -621,6 +631,12 @@ static FM_OnCard(playerid, listitem)
 			if (!FM_CanAct(playerid, FP_WARN, name, rank)) { Faction_ShowMemberActions(playerid); return; }
 			new warns = Faction_GetWarns(gLSelMember[playerid]);
 			if (warns <= 0) { SendClientMessage(playerid, COLOR_GREY, "У него нет выговоров."); Faction_ShowMemberActions(playerid); return; }
+			if (warns <= Org_SpecCount(gLSelMember[playerid], f))
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Остались только спец-выговоры. Их снимает организация, которая выдала (/unswarn).");
+				Faction_ShowMemberActions(playerid);
+				return;
+			}
 			Faction_SetWarns(gLSelMember[playerid], warns - 1);
 			format(msg, sizeof msg, "%s снял выговор с %s (%d/%d).", GetRPName(playerid), name, warns - 1, FACTION_MAX_WARNS);
 			Faction_Log(f, msg, FLOG_WARN);

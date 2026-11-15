@@ -60,6 +60,9 @@
 #define FACTION_LIST_MAX        40      // сколько членов фракции показывать в /lmenu
 
 forward bool:Cmd_LMenu(playerid);
+forward bool:Cmd_Orgs(playerid);
+forward bool:Cmd_SWarn(playerid, const params[]);
+forward bool:Cmd_UnSWarn(playerid, const params[]);
 
 // “ип фракции: от него завис€т права (а не от номера фракции)
 enum
@@ -2316,6 +2319,9 @@ stock bool:Cmd_FEdit(playerid, const params[])
 stock Factions_OnCommand(playerid, const cmd[], const params[])
 {
 	if (!strcmp(cmd, "/lmenu", true))       { Cmd_LMenu(playerid); return 1; }
+	if (!strcmp(cmd, "/orgs", true))        { Cmd_Orgs(playerid); return 1; }      // orgs.inc
+	if (!strcmp(cmd, "/swarn", true))       { Cmd_SWarn(playerid, params); return 1; }
+	if (!strcmp(cmd, "/unswarn", true))     { Cmd_UnSWarn(playerid, params); return 1; }
 	if (!strcmp(cmd, "/fbank", true))       { Cmd_FBank(playerid); return 1; }
 	if (!strcmp(cmd, "/fstorage", true) || !strcmp(cmd, "/fsklad", true)) { Cmd_FStorage(playerid); return 1; }
 	if (!strcmp(cmd, "/fedit", true))       { Cmd_FEdit(playerid, params); return 1; }
@@ -2334,6 +2340,7 @@ stock bool:Cmd_FHelp(playerid)
 	strcat(text, "/fbank Ч общак (на базе)   /fstorage Ч склад: оружие, бронежилет, аптечка (на базе)\n\n");
 	strcat(text, "{FFFF00}Ћидер и заместитель (ранг 9-10)\n");
 	strcat(text, "{FFFFFF}/lmenu Ч Ђ”правлениеї: состав и карточки, права рангов и личные, выговоры, ранги, склад, журнал\n");
+	strcat(text, "{FFFFFF}/swarn [id] [причина], /unswarn [id] Ч спец-выговор сотруднику другой организации (если есть доступ)\n");
 	strcat(text, "/invite [id]   /uninvite [id]   /giverank [id] [ранг]\n\n");
 	strcat(text, "{3A6EFF}ѕолици€ LSPD\n");
 	strcat(text, "{FFFFFF}/su [id] [звЄзды] [причина] Ч розыск   /clear [id] Ч сн€ть розыск   /wanted Ч список\n");
@@ -2867,6 +2874,7 @@ stock Faction_WipeRows(f)
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM fvehicles WHERE faction = %d", f));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET faction = 0, frank = 0, fwarns = 0, fperm_on = 0, fperm_off = 0, fnote = NULL WHERE faction = %d", f));
 	FPerm_ResetFaction(f);  // права рангов по умолчанию (fmanage.inc)
+	Org_Reset(f);           // настройки владельца (orgs.inc)
 }
 
 stock bool:Cmd_DelFaction(playerid, const params[])
@@ -4337,7 +4345,7 @@ stock bool:Cmd_BMPrice(playerid, const params[])
 stock bool:Cmd_DeptChat(playerid, const params[])
 {
 	new f = Player[playerid][pFaction];
-	if (!Faction_IsState(f)) return SendClientMessage(playerid, COLOR_GREY, "Ётот чат только дл€ госструктур.");
+	if (!Org_InDept(f)) return SendClientMessage(playerid, COLOR_GREY, "Ётот чат только дл€ госструктур.");
 	new text[90], msg[160];
 	if (!RestParam(params, 0, text)) return SendClientMessage(playerid, COLOR_GREY, "»спользование: /d [текст] Ч общий чат госструктур");
 	new squad[24];
@@ -4347,7 +4355,7 @@ stock bool:Cmd_DeptChat(playerid, const params[])
 	msg[143] = '\0';
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
-		if (IsPlayerConnected(i) && Player[i][pLogged] && Faction_IsState(Player[i][pFaction])) SendClientMessage(i, 0xFF9E7AFF, "%s", msg);
+		if (IsPlayerConnected(i) && Player[i][pLogged] && Org_InDept(Player[i][pFaction])) SendClientMessage(i, 0xFF9E7AFF, "%s", msg);
 	}
 	return true;
 }

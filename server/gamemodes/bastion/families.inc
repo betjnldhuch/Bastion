@@ -77,6 +77,7 @@ static gFamMgOff[MAX_PLAYERS];
 static gFamInfoBack[MAX_PLAYERS];                   // куда вернуться из окна-информации
 static gFamLogKind[MAX_PLAYERS];
 static gFamLogName[MAX_PLAYERS][MAX_PLAYER_NAME];
+static gFamDisabled[MAX_FAMILIES];                  // права, отключённые владельцем для всей семьи (/orgs)
 
 static const gFamDefRanks[FAMILY_RANKS][24] =
 {
@@ -342,6 +343,7 @@ static bool:Cmd_FamCreate(playerid, const params[])
 	Family[s][famOwner] = Player[playerid][pDbId];
 	Family_DefaultRanks(s);
 	FamPerm_ResetSlot(s);
+	gFamDisabled[s] = 0;
 
 	GiveMoney(playerid, -FAMILY_PRICE, "создание семьи");
 	Econ_ToTreasury(FAMILY_PRICE);
@@ -1018,13 +1020,26 @@ static FamPerm_Init()
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS family_perms (family INTEGER NOT NULL, rank INTEGER NOT NULL, mask INTEGER DEFAULT 0, PRIMARY KEY (family, rank))"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS family_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, family INTEGER NOT NULL, date INTEGER DEFAULT 0, kind INTEGER DEFAULT 0, text TEXT)"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE INDEX IF NOT EXISTS family_logs_f ON family_logs (family, id)"));
+	new DBResult:r;
 	DB_AddColumn("accounts", "famperm_on", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "famperm_off", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "famwarns", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "famjoin", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "famnote", "TEXT");
-	for (new s = 0; s < MAX_FAMILIES; s++) FamPerm_ResetSlot(s);
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT family, rank, mask FROM family_perms");
+	DB_AddColumn("families", "disabled", "INTEGER DEFAULT 0");
+	for (new s = 0; s < MAX_FAMILIES; s++) { FamPerm_ResetSlot(s); gFamDisabled[s] = 0; }
+	r = DB_ExecuteQuery(gDB, "SELECT id, disabled FROM families");
+	if (r != DBResult:0)
+	{
+		for (new i = 0, rows = DB_GetRowCount(r); i < rows; i++)
+		{
+			new s = Family_FindByDb(DB_GetFieldInt(r, 0));
+			if (s != -1) gFamDisabled[s] = DB_GetFieldInt(r, 1) & FMP_ALL;
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	r = DB_ExecuteQuery(gDB, "SELECT family, rank, mask FROM family_perms");
 	if (r != DBResult:0)
 	{
 		for (new i = 0, rows = DB_GetRowCount(r); i < rows; i++)
@@ -1064,8 +1079,8 @@ static FamPerm_OnJoinLeave(playerid, bool:joined)
 static FamPerm_MaskOf(s, rank, on, off)
 {
 	if (s < 0 || s >= MAX_FAMILIES || rank < 1) return 0;
-	if (rank >= FAMILY_RANKS) return FMP_ALL;
-	return (gFamRankPerm[s][rank - 1] | on) & ~off & FMP_ALL;
+	if (rank >= FAMILY_RANKS) return FMP_ALL & ~gFamDisabled[s];
+	return (gFamRankPerm[s][rank - 1] | on) & ~off & ~gFamDisabled[s] & FMP_ALL;
 }
 
 static FamPerm_Mask(playerid)
@@ -1604,4 +1619,45 @@ static FamMg_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		default: return 0;
 	}
 	return 1;
+}
+
+// ---------------------------------------------------------------------
+//  Для панели владельца /orgs (orgs.inc)
+// ---------------------------------------------------------------------
+stock FamAdm_Count()
+{
+	new n = 0;
+	for (new s = 0; s < MAX_FAMILIES; s++) if (Family[s][famDb] != 0) n++;
+	return n;
+}
+
+stock FamAdm_SlotCount() { return MAX_FAMILIES; }
+stock FamAdm_PermCount() { return FMP_COUNT; }
+
+stock FamAdm_PermName(p)
+{
+	new t[36];
+	if (p >= 0 && p < FMP_COUNT) strcat(t, gFamPermName[p]);
+	return t;
+}
+
+// Данные слота семьи: 0 — слот пуст
+stock FamAdm_Slot(s, name[32], &db, &disabled)
+{
+	name[0] = '\0';
+	if (s < 0 || s >= MAX_FAMILIES || Family[s][famDb] == 0) return 0;
+	format(name, 32, "%s", Family[s][famName]);
+	db = Family[s][famDb];
+	disabled = gFamDisabled[s];
+	return 1;
+}
+
+stock FamAdm_Toggle(s, p)
+{
+	if (s < 0 || s >= MAX_FAMILIES || Family[s][famDb] == 0 || p < 0 || p >= FMP_COUNT) return;
+	gFamDisabled[s] ^= (1 << p);
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE families SET disabled = %d WHERE id = %d", gFamDisabled[s], Family[s][famDb]));
+	new msg[144];
+	format(msg, sizeof msg, "Администрация %s для всей семьи: «%s».", ((gFamDisabled[s] >> p) & 1) ? ("отключила") : ("включила"), gFamPermName[p]);
+	Fam_Log(s, FLOG_PERM, msg);
 }
