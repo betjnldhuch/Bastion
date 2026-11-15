@@ -835,4 +835,141 @@ replace_exact(cpp / "game/vehicle.h", "\tuint32_t m_dwMarkerID;", "\tuintptr m_d
 replace_exact(cpp / "game/vehicle.cpp", "\tuint32_t dwRet;", "\tuintptr dwRet = 0;")
 replace_exact(cpp / "game/game.h", "\tuint32_t m_dwRaceCheckpointHandle;", "\tuintptr m_dwRaceCheckpointHandle;")
 
+# ---------------------------------------------------------------------------
+# 13. Keyboard in the Bastion style: dark panel (#0E1013) with an orange top
+#     line, each key a rounded #1B1E23 tile (service keys #2B3440), the pressed
+#     key and accents in Bastion orange #FF7A1A instead of the stock SA-MP look.
+# ---------------------------------------------------------------------------
+kb_text = read(kb)
+if kb_text.count("ImColor(0xF5, 0x91, 0x32)") < 3:
+    raise SystemExit("keyboard.cpp: stock accent colour not found")
+kb_text = kb_text.replace("ImColor(0xF5, 0x91, 0x32)", "ImColor(0xFF, 0x7A, 0x1A)")
+write(kb, kb_text)
+replace_exact(kb, """    renderer->drawRect(absolutePosition(), absolutePosition() + size(), UISettings::keyboardBackgroundColor(), true);
+    Widget::draw(renderer);""", """    // Bastion style
+    renderer->drawRect(absolutePosition(), absolutePosition() + size(), ImColor(0x0E, 0x10, 0x13, 0xF0), true);
+    renderer->drawRect(absolutePosition(), ImVec2(absolutePosition().x + size().x, absolutePosition().y + 3.0f),
+                       ImColor(0xFF, 0x7A, 0x1A), true);
+    Widget::draw(renderer);""")
+replace_exact(kb, """    if (focused()) renderer->drawRect(absolutePosition(), absolutePosition() + size(), ImColor(0xFF, 0x7A, 0x1A), true);
+""", """    {   // Bastion style: rounded tile per key
+        const ImVec2 inset(3.0f, 3.0f);
+        ImColor tile = m_extendedKey == ExtendedKey::NONE ? ImColor(0x1B, 0x1E, 0x23) : ImColor(0x2B, 0x34, 0x40);
+        if (m_extendedKey == ExtendedKey::SEND) tile = ImColor(0xFF, 0x7A, 0x1A);
+        if (focused()) tile = ImColor(0xFF, 0x7A, 0x1A);
+        renderer->drawRect(absolutePosition() + inset, absolutePosition() + size() - inset, tile, true, 8.0f);
+    }
+""")
+
+# ---------------------------------------------------------------------------
+# 14. Phone keyboard in chat (launcher: "Клавиатура в чате: Телефона" ->
+#     extra bastion.system_keyboard). Keyboard::show asks Java to open a bar
+#     with an EditText (BastionSystemInput); the text comes back as cp1251 via
+#     JNI, is queued and handed to the chat on the render thread.
+# ---------------------------------------------------------------------------
+shutil.copy2(Path(__file__).resolve().parent / "java/BastionSystemInput.java", samp_java.parent / "BastionSystemInput.java")
+replace_exact(samp_java, """    private BastionWebUi mWebUi;
+""", """    private BastionWebUi mWebUi;
+    private BastionSystemInput mSystemInput;
+
+    /** Bastion: called from native Keyboard::show. false -> use the built-in keyboard. */
+    public boolean showSystemInput() {
+        if (!BastionSystemInput.enabled(this)) return false;
+        runOnUiThread(() -> mSystemInput.show());
+        return true;
+    }
+""")
+replace_exact(samp_java, """        mWebUi      = new BastionWebUi(this, mDialog);
+""", """        mWebUi      = new BastionWebUi(this, mDialog);
+        mSystemInput = new BastionSystemInput(this);
+""")
+replace_exact(samp_java, """                mWebUi.setPaused(pause);
+""", """                mWebUi.setPaused(pause);
+                mSystemInput.setPaused(pause);
+""")
+jni_h = cpp / "java/jniutil.h"
+replace_exact(jni_h, "\tvoid ShowEditObject();\n", "\tvoid ShowEditObject();\n\tbool ShowSystemInput();\n\tjmethodID s_showSystemInput = nullptr;\n")
+jni_cpp = cpp / "java/jniutil.cpp"
+replace_exact(jni_cpp, """    s_hideEditObject = env->GetMethodID(clas, "hideEditObject", "()V");
+""", """    s_hideEditObject = env->GetMethodID(clas, "hideEditObject", "()V");
+
+    s_showSystemInput = env->GetMethodID(clas, "showSystemInput", "()Z");
+    if (env->ExceptionCheck()) { env->ExceptionClear(); s_showSystemInput = nullptr; }
+""")
+write(jni_cpp, read(jni_cpp) + """
+// Bastion: phone keyboard for the chat. false -> built-in keyboard.
+bool CJavaWrapper::ShowSystemInput()
+{
+    if (!s_showSystemInput) return false;
+    JNIEnv* env = GetEnv();
+    if (!env) return false;
+    jboolean ok = env->CallBooleanMethod(activity, s_showSystemInput);
+    if (env->ExceptionCheck()) { env->ExceptionClear(); return false; }
+    return ok == JNI_TRUE;
+}
+""")
+replace_exact(kb_h, "\tvoid activateEvent(bool active) override;\n", "\tvoid activateEvent(bool active) override;\n\tvoid systemInputResult(const std::string& text, bool sent);\n\tstatic void processSystemInput();\n")
+replace_exact(kb, """void Keyboard::show(Widget* caller)
+{
+""", """// Bastion: answers of the phone keyboard (JNI, UI thread) -> render thread.
+#include <mutex>
+#include <deque>
+static std::mutex s_bastionInputMutex;
+static std::deque<std::pair<std::string, bool>> s_bastionInputQueue;
+static bool s_bastionSystemInputOpen = false;
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_gta_game_BastionSystemInput_onInput(JNIEnv* env, jclass, jbyteArray text, jboolean sent)
+{
+    std::string s;
+    if (text != nullptr)
+    {
+        jsize len = env->GetArrayLength(text);
+        jbyte* bytes = env->GetByteArrayElements(text, nullptr);
+        if (bytes) { s.assign((const char*)bytes, (size_t)len); env->ReleaseByteArrayElements(text, bytes, JNI_ABORT); }
+    }
+    std::lock_guard<std::mutex> lock(s_bastionInputMutex);
+    s_bastionInputQueue.emplace_back(s, sent == JNI_TRUE);
+}
+
+void Keyboard::processSystemInput()
+{
+    std::deque<std::pair<std::string, bool>> items;
+    {
+        std::lock_guard<std::mutex> lock(s_bastionInputMutex);
+        items.swap(s_bastionInputQueue);
+    }
+    for (auto& it : items)
+        if (pUI && pUI->keyboard()) pUI->keyboard()->systemInputResult(it.first, it.second);
+}
+
+void Keyboard::systemInputResult(const std::string& text, bool sent)
+{
+    if (!s_bastionSystemInputOpen) return;
+    s_bastionSystemInputOpen = false;
+    pGame->EnableGameInput(true);
+    Widget* caller = m_caller;
+    m_caller = nullptr;
+    if (sent && !text.empty())
+    {
+        m_history->add(text);
+        if (caller) caller->keyboardEvent(text);
+    }
+}
+
+void Keyboard::show(Widget* caller)
+{
+    if (pJavaWrapper && pJavaWrapper->ShowSystemInput())
+    {
+        m_caller = caller;
+        s_bastionSystemInputOpen = true;
+        pGame->EnableGameInput(false);
+        return;
+    }
+""")
+replace_exact(cpp / "gui/gui.cpp", """    if (pPlayerTags) pPlayerTags->Render(renderer());
+""", """    Keyboard::processSystemInput();
+    if (pPlayerTags) pPlayerTags->Render(renderer());
+""")
+
 print("SAMP-Mobile prepared for Bastion: library module, Bastion storage, :game process, no Firebase.")

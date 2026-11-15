@@ -39,6 +39,7 @@ public final class Config {
     public int quality = 1;       // 0 низко, 1 средне, 2 высоко
     public int chatLines = 10;    // 10 / 15 / 20
     public int buttonSize = 1;    // 0 S, 1 M, 2 L
+    public int keyboard = 0;      // 0 клавиатура Bastion, 1 клавиатура телефона
     public boolean requireRpName = true;
 
     private final SharedPreferences prefs;
@@ -53,6 +54,7 @@ public final class Config {
         quality = prefs.getInt("quality", 1);
         chatLines = prefs.getInt("chatLines", 10);
         buttonSize = prefs.getInt("buttonSize", 1);
+        keyboard = prefs.getInt("keyboard", 0);
         applyOverrides();
     }
 
@@ -97,6 +99,7 @@ public final class Config {
         e.putInt("quality", quality);
         e.putInt("chatLines", chatLines);
         e.putInt("buttonSize", buttonSize);
+        e.putInt("keyboard", keyboard);
         e.putString("serversSig", serversSignature());
         for (int i = 0; i < servers.size(); i++) {
             e.putString("host" + i, servers.get(i).host);
