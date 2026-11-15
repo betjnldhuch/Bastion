@@ -626,4 +626,213 @@ replace_exact(label_cpp, """                    ImVec2 sz = renderer->calculateT
                     if (plainRow.empty()) continue;
                     ImVec2 sz = renderer->calculateTextSize(plainRow, fontSize);""")
 
+# ---------------------------------------------------------------------------
+# 10. Russian keyboard. Upstream has only ENG lower/upper + NUM, and the
+#     "lang" key just toggles letters/digits, so chat could not be typed in
+#     Russian. Add RUS lower/upper (ЙЦУКЕН + Ё); the language key cycles
+#     РУС -> 123 -> ENG -> РУС and shows where it goes. Input is cp1251 (what
+#     the server expects): а-я = 0xE0-0xFF, А-Я = 0xC0-0xDF, ё 0xB8, Ё 0xA8.
+#     Russian is the default layout.
+# ---------------------------------------------------------------------------
+kb_h = cpp / "gui/samp_widgets/keyboard.h"
+replace_exact(kb_h, "\t\tENG_LOWER,\n\t\tENG_UPPER,\n\t\tNUM\n", "\t\tENG_LOWER,\n\t\tENG_UPPER,\n\t\tRUS_LOWER,\n\t\tRUS_UPPER,\n\t\tNUM\n")
+replace_exact(kb_h, "class KeyboardLayoutNUM : public KeyboardLayout\n", """class KeyboardLayoutLowerRUS : public KeyboardLayout
+{
+public:
+	KeyboardLayoutLowerRUS() : KeyboardLayout() {}
+	virtual void performLayout() override;
+};
+
+class KeyboardLayoutUpperRUS : public KeyboardLayout
+{
+public:
+	KeyboardLayoutUpperRUS() : KeyboardLayout() {}
+	virtual void performLayout() override;
+};
+
+class KeyboardLayoutNUM : public KeyboardLayout
+""")
+replace_exact(kb_h, "\tKeyboardLayoutNUM* m_layoutNUM;\n", "\tKeyboardLayoutNUM* m_layoutNUM;\n\tKeyboardLayoutLowerRUS* m_layoutLowerRUS;\n\tKeyboardLayoutUpperRUS* m_layoutUpperRUS;\n")
+
+kb = cpp / "gui/samp_widgets/keyboard.cpp"
+replace_exact(kb, """    m_activeLayout = m_layoutLowerENG;
+    m_activeLayoutType = KeyboardLayout::Type::ENG_LOWER;
+    m_activeLayout->setVisible(true);
+    m_isEngMode = true;
+""", """    m_layoutLowerRUS = new KeyboardLayoutLowerRUS();
+    this->addChild(m_layoutLowerRUS);
+    m_layoutLowerRUS->setPadding(0.0f);
+    m_layoutLowerRUS->setSpacing(0.0f);
+    m_layoutLowerRUS->setVisible(false);
+
+    m_layoutUpperRUS = new KeyboardLayoutUpperRUS();
+    this->addChild(m_layoutUpperRUS);
+    m_layoutUpperRUS->setPadding(0.0f);
+    m_layoutUpperRUS->setSpacing(0.0f);
+    m_layoutUpperRUS->setVisible(false);
+
+    // Bastion: Russian by default
+    m_activeLayout = m_layoutLowerRUS;
+    m_activeLayoutType = KeyboardLayout::Type::RUS_LOWER;
+    m_activeLayout->setVisible(true);
+    m_isEngMode = false;
+""")
+replace_exact(kb, """    m_layoutNUM->setFixedSize(ImVec2(width(), height() - m_input->height()+50.0f));
+    m_layoutNUM->setPosition(ImVec2(0.0f, UISettings::keyboardRowHeight()));
+
+    Widget::performLayout();""", """    m_layoutNUM->setFixedSize(ImVec2(width(), height() - m_input->height()+50.0f));
+    m_layoutNUM->setPosition(ImVec2(0.0f, UISettings::keyboardRowHeight()));
+    m_layoutLowerRUS->setFixedSize(ImVec2(width(), height() - m_input->height()+50.0f));
+    m_layoutLowerRUS->setPosition(ImVec2(0.0f, UISettings::keyboardRowHeight()));
+    m_layoutUpperRUS->setFixedSize(ImVec2(width(), height() - m_input->height()+50.0f));
+    m_layoutUpperRUS->setPosition(ImVec2(0.0f, UISettings::keyboardRowHeight()));
+
+    Widget::performLayout();""")
+replace_exact(kb, """        case KeyboardLayout::Type::NUM:
+            m_layoutNUM->setVisible(true);
+            m_activeLayout = m_layoutNUM;
+            break;
+    }
+""", """        case KeyboardLayout::Type::NUM:
+            m_layoutNUM->setVisible(true);
+            m_activeLayout = m_layoutNUM;
+            break;
+
+        case KeyboardLayout::Type::RUS_LOWER:
+            m_layoutLowerRUS->setVisible(true);
+            m_activeLayout = m_layoutLowerRUS;
+            break;
+
+        case KeyboardLayout::Type::RUS_UPPER:
+            m_layoutUpperRUS->setVisible(true);
+            m_activeLayout = m_layoutUpperRUS;
+            break;
+    }
+""")
+replace_exact(kb, """            if (m_activeLayoutType == KeyboardLayout::Type::ENG_UPPER) setActiveLayout(KeyboardLayout::Type::ENG_LOWER);
+            break;""", """            if (m_activeLayoutType == KeyboardLayout::Type::ENG_UPPER) setActiveLayout(KeyboardLayout::Type::ENG_LOWER);
+            if (m_activeLayoutType == KeyboardLayout::Type::RUS_UPPER) setActiveLayout(KeyboardLayout::Type::RUS_LOWER);
+            break;""")
+replace_exact(kb, """            if (m_activeLayoutType == KeyboardLayout::Type::ENG_LOWER) setActiveLayout(KeyboardLayout::Type::ENG_UPPER);
+            break;""", """            if (m_activeLayoutType == KeyboardLayout::Type::ENG_LOWER) setActiveLayout(KeyboardLayout::Type::ENG_UPPER);
+            if (m_activeLayoutType == KeyboardLayout::Type::RUS_LOWER) setActiveLayout(KeyboardLayout::Type::RUS_UPPER);
+            break;""")
+kb_text = read(kb)
+t_start = kb_text.find("void Keyboard::toggleLang()\n{")
+t_end = kb_text.find("\n}\n", t_start)
+if t_start < 0 or t_end < 0:
+    raise SystemExit("keyboard.cpp: toggleLang not found")
+kb_text = kb_text[:t_start] + """void Keyboard::toggleLang()
+{
+    // Bastion: RUS -> 123 -> ENG -> RUS
+    switch (m_activeLayoutType)
+    {
+        case KeyboardLayout::Type::RUS_LOWER:
+        case KeyboardLayout::Type::RUS_UPPER:
+            setActiveLayout(KeyboardLayout::Type::NUM);
+            break;
+        case KeyboardLayout::Type::NUM:
+            m_isEngMode = true;
+            setActiveLayout(KeyboardLayout::Type::ENG_LOWER);
+            break;
+        default:
+            m_isEngMode = false;
+            setActiveLayout(KeyboardLayout::Type::RUS_LOWER);
+            break;
+    }""" + kb_text[t_end:]
+
+# Captions of the language key: where it switches to.
+def lang_caption(text, cls, caption):
+    head = "void %s::performLayout()\n{" % cls
+    i = text.find(head)
+    j = text.find("m_rows[3]->addKey(ExtendedKey::LANG);", i)
+    if i < 0 or j < 0:
+        raise SystemExit("keyboard.cpp: LANG key of " + cls + " not found")
+    return text[:j] + 'm_rows[3]->addKey(ExtendedKey::LANG)->setCaption(std::string("%s"));' % caption \
+        + text[j + len("m_rows[3]->addKey(ExtendedKey::LANG);"):]
+def c_utf8(s):
+    return "".join("\\x%02x" % b for b in s.encode("utf-8"))
+kb_text = lang_caption(kb_text, "KeyboardLayoutLowerENG", c_utf8("РУС"))
+kb_text = lang_caption(kb_text, "KeyboardLayoutUpperENG", c_utf8("РУС"))
+kb_text = lang_caption(kb_text, "KeyboardLayoutNUM", "ENG")
+
+def rus_layout(cls, upper):
+    rows = ["йцукенгшщзхъ", "фывапролджэё", "ячсмитьбю"]
+    if upper:
+        rows = [r.upper() for r in rows]
+    out = ["void %s::performLayout()\n{" % cls,
+           "    ImVec2 keySize = ImVec2(width() / 12, UISettings::keyboardRowHeight());"]
+    for n, row in enumerate(rows):
+        out.append("    m_rows[%d]->setPadding(0.0f);\n    m_rows[%d]->setSpacing(0.0f);" % (n, n))
+        if n == 2:
+            out.append("    m_rows[2]->addKey(ExtendedKey::%s)->setFixedSize(ImVec2(keySize.x * 1.5f, 0.0f));"
+                       % ("SHIFT_OFF" if upper else "SHIFT_ON"))
+        for ch in row:
+            out.append('    m_rows[%d]->addKey(std::string("%s"), (char)0x%02X);' % (n, c_utf8(ch), ch.encode("cp1251")[0]))
+        if n == 2:
+            out.append("    m_rows[2]->addKey(ExtendedKey::BACKSPACE)->setFixedSize(ImVec2(keySize.x * 1.5f, 0.0f));")
+    out.append("""    m_rows[3]->setPadding(0.0f);
+    m_rows[3]->setSpacing(0.0f);
+    m_rows[3]->addKey(std::string(","), ',');
+    m_rows[3]->addKey(std::string("."), '.');
+    m_rows[3]->addKey(ExtendedKey::LANG)->setCaption(std::string("123"));
+    m_rows[3]->addKey(ExtendedKey::SPACE)->setFixedSize(ImVec2(keySize.x * 3.6f, 0.0f));
+    m_rows[3]->addKey(std::string("?"), '?');
+    m_rows[3]->addKey(std::string("!"), '!');
+    m_rows[3]->addKey(ExtendedKey::SEND)->setFixedSize(ImVec2(keySize.x * 1.8f, 0.0f));
+
+    KeyboardLayout::performLayout();
+}
+""")
+    return "\n".join(out)
+kb_text += "\n// Bastion: Russian layouts\n" + rus_layout("KeyboardLayoutLowerRUS", False) + "\n" + rus_layout("KeyboardLayoutUpperRUS", True)
+write(kb, kb_text)
+if "KeyboardLayoutLowerRUS::performLayout" not in read(kb) or "RUS_LOWER" not in read(kb_h):
+    raise SystemExit("russian keyboard patch failed")
+
+# ---------------------------------------------------------------------------
+# 11. ApplyAnimation crashes. Upstream requests an unloaded IFP block and
+#     plays the animation in the same frame (block not in memory yet), and
+#     never checks the animation exists, e.g. the common preload trick
+#     ApplyAnimation(.., "CRACK", "null", ..) used by the wounded/revive system.
+#     Load the block synchronously and skip animations that do not exist.
+# ---------------------------------------------------------------------------
+replace_exact(cpp / "game/playerped.cpp", """    if(!pGame->IsAnimationLoaded(szAnimLib))
+    {
+        pGame->RequestAnimation(szAnimLib);
+        ScriptCommand(&apply_animation, m_dwGTAId, szAnimName, szAnimLib, fT, opt1, opt2, opt3, opt4, iTime);
+    }
+
+    ScriptCommand(&apply_animation, m_dwGTAId, szAnimName, szAnimLib, fT, opt1, opt2, opt3, opt4, iTime);""",
+"""    // Bastion: unknown block or animation -> skip instead of a native crash.
+    CAnimBlock* bastionBlock = nullptr;
+    for (int b = 0; b < CAnimManager::ms_numAnimBlocks; b++)
+        if (!strcasecmp(CAnimManager::ms_aAnimBlocks[b].szName, szAnimLib)) { bastionBlock = &CAnimManager::ms_aAnimBlocks[b]; break; }
+    if (!bastionBlock) { Log("[Bastion] ApplyAnimation: no anim block %s", szAnimLib); return; }
+
+    if(!pGame->IsAnimationLoaded(szAnimLib))
+    {
+        pGame->RequestAnimation(szAnimLib);
+        pGame->LoadRequestedModels();
+        if (!pGame->IsAnimationLoaded(szAnimLib)) { Log("[Bastion] ApplyAnimation: block %s not loaded yet", szAnimLib); return; }
+    }
+    if (!CAnimManager::GetAnimation(szAnimName, bastionBlock)) { Log("[Bastion] ApplyAnimation: no anim %s:%s", szAnimLib, szAnimName); return; }
+
+    ScriptCommand(&apply_animation, m_dwGTAId, szAnimName, szAnimLib, fT, opt1, opt2, opt3, opt4, iTime);""")
+replace_exact(cpp / "game/playerped.cpp", '#include "World.h"\n', '#include "World.h"\n#include "Animation/AnimManager.h"\n')
+
+# ---------------------------------------------------------------------------
+# 12. Same arm64 bug as get_ground_z (section 1): ScriptCommand writes every
+#     'v' (output) parameter back as 8 bytes, but these targets are 4-byte
+#     ints, so the write overwrites the neighbouring field / stack slot.
+#     Make the targets 8 bytes wide.
+# ---------------------------------------------------------------------------
+replace_exact(cpp / "game/playerped.cpp", "    static int iPlayerNum;", "    static uintptr iPlayerNum;")
+replace_exact(cpp / "game/playerped.h", "    uint32_t\tm_dwArrow;", "    uintptr\tm_dwArrow;")
+replace_exact(cpp / "game/playerped.h", "    uint32_t\tm_dwPissParticlesHandle;", "    uintptr\tm_dwPissParticlesHandle;")
+replace_exact(cpp / "game/playerped.h", "        uint32_t dwObject;\n        uint32_t dwDrunkLevel;", "        uintptr dwObject;\n        uint32_t dwDrunkLevel;")
+replace_exact(cpp / "game/vehicle.h", "\tuint32_t m_dwMarkerID;", "\tuintptr m_dwMarkerID;")
+replace_exact(cpp / "game/vehicle.cpp", "\tuint32_t dwRet;", "\tuintptr dwRet = 0;")
+replace_exact(cpp / "game/game.h", "\tuint32_t m_dwRaceCheckpointHandle;", "\tuintptr m_dwRaceCheckpointHandle;")
+
 print("SAMP-Mobile prepared for Bastion: library module, Bastion storage, :game process, no Firebase.")
