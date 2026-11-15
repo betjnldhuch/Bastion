@@ -4651,6 +4651,8 @@ stock Squad_Load(playerid)
 	DB_FreeResultSet(r);
 }
 
+stock Squad_Of(playerid) { return gSquad[playerid]; }
+
 stock Squad_Set(playerid, q)
 {
 	gSquad[playerid] = q;
