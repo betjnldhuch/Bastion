@@ -73,6 +73,7 @@
 #include "bastion/doors.inc"       // входы в здани€: LSPD
 #include "bastion/places.inc"     // точки новых систем, которые ставит админ: /place
 #include "bastion/factions.inc"   // после admin.inc: использует Admin_Check
+#include "bastion/fmanage.inc"    // Ђ”правлениеї фракцией: права рангов и личные, карточки, журнал
 #include "bastion/law.inc"        // метка задержани€, дверь участка, вз€тка
 #include "bastion/turfs.inc"
 #include "bastion/bank.inc"
@@ -222,6 +223,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Platform_OnDisconnect(playerid);
 	UI_OnDisconnect(playerid);
 	Supply_ResetPlayer(playerid);
+	FPerm_OnDisconnect(playerid);
 	Admin_OnDisconnect(playerid);
 	Job_Stop(playerid);
 	Jobs_OnDisconnect(playerid);

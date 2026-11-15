@@ -287,6 +287,7 @@ stock Account_FinishLogin(playerid)
 	Debts_OnLogin(playerid);            // долги по налогам и штрафам (debts.inc)
 	Spawns_LoadPlayer(playerid);        // выбор из /setspawn (spawns.inc)
 	Squad_Load(playerid);               // взвод во фракции (factions.inc)
+	FPerm_OnLogin(playerid);            // личные права во фракции (fmanage.inc)
 	Markers_SyncPlayer(playerid);       // точки, которые видит только своя фракция (markers.inc)
 
 	Account_SetNormalSpawn(playerid);

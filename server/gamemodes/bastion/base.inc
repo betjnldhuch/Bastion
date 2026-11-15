@@ -23,6 +23,32 @@ new gServerWeather = 1;         // погода сервера (/setweather); после эффекта н
 #define MAX_FACTIONS        51          // 0 = нет фракции, 1..7 Ч посто€нные, 8..50 Ч созданные в игре (/createfaction)
 #define FACTION_BUILTIN     8           // с этого номера идут фракции, созданные в игре
 #define MAX_RANK            10          // 10 = лидер, 9 = заместитель
+
+// ѕрава в организации (fmanage.inc): номер бита в маске
+#define FP_INVITE       0
+#define FP_FIRE         1
+#define FP_RANK         2
+#define FP_WARN         3
+#define FP_BANK_IN      4
+#define FP_BANK_OUT     5
+#define FP_STORE_BUY    6
+#define FP_STORE_TAKE   7
+#define FP_VEHICLE      8
+#define FP_DOORS        9
+#define FP_SPAWNS       10
+#define FP_SQUADS       11
+#define FP_RANKS        12
+#define FP_LOG          13
+#define FP_FACTORY      14
+#define FP_COUNT        15
+#define FP_ALL          ((1 << FP_COUNT) - 1)
+
+// ¬иды записей журнала (faction_logs.kind), дл€ фильтра
+#define FLOG_OTHER      0
+#define FLOG_STAFF      1   // приЄм, увольнение, ранги, взводы
+#define FLOG_MONEY      2   // общак и склад
+#define FLOG_WARN       3   // выговоры
+#define FLOG_PERM       4   // права
 enum
 {
 	FACTION_NONE,

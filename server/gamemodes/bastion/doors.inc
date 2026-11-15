@@ -272,7 +272,7 @@ stock bool:PDoor_Try(playerid)
 		if (Marker_InRange(playerid, gPDoor[d][pdMkOut], DOOR_RANGE))
 		{
 			// вход только для своих: чужой его не замечает (тайный вход не выдаём сообщением)
-			if (gPDoor[d][pdFaction] != 0 && Player[playerid][pFaction] != gPDoor[d][pdFaction] && Player[playerid][pAdmin] < 4)
+			if (gPDoor[d][pdFaction] != 0 && (Player[playerid][pFaction] != gPDoor[d][pdFaction] || !FPerm_Has(playerid, FP_DOORS)) && Player[playerid][pAdmin] < 4)
 			{
 				if (gPDoor[d][pdSecret]) continue;
 				SendClientMessage(playerid, COLOR_GREY, "Заперто. Сюда пускают только своих.");
