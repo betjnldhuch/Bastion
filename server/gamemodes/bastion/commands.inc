@@ -208,6 +208,7 @@ stock Commands_Process(playerid, const input[])
 
 	// --- дома (houses.inc) ---
 	if (!strcmp(cmd, "/setspawn", true))    { Cmd_SetSpawn(playerid); return 1; }
+	if (!strcmp(cmd, "/rec", true) || !strcmp(cmd, "/reconnect", true)) { Cmd_Rec(playerid); return 1; }
 	if (!strcmp(cmd, "/buyhouse", true))    { Cmd_BuyHouse(playerid); return 1; }
 	if (!strcmp(cmd, "/sellhouse", true))   { Cmd_SellHouse(playerid); return 1; }
 	if (!strcmp(cmd, "/enter", true))       { Cmd_Enter(playerid); return 1; }
@@ -277,6 +278,9 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/setfaction", true))  { Cmd_SetFaction(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/makeleader", true))  { Cmd_MakeLeader(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/setfspawn", true))   { Cmd_SetFSpawn(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/addfspawn", true))   { Cmd_AddFSpawn(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/delfspawn", true))   { Cmd_DelFSpawn(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/fspawns", true))     { Cmd_FSpawns(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/setfduty", true))    { Cmd_SetFDuty(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/setfint", true))     { Cmd_SetFInt(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/adddoor", true) || !strcmp(cmd, "/adddor", true)) { Cmd_AddDoor(playerid, cmdtext[pos]); return 1; }
