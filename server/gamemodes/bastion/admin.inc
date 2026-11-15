@@ -32,6 +32,11 @@
 forward bool:Admin_IsOnDuty(playerid);   // admin_tools.inc
 forward bool:Cmd_Backup(playerid);       // backup.inc
 forward bool:AdminAuth_HasPassword(playerid);   // admin_auth.inc
+forward AdminGive_OnCommand(playerid, const cmd[], const params[]);   // admin_give.inc
+forward bool:Cmd_GiveGun(playerid, const params[]);
+forward bool:Cmd_Disarm(playerid, const params[]);
+forward bool:Cmd_SetArmour(playerid, const params[]);
+forward bool:Cmd_AHeal(playerid, const params[]);
 #define ADMIN_WARNS_FOR_BAN     3       // столько варнов — и автоматический бан...
 #define ADMIN_WARN_BAN_DAYS     3       // ...на столько дней
 #define ADMIN_MAX_MUTE          720     // максимум минут мута
@@ -61,7 +66,11 @@ enum
 	AMENU_MUTE,
 	AMENU_WARN,
 	AMENU_AJAIL,
-	AMENU_BAN
+	AMENU_BAN,
+	AMENU_HEAL,
+	AMENU_ARMOUR,
+	AMENU_DISARM,
+	AMENU_GIVEGUN
 }
 
 static gMuteUntil[MAX_PLAYERS];         // unix-время конца мута (0 = нет)
@@ -629,6 +638,10 @@ static Bans_Add(const name[], const ip[], const reason[], const admin[], days)
 	new until = (days > 0) ? (gettime() + days * 86400) : 0;
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO bans (name, reason, admin, date, until, ip) VALUES ('%q', '%q', '%q', %d, %d, '%q')",
 		name, reason, admin, gettime(), until, ip));
+	new text[200];
+	if (days > 0) format(text, sizeof text, "Аккаунт %s заблокирован на %d дн. Причина: %s. Администратор: %s.", name, days, reason, admin);
+	else format(text, sizeof text, "Аккаунт %s заблокирован навсегда. Причина: %s. Администратор: %s.", name, reason, admin);
+	Social_NotifyName(name, text);   // уведомление в ВК/ТГ (social.inc)
 }
 
 static Admin_BanText(days)
@@ -1472,7 +1485,7 @@ static AMenu_ShowActions(playerid)
 	new target = gAMenuTarget[playerid], title[48];
 	format(title, sizeof title, "%s [%d]", GetRPName(target), target);
 	ShowPlayerDialog(playerid, DIALOG_AMENU_ACT, DIALOG_STYLE_LIST, title,
-		"Телепорт к игроку\nТелепорт к себе\nСледить\nПроверить\nЗаморозить / разморозить\nПодкинуть\nКикнуть\nМут\nПредупреждение\nДеморган\nБан",
+		"Телепорт к игроку\nТелепорт к себе\nСледить\nПроверить\nЗаморозить / разморозить\nПодкинуть\nКикнуть\nМут\nПредупреждение\nДеморган\nБан\nВылечить\nБроня 100\nЗабрать оружие\nВыдать оружие",
 		"Выбрать", "Назад");
 }
 
@@ -1599,6 +1612,14 @@ stock Admin_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 				case AMENU_CHECK:   Cmd_Check(playerid, params);
 				case AMENU_FREEZE:  Cmd_Freeze(playerid, params, !gFrozen[t]);
 				case AMENU_SLAP:    Cmd_Slap(playerid, params);
+				case AMENU_HEAL:    Cmd_AHeal(playerid, params);
+				case AMENU_DISARM:  Cmd_Disarm(playerid, params);
+				case AMENU_ARMOUR:
+				{
+					new p[16];
+					format(p, sizeof p, "%d 100", t);
+					Cmd_SetArmour(playerid, p);
+				}
 				default:
 				{
 					new hint[160];
@@ -1609,11 +1630,12 @@ stock Admin_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 						case AMENU_WARN:  strcat(hint, "Причина предупреждения:");
 						case AMENU_AJAIL: format(hint, sizeof hint, "Минуты (1-%d) и причина.\nНапример: 60 DM", ADMIN_MAX_AJAIL);
 						case AMENU_BAN:   strcat(hint, "Дни (0 — навсегда) и причина.\nНапример: 7 читы");
+						case AMENU_GIVEGUN: strcat(hint, "Оружие и патроны.\nНапример: deagle 200, m4 500, 31 300\nСписок: /givegun");
 						default: return 1;
 					}
 					new body[220];
 					format(body, sizeof body, "{FFFFFF}%s [%d]\n\n%s", GetRPName(t), t, hint);
-					ShowPlayerDialog(playerid, DIALOG_AMENU_INPUT, DIALOG_STYLE_INPUT, "Наказание", "%s", "Готово", "Назад", body);
+					ShowPlayerDialog(playerid, DIALOG_AMENU_INPUT, DIALOG_STYLE_INPUT, (listitem == AMENU_GIVEGUN) ? ("Выдать оружие") : ("Наказание"), "%s", "Готово", "Назад", body);
 				}
 			}
 			return 1;
@@ -1633,6 +1655,7 @@ stock Admin_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 				case AMENU_WARN:  Cmd_Warn(playerid, params);
 				case AMENU_AJAIL: Cmd_AJail(playerid, params);
 				case AMENU_BAN:   Cmd_Ban(playerid, params);
+				case AMENU_GIVEGUN: Cmd_GiveGun(playerid, params);
 			}
 			return 1;
 		}
@@ -1651,8 +1674,8 @@ stock bool:Cmd_AHelp(playerid)
 	strcat(text, "{FF66FF}1 — Хелпер\n{FFFFFF}/a — админ-чат   /amenu — панель (удобно с телефона)   /reports /ans — репорты\n");
 	strcat(text, "/check /spec /specoff /specnext /specprev /goto /kick /mute /unmute /admins /aduty\n");
 	strcat(text, "Телепорт: метка на карте (выкл. /maptp), /tp — список точек, /back — назад\n\n");
-	strcat(text, "{FF66FF}2 — Модератор\n{FFFFFF}/warn /ajail /unajail /freeze /unfreeze /slap /gethere /spawn /sethp /setskin /jail /unjail\n/sendto /gotocar /fixveh /flip\n\n");
-	strcat(text, "{FF66FF}3 — Администратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /moneylog /dveh\n/veh — меню машин, /veh infernus — по названию, /veh 411 — по номеру\n/ao /gotocoord /respawncars /setweather\n/givelic — выдать лицензию   /setfuel — заправить машину\n\n");
+	strcat(text, "{FF66FF}2 — Модератор\n{FFFFFF}/warn /ajail /unajail /freeze /unfreeze /slap /gethere /spawn /sethp /setskin /jail /unjail\n/sendto /gotocar /fixveh /flip   /aheal — вылечить   /setarmour — броня   /disarm — забрать оружие\n\n");
+	strcat(text, "{FF66FF}3 — Администратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /moneylog /dveh\n/veh — меню машин, /veh infernus — по названию, /veh 411 — по номеру\n/ao /gotocoord /respawncars /setweather\n/givelic — выдать лицензию   /setfuel — заправить машину\n/givegun [id] [оружие] [патроны] — выдать оружие (тяжёлое с 6 ур.)\n\n");
 	strcat(text, "{FF66FF}4 — Ст. администратор\n{FFFFFF}/unban, бан навсегда (0 дней), /addtp /deltp, фракции, дома, бизнесы, АЗС, банкоматы, районы\n/givefood /giveitem — еда и вещи   /addexampoint /clearexam — маршрут экзамена\n/addgarage [1-2] /delgarage — СТО и штрафстоянки\n/pos [название] /points /dev — координаты   /mo — маппинг (объекты, удаление зданий, выгрузка)\n");
 	strcat(text, "Дома: /createhouse /delhouse /sethouseint /gotohouse, шкаф: /makestorage   Входы: /adddoor /setdoor /deldoor /doors\n");
 	strcat(text, "Бизнесы: /createbiz /delbiz /setbizint   /addatm /delatm /addfuel /delfuel /addgate /delgate\n");
@@ -1660,9 +1683,9 @@ stock bool:Cmd_AHelp(playerid)
 	strcat(text, "Фракции: /createfaction /delfaction /flist /fcolor /makeleader /setfaction /setrankname\n/setfspawn /setfduty /setfint /delfint /fintlock /addfcar /delfcar /setfstore /setarmystore\n");
 	strcat(text, "Заводы: /addfactory /setfpoint /setfowner /delfactory /factories   Чёрный рынок: /addbm /delbm /bmprice\n");
 	strcat(text, "Районы: /addturf /setturf /delturf\n\n");
-	strcat(text, "{FF66FF}5 — Куратор\n{FFFFFF}/astats [ник] — статистика любого админа   /alist — весь состав (часы, последний вход)\n\n");
+	strcat(text, "{FF66FF}5 — Куратор\n{FFFFFF}/astats [ник] — статистика любого админа   /alist — весь состав (часы, последний вход)   /healall — вылечить всех\n\n");
 	strcat(text, "{FF66FF}6 — Зам. гл. администратора\n{FFFFFF}/banip [id или IP] [дни] [причина]   /unbanip [IP]\n\n");
-	strcat(text, "{FF66FF}7 — Гл. администратор\n{FFFFFF}/resetapass [id или ник] — сбросить админ-пароль   /makeadmin /givemoney /settax — налоги   /backup — копия базы\n\n");
+	strcat(text, "{FF66FF}7 — Гл. администратор\n{FFFFFF}/resetapass [id или ник] — сбросить админ-пароль   /makeadmin /givemoney /takemoney /settax — налоги   /backup — копия базы\n\n");
 	strcat(text, "{AFAFAF}Все наказания и выдачи пишутся в лог (/alog). Наказать админа своего уровня или выше нельзя.");
 	Admin_ShowInfo(playerid, "Команды администрации", text);
 	return true;
@@ -1902,5 +1925,6 @@ stock Admin_OnCommand(playerid, const cmd[], const params[])
 	if (!strcmp(cmd, "/givemoney", true))   { Cmd_GiveMoney(playerid, params); return 1; }
 	if (!strcmp(cmd, "/sethp", true))       { Cmd_SetHP(playerid, params); return 1; }
 	if (!strcmp(cmd, "/setskin", true))     { Cmd_SetSkin(playerid, params); return 1; }
+	if (AdminGive_OnCommand(playerid, cmd, params)) return 1;   // оружие, броня, лечение
 	return AdminTools_OnCommand(playerid, cmd, params);   // телепорты и инструменты
 }

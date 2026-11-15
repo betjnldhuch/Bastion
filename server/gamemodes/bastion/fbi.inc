@@ -62,6 +62,14 @@ stock Fbi_DisguiseColor(playerid)
 	return COLOR_CIVIL;
 }
 
+// Смена в штатском (/duty civ или раздевалка): для всех — гражданский, команды ФБР работают
+public Fbi_SetPlain(playerid)
+{
+	gDisguised[playerid] = true;
+	gDisguiseF[playerid] = 0;
+	return 1;
+}
+
 // Из Faction_EndDuty и при выходе: маскировка снимается вместе с формой
 stock Fbi_ResetDisguise(playerid)
 {
@@ -77,7 +85,7 @@ stock bool:Cmd_FDisguise(playerid, const params[])
 	new pos = 0, f, rank;
 	if (!NextIntParam(params, pos, f) || !NextIntParam(params, pos, rank))
 		return SendClientMessage(playerid, COLOR_GREY, "Использование: /fdisguise [фракция] [ранг 1-%d] — форма организации (номера: /flist). Снять: /disguise", MAX_RANK);
-	if (!Faction_IsValid(f)) return SendClientMessage(playerid, COLOR_GREY, "Такой организации нет. Номера: /flist");
+	if (!Faction_IsValid(f) || Faction_IsHidden(f)) return SendClientMessage(playerid, COLOR_GREY, "Такой организации нет. Номера: /flist");
 	if (rank < 1 || rank > MAX_RANK) return SendClientMessage(playerid, COLOR_GREY, "Ранг от 1 до %d.", MAX_RANK);
 	gDisguised[playerid] = true;
 	gDisguiseF[playerid] = f;
@@ -157,7 +165,7 @@ stock bool:Cmd_TapF(playerid, const params[])
 	if (!Fbi_Is(playerid, TAP_RANK)) return true;
 	new pos = 0, f;
 	if (!NextIntParam(params, pos, f)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /tapf [фракция] — слушать рацию %d мин (номера: /flist). Снять: /untap", TAP_MINUTES);
-	if (!Faction_IsValid(f) || f == FACTION_FBI) return SendClientMessage(playerid, COLOR_GREY, "Такую организацию слушать нельзя. Номера: /flist");
+	if (!Faction_IsValid(f) || f == FACTION_FBI || Faction_IsHidden(f)) return SendClientMessage(playerid, COLOR_GREY, "Такую организацию слушать нельзя. Номера: /flist");
 	gTapFaction[playerid] = f;
 	gTapFUntil[playerid] = gettime() + TAP_MINUTES * 60;
 	if (Faction_IsGang(f)) SendClientMessage(playerid, COLOR_TAP, "Прослушка рации «%s» и чата банд /gd на %d мин. Снять: /untap", Faction_GetName(f), TAP_MINUTES);
@@ -275,7 +283,6 @@ stock bool:Cmd_Track(playerid, const params[])
 		if (gTrackTarget[playerid] != INVALID_PLAYER_ID) { Fbi_TrackStop(playerid, true); return true; }
 		return SendClientMessage(playerid, COLOR_GREY, "Использование: /track [id] — метка на карте на %d мин. Снять: /track", TRACK_MINUTES);
 	}
-	if (target == playerid) return SendClientMessage(playerid, COLOR_GREY, "За собой следить незачем.");
 	Fbi_TrackStop(playerid, false);
 	gTrackTarget[playerid] = target;
 	gTrackUntil[playerid] = gettime() + TRACK_MINUTES * 60;
@@ -302,7 +309,7 @@ stock bool:Cmd_Dossier(playerid, const params[])
 	format(line, sizeof line, "{FFFFFF}Имя: {FFFF66}%s\n{FFFFFF}Уровень: %d\n", GetRPName(target), Player[target][pLevel]);
 	strcat(text, line);
 	new f = Player[target][pFaction];
-	if (Faction_IsValid(f)) format(line, sizeof line, "Организация: %s, %s\n", Faction_GetName(f), Faction_GetRankName(f, Player[target][pRank]));
+	if (Faction_IsValid(f) && !Faction_IsHidden(f)) format(line, sizeof line, "Организация: %s, %s\n", Faction_GetName(f), Faction_GetRankName(f, Player[target][pRank]));
 	else format(line, sizeof line, "Организация: нет\n");
 	strcat(text, line);
 	format(line, sizeof line, "Розыск: %d зв.\n", Player[target][pWanted]);

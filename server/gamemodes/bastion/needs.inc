@@ -49,14 +49,15 @@ enum
 	INV_WEED,           // марихуана, граммы (drugs.inc)
 	INV_COCAINE,        // кокаин, граммы (drugs.inc)
 	INV_FISH,           // рыба: сдать на работе рыбака (worklife.inc)
+	INV_JACK,           // домкрат: поставить машину на колёса, поменять пробитые шины
 	INV_TYPES
 }
 // Номера вещей (для /giveitem): 1 бургер, 2 хот-дог, 3 аптечка, 4 ремкомплект, 5 пицца, 6 вода,
 // 7 пиво, 8 сигареты, 9 бинт, 10 цветы, 11 кости, 12 маска, 13 материалы,
-// 14 семена конопли, 15 марихуана, 16 кокаин, 17 рыба
-static const gInvNames[INV_TYPES][] = { "", "Бургер", "Хот-дог", "Аптечка", "Ремкомплект", "Пицца", "Вода", "Пиво", "Сигареты", "Бинт", "Цветы", "Игральные кости", "Маска", "Материалы", "Семена конопли", "Марихуана", "Кокаин", "Рыба" };
-static const gInvHints[INV_TYPES][] = { "", "+40% сытости", "+25% сытости", "+50 HP", "чинит машину рядом", "+60% сытости", "+10% сытости, +5 HP", "+5 HP, пьянит", "покурить", "+20 HP", "букет в руки", "бросить кости (RP)", "прячет ник", "сделать оружие", "посадить куст", "покурить (эффект, +HP)", "употребить (эффект, бронь)", "сдать рыбаку" };
-static const gInvMax[INV_TYPES] = { 0, 5, 5, 3, 3, 3, 5, 5, 20, 5, 3, 1, 1, 500, 10, 50, 20, 30 };
+// 14 семена конопли, 15 марихуана, 16 кокаин, 17 рыба, 18 домкрат
+static const gInvNames[INV_TYPES][] = { "", "Бургер", "Хот-дог", "Аптечка", "Ремкомплект", "Пицца", "Вода", "Пиво", "Сигареты", "Бинт", "Цветы", "Игральные кости", "Маска", "Материалы", "Семена конопли", "Марихуана", "Кокаин", "Рыба", "Домкрат" };
+static const gInvHints[INV_TYPES][] = { "", "+40% сытости", "+25% сытости", "+50 HP", "чинит машину рядом", "+60% сытости", "+10% сытости, +5 HP", "+5 HP, пьянит", "покурить", "+20 HP", "букет в руки", "бросить кости (RP)", "прячет ник", "сделать оружие", "посадить куст", "покурить (эффект, +HP)", "употребить (эффект, бронь)", "сдать рыбаку", "перевернуть машину, сменить колёса" };
+static const gInvMax[INV_TYPES] = { 0, 5, 5, 3, 3, 3, 5, 5, 20, 5, 3, 1, 1, 500, 10, 50, 20, 30, 1 };
 
 enum E_DROP
 {
@@ -68,7 +69,12 @@ enum E_DROP
 	Text3D:drLabel
 }
 static gDrop[MAX_DROPS][E_DROP];
+#define INV_GROUND_RANGE    3.0     // окно сумки показывает вещи на земле в этом радиусе
 static gInvSelected[MAX_PLAYERS];
+static gInvHtmlNote[MAX_PLAYERS][96];
+static bool:gInvHtmlOk[MAX_PLAYERS];
+static gInvHtmlSel[MAX_PLAYERS];
+static gInvWhy[MAX_PLAYERS][96];      // почему не вышло последнее действие (для HTML-окна)
 static bool:gMasked[MAX_PLAYERS];
 
 static gHunger[MAX_PLAYERS];
@@ -92,6 +98,9 @@ stock Needs_Init()
 // После входа в аккаунт (из Vehicles_LoadForPlayer)
 stock Needs_LoadPlayer(playerid)
 {
+	gInvHtmlSel[playerid] = -1;
+	gInvHtmlNote[playerid][0] = '\0';
+	gInvWhy[playerid][0] = '\0';
 	gHunger[playerid] = 100;
 	gHungerTick[playerid] = 0;
 	for (new i = 0; i < INV_TYPES; i++) gInv[playerid][i] = 0;
@@ -298,8 +307,8 @@ static Outfit_Wear(playerid, slot)
 {
 	new skin = gOutfit[playerid][slot];
 	if (skin == -1) return 0;
-	if (Player[playerid][pDuty]) { SendClientMessage(playerid, COLOR_GREY, "Сначала сними рабочую форму (/duty)."); return 0; }
-	if (IsPlayerInAnyVehicle(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Переодеться можно только пешком."); return 0; }
+	if (Player[playerid][pDuty]) { Inv_Why(playerid, "Сначала сними рабочую форму (/duty)."); return 0; }
+	if (IsPlayerInAnyVehicle(playerid)) { Inv_Why(playerid, "Переодеться можно только пешком."); return 0; }
 
 	new old = Player[playerid][pSkin];
 	Outfit_Remove(playerid, slot);
@@ -353,6 +362,7 @@ stock bool:Inv_ShowList(playerid)
 // Сумка: окно с моделями вещей (списком — /invlist)
 stock bool:Cmd_Inv(playerid)
 {
+	if (UI_Has(playerid)) { Inv_ShowHtml(playerid); return true; }
 	if (Inv_ShowUI(playerid)) return true;
 	return Inv_ShowList(playerid);
 }
@@ -382,6 +392,15 @@ stock Inv_ResetMask(playerid)
 	if (gMasked[playerid]) Inv_SetMask(playerid, false);
 }
 
+// Отказ: серое сообщение в чат и причина для окна сумки
+static Inv_Why(playerid, const text[])
+{
+	gInvWhy[playerid][0] = '\0';
+	strcat(gInvWhy[playerid], text, sizeof (gInvWhy[]));
+	SendClientMessage(playerid, COLOR_GREY, "%s", text);
+	return 0;
+}
+
 static Inv_Heal(playerid, Float:amount)
 {
 	new Float:hp;
@@ -391,17 +410,55 @@ static Inv_Heal(playerid, Float:amount)
 	SetPlayerHealth(playerid, hp);
 }
 
+// Домкрат: перевернуть лежащую машину и поменять пробитые колёса. false — делать нечего.
+static bool:Jack_Use(playerid)
+{
+	if (IsPlayerInAnyVehicle(playerid)) { Inv_Why(playerid, "Выйди из машины и встань рядом с ней."); return false; }
+	new Float:px, Float:py, Float:pz, v = INVALID_VEHICLE_ID, Float:best = 5.0;
+	GetPlayerPos(playerid, px, py, pz);
+	for (new i = 1; i < MAX_VEHICLES; i++)
+	{
+		if (!IsValidVehicle(i) || GetVehicleVirtualWorld(i) != GetPlayerVirtualWorld(playerid)) continue;
+		new Float:d = GetVehicleDistanceFromPoint(i, px, py, pz);
+		if (d < best) { best = d; v = i; }
+	}
+	if (v == INVALID_VEHICLE_ID) { Inv_Why(playerid, "Рядом нет машины."); return false; }
+	if (IsVehicleOccupied(v)) { Inv_Why(playerid, "В машине кто-то сидит."); return false; }
+
+	new VEHICLE_PANEL_STATUS:panels, VEHICLE_DOOR_STATUS:doors, VEHICLE_LIGHT_STATUS:lights, VEHICLE_TYRE_STATUS:tires;
+	GetVehicleDamageStatus(v, panels, doors, lights, tires);
+	new Float:qw, Float:qx, Float:qy, Float:qz;
+	GetVehicleRotationQuat(v, qw, qx, qy, qz);
+	new bool:flipped = (1.0 - 2.0 * (qx * qx + qy * qy)) < 0.5;   // крыша смотрит вбок или вниз
+	if (!flipped && tires == VEHICLE_TYRE_STATUS_NONE) { Inv_Why(playerid, "Машина стоит на колёсах, шины целы."); return false; }
+
+	if (flipped)
+	{
+		new Float:vx, Float:vy, Float:vz, Float:a;
+		GetVehiclePos(v, vx, vy, vz);
+		GetVehicleZAngle(v, a);
+		SetVehiclePos(v, vx, vy, vz + 1.0);
+		SetVehicleZAngle(v, a);         // сбрасывает наклон: машина встаёт на колёса
+	}
+	if (tires != VEHICLE_TYRE_STATUS_NONE) UpdateVehicleDamageStatus(v, panels, doors, lights, VEHICLE_TYRE_STATUS_NONE);
+	ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
+	if (flipped && tires != VEHICLE_TYRE_STATUS_NONE) SendClientMessage(playerid, COLOR_GREEN, "Машина снова на колёсах, пробитые шины заменены.");
+	else if (flipped) SendClientMessage(playerid, COLOR_GREEN, "Машина снова на колёсах.");
+	else SendClientMessage(playerid, COLOR_GREEN, "Пробитые шины заменены.");
+	return true;
+}
+
 static Inv_Use(playerid, item)
 {
 	if (gInv[playerid][item] <= 0) return;
-	if (item >= INV_SEEDS) { Drugs_UseItem(playerid, item); return; }    // семена, наркотики, рыба (drugs.inc)
+	if (item >= INV_SEEDS && item <= INV_FISH) { Drugs_UseItem(playerid, item); return; }    // семена, наркотики, рыба (drugs.inc)
 	new msg[128];
 	new bool:consume = true;
 	switch (item)
 	{
 		case INV_BURGER, INV_HOTDOG, INV_PIZZA:
 		{
-			if (gHunger[playerid] >= 100) { SendClientMessage(playerid, COLOR_GREY, "Ты не голоден."); return; }
+			if (gHunger[playerid] >= 100) { Inv_Why(playerid, "Ты не голоден."); return; }
 			new feed = 25;
 			if (item == INV_BURGER) feed = 40;
 			else if (item == INV_PIZZA) feed = 60;
@@ -425,7 +482,7 @@ static Inv_Use(playerid, item)
 		}
 		case INV_CIGARETTES:
 		{
-			if (IsPlayerInAnyVehicle(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Выйди из машины."); return; }
+			if (IsPlayerInAnyVehicle(playerid)) { Inv_Why(playerid, "Выйди из машины."); return; }
 			SetPlayerSpecialAction(playerid, SPECIAL_ACTION_SMOKE_CIGGY);
 			format(msg, sizeof msg, "%s достаёт сигарету и закуривает.", GetRPName(playerid));
 		}
@@ -433,7 +490,7 @@ static Inv_Use(playerid, item)
 		{
 			new Float:hp;
 			GetPlayerHealth(playerid, hp);
-			if (hp >= 100.0) { SendClientMessage(playerid, COLOR_GREY, "Ты и так здоров."); return; }
+			if (hp >= 100.0) { Inv_Why(playerid, "Ты и так здоров."); return; }
 			if (item == INV_MEDKIT)
 			{
 				Inv_Heal(playerid, 50.0);
@@ -447,7 +504,7 @@ static Inv_Use(playerid, item)
 		}
 		case INV_REPAIRKIT:
 		{
-			if (IsPlayerInAnyVehicle(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Выйди из машины и встань рядом с ней."); return; }
+			if (IsPlayerInAnyVehicle(playerid)) { Inv_Why(playerid, "Выйди из машины и встань рядом с ней."); return; }
 			new Float:px, Float:py, Float:pz, v = INVALID_VEHICLE_ID, Float:best = 5.0;
 			GetPlayerPos(playerid, px, py, pz);
 			for (new i = 1; i < MAX_VEHICLES; i++)
@@ -456,10 +513,16 @@ static Inv_Use(playerid, item)
 				new Float:d = GetVehicleDistanceFromPoint(i, px, py, pz);
 				if (d < best) { best = d; v = i; }
 			}
-			if (v == INVALID_VEHICLE_ID) { SendClientMessage(playerid, COLOR_GREY, "Рядом нет машины."); return; }
+			if (v == INVALID_VEHICLE_ID) { Inv_Why(playerid, "Рядом нет машины."); return; }
 			RepairVehicle(v);
 			ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
 			format(msg, sizeof msg, "%s чинит машину ремкомплектом.", GetRPName(playerid));
+		}
+		case INV_JACK:
+		{
+			consume = false;
+			if (!Jack_Use(playerid)) return;
+			format(msg, sizeof msg, "%s ставит машину на домкрат и возится с колёсами.", GetRPName(playerid));
 		}
 		case INV_FLOWERS:
 		{
@@ -499,23 +562,23 @@ static Inv_Give(playerid, item, const input[])
 	NextIntParam(input, pos, amount);
 	if (target == INVALID_PLAYER_ID || target == playerid || !Player[target][pLogged])
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Нужно ввести id игрока, например: 5 или 5 2");
+		Inv_Why(playerid, "Нужно ввести id игрока, например: 5 или 5 2");
 		return 0;
 	}
 	if (amount < 1 || amount > gInv[playerid][item])
 	{
-		SendClientMessage(playerid, COLOR_GREY, "У тебя только %d шт.", gInv[playerid][item]);
+		{ new why[96]; format(why, sizeof why, "У тебя только %d шт.", gInv[playerid][item]); Inv_Why(playerid, why); }
 		return 0;
 	}
 	if (!IsPlayerNearPlayer(playerid, target, 3.0))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Подойди ближе к игроку.");
+		Inv_Why(playerid, "Подойди ближе к игроку.");
 		return 0;
 	}
 	if (item == INV_MASK && gMasked[playerid] && amount >= gInv[playerid][item]) Inv_SetMask(playerid, false);
 	if (!Inv_Add(target, item, amount))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "У %s нет места в сумке.", GetRPName(target));
+		{ new why[96]; format(why, sizeof why, "У %s нет места в сумке.", GetRPName(target)); Inv_Why(playerid, why); }
 		return 0;
 	}
 	Inv_Take(playerid, item, amount);
@@ -529,12 +592,12 @@ static Inv_Drop(playerid, item, amount)
 {
 	if (amount < 1 || amount > gInv[playerid][item])
 	{
-		SendClientMessage(playerid, COLOR_GREY, "У тебя только %d шт.", gInv[playerid][item]);
+		{ new why[96]; format(why, sizeof why, "У тебя только %d шт.", gInv[playerid][item]); Inv_Why(playerid, why); }
 		return 0;
 	}
 	if (GetPlayerVirtualWorld(playerid) != 0 || GetPlayerInterior(playerid) != 0 || IsPlayerInAnyVehicle(playerid))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Выбросить вещь можно только на улице и пешком.");
+		Inv_Why(playerid, "Выбросить вещь можно только на улице и пешком.");
 		return 0;
 	}
 	new d = -1;
@@ -544,7 +607,7 @@ static Inv_Drop(playerid, item, amount)
 	}
 	if (d == -1)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "На земле и так слишком много вещей. Попробуй позже.");
+		Inv_Why(playerid, "На земле и так слишком много вещей. Попробуй позже.");
 		return 0;
 	}
 	if (item == INV_MASK && gMasked[playerid] && amount >= gInv[playerid][item]) Inv_SetMask(playerid, false);
@@ -576,50 +639,61 @@ static Inv_RemoveDrop(d)
 	gDrop[d][drItem] = INV_NONE;
 }
 
+// Вещь d рядом с игроком (для ALT и окна сумки)
+static bool:Inv_DropNear(playerid, d, Float:range)
+{
+	return gDrop[d][drItem] != INV_NONE && IsPlayerInRangeOfPoint(playerid, range, gDrop[d][drX], gDrop[d][drY], gDrop[d][drZ]);
+}
+
+// Поднять вещь d. 1 — подняли, 0 — нет места (причина в gInvWhy)
+static Inv_PickupDrop(playerid, d)
+{
+	if (gDrop[d][drItem] == INV_OUTFIT)
+	{
+		new skin = gDrop[d][drAmount];
+		if (!Outfit_Add(playerid, skin))
+		{
+			{ new why[96]; format(why, sizeof why, "В сумке нет места для одежды (максимум %d).", MAX_OUTFITS); Inv_Why(playerid, why); }
+			return 0;
+		}
+		Inv_RemoveDrop(d);
+		ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
+		new omsg[128];
+		format(omsg, sizeof omsg, "%s поднимает с земли одежду.", GetRPName(playerid));
+		SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, omsg);
+		return 1;
+	}
+
+	new item = gDrop[d][drItem], amount = gDrop[d][drAmount];
+	new space = gInvMax[item] - gInv[playerid][item];
+	if (space <= 0)
+	{
+		{ new why[96]; format(why, sizeof why, "В сумке нет места для: %s (максимум %d).", gInvNames[item], gInvMax[item]); Inv_Why(playerid, why); }
+		return 0;
+	}
+	if (amount > space) amount = space;
+	Inv_Add(playerid, item, amount);
+	gDrop[d][drAmount] -= amount;
+	if (gDrop[d][drAmount] <= 0) Inv_RemoveDrop(d);
+	else
+	{
+		Update3DTextLabelText(gDrop[d][drLabel], COLOR_WHITE, "{FFFFFF}%s x%d\n{AFAFAF}ALT — поднять", gInvNames[item], gDrop[d][drAmount]);
+	}
+	ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
+	new msg[128];
+	format(msg, sizeof msg, "%s поднимает с земли: %s x%d.", GetRPName(playerid), gInvNames[item], amount);
+	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
+	return 1;
+}
+
 // ALT пешком (keys.inc) или /pickup: поднять вещь с земли. 1 — что-то было рядом
 stock Inv_TryPickup(playerid)
 {
 	if (GetPlayerVirtualWorld(playerid) != 0 || IsPlayerInAnyVehicle(playerid)) return 0;
 	for (new d = 0; d < MAX_DROPS; d++)
 	{
-		if (gDrop[d][drItem] == INV_NONE) continue;
-		if (!IsPlayerInRangeOfPoint(playerid, 1.8, gDrop[d][drX], gDrop[d][drY], gDrop[d][drZ])) continue;
-
-		if (gDrop[d][drItem] == INV_OUTFIT)
-		{
-			new skin = gDrop[d][drAmount];
-			if (!Outfit_Add(playerid, skin))
-			{
-				SendClientMessage(playerid, COLOR_GREY, "В сумке нет места для одежды (максимум %d).", MAX_OUTFITS);
-				return 1;
-			}
-			Inv_RemoveDrop(d);
-			ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
-			new omsg[128];
-			format(omsg, sizeof omsg, "%s поднимает с земли одежду.", GetRPName(playerid));
-			SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, omsg);
-			return 1;
-		}
-
-		new item = gDrop[d][drItem], amount = gDrop[d][drAmount];
-		new space = gInvMax[item] - gInv[playerid][item];
-		if (space <= 0)
-		{
-			SendClientMessage(playerid, COLOR_GREY, "В сумке нет места для: %s (максимум %d).", gInvNames[item], gInvMax[item]);
-			return 1;
-		}
-		if (amount > space) amount = space;
-		Inv_Add(playerid, item, amount);
-		gDrop[d][drAmount] -= amount;
-		if (gDrop[d][drAmount] <= 0) Inv_RemoveDrop(d);
-		else
-		{
-			Update3DTextLabelText(gDrop[d][drLabel], COLOR_WHITE, "{FFFFFF}%s x%d\n{AFAFAF}ALT — поднять", gInvNames[item], gDrop[d][drAmount]);
-		}
-		ApplyAnimation(playerid, "BOMBER", "BOM_Plant", 4.1, false, false, false, false, 0);
-		new msg[128];
-		format(msg, sizeof msg, "%s поднимает с земли: %s x%d.", GetRPName(playerid), gInvNames[item], amount);
-		SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
+		if (!Inv_DropNear(playerid, d, 1.8)) continue;
+		Inv_PickupDrop(playerid, d);
 		return 1;
 	}
 	return 0;
@@ -653,7 +727,7 @@ static Outfit_Drop(playerid, slot)
 {
 	if (GetPlayerVirtualWorld(playerid) != 0 || GetPlayerInterior(playerid) != 0 || IsPlayerInAnyVehicle(playerid))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Выбросить вещь можно только на улице и пешком.");
+		Inv_Why(playerid, "Выбросить вещь можно только на улице и пешком.");
 		return 0;
 	}
 	new d = -1;
@@ -663,7 +737,7 @@ static Outfit_Drop(playerid, slot)
 	}
 	if (d == -1)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "На земле и так слишком много вещей. Попробуй позже.");
+		Inv_Why(playerid, "На земле и так слишком много вещей. Попробуй позже.");
 		return 0;
 	}
 	new skin = gOutfit[playerid][slot];
@@ -690,18 +764,18 @@ static Outfit_Give(playerid, slot, const input[])
 	new target = NextPlayerParam(input, pos);
 	if (target == INVALID_PLAYER_ID || target == playerid || !Player[target][pLogged])
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Нужно ввести id игрока.");
+		Inv_Why(playerid, "Нужно ввести id игрока.");
 		return 0;
 	}
 	if (!IsPlayerNearPlayer(playerid, target, 3.0))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Подойди ближе к игроку.");
+		Inv_Why(playerid, "Подойди ближе к игроку.");
 		return 0;
 	}
 	new skin = gOutfit[playerid][slot];
 	if (!Outfit_Add(target, skin))
 	{
-		SendClientMessage(playerid, COLOR_GREY, "У %s нет места для одежды.", GetRPName(target));
+		{ new why[96]; format(why, sizeof why, "У %s нет места для одежды.", GetRPName(target)); Inv_Why(playerid, why); }
 		return 0;
 	}
 	Outfit_Remove(playerid, slot);
@@ -752,7 +826,12 @@ static Inv_ShowActions(playerid, item)
 
 stock Needs_OnDialog(playerid, dialogid, response, listitem, const inputtext[] = "")
 {
-	if (dialogid < DIALOG_INVENTORY || dialogid > DIALOG_INV_DROP) return 0;
+	if (dialogid < DIALOG_INVENTORY || dialogid > DIALOG_INV_UI) return 0;
+	if (dialogid == DIALOG_INV_UI)
+	{
+		if (response) InvHtml_OnResponse(playerid, inputtext);
+		return 1;
+	}
 
 	if (dialogid == DIALOG_INVENTORY)
 	{
@@ -806,6 +885,195 @@ stock Needs_OnDialog(playerid, dialogid, response, listitem, const inputtext[] =
 }
 
 // ---------------------------------------------------------------------
+//  HTML-окно сумки (клиент Bastion, ui.inc)
+//  Ответ в DIALOG_INV_UI текстом "действие вещь [аргументы]":
+//    "u 3" — использовать, "g 3 5 2" — передать игроку 5 две штуки,
+//    "d 3 2" — выбросить две. Вещь: номер из gInvNames, 100+слот — одежда,
+//    0 — канистра. После действия окно открывается снова с итогом.
+// ---------------------------------------------------------------------
+
+static InvHtml_Note(playerid, bool:ok, const text[])
+{
+	gInvHtmlOk[playerid] = ok;
+	gInvHtmlNote[playerid][0] = '\0';
+	strcat(gInvHtmlNote[playerid], text, sizeof (gInvHtmlNote[]));
+}
+
+// Не вышло: в окне — настоящая причина (Inv_Why), если она есть
+static InvHtml_Fail(playerid, const fallback[])
+{
+	if (gInvWhy[playerid][0]) InvHtml_Note(playerid, false, gInvWhy[playerid]);
+	else InvHtml_Note(playerid, false, fallback);
+}
+
+stock Inv_ShowHtml(playerid)
+{
+	new json[2600], part[200], name[48], hint[64];
+	new Float:hp;
+	GetPlayerHealth(playerid, hp);
+	format(json, sizeof json, "{\"hunger\":%d,\"hp\":%d,\"money\":%d,\"mask\":%d,\"outMax\":%d,\"sel\":%d,\"items\":[",
+		gHunger[playerid], floatround(hp), GetMoney(playerid), _:gMasked[playerid], MAX_OUTFITS, gInvHtmlSel[playerid]);
+	new n = 0;
+	for (new item = 1; item < INV_TYPES; item++)
+	{
+		if (gInv[playerid][item] <= 0) continue;
+		UI_JsonEscape(name, gInvNames[item]);
+		UI_JsonEscape(hint, gInvHints[item]);
+		format(part, sizeof part, "%s[%d,%d,%d,\"%s\",\"%s\"]", n ? "," : "", item, gInv[playerid][item], gInvMax[item], name, hint);
+		strcat(json, part);
+		n++;
+	}
+	strcat(json, "],\"outfits\":[");
+	n = 0;
+	for (new i = 0; i < MAX_OUTFITS; i++)
+	{
+		if (gOutfit[playerid][i] == -1) continue;
+		format(part, sizeof part, "%s[%d,%d]", n ? "," : "", INV_OUTFIT + i, gOutfit[playerid][i]);
+		strcat(json, part);
+		n++;
+	}
+	// Рядом на земле (поднять из окна): [номер, вещь, кол-во, "название"], вещь 100 — одежда, кол-во — скин
+	strcat(json, "],\"ground\":[");
+	n = 0;
+	if (GetPlayerVirtualWorld(playerid) == 0 && !IsPlayerInAnyVehicle(playerid))
+	{
+		for (new d = 0; d < MAX_DROPS && n < 8; d++)
+		{
+			if (!Inv_DropNear(playerid, d, INV_GROUND_RANGE)) continue;
+			if (gDrop[d][drItem] == INV_OUTFIT) format(part, sizeof part, "%s[%d,%d,%d,\"Одежда\"]", n ? "," : "", d, INV_OUTFIT, gDrop[d][drAmount]);
+			else
+			{
+				UI_JsonEscape(name, gInvNames[gDrop[d][drItem]]);
+				format(part, sizeof part, "%s[%d,%d,%d,\"%s\"]", n ? "," : "", d, gDrop[d][drItem], gDrop[d][drAmount], name);
+			}
+			strcat(json, part);
+			n++;
+		}
+	}
+	new note[192];
+	UI_JsonEscape(note, gInvHtmlNote[playerid]);
+	format(part, sizeof part, "],\"skin\":%d,\"canister\":%d,\"note\":\"%s\",\"ok\":%d}",
+		Player[playerid][pSkin], Fuel_GetCanister(playerid), note, _:gInvHtmlOk[playerid]);
+	strcat(json, part);
+	gInvHtmlNote[playerid][0] = '\0';
+	gInvHtmlSel[playerid] = -1;
+	UI_Show(playerid, DIALOG_INV_UI, DIALOG_STYLE_INPUT, "inventory", json, "Выбрать", "Закрыть");
+}
+
+// После «использовать» окно открываем снова только для вещей без своего меню и анимации
+static bool:InvHtml_ReopenAfterUse(item)
+{
+	switch (item)
+	{
+		case INV_BURGER, INV_HOTDOG, INV_PIZZA, INV_WATER, INV_BEER, INV_MEDKIT, INV_BANDAGE, INV_MASK, INV_DICE, INV_CIGARETTES, INV_FLOWERS: return true;
+	}
+	return false;
+}
+
+static InvHtml_OnResponse(playerid, const input[])
+{
+	new act = input[0], pos = 1, key;
+	if (!NextIntParam(input, pos, key)) return;
+	new text[96];
+	gInvHtmlSel[playerid] = key;
+	gInvWhy[playerid][0] = '\0';
+
+	// "p 7" — поднять с земли вещь 7 (номер из ground)
+	if (act == 'p')
+	{
+		gInvHtmlSel[playerid] = -1;
+		if (key < 0 || key >= MAX_DROPS || GetPlayerVirtualWorld(playerid) != 0 || IsPlayerInAnyVehicle(playerid)
+			|| !Inv_DropNear(playerid, key, INV_GROUND_RANGE))
+			InvHtml_Note(playerid, false, "Эта вещь уже не лежит рядом.");
+		else
+		{
+			new what = gDrop[key][drItem];
+			if (Inv_PickupDrop(playerid, key))
+			{
+				if (what == INV_OUTFIT) InvHtml_Note(playerid, true, "Одежда поднята и лежит в сумке.");
+				else { format(text, sizeof text, "Поднято: %s.", gInvNames[what]); InvHtml_Note(playerid, true, text); gInvHtmlSel[playerid] = what; }
+			}
+			else InvHtml_Fail(playerid, "В сумке нет места.");
+		}
+		Inv_ShowHtml(playerid);
+		return;
+	}
+	if (key == 0)
+	{
+		if (act == 'u' && Fuel_GetCanister(playerid) > 0)
+		{
+			Cmd_Canister(playerid);
+			if (Fuel_GetCanister(playerid) <= 0) { gInvHtmlSel[playerid] = -1; InvHtml_Note(playerid, true, "Бензин из канистры залит в машину."); }
+			else InvHtml_Note(playerid, false, "Встань рядом с машиной (не в ней). Если бак полный, заливать некуда.");
+		}
+		else InvHtml_Note(playerid, false, "Канистру заливают командой /canister, стоя у машины.");
+		Inv_ShowHtml(playerid);
+		return;
+	}
+	if (key >= INV_OUTFIT)
+	{
+		new slot = key - INV_OUTFIT;
+		if (slot >= MAX_OUTFITS || gOutfit[playerid][slot] == -1) { gInvHtmlSel[playerid] = -1; Inv_ShowHtml(playerid); return; }
+		new skin = gOutfit[playerid][slot];
+		switch (act)
+		{
+			case 'u':
+			{
+				if (Outfit_Wear(playerid, slot)) { format(text, sizeof text, "Одежда сменена на скин %d, прежняя лежит в сумке.", skin); InvHtml_Note(playerid, true, text); }
+				else InvHtml_Fail(playerid, "Сейчас переодеться нельзя.");
+			}
+			case 'g':
+			{
+				if (Outfit_Give(playerid, slot, input[pos])) { gInvHtmlSel[playerid] = -1; format(text, sizeof text, "Одежда (скин %d) передана.", skin); InvHtml_Note(playerid, true, text); }
+				else InvHtml_Fail(playerid, "Не получилось передать.");
+			}
+			case 'd':
+			{
+				if (Outfit_Drop(playerid, slot)) { gInvHtmlSel[playerid] = -1; InvHtml_Note(playerid, true, "Одежда лежит на земле, поднять — ALT."); }
+				else InvHtml_Fail(playerid, "Не получилось выбросить.");
+			}
+		}
+		Inv_ShowHtml(playerid);
+		return;
+	}
+	if (key >= INV_TYPES || gInv[playerid][key] <= 0) { gInvHtmlSel[playerid] = -1; Inv_ShowHtml(playerid); return; }
+
+	new before = gInv[playerid][key];
+	switch (act)
+	{
+		case 'u':
+		{
+			new bool:mask = gMasked[playerid];
+			Inv_Use(playerid, key);
+			if (!InvHtml_ReopenAfterUse(key)) { gInvHtmlSel[playerid] = -1; return; }
+			if (key == INV_MASK)
+			{
+				if (gMasked[playerid]) InvHtml_Note(playerid, mask != gMasked[playerid], "Маска надета, ник скрыт.");
+				else InvHtml_Note(playerid, mask != gMasked[playerid], "Маска снята.");
+			}
+			else if (key == INV_DICE) InvHtml_Note(playerid, true, "Кости брошены, результат в чате.");
+			else if (gInv[playerid][key] < before) { format(text, sizeof text, "Использовано: %s.", gInvNames[key]); InvHtml_Note(playerid, true, text); }
+			else InvHtml_Fail(playerid, "Сейчас нельзя.");
+		}
+		case 'g':
+		{
+			if (Inv_Give(playerid, key, input[pos])) { format(text, sizeof text, "Передано: %s x%d.", gInvNames[key], before - gInv[playerid][key]); InvHtml_Note(playerid, true, text); }
+			else InvHtml_Fail(playerid, "Не получилось передать.");
+		}
+		case 'd':
+		{
+			new amount;
+			if (!NextIntParam(input, pos, amount)) amount = 1;
+			if (Inv_Drop(playerid, key, amount)) { format(text, sizeof text, "Выброшено: %s x%d. Поднять — ALT.", gInvNames[key], amount); InvHtml_Note(playerid, true, text); }
+			else InvHtml_Fail(playerid, "Не получилось выбросить.");
+		}
+		default: return;
+	}
+	if (gInv[playerid][key] <= 0) gInvHtmlSel[playerid] = -1;
+	Inv_ShowHtml(playerid);
+}
+
+// ---------------------------------------------------------------------
 //  Админам
 // ---------------------------------------------------------------------
 stock bool:Cmd_GiveFood(playerid, const params[])
@@ -827,9 +1095,24 @@ stock bool:Cmd_GiveItem(playerid, const params[])
 	new pos = 0, item, amount = 1;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !Player[target][pLogged] || !NextIntParam(params, pos, item) || item <= INV_NONE || item >= INV_TYPES)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /giveitem [id] [вещь 1-13] [кол-во]. 1 бургер 2 хот-дог 3 аптечка 4 ремкомплект 5 пицца 6 вода 7 пиво 8 сигареты 9 бинт 10 цветы 11 кости 12 маска 13 материалы");
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Использование: /giveitem [id] [вещь 1-%d] [кол-во]. Вещи:", INV_TYPES - 1);
+		new line[144], part[40];
+		for (new it = 1; it < INV_TYPES; it++)
+		{
+			format(part, sizeof part, "%d %s (до %d)%s", it, gInvNames[it], gInvMax[it], (it < INV_TYPES - 1) ? (", ") : (""));
+			if (strlen(line) + strlen(part) >= sizeof line) { SendClientMessage(playerid, COLOR_WHITE, "%s", line); line[0] = '\0'; }
+			strcat(line, part);
+		}
+		if (line[0] != '\0') SendClientMessage(playerid, COLOR_WHITE, "%s", line);
+		return true;
+	}
 	NextIntParam(params, pos, amount);
 	if (amount < 1) amount = 1;
+	// не влезает всё — выдаём сколько поместится
+	new room = gInvMax[item] - gInv[target][item];
+	if (room <= 0) return SendClientMessage(playerid, COLOR_GREY, "У %s уже полно: %s %d/%d.", GetRPName(target), gInvNames[item], gInv[target][item], gInvMax[item]);
+	if (amount > room) amount = room;
 	if (!Inv_Add(target, item, amount)) return SendClientMessage(playerid, COLOR_GREY, "Не помещается (максимум %d штук).", gInvMax[item]);
 	Admin_Log(playerid, "giveitem", target, gInvNames[item], amount);
 	SendClientMessage(target, COLOR_ADMIN, "Администратор выдал тебе: %s x%d.", gInvNames[item], amount);
@@ -848,30 +1131,35 @@ stock bool:Cmd_GiveItem(playerid, const params[])
 #define INV_UI_COLS         6
 
 // Окно
-#define INV_UI_X            120.0
-#define INV_UI_Y            112.0
-#define INV_UI_R            520.0
+#define INV_UI_X            110.0
+#define INV_UI_Y            104.0
+#define INV_UI_R            530.0
 #define INV_UI_CELL         44.0
 #define INV_UI_STEP         47.0
-#define INV_UI_GRID_X       127.0
-#define INV_UI_GRID_Y       138.0
-#define INV_UI_INFO_X       414.0       // карточка вещи справа
-#define INV_UI_INFO_R       514.0
+#define INV_UI_GRID_X       118.0
+#define INV_UI_GRID_Y       144.0
+#define INV_UI_INFO_X       410.0       // карточка вещи справа
+#define INV_UI_INFO_R       522.0
+#define INV_UI_BAR_W        44.0        // полоски HP и сытости в шапке
 
-#define INV_UI_COL_BG       0x0E1218E6
-#define INV_UI_COL_HEAD     0x1A212BFF
-#define INV_UI_COL_ACCENT   0xFFCC66FF
-#define INV_UI_COL_CELL     0x222A35FF
-#define INV_UI_COL_CELL_SEL 0x5A4A22FF
-#define INV_UI_COL_EMPTY    0x161C24FF
-#define INV_UI_COL_BTN      0x2E3846FF
-#define INV_UI_COL_BTN_OFF  0x1C222BFF
-#define INV_UI_COL_LABEL    0x9AA4B2FF
+// Цвета как у HTML-окон Bastion (assets/ui/index.html)
+#define INV_UI_COL_BG       0x14161AF2
+#define INV_UI_COL_HEAD     0x1B1E23FF
+#define INV_UI_COL_ACCENT   0xFF7A1AFF
+#define INV_UI_COL_CELL     0x1F2228FF
+#define INV_UI_COL_CELL_SEL 0x6B3510FF
+#define INV_UI_COL_WEAR     0x1D3326FF
+#define INV_UI_COL_EMPTY    0x0E1013FF
+#define INV_UI_COL_BTN      0x2A2D33FF
+#define INV_UI_COL_BTN_OFF  0x1B1E23FF
+#define INV_UI_COL_DROP     0x3A1D20FF
+#define INV_UI_COL_LABEL    0x8C9098FF
+#define INV_UI_COL_TRACK    0x0E1013FF
 
 // Модели вещей для окна (по INV_*)
-static const gInvModels[INV_TYPES] = { 0, 2703, 19346, 11738, 19921, 2702, 19570, 1544, 19896, 11747, 325, 1851, 19801, 1271, 1577, 1578, 1575, 19630 };
-static const gInvNamesEn[INV_TYPES][] = { "", "Burger", "Hot dog", "Medkit", "Repair kit", "Pizza", "Water", "Beer", "Cigarettes", "Bandage", "Flowers", "Dice", "Mask", "Materials", "Weed seeds", "Marijuana", "Cocaine", "Fish" };
-static const gInvHintsEn[INV_TYPES][] = { "", "+40% food", "+25% food", "+50 HP", "Repairs a car nearby", "+60% food", "+10% food, +5 HP", "+5 HP, makes you drunk", "Have a smoke", "+20 HP", "Bouquet in your hands", "Roll the dice (RP)", "Hides your nickname", "Craft a weapon", "Plant a bush", "Smoke: effect, +HP", "Use: effect, armour", "Sell at the fishing job" };
+static const gInvModels[INV_TYPES] = { 0, 2703, 19346, 11738, 19921, 2702, 19570, 1544, 19896, 11747, 325, 1851, 19801, 1271, 1577, 1578, 1575, 19630, 18633 };
+static const gInvNamesEn[INV_TYPES][] = { "", "Burger", "Hot dog", "Medkit", "Repair kit", "Pizza", "Water", "Beer", "Cigarettes", "Bandage", "Flowers", "Dice", "Mask", "Materials", "Weed seeds", "Marijuana", "Cocaine", "Fish", "Car jack" };
+static const gInvHintsEn[INV_TYPES][] = { "", "+40% food", "+25% food", "+50 HP", "Repairs a car nearby", "+60% food", "+10% food, +5 HP", "+5 HP, makes you drunk", "Have a smoke", "+20 HP", "Bouquet in your hands", "Roll the dice (RP)", "Hides your nickname", "Craft a weapon", "Plant a bush", "Smoke: effect, +HP", "Use: effect, armour", "Sell at the fishing job", "Flip a car, change tyres" };
 
 // Постоянные текстдравы окна
 enum
@@ -892,6 +1180,12 @@ enum
 	IUI_BTN_USE,
 	IUI_BTN_GIVE,
 	IUI_BTN_DROP,
+	IUI_BRAND,
+	IUI_HP,
+	IUI_HP_TRACK,
+	IUI_HP_BAR,
+	IUI_FOOD_TRACK,
+	IUI_FOOD_BAR,
 	IUI_TD_COUNT
 }
 
@@ -936,7 +1230,7 @@ static PlayerText:InvUi_Button(playerid, Float:cx, Float:y, const text[])
 {
 	new PlayerText:td = CreatePlayerTextDraw(playerid, cx, y, text);
 	PlayerTextDrawFont(playerid, td, TEXT_DRAW_FONT_2);
-	PlayerTextDrawLetterSize(playerid, td, 0.19, 0.95);
+	PlayerTextDrawLetterSize(playerid, td, 0.19, 1.0);
 	PlayerTextDrawAlignment(playerid, td, TEXT_DRAW_ALIGN_CENTER);
 	PlayerTextDrawColour(playerid, td, 0xFFFFFFFF);
 	PlayerTextDrawSetOutline(playerid, td, 0);
@@ -944,7 +1238,7 @@ static PlayerText:InvUi_Button(playerid, Float:cx, Float:y, const text[])
 	PlayerTextDrawSetProportional(playerid, td, true);
 	PlayerTextDrawUseBox(playerid, td, true);
 	PlayerTextDrawBoxColour(playerid, td, INV_UI_COL_BTN);
-	PlayerTextDrawTextSize(playerid, td, 10.0, INV_UI_INFO_R - INV_UI_INFO_X - 12.0);   // по центру: высота, ширина
+	PlayerTextDrawTextSize(playerid, td, 11.0, INV_UI_INFO_R - INV_UI_INFO_X - 14.0);   // по центру: высота, ширина
 	PlayerTextDrawSetSelectable(playerid, td, true);
 	PlayerTextDrawShow(playerid, td);
 	return td;
@@ -954,8 +1248,12 @@ static InvUi_SetButton(playerid, idx, const text[], bool:enabled)
 {
 	new PlayerText:td = gInvUiTD[playerid][idx];
 	PlayerTextDrawSetString(playerid, td, text);
-	PlayerTextDrawBoxColour(playerid, td, enabled ? INV_UI_COL_BTN : INV_UI_COL_BTN_OFF);
-	PlayerTextDrawColour(playerid, td, enabled ? 0xFFFFFFFF : 0x5C6672FF);
+	new box = INV_UI_COL_BTN, colour = 0xECECECFF;
+	if (idx == IUI_BTN_USE) box = INV_UI_COL_ACCENT, colour = 0xFFFFFFFF;
+	else if (idx == IUI_BTN_DROP) box = INV_UI_COL_DROP, colour = 0xFF9A9DFF;
+	if (!enabled) box = INV_UI_COL_BTN_OFF, colour = 0x5A5F68FF;
+	PlayerTextDrawBoxColour(playerid, td, box);
+	PlayerTextDrawColour(playerid, td, colour);
 	PlayerTextDrawShow(playerid, td);
 }
 
@@ -1025,10 +1323,26 @@ static InvUi_ShowInfo(playerid)
 	}
 }
 
+static InvUi_CellColour(playerid, cell)
+{
+	return gInvUiItem[playerid][cell] >= INV_OUTFIT ? INV_UI_COL_WEAR : INV_UI_COL_CELL;
+}
+
+// Полоска: дорожка и заливка на pct процентов
+static InvUi_Bar(playerid, Float:x, Float:y, pct, colour, track, bar)
+{
+	if (pct < 0) pct = 0;
+	if (pct > 100) pct = 100;
+	gInvUiTD[playerid][track] = InvUi_Box(playerid, x, y, x + INV_UI_BAR_W, -0.1, INV_UI_COL_TRACK);
+	new Float:w = INV_UI_BAR_W * float(pct) / 100.0;
+	if (w < 1.0) w = 1.0;
+	gInvUiTD[playerid][bar] = InvUi_Box(playerid, x, y, x + w, -0.1, pct < 20 ? 0xE5484DFF : (pct < 50 ? 0xFFC940FF : colour));
+}
+
 static InvUi_HighlightCell(playerid, cell, bool:on)
 {
 	if (cell < 0 || cell >= gInvUiCells[playerid]) return;
-	PlayerTextDrawBackgroundColour(playerid, gInvUiCell[playerid][cell], on ? INV_UI_COL_CELL_SEL : INV_UI_COL_CELL);
+	PlayerTextDrawBackgroundColour(playerid, gInvUiCell[playerid][cell], on ? INV_UI_COL_CELL_SEL : InvUi_CellColour(playerid, cell));
 	PlayerTextDrawShow(playerid, gInvUiCell[playerid][cell]);
 	if (gInvUiCount[playerid][cell] != INVALID_PLAYER_TEXT_DRAW) PlayerTextDrawShow(playerid, gInvUiCount[playerid][cell]);
 }
@@ -1086,23 +1400,34 @@ stock Inv_ShowUI(playerid, keepItem = -1)
 
 	new buf[48];
 	// Фон, шапка, полоска-акцент
-	gInvUiTD[playerid][IUI_BG]     = InvUi_Box(playerid, INV_UI_X, INV_UI_Y, INV_UI_R, 23.6, INV_UI_COL_BG);
-	gInvUiTD[playerid][IUI_HEAD]   = InvUi_Box(playerid, INV_UI_X, INV_UI_Y, INV_UI_R, 1.9, INV_UI_COL_HEAD);
-	gInvUiTD[playerid][IUI_ACCENT] = InvUi_Box(playerid, INV_UI_X, INV_UI_Y + 20.0, INV_UI_R, -0.3, INV_UI_COL_ACCENT);
-	gInvUiTD[playerid][IUI_TITLE]  = InvUi_Text(playerid, INV_UI_X + 7.0, INV_UI_Y + 3.0, "BAG", TEXT_DRAW_FONT_2, 0.30, 1.3, INV_UI_COL_ACCENT);
+	gInvUiTD[playerid][IUI_BG]     = InvUi_Box(playerid, INV_UI_X, INV_UI_Y, INV_UI_R, 25.2, INV_UI_COL_BG);
+	gInvUiTD[playerid][IUI_HEAD]   = InvUi_Box(playerid, INV_UI_X, INV_UI_Y, INV_UI_R, 2.9, INV_UI_COL_HEAD);
+	gInvUiTD[playerid][IUI_ACCENT] = InvUi_Box(playerid, INV_UI_X, INV_UI_Y + 29.0, INV_UI_R, -0.3, INV_UI_COL_ACCENT);
+	gInvUiTD[playerid][IUI_BRAND]  = InvUi_Text(playerid, INV_UI_X + 8.0, INV_UI_Y + 3.0, "BASTION ONLINE", TEXT_DRAW_FONT_2, 0.15, 0.7, INV_UI_COL_ACCENT);
+	gInvUiTD[playerid][IUI_TITLE]  = InvUi_Text(playerid, INV_UI_X + 8.0, INV_UI_Y + 11.0, "BAG", TEXT_DRAW_FONT_2, 0.30, 1.3, 0xECECECFF);
 	format(buf, sizeof buf, "%d / %d", n, INV_UI_CELLS);
-	gInvUiTD[playerid][IUI_SLOTS]  = InvUi_Text(playerid, INV_UI_X + 40.0, INV_UI_Y + 6.0, buf, TEXT_DRAW_FONT_1, 0.20, 0.9, INV_UI_COL_LABEL);
-	format(buf, sizeof buf, "FOOD ~%c~%d%%", gHunger[playerid] <= 20 ? 'r' : (gHunger[playerid] <= 50 ? 'y' : 'g'), gHunger[playerid]);
-	gInvUiTD[playerid][IUI_FOOD]   = InvUi_Text(playerid, INV_UI_R - 22.0, INV_UI_Y + 6.0, buf, TEXT_DRAW_FONT_2, 0.18, 0.85, 0xFFFFFFFF, TEXT_DRAW_ALIGN_RIGHT);
+	gInvUiTD[playerid][IUI_SLOTS]  = InvUi_Text(playerid, INV_UI_X + 42.0, INV_UI_Y + 15.0, buf, TEXT_DRAW_FONT_1, 0.20, 0.9, INV_UI_COL_LABEL);
+
+	// HP и сытость: подпись и полоска
+	new Float:hp;
+	GetPlayerHealth(playerid, hp);
+	new hpi = floatround(hp);
+	new Float:sx = INV_UI_R - 140.0;
+	format(buf, sizeof buf, "~h~~r~HP ~w~%d", hpi);
+	gInvUiTD[playerid][IUI_HP]   = InvUi_Text(playerid, sx, INV_UI_Y + 6.0, buf, TEXT_DRAW_FONT_2, 0.17, 0.8, 0xFFFFFFFF);
+	InvUi_Bar(playerid, sx, INV_UI_Y + 19.0, hpi, 0x4CD07DFF, IUI_HP_TRACK, IUI_HP_BAR);
+	format(buf, sizeof buf, "~y~FOOD ~w~%d%%", gHunger[playerid]);
+	gInvUiTD[playerid][IUI_FOOD] = InvUi_Text(playerid, sx + 56.0, INV_UI_Y + 6.0, buf, TEXT_DRAW_FONT_2, 0.17, 0.8, 0xFFFFFFFF);
+	InvUi_Bar(playerid, sx + 56.0, INV_UI_Y + 19.0, gHunger[playerid], 0x4CD07DFF, IUI_FOOD_TRACK, IUI_FOOD_BAR);
 
 	// Крестик
-	new PlayerText:td = InvUi_Text(playerid, INV_UI_R - 13.0, INV_UI_Y + 3.0, "X", TEXT_DRAW_FONT_1, 0.35, 1.3, 0xFF6347FF);
+	new PlayerText:td = InvUi_Text(playerid, INV_UI_R - 15.0, INV_UI_Y + 7.0, "X", TEXT_DRAW_FONT_1, 0.35, 1.4, 0x8C9098FF);
 	PlayerTextDrawTextSize(playerid, td, INV_UI_R - 2.0, 14.0);
 	PlayerTextDrawSetSelectable(playerid, td, true);
 	PlayerTextDrawShow(playerid, td);
 	gInvUiTD[playerid][IUI_CLOSE] = td;
 
-	gInvUiTD[playerid][IUI_FOOTER] = InvUi_Text(playerid, (INV_UI_X + INV_UI_R) / 2.0, INV_UI_Y + 196.0,
+	gInvUiTD[playerid][IUI_FOOTER] = InvUi_Text(playerid, (INV_UI_X + INV_UI_R) / 2.0, INV_UI_Y + 212.0,
 		"Click an item, then an action. ESC - close. List: /invlist", TEXT_DRAW_FONT_1, 0.17, 0.8, INV_UI_COL_LABEL, TEXT_DRAW_ALIGN_CENTER);
 
 	// Ячейки: занятые — 3D-модель, пустые — тёмная плашка
@@ -1118,7 +1443,7 @@ stock Inv_ShowUI(playerid, keepItem = -1)
 		PlayerTextDrawTextSize(playerid, td, INV_UI_CELL, INV_UI_CELL);
 		if (i < n)
 		{
-			PlayerTextDrawBackgroundColour(playerid, td, i == gInvUiSel[playerid] ? INV_UI_COL_CELL_SEL : INV_UI_COL_CELL);
+			PlayerTextDrawBackgroundColour(playerid, td, i == gInvUiSel[playerid] ? INV_UI_COL_CELL_SEL : InvUi_CellColour(playerid, i));
 			PlayerTextDrawSetPreviewModel(playerid, td, gInvUiModel[playerid][i]);
 			if (gInvUiItem[playerid][i] >= INV_OUTFIT) PlayerTextDrawSetPreviewRot(playerid, td, 0.0, 0.0, 0.0, 1.0);
 			else PlayerTextDrawSetPreviewRot(playerid, td, -15.0, 0.0, -30.0, 1.0);
@@ -1137,23 +1462,23 @@ stock Inv_ShowUI(playerid, keepItem = -1)
 		{
 			if (gInvUiItem[playerid][i] == INV_NONE) format(buf, sizeof buf, "%dL", gInvUiAmount[playerid][i]);
 			else format(buf, sizeof buf, "x%d", gInvUiAmount[playerid][i]);
-			gInvUiCount[playerid][i] = InvUi_Text(playerid, x + INV_UI_CELL - 2.0, y + INV_UI_CELL - 11.0, buf, TEXT_DRAW_FONT_1, 0.20, 0.9, 0xFFFFFFFF, TEXT_DRAW_ALIGN_RIGHT);
+			gInvUiCount[playerid][i] = InvUi_Text(playerid, x + INV_UI_CELL - 2.0, y + INV_UI_CELL - 11.0, buf, TEXT_DRAW_FONT_2, 0.17, 0.8, 0xFFFFFFFF, TEXT_DRAW_ALIGN_RIGHT);
 		}
 	}
 
 	// Карточка вещи справа
 	new Float:cx = (INV_UI_INFO_X + INV_UI_INFO_R) / 2.0;
-	gInvUiTD[playerid][IUI_INFO_BG] = InvUi_Box(playerid, INV_UI_INFO_X, INV_UI_GRID_Y, INV_UI_INFO_R, 20.1, INV_UI_COL_HEAD);
-	td = CreatePlayerTextDraw(playerid, INV_UI_INFO_X + 15.0, INV_UI_GRID_Y + 2.0, "_");
+	gInvUiTD[playerid][IUI_INFO_BG] = InvUi_Box(playerid, INV_UI_INFO_X, INV_UI_GRID_Y, INV_UI_INFO_R, 19.6, INV_UI_COL_HEAD);
+	td = CreatePlayerTextDraw(playerid, cx - 35.0, INV_UI_GRID_Y + 2.0, "_");
 	PlayerTextDrawFont(playerid, td, TEXT_DRAW_FONT_MODEL_PREVIEW);
 	PlayerTextDrawUseBox(playerid, td, true);
 	PlayerTextDrawBoxColour(playerid, td, 0x00000000);
 	PlayerTextDrawBackgroundColour(playerid, td, 0x00000000);
-	PlayerTextDrawTextSize(playerid, td, 70.0, 64.0);
+	PlayerTextDrawTextSize(playerid, td, 70.0, 62.0);
 	PlayerTextDrawSetPreviewModel(playerid, td, 19300);
 	gInvUiTD[playerid][IUI_PREVIEW] = td;
 	gInvUiTD[playerid][IUI_NAME]  = InvUi_Text(playerid, cx, INV_UI_GRID_Y + 70.0, "_", TEXT_DRAW_FONT_2, 0.20, 1.0, 0xFFFFFFFF, TEXT_DRAW_ALIGN_CENTER);
-	gInvUiTD[playerid][IUI_COUNT] = InvUi_Text(playerid, cx, INV_UI_GRID_Y + 82.0, "_", TEXT_DRAW_FONT_1, 0.20, 0.9, INV_UI_COL_ACCENT, TEXT_DRAW_ALIGN_CENTER);
+	gInvUiTD[playerid][IUI_COUNT] = InvUi_Text(playerid, cx, INV_UI_GRID_Y + 82.0, "_", TEXT_DRAW_FONT_2, 0.17, 0.8, INV_UI_COL_ACCENT, TEXT_DRAW_ALIGN_CENTER);
 	gInvUiTD[playerid][IUI_HINT]  = InvUi_Text(playerid, cx, INV_UI_GRID_Y + 93.0, "_", TEXT_DRAW_FONT_1, 0.17, 0.8, INV_UI_COL_LABEL, TEXT_DRAW_ALIGN_CENTER);
 	PlayerTextDrawTextSize(playerid, gInvUiTD[playerid][IUI_HINT], 0.0, INV_UI_INFO_R - INV_UI_INFO_X - 6.0);    // перенос строк по ширине карточки
 	gInvUiTD[playerid][IUI_BTN_USE]  = InvUi_Button(playerid, cx, INV_UI_GRID_Y + 116.0, "USE");

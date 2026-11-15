@@ -10,9 +10,9 @@ ACCOUNTS = [
     # name, admin, faction, frank, level
     ("Pal_Layach", 5, 0, 0, 12),
     ("Ivan_Petrov", 0, 0, 0, 3),
-    ("John_Smith", 0, 1, 6, 9),
+    ("John_Smith", 0, 1, 10, 9),
     ("Maria_Lopez", 2, 2, 3, 7),
-    ("Carl_Johnson", 0, 3, 6, 15),
+    ("Carl_Johnson", 0, 3, 10, 15),
     ("Tony_Ballas", 0, 4, 2, 4),
     ("Cheater_Boy", 0, 0, 0, 1),
 ]
@@ -31,6 +31,24 @@ def make_rp_db(path, prefix=""):
                 " wanted INTEGER DEFAULT 0, jail INTEGER DEFAULT 0, bank INTEGER DEFAULT 0, phone INTEGER DEFAULT 0)")
     con.execute("CREATE TABLE bans (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE,"
                 " reason TEXT, admin TEXT, date INTEGER DEFAULT 0)")
+    con.execute("CREATE TABLE houses (id INTEGER PRIMARY KEY AUTOINCREMENT, owner INTEGER DEFAULT 0, price INTEGER NOT NULL,"
+                " x REAL, y REAL, z REAL, ix REAL, iy REAL, iz REAL, interior INTEGER, locked INTEGER DEFAULT 0,"
+                " oint INTEGER DEFAULT 0, oworld INTEGER DEFAULT 0)")
+    con.execute("CREATE TABLE businesses (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, type INTEGER,"
+                " owner INTEGER DEFAULT 0, price INTEGER, x REAL, y REAL, z REAL, till INTEGER DEFAULT 0)")
+    con.execute("CREATE TABLE turfs (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, minx REAL, miny REAL,"
+                " maxx REAL, maxy REAL, owner INTEGER DEFAULT 0)")
+    con.executemany("INSERT INTO houses (owner, price, x, y, z, oint, oworld) VALUES (?, ?, ?, ?, 13, ?, 0)", [
+        (5, 120000, 2495.3, -1691.1, 0), (0, 85000, 2459.4, -1690.9, 0), (2, 150000, 2065.1, -1703.4, 0),
+        (0, 60000, 1940.2, -1974.5, 0), (0, 250000, 1497.0, -687.9, 0), (1, 90000, -2110.0, 970.0, 0),
+        (0, 70000, 2017.8, 2732.4, 0), (0, 50000, 0, 0, 3)])
+    con.executemany("INSERT INTO businesses (name, type, owner, price, x, y, z) VALUES (?, ?, ?, ?, ?, ?, 13)", [
+        ("24/7 Idlewood", 1, 0, 200000, 1833.8, -1842.6), ("Ten Green Bottles", 2, 6, 300000, 2310.1, -1643.5),
+        ("Binco Ganton", 3, 0, 250000, 2244.4, -1665.5), ("Ammu-Nation", 4, 3, 500000, 1368.4, -1279.8),
+        ("24/7 Downtown SF", 1, 0, 220000, -1562.0, 657.0)])
+    con.executemany("INSERT INTO turfs (name, minx, miny, maxx, maxy, owner) VALUES (?, ?, ?, ?, ?, ?)", [
+        ("Grove Street", 2380, -1730, 2540, -1620, 3), ("Ballas Jefferson", 2140, -1340, 2300, -1180, 4),
+        ("El Corona", 1740, -2160, 1900, -2000, 5), ("Пустырь", 2600, -1400, 2760, -1240, 0)])
     now = int(time.time())
     for i, (name, admin, faction, frank, level) in enumerate(ACCOUNTS):
         salt = secrets.token_hex(8)

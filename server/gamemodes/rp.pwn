@@ -52,6 +52,7 @@
 #include "bastion/platform.inc"   // ПК или телефон: IsPlayerMobile[playerid]
 #include "bastion/anticheat.inc"  // античит; подменяет SetPlayerPos, GivePlayerWeapon и др., поэтому стоит до модулей
 #include "bastion/database.inc"
+#include "bastion/social.inc"     // боты ВК и Telegram: /bot, уведомления (папка bots/)
 #include "bastion/markers.inc"    // все маркеры (значки и надписи) в одном месте
 #include "bastion/spawns.inc"     // точки появления игроков (вокзалы): /addspawn
 #include "bastion/referral.inc"   // правила для новичков и «кто пригласил»
@@ -72,6 +73,7 @@
 #include "bastion/doors.inc"       // входы в здания: LSPD
 #include "bastion/places.inc"     // точки новых систем, которые ставит админ: /place
 #include "bastion/factions.inc"   // после admin.inc: использует Admin_Check
+#include "bastion/fmanage.inc"    // «Управление» фракцией: права рангов и личные, карточки, журнал
 #include "bastion/law.inc"        // метка задержания, дверь участка, взятка
 #include "bastion/turfs.inc"
 #include "bastion/bank.inc"
@@ -83,7 +85,9 @@
 #include "bastion/debts.inc"      // долги штату: налоги и штрафы отдельными счетами
 #include "bastion/economy.inc"
 #include "bastion/families.inc"   // семьи: организации игроков
+#include "bastion/orgs.inc"       // /orgs — панель владельца по всем организациям, спец-выговоры
 #include "bastion/wounded.inc"    // ранение вместо смерти, /revive, /aid
+#include "bastion/admin_give.inc" // админ: /givegun /aheal /setarmour /disarm /healall /takemoney
 #include "bastion/robbery.inc"    // /rob — ограбление магазинов
 #include "bastion/drugs.inc"      // наркотики: кусты, торговец, эффекты, ломка
 #include "bastion/worklife.inc"   // работы: рыбак, фермер, инкассатор, мусорщик
@@ -116,6 +120,7 @@ public OnGameModeInit()
 {
 	SetGameModeText(MODE_TEXT);
 	DB_Init();
+	Factions_RunMoves();  // перенос фракций на другой номер (один раз, до загрузки всего)
 	Markers_Init();       // таблица markers: правки маркеров из игры
 	Admin_Init();         // таблицы admin_log, reports, сроки банов
 
@@ -161,6 +166,7 @@ public OnGameModeInit()
 	Donate_Init();
 	Rental_Init();         // точки проката мопедов (rental.inc)
 	AC_Init();            // античит (anticheat.inc)
+	Social_Init();        // таблицы для ботов ВК/Telegram (social.inc)
 	Backup_Init();        // копия базы, если сегодняшней ещё нет
 
 	new hour;
@@ -195,6 +201,7 @@ public OnPlayerConnect(playerid)
 	Law_OnConnect(playerid);
 	Debts_OnConnect(playerid);
 	Families_OnConnect(playerid);
+	Markers_OnConnect(playerid);        // свои надписи фракционных точек
 	Dev_OnConnect(playerid);            // убранные здания GTA (dev.inc)
 	Tex_OnConnect(playerid);
 	Gps_OnConnect(playerid);            // значки на карте, сброс GPS
@@ -217,6 +224,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Platform_OnDisconnect(playerid);
 	UI_OnDisconnect(playerid);
 	Supply_ResetPlayer(playerid);
+	FPerm_OnDisconnect(playerid);
 	Admin_OnDisconnect(playerid);
 	Job_Stop(playerid);
 	Jobs_OnDisconnect(playerid);
@@ -373,6 +381,7 @@ public OnPlayerText(playerid, text[])
 
 public OnPlayerCommandText(playerid, cmdtext[])
 {
+	if (!strcmp(cmdtext, "/__bui")) return UI_OnPcHello(playerid);   // ПК-плагин HTML-окон (ui.inc)
 	return Commands_Process(playerid, cmdtext);
 }
 
@@ -413,6 +422,9 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (FColor_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (BM_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Factory_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Families_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (FrMenu_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Orgs_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Factions_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Drugs_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Casino_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;

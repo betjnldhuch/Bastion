@@ -128,7 +128,7 @@ stock Gates_TryOpen(playerid)
 	new g = Gate_GetNearby(playerid);
 	if (g == -1) return 0;
 	new f = Gate[g][gtFaction];
-	if (f != FACTION_NONE && Player[playerid][pFaction] != f && Player[playerid][pAdmin] < 3)
+	if (f != FACTION_NONE && (Player[playerid][pFaction] != f || !FPerm_Has(playerid, FP_DOORS)) && Player[playerid][pAdmin] < 3)
 	{
 		SendClientMessage(playerid, COLOR_GREY, "Этот проезд открывается только для фракции «%s».", Faction_GetName(f));
 		return 1;

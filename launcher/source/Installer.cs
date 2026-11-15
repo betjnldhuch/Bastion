@@ -1,6 +1,7 @@
 // =====================================================================
 //  Установщик игры: скачивает ZIP с GTA SA + SA-MP, сверяет MD5,
 //  распаковывает во временную папку и только потом переносит в папку игры.
+//  Загрузка докачивается после обрыва (повторы + HTTP Range между запусками).
 //  Корень игры в архиве — самая верхняя папка, где лежит gta_sa.exe.
 // =====================================================================
 using System;
@@ -9,6 +10,7 @@ using System.IO.Compression;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 
 namespace BastionLauncher
 {
@@ -18,50 +20,156 @@ namespace BastionLauncher
         const long MaxExtracted = 34359738368L; // 32 ГБ
 
         // Ключ уходит только по https и только на хост официального архива
-        static bool SendsKey(string url)
+        // (любого из его зеркал, кроме публичных Яндекс Диска и GitHub)
+        public static bool SendsKey(string url)
         {
             if (Secrets.DownloadKey.Length == 0 || Secrets.GameUrl.Length == 0) return false;
             try
             {
-                Uri target = new Uri(url), official = new Uri(Secrets.GameUrl);
-                return target.Scheme == "https" && official.Scheme == "https" &&
-                       string.Equals(target.Host, official.Host, StringComparison.OrdinalIgnoreCase);
+                Uri target = new Uri(url);
+                if (target.Scheme != "https" || IsPublicHost(target.Host)) return false;
+                foreach (string src in Secrets.GameUrl.Split(Separators, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    Uri official;
+                    if (!Uri.TryCreate(src, UriKind.Absolute, out official) || official.Scheme != "https") continue;
+                    if (string.Equals(target.Host, official.Host, StringComparison.OrdinalIgnoreCase)) return true;
+                }
+                return false;
             }
             catch (Exception) { return false; }
+        }
+
+        static readonly char[] Separators = { ';', ' ', '|', '\n', '\r', '\t' };
+        static readonly char[] PartSeparators = { ' ', '|', '\n', '\r', '\t' };
+
+        // Яндекс Диск и GitHub: туда ключ лаунчера не отправляется
+        public static bool IsPublicHost(string host)
+        {
+            string h = host.ToLowerInvariant();
+            return h == "yadi.sk" || h.StartsWith("disk.") || h == "github.com" || h.EndsWith(".github.com") ||
+                   h.EndsWith(".githubusercontent.com");
+        }
+
+        // Источники архива: зеркала через «;», в каждом — части через пробел или |.
+        // У всех зеркал должно быть одинаковое число частей (одни и те же файлы).
+        public static string[][] ParseSources(string url)
+        {
+            string[] mirrors = url.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            System.Collections.Generic.List<string[]> list = new System.Collections.Generic.List<string[]>();
+            foreach (string m in mirrors)
+            {
+                string[] parts = m.Split(PartSeparators, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length == 0) continue;
+                if (parts.Length > 64) throw new Exception("Слишком много частей архива (больше 64).");
+                foreach (string p in parts)
+                    if (!p.StartsWith("http://") && !p.StartsWith("https://") && !p.StartsWith("b2://") && !p.StartsWith("gh://"))
+                        throw new Exception("Нужна прямая ссылка на ZIP (http:// или https://).");
+                if (list.Count > 0 && parts.Length != list[0].Length)
+                    throw new Exception("У зеркал архива разное число частей: на всех зеркалах должны лежать одни и те же файлы.");
+                list.Add(parts);
+            }
+            if (list.Count == 0) throw new Exception("Нужна прямая ссылка на ZIP (http:// или https://).");
+            if (list.Count > 16) throw new Exception("Слишком много зеркал архива (больше 16).");
+            return list.ToArray();
+        }
+
+        // Пути длиннее 260 знаков (глубокие папки модов в архиве): префикс \\?\ снимает
+        // ограничение Windows. Короткие пути не трогаем. Работает вместе с LongPaths.Enable().
+        static string L(string p)
+        {
+            if (p.Length < 240 || p.StartsWith(@"\\?\")) return p;
+            if (p.StartsWith(@"\\")) return @"\\?\UNC\" + p.Substring(2);
+            return @"\\?\" + p;
+        }
+
+        static void DeleteTree(string dir)
+        {
+            if (Directory.Exists(L(dir))) Directory.Delete(L(dir), true);
+        }
+
+        // Скачанное лежит рядом с папкой игры: «<папка>.download.zip» (или части
+        // «.download.partN») и «.download.info» с адресом и MD5. Если загрузка оборвалась
+        // или лаунчер закрыли, эти файлы остаются, и следующая установка в ту же папку
+        // докачивает с места обрыва (HTTP Range).
+        public static string ArchivePath(string dest) { return Path.GetFullPath(dest) + ".download.zip"; }
+
+        // Есть ли недокачанный архив для этой папки (чтобы предложить продолжить)
+        public static bool HasPartial(string dest)
+        {
+            string a = ArchivePath(dest);
+            if (!File.Exists(InfoPath(a))) return false;
+            if (File.Exists(a)) return true;
+            for (int i = 0; i < 64; i++) if (File.Exists(PartPath(a, i))) return true;
+            return false;
+        }
+
+        static string InfoPath(string archive) { return archive.Substring(0, archive.Length - 4) + ".info"; }
+        static string PartPath(string archive, int i) { return archive.Substring(0, archive.Length - 4) + ".part" + i; }
+
+        static void DeletePartial(string archive)
+        {
+            try { if (File.Exists(archive)) File.Delete(archive); } catch (Exception) { }
+            try { if (File.Exists(InfoPath(archive))) File.Delete(InfoPath(archive)); } catch (Exception) { }
+            for (int i = 0; i < 64; i++)
+                try { if (File.Exists(PartPath(archive, i))) File.Delete(PartPath(archive, i)); } catch (Exception) { }
         }
 
         // dest — папка, куда ляжет игра (её не должно быть или она пустая).
         // progress вызывается из рабочего потока.
         // url может содержать несколько ссылок через пробел или | — это части одного ZIP
-        // (например, нарезка по 900 МБ для Яндекс Диска). Они скачиваются по порядку и
-        // склеиваются, MD5 сверяется у склеенного архива.
+        // (например, нарезка по 900 МБ). Они скачиваются по порядку и склеиваются,
+        // MD5 сверяется у склеенного архива. Через «;» — зеркала: если источник не
+        // отдаёт файл (лимит Яндекс Диска, 404, нет связи), лаунчер переходит к
+        // следующему и докачивает с того же места.
         public static void Install(string url, string md5, string dest, Action<string> progress)
         {
-            string[] parts = url.Split(new char[] { ' ', '|', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length == 0) throw new Exception("Нужна прямая ссылка на ZIP (http:// или https://).");
-            foreach (string p in parts)
-                if (!p.StartsWith("http://") && !p.StartsWith("https://") && !p.StartsWith("b2://"))
-                    throw new Exception("Нужна прямая ссылка на ZIP (http:// или https://).");
+            string[][] sources = ParseSources(url);
+            int partCount = sources[0].Length;
+            md5 = md5 == null ? "" : md5.Trim().ToLowerInvariant();
             dest = Path.GetFullPath(dest);
             if (Directory.Exists(dest) && Directory.GetFileSystemEntries(dest).Length > 0)
                 throw new Exception("Папка " + dest + " не пустая. Выбери пустую папку для игры.");
             string parent = Path.GetDirectoryName(dest);
             Directory.CreateDirectory(parent);
-            string archive = dest + ".download.zip";
-            string staging = dest + ".installing";
+            string archive = ArchivePath(dest);
+            string staging = dest + ".tmp"; // короче — меньше шансов упереться в 260 знаков
+
+            // Недокачанное от другого архива (сменился MD5, а без MD5 — ссылка) — начинаем
+            // заново. Новые зеркала с тем же MD5 скачанное не сбрасывают.
+            string info = md5.Length > 0 ? "md5=" + md5 + "\r\nparts=" + partCount + "\r\n"
+                                         : "url=" + url.Trim() + "\r\nmd5=\r\n";
+            string infoFile = InfoPath(archive);
+            string old = null;
+            try { if (File.Exists(infoFile)) old = File.ReadAllText(infoFile); } catch (Exception) { }
+            if (old != info)
+            {
+                DeletePartial(archive);
+                File.WriteAllText(infoFile, info);
+            }
+
+            bool done = false;
             try
             {
-                if (parts.Length == 1) Download(parts[0], archive, progress);
-                else DownloadParts(parts, archive, progress);
-                if (md5 != null && md5.Trim().Length > 0)
+                DownloadParts(sources, archive, progress);
+                if (md5.Length > 0)
                 {
                     progress("Проверка архива (MD5)…");
-                    if (!string.Equals(Md5(archive), md5.Trim(), StringComparison.OrdinalIgnoreCase))
-                        throw new Exception("MD5 не совпадает: архив повреждён или это другая версия.");
+                    if (Md5(archive, progress) != md5)
+                    {
+                        DeletePartial(archive); // битый архив докачивать бессмысленно
+                        throw new Exception("MD5 не совпадает: архив повреждён или это другая версия. " +
+                                            "Скачанное удалено, нажми УСТАНОВИТЬ ещё раз.");
+                    }
                 }
-                if (Directory.Exists(staging)) Directory.Delete(staging, true);
+                DeleteTree(staging);
+                try { DeleteTree(dest + ".installing"); } catch (Exception) { } // от версий до 2.4.1
                 Directory.CreateDirectory(staging);
-                Extract(archive, staging, progress);
+                try { Extract(archive, staging, progress); }
+                catch (InvalidDataException)
+                {
+                    DeletePartial(archive);
+                    throw new Exception("Архив повреждён (не открывается как ZIP). Скачанное удалено, нажми УСТАНОВИТЬ ещё раз.");
+                }
 
                 progress("Проверка установки…");
                 if (!File.Exists(Path.Combine(staging, "gta_sa.exe")))
@@ -71,12 +179,40 @@ namespace BastionLauncher
 
                 if (Directory.Exists(dest)) Directory.Delete(dest, false);
                 Directory.Move(staging, dest);
+                done = true;
             }
             finally
             {
-                try { if (File.Exists(archive)) File.Delete(archive); } catch (Exception) { }
-                try { if (Directory.Exists(staging)) Directory.Delete(staging, true); } catch (Exception) { }
+                // Архив удаляется только после успешной установки — иначе остаётся для докачки
+                if (done) DeletePartial(archive);
+                try { DeleteTree(staging); } catch (Exception) { }
             }
+        }
+
+        // Обновление уже установленной игры целиком, как на телефоне: новый архив ставится
+        // рядом в «<папка>.new», потом папки меняются местами, старая удаляется.
+        public static void Reinstall(string url, string md5, string dest, Action<string> progress)
+        {
+            dest = Path.GetFullPath(dest.TrimEnd('\\', '/'));
+            string fresh = dest + ".new", old = dest + ".old";
+            // Прошлый раз новая игра уже распаковалась, но не успела встать на место
+            bool ready = File.Exists(Path.Combine(fresh, "gta_sa.exe")) && !HasPartial(fresh);
+            if (!ready)
+            {
+                if (Directory.Exists(fresh) && !HasPartial(fresh)) DeleteTree(fresh);
+                Install(url, md5, fresh, progress);
+            }
+            progress("Замена файлов игры…");
+            DeleteTree(old);
+            try { Directory.Move(dest, old); }
+            catch (IOException)
+            {
+                throw new Exception("Не получилось заменить папку игры: закрой игру и все окна этой папки " +
+                                    "и нажми ещё раз. Новая версия уже скачана, повторно качать не придётся.");
+            }
+            Directory.Move(fresh, dest);
+            progress("Удаление старой версии…");
+            try { DeleteTree(old); } catch (Exception) { }
         }
 
         // b2://бакет/путь → ссылка на файл в закрытом бакете Backblaze B2 и временный
@@ -122,6 +258,66 @@ namespace BastionLauncher
                 path.Append(Uri.EscapeDataString(part));
             }
             return new string[] { downloadUrl + "/file/" + Uri.EscapeDataString(bucket) + "/" + path, token };
+        }
+
+        // gh://владелец/репо/тег/файл → временная прямая ссылка на файл релиза в
+        // приватном репозитории GitHub. Токен только на чтение (Contents: Read) уходит
+        // лишь на api.github.com, сама ссылка на файл его не требует.
+        static string ResolveGitHub(string address)
+        {
+            if (Secrets.GitHubToken.Length == 0)
+                throw new Exception("В этой сборке нет токена для приватного релиза GitHub.");
+            string[] p = address.Substring("gh://".Length).Split('/');
+            if (p.Length != 4 || p[0].Length == 0 || p[1].Length == 0 || p[2].Length == 0 || p[3].Length == 0)
+                throw new Exception("Ссылка GitHub должна быть вида gh://владелец/репо/тег/файл");
+            string api = "https://api.github.com/repos/" + Uri.EscapeDataString(p[0]) + "/" + Uri.EscapeDataString(p[1]);
+            string json;
+            try { json = GitHubGet(api + "/releases/tags/" + Uri.EscapeDataString(p[2]), "application/vnd.github+json", true).Body; }
+            catch (WebException ex) { throw GitHubError(ex, "релиз " + p[2]); }
+            System.Text.RegularExpressions.Match m = System.Text.RegularExpressions.Regex.Match(json,
+                "\"url\"\\s*:\\s*\"(https://api\\.github\\.com/repos/[^\"]+/releases/assets/\\d+)\"[^{}]*?\"name\"\\s*:\\s*\"" +
+                System.Text.RegularExpressions.Regex.Escape(p[3]) + "\"");
+            if (!m.Success) throw new Exception("В релизе " + p[2] + " на GitHub нет файла " + p[3] + ".");
+            GitHubResponse r;
+            try { r = GitHubGet(m.Groups[1].Value, "application/octet-stream", false); }
+            catch (WebException ex) { throw GitHubError(ex, "файл " + p[3]); }
+            if (r.Location == null || !r.Location.StartsWith("https://"))
+                throw new Exception("GitHub не выдал ссылку на файл " + p[3] + ".");
+            return r.Location;
+        }
+
+        class GitHubResponse { public string Body; public string Location; }
+
+        static GitHubResponse GitHubGet(string url, string accept, bool readBody)
+        {
+            HttpWebRequest rq = (HttpWebRequest)WebRequest.Create(url);
+            rq.UserAgent = "Bastion-Launcher-PC";
+            rq.Timeout = 30000;
+            rq.Accept = accept;
+            rq.AllowAutoRedirect = false; // токен не должен уйти дальше api.github.com
+            rq.Headers["Authorization"] = "Bearer " + Secrets.GitHubToken;
+            rq.Headers["X-GitHub-Api-Version"] = "2022-11-28";
+            using (HttpWebResponse rs = (HttpWebResponse)rq.GetResponse())
+            {
+                GitHubResponse r = new GitHubResponse();
+                r.Location = rs.Headers["Location"];
+                if (readBody)
+                    using (StreamReader sr = new StreamReader(rs.GetResponseStream(), Encoding.UTF8)) r.Body = sr.ReadToEnd();
+                return r;
+            }
+        }
+
+        static Exception GitHubError(WebException ex, string what)
+        {
+            HttpWebResponse er = ex.Response as HttpWebResponse;
+            if (er == null) return new RetryException("Нет связи с GitHub: " + ex.Message + ".");
+            int code = (int)er.StatusCode;
+            er.Close();
+            if (code == 401) return new Exception("GitHub не принял токен лаунчера (401): токен удалён или истёк.");
+            if (code == 404) return new Exception("GitHub: " + what + " не найден (404) или у токена нет доступа к репозиторию.");
+            if (code == 403 || code == 429) return new Exception("GitHub временно ограничил запросы (" + code + "). Попробуй позже.");
+            if (code >= 500) return new RetryException("GitHub ответил HTTP " + code + ".");
+            return new Exception("GitHub ответил HTTP " + code + ".");
         }
 
         // Строковое поле верхнего уровня из JSON (без экранированных кавычек внутри)
@@ -172,37 +368,105 @@ namespace BastionLauncher
             return href;
         }
 
-        static void DownloadParts(string[] parts, string target, Action<string> progress)
+        // Части качаются каждая в свой файл (.partN) с докачкой и склеиваются в конце.
+        // Каждая часть берётся с текущего зеркала, при отказе — со следующего.
+        static void DownloadParts(string[][] sources, string target, Action<string> progress)
         {
-            string piece = target + ".piece";
-            try
+            int count = sources[0].Length, mirror = 0;
+            if (count == 1)
             {
-                using (FileStream output = new FileStream(target, FileMode.Create, FileAccess.Write))
+                DownloadMirrored(sources, 0, target, progress, ref mirror);
+                return;
+            }
+            for (int i = 0; i < count; i++)
+            {
+                string prefix = "Часть " + (i + 1) + " из " + count + ". ";
+                DownloadMirrored(sources, i, PartPath(target, i), delegate (string msg) { progress(prefix + msg); }, ref mirror);
+            }
+            string[] parts = sources[0];
+            progress("Склейка частей архива…");
+            using (FileStream output = new FileStream(target, FileMode.Create, FileAccess.Write))
+            {
+                for (int i = 0; i < parts.Length; i++)
                 {
-                    for (int i = 0; i < parts.Length; i++)
-                    {
-                        string prefix = "Часть " + (i + 1) + " из " + parts.Length + ". ";
-                        Download(parts[i], piece, delegate (string msg) { progress(prefix + msg); });
-                        using (FileStream input = File.OpenRead(piece)) input.CopyTo(output, 1 << 20);
-                        File.Delete(piece);
-                        if (output.Length > MaxArchive) throw new Exception("Архив больше 16 ГБ.");
-                    }
+                    using (FileStream input = File.OpenRead(PartPath(target, i))) input.CopyTo(output, 1 << 20);
+                    if (output.Length > MaxArchive) throw new Exception("Архив больше 16 ГБ.");
                 }
             }
-            finally
+            for (int i = 0; i < parts.Length; i++)
+                try { File.Delete(PartPath(target, i)); } catch (Exception) { }
+        }
+
+        // Обрыв связи, таймаут, 5xx — можно повторить, скачанное не теряется
+        class RetryException : Exception
+        {
+            public RetryException(string msg) : base(msg) { }
+        }
+
+        const int Attempts = 6;
+        const int MirrorAttempts = 2; // на зеркале, после которого есть ещё зеркала
+
+        // Часть index с зеркала mirror; не вышло — следующее зеркало (по кругу, каждое
+        // один раз). Удачное зеркало запоминается для следующих частей.
+        static void DownloadMirrored(string[][] sources, int index, string target, Action<string> progress, ref int mirror)
+        {
+            int n = sources.Length;
+            for (int k = 0; k < n; k++)
             {
-                try { if (File.Exists(piece)) File.Delete(piece); } catch (Exception) { }
+                int m = (mirror + k) % n;
+                bool last = k == n - 1;
+                Action<string> report = n == 1 ? progress
+                    : delegate (string msg) { progress("Зеркало " + (m + 1) + " из " + n + ". " + msg); };
+                try
+                {
+                    Download(sources[m][index], target, report, last ? Attempts : MirrorAttempts);
+                    mirror = m;
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    if (last) throw;
+                    progress("Зеркало " + (m + 1) + " не отдаёт файл (" + ex.Message.TrimEnd('.') + "), переключаюсь на зеркало " +
+                             ((m + 1) % n + 1) + "…");
+                    Thread.Sleep(2000);
+                }
             }
         }
 
-        static void Download(string url, string target, Action<string> progress)
+        internal static void Download(string url, string target, Action<string> progress, int attempts)
+        {
+            for (int attempt = 1; ; attempt++)
+            {
+                try { DownloadOnce(url, target, progress); return; }
+                catch (RetryException ex)
+                {
+                    if (attempt >= attempts)
+                        throw new Exception(ex.Message + " Скачанное сохранено: нажми УСТАНОВИТЬ ещё раз " +
+                                            "и выбери ту же папку — загрузка продолжится с места обрыва.");
+                    int wait = Math.Min(30, attempt * 5);
+                    for (int sec = wait; sec > 0; sec--)
+                    {
+                        progress("Связь оборвалась, повтор через " + sec + " с (попытка " + (attempt + 1) + " из " + attempts + ")…");
+                        Thread.Sleep(1000);
+                    }
+                }
+            }
+        }
+
+        static void DownloadOnce(string url, string target, Action<string> progress)
         {
             progress("Подключение к серверу…");
             ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; // TLS 1.2
+            // Временные ссылки Яндекс Диска и B2 получаем заново на каждую попытку
             if (IsYandexDisk(url))
             {
                 progress("Получение ссылки Яндекс Диска…");
                 url = ResolveYandexDisk(url);
+            }
+            if (url.StartsWith("gh://"))
+            {
+                progress("Получение ссылки GitHub…");
+                url = ResolveGitHub(url);
             }
             string b2Token = null;
             if (url.StartsWith("b2://"))
@@ -212,10 +476,12 @@ namespace BastionLauncher
                 url = r[0];
                 b2Token = r[1];
             }
+            long have = File.Exists(target) ? new FileInfo(target).Length : 0;
             HttpWebRequest rq = (HttpWebRequest)WebRequest.Create(url);
             rq.UserAgent = "Bastion-Launcher-PC";
             rq.Timeout = 30000;
             rq.ReadWriteTimeout = 60000;
+            if (have > 0) rq.AddRange(have);
             bool keyed = b2Token == null && SendsKey(url);
             if (b2Token != null) rq.Headers["Authorization"] = b2Token;
             else if (keyed) rq.Headers["X-Bastion-Key"] = Secrets.DownloadKey;
@@ -224,50 +490,116 @@ namespace BastionLauncher
             catch (WebException ex)
             {
                 HttpWebResponse er = ex.Response as HttpWebResponse;
-                if (er != null && b2Token != null && (int)er.StatusCode == 404)
+                if (er == null) throw new RetryException("Нет связи с сервером загрузки: " + ex.Message + ".");
+                int code = (int)er.StatusCode;
+                er.Close();
+                if (code == 416 && have > 0) return; // уже скачан целиком
+                if (code >= 500 || code == 429) throw new RetryException("Сервер загрузки ответил HTTP " + code + ".");
+                if (b2Token != null && code == 404)
                     throw new Exception("В хранилище B2 нет файла архива (404). Проверь имя бакета и файла.");
-                if (er != null && b2Token != null && ((int)er.StatusCode == 401 || (int)er.StatusCode == 403))
-                    throw new Exception("Хранилище B2 не отдало архив (" + (int)er.StatusCode + "): у ключа нет доступа к этому бакету.");
-                if (er != null && (int)er.StatusCode == 404 && keyed)
+                if (b2Token != null && (code == 401 || code == 403))
+                    throw new Exception("Хранилище B2 не отдало архив (" + code + "): у ключа нет доступа к этому бакету.");
+                if (code == 404 && keyed)
                     throw new Exception("Сервер не отдал архив (404): файла нет в хранилище или ключ лаунчера устарел.");
-                if (er != null) throw new Exception("Ошибка загрузки архива: HTTP " + (int)er.StatusCode);
-                throw new Exception("Нет связи с сервером загрузки: " + ex.Message);
+                throw new Exception("Ошибка загрузки архива: HTTP " + code);
             }
             using (rs)
-            using (Stream input = rs.GetResponseStream())
-            using (FileStream output = new FileStream(target, FileMode.Create, FileAccess.Write))
             {
-                long expected = rs.ContentLength;
+                bool resume = have > 0 && rs.StatusCode == HttpStatusCode.PartialContent;
+                if (!resume) have = 0; // сервер не умеет докачку — с начала
+                long expected = rs.ContentLength >= 0 ? have + rs.ContentLength : -1;
                 if (expected > MaxArchive) throw new Exception("Архив больше 16 ГБ.");
-                byte[] buf = new byte[1 << 16];
-                long total = 0;
-                int n, last = -1;
-                while ((n = input.Read(buf, 0, buf.Length)) > 0)
+                CheckSpace(target, expected - have, expected);
+                try
                 {
-                    total += n;
-                    if (total > MaxArchive) throw new Exception("Архив больше 16 ГБ.");
-                    output.Write(buf, 0, n);
-                    int mb = (int)(total / 1048576);
-                    int mark = expected > 0 ? (int)(total * 100 / expected) : mb;
-                    if (mark != last)
+                    using (Stream input = rs.GetResponseStream())
+                    using (FileStream output = new FileStream(target, resume ? FileMode.Append : FileMode.Create, FileAccess.Write))
                     {
-                        last = mark;
-                        progress(expected > 0
-                            ? "Скачивание: " + mark + "%  (" + mb + " / " + (expected / 1048576) + " МБ)"
-                            : "Скачано: " + mb + " МБ");
+                        byte[] buf = new byte[1 << 16];
+                        long total = have, mark = have;
+                        int n;
+                        DateTime start = DateTime.UtcNow, shown = DateTime.MinValue;
+                        double speed = 0;
+                        if (resume) progress("Докачка с " + (have / 1048576) + " МБ…");
+                        while ((n = input.Read(buf, 0, buf.Length)) > 0)
+                        {
+                            total += n;
+                            if (total > MaxArchive) throw new Exception("Архив больше 16 ГБ.");
+                            output.Write(buf, 0, n);
+                            DateTime now = DateTime.UtcNow;
+                            if ((now - shown).TotalMilliseconds >= 500)
+                            {
+                                double sec = (now - start).TotalSeconds;
+                                if (sec > 1) speed = (total - mark) / sec;
+                                shown = now;
+                                progress(Line(total, expected, speed));
+                            }
+                        }
+                        if (expected > 0 && total < expected)
+                            throw new RetryException("Загрузка оборвалась на " + (total / 1048576) + " МБ из " + (expected / 1048576) + ".");
                     }
                 }
-                if (expected > 0 && total != expected) throw new Exception("Загрузка оборвалась, попробуй ещё раз.");
+                catch (IOException ex) { throw new RetryException("Загрузка оборвалась: " + ex.Message); }
+                catch (WebException ex) { throw new RetryException("Загрузка оборвалась: " + ex.Message); }
             }
         }
 
-        static string Md5(string path)
+        // «Скачивание: 42%  (512 / 1220 МБ), 8.3 МБ/с, осталось 1 мин 25 с»
+        static string Line(long total, long expected, double speed)
+        {
+            long mb = total / 1048576;
+            string s = expected > 0
+                ? "Скачивание: " + (int)(total * 100 / expected) + "%  (" + mb + " / " + (expected / 1048576) + " МБ)"
+                : "Скачано: " + mb + " МБ";
+            if (speed > 0)
+            {
+                s += ", " + (speed / 1048576).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " МБ/с";
+                if (expected > 0)
+                {
+                    long left = (long)((expected - total) / speed);
+                    s += ", осталось " + (left >= 3600 ? (left / 3600) + " ч " + (left % 3600 / 60) + " мин"
+                                       : left >= 60 ? (left / 60) + " мин " + (left % 60) + " с" : left + " с");
+                }
+            }
+            return s;
+        }
+
+        // Место на диске: докачать остаток + распаковать (берём с запасом размер архива)
+        static void CheckSpace(string target, long remaining, long archiveSize)
+        {
+            if (archiveSize <= 0) return;
+            try
+            {
+                DriveInfo d = new DriveInfo(Path.GetPathRoot(Path.GetFullPath(target)));
+                long need = Math.Max(0, remaining) + archiveSize + archiveSize / 4;
+                if (d.AvailableFreeSpace < need)
+                    throw new Exception("Не хватает места на диске " + d.Name + ": нужно около " +
+                                        (need / 1073741824.0).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) +
+                                        " ГБ, свободно " +
+                                        (d.AvailableFreeSpace / 1073741824.0).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " ГБ.");
+            }
+            catch (ArgumentException) { }
+            catch (IOException) { }
+        }
+
+        static string Md5(string path, Action<string> progress)
         {
             using (MD5 md5 = MD5.Create())
             using (FileStream fs = File.OpenRead(path))
             {
+                byte[] buf = new byte[1 << 20];
+                long len = fs.Length, done = 0;
+                int n, last = -1;
+                while ((n = fs.Read(buf, 0, buf.Length)) > 0)
+                {
+                    md5.TransformBlock(buf, 0, n, null, 0);
+                    done += n;
+                    int pct = len > 0 ? (int)(done * 100 / len) : 100;
+                    if (pct != last) { last = pct; progress("Проверка архива (MD5): " + pct + "%"); }
+                }
+                md5.TransformFinalBlock(buf, 0, 0);
                 StringBuilder sb = new StringBuilder();
-                foreach (byte b in md5.ComputeHash(fs)) sb.Append(b.ToString("x2"));
+                foreach (byte b in md5.Hash) sb.Append(b.ToString("x2"));
                 return sb.ToString();
             }
         }
@@ -307,11 +639,11 @@ namespace BastionLauncher
                     string path = Path.GetFullPath(Path.Combine(staging, rel.Replace('/', Path.DirectorySeparatorChar)));
                     if (!path.StartsWith(root, StringComparison.OrdinalIgnoreCase))
                         throw new Exception("Небезопасный путь в архиве: " + e.FullName);
-                    if (rel.EndsWith("/")) { Directory.CreateDirectory(path); continue; }
+                    if (rel.EndsWith("/")) { Directory.CreateDirectory(L(path)); continue; }
                     size += e.Length;
                     if (size > MaxExtracted) throw new Exception("Распакованная игра больше 32 ГБ.");
-                    Directory.CreateDirectory(Path.GetDirectoryName(path));
-                    e.ExtractToFile(path, true);
+                    Directory.CreateDirectory(L(Path.GetDirectoryName(path)));
+                    e.ExtractToFile(L(path), true);
                     int pct = (int)((long)done * 100 / count);
                     if (pct != last) { last = pct; progress("Распаковка: " + pct + "%"); }
                 }

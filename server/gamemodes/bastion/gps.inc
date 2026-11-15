@@ -68,7 +68,8 @@ enum
 	MA_NAME,
 	MA_LABEL,
 	MA_RESET,
-	MA_DELETE
+	MA_DELETE,
+	MA_FACTION
 }
 
 static gMkSel[MAX_PLAYERS] = { -1, ... };           // маркер в открытом меню
@@ -122,6 +123,7 @@ stock Markers_ShowIcons(playerid)
 	{
 		if (!gMarker[m][mkUsed] || gMarker[m][mkIcon] < 0) continue;
 		if (gMarker[m][mkWorld] != 0 || gMarker[m][mkInterior] != 0) continue;
+		if (!Marker_VisibleTo(playerid, m)) continue;   // точка только для своей фракции
 		SetPlayerMapIcon(playerid, slot++, gMarker[m][mkX], gMarker[m][mkY], gMarker[m][mkZ], gMarker[m][mkIcon], 0, MAPICON_LOCAL);
 	}
 }
@@ -277,6 +279,15 @@ static Mk_ShowMenu(playerid, m)
 	Mk_AddAct(playerid, text, MA_GPS, line);
 	format(line, sizeof line, "Название: {FFFF00}%s", gMarker[m][mkName]);
 	Mk_AddAct(playerid, text, MA_NAME, line);
+	if (!Marker_IsSecret(m)) format(line, sizeof line, "Видят: {FFFF00}все");
+	else
+	{
+		new cnt = 0, one = gMarker[m][mkFaction];
+		for (new f = 1; f < MAX_FACTIONS; f++) if (f == gMarker[m][mkFaction] || Marker_AllowHas(m, f)) { cnt++; one = f; }
+		if (cnt == 1) format(line, sizeof line, "Видят: {FFFF00}только %s {AAAAAA}(секретная)", Faction_GetName(one));
+		else format(line, sizeof line, "Видят: {FFFF00}%d фракции {AAAAAA}(секретная)", cnt);
+	}
+	Mk_AddAct(playerid, text, MA_FACTION, line);
 	if (custom)
 	{
 		Mk_AddAct(playerid, text, MA_LABEL, "Надпись над маркером");
@@ -351,6 +362,7 @@ static Mk_OnAction(playerid, m, act)
 				"{FFFFFF}Текст над маркером. Новая строка — символ |\n{AAAAAA}Пусто — без надписи.",
 				"Сохранить", "Назад");
 		}
+		case MA_FACTION: Mk_ShowAllow(playerid, m);
 		case MA_RESET:
 		{
 			Mk_Reset(m);
@@ -363,6 +375,23 @@ static Mk_OnAction(playerid, m, act)
 				"{FFFFFF}Удалить «%s»?", "Удалить", "Назад", gMarker[m][mkName]);
 		}
 	}
+}
+
+// Кто видит секретную точку: номера фракций через запятую
+static Mk_ShowAllow(playerid, m)
+{
+	new cur[160], text[600];
+	Marker_AllowString(m, cur, sizeof cur);
+	if (cur[0] == '\0') strcat(cur, "все");
+	format(text, sizeof text, "{FFFFFF}Номера фракций через запятую, например: {FFFF00}1,7,50\n{FFFFFF}Остальные не увидят ни значок, ни надпись и не смогут войти.\n\nСейчас: {FFFF00}%s\n{AAAAAA}0 или пусто — видят все. Номера: /flist",
+		cur);
+	if (gMarker[m][mkFaction] != 0)
+	{
+		new add[96];
+		format(add, sizeof add, "\n{AAAAAA}Своя точка фракции %s: её участники видят её всегда.", Faction_GetName(gMarker[m][mkFaction]));
+		strcat(text, add);
+	}
+	ShowPlayerDialog(playerid, DIALOG_MK_FACTION, DIALOG_STYLE_INPUT, "Кто видит точку", "%s", "Сохранить", "Назад", text);
 }
 
 static Mk_Reset(m)
@@ -382,6 +411,7 @@ static Mk_Reset(m)
 	gMarker[m][mkName][0] = '\0';
 	strcat(gMarker[m][mkName], gMarker[m][mkDefName], 32);
 	gMarker[m][mkNameSet] = false;
+	for (new c = 0; c < MK_ALLOW_CELLS; c++) gMarker[m][mkAllow][c] = 0;
 	Marker_Forget(m);
 	Marker_Build(m);
 	if (moved) Marker_OnMoved(m);
@@ -489,7 +519,7 @@ stock bool:Cmd_Gps(playerid)
 	new count[GPS_CATS];
 	for (new m = 0; m < MAX_MARKERS; m++)
 	{
-		if (gMarker[m][mkUsed] && gMarker[m][mkGps] > 0 && gMarker[m][mkGps] < GPS_CATS) count[gMarker[m][mkGps]]++;
+		if (gMarker[m][mkUsed] && gMarker[m][mkGps] > 0 && gMarker[m][mkGps] < GPS_CATS && Marker_VisibleTo(playerid, m)) count[gMarker[m][mkGps]]++;
 	}
 	new text[800], line[80];
 	gGpsMenuCount[playerid] = 0;
@@ -517,7 +547,7 @@ static Gps_ShowCat(playerid, cat)
 	new Float:dist[GPS_LIST_MAX];
 	for (new m = 0; m < MAX_MARKERS && n < GPS_LIST_MAX; m++)
 	{
-		if (!gMarker[m][mkUsed] || gMarker[m][mkGps] != cat) continue;
+		if (!gMarker[m][mkUsed] || gMarker[m][mkGps] != cat || !Marker_VisibleTo(playerid, m)) continue;
 		new Float:d = VectorSize(px - gMarker[m][mkX], py - gMarker[m][mkY], pz - gMarker[m][mkZ]);
 		// вставка по возрастанию расстояния
 		new j = n;
@@ -783,6 +813,15 @@ stock Markers_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 				Mk_CleanInput(text, sizeof text, inputtext, true);
 				Marker_SetLabel(m, text);
 				Marker_Save(m);
+			}
+			Mk_ShowMenu(playerid, m);
+		}
+		case DIALOG_MK_FACTION:
+		{
+			if (response)
+			{
+				new bad = Marker_SetAllowList(m, inputtext);
+				if (bad > 0) SendClientMessage(playerid, COLOR_GREY, "Номера, которых нет среди фракций, пропущены (%d). Номера: /flist", bad);
 			}
 			Mk_ShowMenu(playerid, m);
 		}

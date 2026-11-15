@@ -514,13 +514,21 @@ namespace BastionLauncher
             setBtn.Click += delegate { ToggleSettings(); };
             Controls.Add(setBtn);
 
-            if (cfg.Site.Length > 0)
+            // кнопки-ссылки (ФОРУМ, ДОНАТ, …) справа налево от «Настройки»
+            List<string[]> links = new List<string[]>(cfg.Links);
+            if (links.Count == 0 && cfg.Site.Length > 0) links.Add(new string[] { "САЙТ", cfg.Site });
+            int lx = W - 200;
+            for (int li = links.Count - 1; li >= 0; li--)
             {
-                FlatBtn site = new FlatBtn(); site.Ghost = true; site.Text = "САЙТ";
-                site.Font = Theme.F(8.5f, FontStyle.Bold);
-                site.Bounds = new Rectangle(W - 270, 0, 70, 36);
-                site.Click += delegate { try { Process.Start(cfg.Site); } catch (Exception) { } };
-                Controls.Add(site);
+                string url = links[li][1];
+                FlatBtn lb = new FlatBtn(); lb.Ghost = true; lb.Text = links[li][0];
+                lb.Font = Theme.F(8.5f, FontStyle.Bold);
+                int lw;
+                using (Graphics mg = CreateGraphics()) lw = (int)mg.MeasureString(lb.Text, lb.Font).Width + 28;
+                lx -= lw;
+                lb.Bounds = new Rectangle(lx, 0, lw, 36);
+                lb.Click += delegate { try { Process.Start(url); } catch (Exception) { } };
+                Controls.Add(lb);
             }
 
             // --- карточки серверов ---
@@ -570,7 +578,7 @@ namespace BastionLauncher
             refresh.Interval = 10000;
             refresh.Tick += delegate { RefreshAll(); };
             refresh.Start();
-            Shown += delegate { RefreshAll(); ActiveControl = play; CheckUpdate(); };
+            Shown += delegate { RefreshAll(); ActiveControl = play; CheckUpdate(); CheckGameUpdate(); };
             if (Environment.GetCommandLineArgs().Length > 1 && Environment.GetCommandLineArgs()[1] == "--settings") ToggleSettings();
         }
 
@@ -988,9 +996,21 @@ namespace BastionLauncher
             settings.Controls.Add(tClose);
 
             FlatBtn mods = new FlatBtn(); mods.Text = "ПРОВЕРИТЬ МОДЫ";
-            mods.Bounds = new Rectangle(22, 388, 180, 36);
+            mods.Bounds = new Rectangle(22, 388, 170, 36);
             mods.Click += delegate { CheckMods(true); };
             settings.Controls.Add(mods);
+
+            FlatBtn verify = new FlatBtn(); verify.Text = "ПРОВЕРИТЬ ФАЙЛЫ";
+            verify.Bounds = new Rectangle(200, 388, 130, 36);
+            verify.Font = Theme.F(8f, FontStyle.Bold);
+            verify.Click += delegate
+            {
+                if (!GameFound()) { Warn("Сначала укажи папку игры."); return; }
+                ToggleSettings();
+                if (cfg.EffectiveClientPackUrl.Length == 0) { OfferReinstall(false); return; }
+                SyncPack(gtaPath.Text.Trim(), true, false);
+            };
+            settings.Controls.Add(verify);
 
             FlatBtn done = new FlatBtn(); done.Text = "СОХРАНИТЬ"; done.Primary = true;
             done.Font = Theme.Hv(11f);
@@ -1004,6 +1024,36 @@ namespace BastionLauncher
 
         // Лимит FPS перед запуском: до 90 — средствами SA-MP, выше — через пакет FPS.
         // Возвращает false, если запуск надо отменить.
+        // Windows 11 24H2: оригинальная GTA SA падает при загрузке, потому что у Skimmer
+        // в data\vehicles.ide не хватает полей колёс (игра читает мусор из памяти).
+        // Дописываем недостающее, как в известном фиксе: -1, 0.7, 0.7, -1.
+        static void FixSkimmer(string gta)
+        {
+            try
+            {
+                string path = Path.Combine(Path.Combine(gta, "data"), "vehicles.ide");
+                if (!File.Exists(path)) return;
+                Encoding enc = Encoding.GetEncoding(1252);
+                string[] lines = File.ReadAllLines(path, enc);
+                bool changed = false;
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    string t = lines[i].Trim();
+                    if (!t.StartsWith("460")) continue;
+                    string[] f = t.Split(',');
+                    if (f.Length != 11 || f[0].Trim() != "460" ||
+                        !string.Equals(f[1].Trim(), "skimmer", StringComparison.OrdinalIgnoreCase)) continue;
+                    lines[i] = lines[i].TrimEnd() + ",\t-1,\t0.7,\t0.7,\t-1";
+                    changed = true;
+                }
+                if (!changed) return;
+                string bak = path + ".bak";
+                if (!File.Exists(bak)) File.Copy(path, bak);
+                File.WriteAllLines(path, lines, enc);
+            }
+            catch (Exception) { } // не критично: просто не трогаем файл
+        }
+
         bool ApplyFps(string gta)
         {
             int want = segFps.Value;
@@ -1206,9 +1256,21 @@ namespace BastionLauncher
                 return;
             }
 
+            if (!packChecked && cfg.EffectiveClientPackUrl.Length > 0)
+            {
+                SyncPack(gta, false, true);
+                return;
+            }
+            if (!uiChecked && UiPack.Effective(cfg.UiUrl).Length > 0)
+            {
+                SyncUi(gta);
+                return;
+            }
+
             if (tMods.Checked && !CheckMods(false)) return;
             SaveSettings(false);
             if (!ApplyFps(gta)) return;
+            FixSkimmer(gta);
 
             try
             {
@@ -1263,6 +1325,17 @@ namespace BastionLauncher
 
         void InstallGame()
         {
+            // Прошлая установка оборвалась — предложить докачать в ту же папку
+            string pending = Samp.GetValue("BastionInstallDir");
+            if (pending.Length > 0 && GameInstaller.HasPartial(pending) && !File.Exists(Path.Combine(pending, "gta_sa.exe")))
+            {
+                DialogResult r = MessageBox.Show(this, "Загрузка игры в папку\r\n" + pending +
+                    "\r\nне закончилась. Продолжить с места обрыва?\r\n\r\n«Нет» — выбрать другую папку.",
+                    cfg.Title, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+                if (r == DialogResult.Cancel) return;
+                if (r == DialogResult.Yes) { StartInstall(pending); return; }
+            }
+
             string baseDir;
             using (FolderBrowserDialog d = new FolderBrowserDialog())
             {
@@ -1292,18 +1365,66 @@ namespace BastionLauncher
                 return;
             }
 
+            StartInstall(dest);
+        }
+
+        // ---------------- обновление игры целиком (как на телефоне) ----------------
+        // Пока нет client-pack.json, обновление = новый архив игры (другой MD5 в сборке).
+        // MD5 установленного архива хранится в реестре (BastionGameMd5).
+        void CheckGameUpdate()
+        {
+            if (installing || !GameFound() || cfg.EffectiveClientPackUrl.Length > 0) return;
+            string md5 = cfg.EffectiveGameMd5.Trim().ToLowerInvariant();
+            if (md5.Length == 0) return;
+            string have = Samp.GetValue("BastionGameMd5");
+            if (have.Length == 0)
+            {
+                // Игра поставлена до этой версии лаунчера — считаем её текущей
+                try { Samp.SetValue("BastionGameMd5", md5); } catch (Exception) { }
+                return;
+            }
+            if (have != md5) OfferReinstall(true);
+        }
+
+        void OfferReinstall(bool isUpdate)
+        {
+            if (cfg.EffectiveGameUrl.Length == 0)
+            {
+                SetStatus("Файлы игры проверять не с чем: в лаунчере нет архива игры.");
+                return;
+            }
+            string q = isUpdate
+                ? "Вышло обновление игры Bastion. Скачать и установить его сейчас?"
+                : "Скачать игру с Яндекс Диска заново и переустановить её?";
+            q += "\r\n\r\nПапка игры заменится целиком: моды и свои файлы в ней пропадут. " +
+                 "Ник и настройки лаунчера сохранятся.";
+            if (MessageBox.Show(this, q, cfg.Title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            {
+                if (isUpdate) SetStatus("Есть обновление игры: «Настройки» → «Проверить файлы».");
+                return;
+            }
+            StartInstall(gtaPath.Text.Trim(), true);
+        }
+
+        void StartInstall(string dest) { StartInstall(dest, false); }
+
+        void StartInstall(string dest, bool reinstall)
+        {
+            if (!reinstall) try { Samp.SetValue("BastionInstallDir", dest); } catch (Exception) { }
             string url = cfg.EffectiveGameUrl, md5 = cfg.EffectiveGameMd5;
             installing = true;
-            play.Text = "УСТАНОВКА…"; play.Enabled = false; play.Invalidate();
+            play.Text = reinstall ? "ОБНОВЛЕНИЕ…" : "УСТАНОВКА…"; play.Enabled = false; play.Invalidate();
             Thread th = new Thread(delegate ()
             {
                 string error = null;
                 try
                 {
-                    GameInstaller.Install(url, md5, dest, delegate (string msg)
+                    Action<string> report = delegate (string msg)
                     {
                         try { BeginInvoke(new MethodInvoker(delegate { SetStatus(msg); })); } catch (Exception) { }
-                    });
+                    };
+                    if (reinstall) GameInstaller.Reinstall(url, md5, dest, report);
+                    else GameInstaller.Install(url, md5, dest, report);
                 }
                 catch (Exception ex) { error = ex.Message; }
                 try
@@ -1316,14 +1437,129 @@ namespace BastionLauncher
                         {
                             gtaPath.Text = dest;
                             SaveSettings(false);
-                            SetStatus("Игра установлена: " + dest);
+                            try { Samp.SetValue("BastionInstallDir", ""); } catch (Exception) { }
+                            try { Samp.SetValue("BastionGameMd5", md5.Trim().ToLowerInvariant()); } catch (Exception) { }
+                            packChecked = false;
+                            SetStatus((reinstall ? "Игра обновлена: " : "Игра установлена: ") + dest);
+                            // Сразу докачать свежие файлы Bastion (client-pack.json)
+                            if (cfg.EffectiveClientPackUrl.Length > 0)
+                            {
+                                UpdatePlayLabel();
+                                SyncPack(dest, false, false);
+                                return;
+                            }
                         }
                         else
                         {
-                            SetStatus("Установка не удалась.");
-                            Warn("Не получилось установить игру: " + error);
+                            SetStatus(reinstall ? "Обновление не удалось." : "Установка не удалась.");
+                            Warn((reinstall ? "Не получилось обновить игру: " : "Не получилось установить игру: ") + error);
                         }
                         UpdatePlayLabel();
+                    }));
+                }
+                catch (Exception) { }
+            });
+            th.IsBackground = true;
+            th.Start();
+        }
+
+        // ---------------- клиентский пакет (ClientPack.cs) ----------------
+        bool packChecked;
+
+        // Проверить файлы игры и скачать изменившиеся. full — пересчитать всё заново.
+        // thenPlay — после проверки продолжить запуск игры.
+        void SyncPack(string gta, bool full, bool thenPlay)
+        {
+            string url = cfg.EffectiveClientPackUrl;
+            if (installing) return;
+            if (url.Length == 0) { if (full) SetStatus("Пакет файлов Bastion не настроен."); return; }
+            installing = true;
+            string label = play.Text;
+            play.Text = "ПРОВЕРКА…"; play.Enabled = false; play.Invalidate();
+            Thread th = new Thread(delegate ()
+            {
+                string error = null, info = null;
+                bool offline = false;
+                try
+                {
+                    PackManifest m;
+                    try { m = ClientPack.Fetch(url); }
+                    catch (System.Net.WebException) { offline = true; m = null; }
+                    if (m != null)
+                    {
+                        int n = ClientPack.Sync(gta, m, full, delegate (string msg)
+                        {
+                            try { BeginInvoke(new MethodInvoker(delegate { SetStatus(msg); })); } catch (Exception) { }
+                        });
+                        info = n > 0 ? "Файлы игры обновлены (" + n + "), версия пакета " + m.Version + "."
+                                     : "Файлы игры в порядке, версия пакета " + m.Version + ".";
+                    }
+                }
+                catch (Exception ex) { error = ex.Message; }
+                try
+                {
+                    BeginInvoke(new MethodInvoker(delegate
+                    {
+                        installing = false;
+                        play.Enabled = true;
+                        play.Text = label; play.Invalidate();
+                        UpdatePlayLabel();
+                        if (offline) SetStatus("Нет связи с сервером обновлений, файлы не проверены.");
+                        else if (error == null) SetStatus(info);
+                        if (error != null)
+                        {
+                            SetStatus("Файлы игры не обновились.");
+                            string q = "Не получилось обновить файлы игры: " + error +
+                                       "\r\nЕсли игра в Program Files — запусти лаунчер от имени администратора.";
+                            if (!thenPlay) { Warn(q); return; }
+                            DialogResult r = MessageBox.Show(this, q + "\r\n\r\nЗапустить игру без обновления?",
+                                cfg.Title, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                            if (r != DialogResult.Yes) return;
+                        }
+                        packChecked = true;
+                        if (thenPlay) Play();
+                    }));
+                }
+                catch (Exception) { }
+            });
+            th.IsBackground = true;
+            th.Start();
+        }
+
+        // ---------------- красивые окна на ПК (UiPack.cs) ----------------
+        bool uiChecked;
+
+        // Поставить или обновить bastion_ui и продолжить запуск. Ошибка запуск не останавливает.
+        void SyncUi(string gta)
+        {
+            if (installing) return;
+            installing = true;
+            string label = play.Text;
+            play.Text = "ПРОВЕРКА…"; play.Enabled = false; play.Invalidate();
+            string url = UiPack.Effective(cfg.UiUrl);
+            Thread th = new Thread(delegate ()
+            {
+                string error = null, info = null;
+                try
+                {
+                    info = UiPack.Sync(gta, url, delegate (string msg)
+                    {
+                        try { BeginInvoke(new MethodInvoker(delegate { SetStatus(msg); })); } catch (Exception) { }
+                    });
+                }
+                catch (Exception ex) { error = ex.Message; }
+                try
+                {
+                    BeginInvoke(new MethodInvoker(delegate
+                    {
+                        installing = false;
+                        play.Enabled = true;
+                        play.Text = label; play.Invalidate();
+                        UpdatePlayLabel();
+                        uiChecked = true;
+                        if (error != null) SetStatus("Окна Bastion не обновились (" + error + "), будут обычные.");
+                        else if (info != null) SetStatus(info);
+                        Play();
                     }));
                 }
                 catch (Exception) { }
@@ -1343,6 +1579,19 @@ namespace BastionLauncher
         [STAThread]
         static void Main()
         {
+            // Длинные пути (> 260 знаков) при распаковке игры: .NET 4.6.2+ по умолчанию
+            // их блокирует для программ, собранных под 4.0. Включаем до любой работы с файлами.
+            try
+            {
+                Type ac = Type.GetType("System.AppContext");
+                if (ac != null)
+                {
+                    System.Reflection.MethodInfo set = ac.GetMethod("SetSwitch");
+                    set.Invoke(null, new object[] { "Switch.System.IO.UseLegacyPathHandling", false });
+                    set.Invoke(null, new object[] { "Switch.System.IO.BlockLongPaths", false });
+                }
+            }
+            catch (Exception) { }
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Updater.CleanOld();     // следы прошлого обновления

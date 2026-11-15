@@ -2,7 +2,7 @@
 //  drugs.inc — наркотики: выращивание, торговля, эффекты, ломка, изъятие.
 //
 //  Семена конопли продаёт торговец (точка /place dealer, ALT рядом с ним).
-//  Посадить: сумка (/inv) > Семена > Использовать. Куст растёт PLANT_GROW_MIN минут,
+//  Посадить: сумка (/inv) > Семена > Использовать, за городом или на поле конопли (/place weed, 40 м). Куст растёт PLANT_GROW_MIN минут,
 //  потом ALT рядом — собрать урожай (собрать может любой, кто нашёл куст).
 //  Полицейский на смене ALT у куста — уничтожить.
 //  Торговец покупает марихуану и продаёт кокаин (кокаин — только членам банд).
@@ -18,6 +18,7 @@
 
 
 #define DRUG_PLANT_MODEL        19473
+#define WEED_FIELD_RANGE        40.0    // сажать можно не дальше этого от поля (/place weed)
 #define MAX_PLANTS              150
 #define PLANT_GROW_MIN          40      // минут до урожая
 #define PLANT_ROT_MIN           180     // столько минут после созревания куст ещё стоит
@@ -371,10 +372,26 @@ static Plant_Nearby(playerid, Float:range)
 	return -1;
 }
 
+// Большие города: там на асфальте конопля не растёт
+static bool:Drugs_InCity(Float:x, Float:y)
+{
+	if (x >= 44.0 && x <= 3000.0 && y >= -2900.0 && y <= -768.0) return true;       // Лос-Сантос
+	if (x >= -3000.0 && x <= -1213.0 && y >= -1115.0 && y <= 1660.0) return true;   // Сан-Фиерро
+	if (x >= 869.0 && x <= 3000.0 && y >= 596.0 && y <= 3000.0) return true;        // Лас-Вентурас
+	return false;
+}
+
 static Plant_Try(playerid)
 {
 	if (IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Выйди из машины.");
 	if (GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0) return SendClientMessage(playerid, COLOR_GREY, "Сажать можно только на улице.");
+	{
+		new Float:px, Float:py, Float:pz;
+		GetPlayerPos(playerid, px, py, pz);
+		// Траву сервер не различает (нет данных о поверхности), поэтому: за городом или на поле (/place weed)
+		if (Place_NearXY(PL_WEED, px, py, WEED_FIELD_RANGE) == -1 && (Drugs_InCity(px, py) || pz < 2.0))
+			return SendClientMessage(playerid, COLOR_GREY, "Конопля здесь не приживётся: сажай на траве за городом, не в Лос-Сантосе, Сан-Фиерро и Лас-Вентурасе.");
+	}
 	if (Plant_Nearby(playerid, 3.0) != -1) return SendClientMessage(playerid, COLOR_GREY, "Слишком близко к другому кусту.");
 	new mine = 0;
 	for (new p = 0; p < MAX_PLANTS; p++) if (gPlant[p][plnUsed] && gPlant[p][plnOwner] == Player[playerid][pDbId]) mine++;

@@ -21,7 +21,7 @@ using Microsoft.Win32;
 
 [assembly: System.Reflection.AssemblyTitle("Bastion Online Launcher")]
 [assembly: System.Reflection.AssemblyProduct("Bastion Online")]
-[assembly: System.Reflection.AssemblyVersion("2.1.0.0")]
+[assembly: System.Reflection.AssemblyVersion("2.5.1.0")]
 
 namespace BastionLauncher
 {
@@ -51,12 +51,17 @@ namespace BastionLauncher
         public string ServersUrl = "";
         public string UpdateUrl = "";
         public string GameUrl = "";
+        public string ClientPackUrl = "";
+        public string UiUrl = "";      // красивые окна на ПК (UiPack.cs), «-» — не ставить
+        // Кнопки вверху окна: link = НАЗВАНИЕ | https://… (из launcher.ini или servers.ini в сети)
+        public List<string[]> Links = new List<string[]>();
 
         // Новости, список серверов и версия: адрес из launcher.ini, иначе папка launcher/
         // на сервере раздачи (Updater.cs). «-» в launcher.ini выключает.
         public string EffectiveNewsUrl { get { return Remote.Pick(NewsUrl, "news.txt"); } }
         public string EffectiveServersUrl { get { return Remote.Pick(ServersUrl, "servers.ini"); } }
         public string EffectiveUpdateUrl { get { return Remote.Pick(UpdateUrl, "version.ini"); } }
+        public string EffectiveClientPackUrl { get { return Remote.Pick(ClientPackUrl, "client-pack.json"); } }
         public string GameMd5 = "";
 
         // Архив игры: game_url из launcher.ini, иначе адрес, вшитый при сборке
@@ -99,6 +104,9 @@ namespace BastionLauncher
                 else if (key == "update_url") c.UpdateUrl = val;
                 else if (key == "game_url") c.GameUrl = val;
                 else if (key == "game_md5") c.GameMd5 = val;
+                else if (key == "client_pack_url") c.ClientPackUrl = val;
+                else if (key == "ui_url") c.UiUrl = val;
+                else if (key == "link") AddLink(c.Links, val);
                 else if (key == "require_rp_name") c.RequireRpName = (val == "1" || val.ToLowerInvariant() == "true");
                 else if (key == "server")
                 {
@@ -146,6 +154,30 @@ namespace BastionLauncher
             return list;
         }
 
+        // link = НАЗВАНИЕ | https://…   (только http/https, не больше 4 кнопок)
+        static void AddLink(List<string[]> list, string val)
+        {
+            string[] p = val.Split('|');
+            if (p.Length < 2 || list.Count >= 4) return;
+            string name = p[0].Trim().ToUpperInvariant(), url = p[1].Trim();
+            if (name.Length == 0 || name.Length > 12) return;
+            if (!url.StartsWith("https://") && !url.StartsWith("http://")) return;
+            list.Add(new string[] { name, url });
+        }
+
+        static List<string[]> ParseLinks(string txt)
+        {
+            List<string[]> list = new List<string[]>();
+            foreach (string raw in txt.Replace("\r", "").Split('\n'))
+            {
+                string line = raw.Trim();
+                int eq = line.IndexOf('=');
+                if (eq <= 0 || line.StartsWith(";") || line.Substring(0, eq).Trim().ToLowerInvariant() != "link") continue;
+                AddLink(list, line.Substring(eq + 1));
+            }
+            return list;
+        }
+
         static string ServersCachePath
         {
             get { return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "servers.cache"); }
@@ -179,6 +211,8 @@ namespace BastionLauncher
             if (txt == null) return;
             List<ServerEntry> remote = ParseServers(txt);
             if (remote.Count > 0) Servers = remote;
+            List<string[]> links = ParseLinks(txt);
+            if (links.Count > 0) Links = links;
         }
 
         public const string DefaultIni =
@@ -195,6 +229,11 @@ namespace BastionLauncher
 "; Сайт или Discord (кнопка в лаунчере). Пусто = кнопки нет.\r\n" +
 "site =\r\n" +
 "\r\n" +
+"; Кнопки вверху окна (до 4): link = НАЗВАНИЕ | ссылка. Строки link в servers.ini\r\n" +
+"; на сервере раздачи важнее этих.\r\n" +
+"; link = ФОРУМ | https://forum.example.com\r\n" +
+"; link = ДОНАТ | https://example.com/donate\r\n" +
+"\r\n" +
 "; Новости, список серверов и обновления лаунчер берёт из сети сам (папка launcher/ на\r\n" +
 "; сервере раздачи игры). Если сети нет — из news.txt и строк server ниже.\r\n" +
 "; Сюда можно вписать свою ссылку, а знак - (минус) выключает загрузку из сети.\r\n" +
@@ -204,14 +243,15 @@ namespace BastionLauncher
 "\r\n" +
 "; Архив игры для кнопки УСТАНОВИТЬ (ZIP с gta_sa.exe и samp.exe) и его MD5.\r\n" +
 "; Пусто = архив Bastion, вшитый в лаунчер при сборке.\r\n" +
+"; GitHub Releases, Яндекс Диск или прямая ссылка. Части — через |, зеркала — через ;\r\n" +
 "game_url =\r\n" +
 "game_md5 =\r\n" +
 "\r\n" +
 "; Сервера:  server = Название | адрес | порт | описание\r\n" +
 "; Адрес: 127.0.0.1 — свой компьютер; IP из Radmin VPN — для друзей;\r\n" +
 "; потом сюда впишешь адрес хостинга.\r\n" +
-"server = Bastion Peace | 127.0.0.1 | 7777 | Классический RP, как в старые добрые времена\r\n" +
-"server = Bastion War   | 127.0.0.1 | 7778 | Сервер для сильнейших. Никакой администрации — всё решаешь ты\r\n";
+"server = Bastion Peace | 192.168.31.182 | 7777 | Классический RP, как в старые добрые времена\r\n" +
+"server = Bastion War   | 192.168.31.182 | 7778 | Сервер для сильнейших. Никакой администрации — всё решаешь ты\r\n";
     }
 
     // -----------------------------------------------------------------

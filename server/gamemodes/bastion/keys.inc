@@ -86,7 +86,7 @@ stock Keys_ShowInteract(playerid, target)
 	gInteractActs[playerid][n++] = ACT_PAY;       strcat(list, "Передать деньги\n");
 	gInteractActs[playerid][n++] = ACT_NUMBER;    strcat(list, "Показать свой номер телефона\n");
 	gInteractActs[playerid][n++] = ACT_HANDSHAKE; strcat(list, "Пожать руку\n");
-	if (Faction_IsValid(f) && Player[playerid][pRank] >= MAX_RANK - 1 && Player[target][pFaction] == FACTION_NONE)
+	if (Faction_IsValid(f) && FPerm_Has(playerid, FP_INVITE) && Player[target][pFaction] == FACTION_NONE)
 	{
 		gInteractActs[playerid][n++] = ACT_INVITE; strcat(list, "Пригласить во фракцию\n");
 	}
@@ -241,8 +241,8 @@ stock Keys_Interact(playerid)
 		return;
 	}
 
-	// 3. Банкомат
-	if (Atm_GetNearby(playerid) != -1)
+	// 3. Банкомат или зал банка
+	if (Bank_CanUse(playerid))
 	{
 		Bank_ShowMenu(playerid);
 		return;

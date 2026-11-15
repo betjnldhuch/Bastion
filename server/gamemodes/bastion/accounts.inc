@@ -207,6 +207,7 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 				{
 					SendClientMessage(playerid, COLOR_RED, "Слишком много неверных попыток. Вход с твоего адреса закрыт на %d мин.", LOGIN_LOCK_SECONDS / 60);
 					Login_Lock(playerid);
+					Social_OnBadPassword(playerid);   // уведомление в ВК/ТГ (social.inc)
 					KickWithDelay(playerid);
 					return 1;
 				}
@@ -219,6 +220,7 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			}
 
 			Account_Load(playerid);
+			Social_OnLogin(playerid);   // уведомление о входе в ВК/ТГ (social.inc)
 			SendClientMessage(playerid, COLOR_GREEN, "Ты успешно вошёл в аккаунт. Список команд: /help");
 			Account_FinishLogin(playerid);
 			return 1;
@@ -285,9 +287,35 @@ stock Account_FinishLogin(playerid)
 	Debts_OnLogin(playerid);            // долги по налогам и штрафам (debts.inc)
 	Spawns_LoadPlayer(playerid);        // выбор из /setspawn (spawns.inc)
 	Squad_Load(playerid);               // взвод во фракции (factions.inc)
+	FPerm_OnLogin(playerid);            // личные права во фракции (fmanage.inc)
+	Markers_SyncPlayer(playerid);       // точки, которые видит только своя фракция (markers.inc)
 
 	Account_SetNormalSpawn(playerid);
 	TogglePlayerSpectating(playerid, false);  // выход из режима наблюдения = спавн
+}
+
+// /rec — перезайти на сервер, не закрывая игру. Сервер на несколько секунд перестаёт
+// отвечать этому IP: клиент пишет «Lost connection» и сам подключается заново
+// (как при обрыве связи). Аккаунт сохраняется сразу.
+#define REC_BLOCK_MS        12000
+stock bool:Cmd_Rec(playerid)
+{
+	if (!Player[playerid][pLogged]) return true;
+	if (Player[playerid][pCuffed] || Wound_IsWounded(playerid))
+		return SendClientMessage(playerid, COLOR_GREY, "Сейчас перезайти нельзя.");
+	new ip[16], other[16];
+	GetPlayerIp(playerid, ip, sizeof ip);
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (i == playerid || !IsPlayerConnected(i)) continue;
+		GetPlayerIp(i, other, sizeof other);
+		if (!strcmp(ip, other))
+			return SendClientMessage(playerid, COLOR_GREY, "С твоего IP играет кто-то ещё: /rec выкинул бы и его. Перезайди через меню игры.");
+	}
+	Account_Save(playerid);
+	SendClientMessage(playerid, COLOR_YELLOW, "Перезаход: через несколько секунд игра подключится заново сама. Ничего не нажимай.");
+	BlockIpAddress(ip, REC_BLOCK_MS);
+	return true;
 }
 
 // Где появляется игрок: у своего дома, если он есть, иначе на базе фракции, иначе на обычном спавне

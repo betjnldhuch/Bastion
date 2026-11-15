@@ -16,6 +16,8 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,6 +35,7 @@ jobs:
           BASTION_DOWNLOAD_KEY: ${{ secrets.BASTION_DOWNLOAD_KEY }}
           BASTION_B2_KEY_ID: ${{ secrets.BASTION_B2_KEY_ID }}
           BASTION_B2_KEY: ${{ secrets.BASTION_B2_KEY }}
+          BASTION_GH_TOKEN: ${{ secrets.BASTION_GH_TOKEN }}
         run: |
           function Lit([string]$v) { '"' + ($v.Trim() -replace '\\', '\\' -replace '"', '\"') + '"' }
           $src = @"
@@ -45,6 +48,7 @@ jobs:
                   public const string DownloadKey = $(Lit $env:BASTION_DOWNLOAD_KEY);
                   public const string B2KeyId = $(Lit $env:BASTION_B2_KEY_ID);
                   public const string B2Key = $(Lit $env:BASTION_B2_KEY);
+                  public const string GitHubToken = $(Lit $env:BASTION_GH_TOKEN);
               }
           }
           "@
@@ -58,8 +62,8 @@ jobs:
           $csc = "$env:WINDIR\Microsoft.NET\Framework\v4.0.30319\csc.exe"
           & $csc /nologo /codepage:65001 /target:winexe /platform:x86 /optimize+ `
             /r:System.Windows.Forms.dll /r:System.Drawing.dll `
-            /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll `
-            /out:..\BastionLauncher.exe Core.cs Ui.cs Installer.cs Updater.cs Secrets.cs
+            /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll `
+            /out:..\BastionLauncher.exe Core.cs Ui.cs Installer.cs Updater.cs ClientPack.cs UiPack.cs Secrets.cs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Package BastionLauncher folder
@@ -76,8 +80,21 @@ jobs:
 
       - name: Upload launcher
         uses: actions/upload-artifact@v4
+        continue-on-error: true # квота артефактов не должна ронять сборку
         with:
           name: BastionLauncher-PC
           path: dist/
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7
+
+      # Ручной запуск: exe кладётся в релиз «builds» (не занимает место артефактов Actions)
+      - name: Publish to builds release
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          Compress-Archive -Path dist\BastionLauncher -DestinationPath BastionLauncher-PC.zip -Force
+          gh release view builds *> $null
+          if ($LASTEXITCODE -ne 0) { gh release create builds --prerelease --title "Свежие сборки" --notes "Последние ручные сборки лаунчеров." }
+          gh release upload builds BastionLauncher-PC.zip --clobber

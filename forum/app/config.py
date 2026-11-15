@@ -26,6 +26,11 @@ class Config:
     moderator_level: int = 1
     admin_level: int = 4
     discord: str = ""
+    map_image: str = ""
+    donate_rub_per_coin: float = 1.0
+    donate_min_coins: int = 10
+    donate_payment: str = ""
+    donate_contact: str = ""
     servers: dict = field(default_factory=dict)
     data_dir: str = ""
 
@@ -59,6 +64,16 @@ def load(path, base_dir=None):
     cfg.admin_level = max(cfg.moderator_level, _int(f.get("admin_level"), 4))
     cfg.discord = f.get("discord", "").strip()
     cfg.data_dir = os.path.join(base_dir, "data")
+
+    d = parser["donate"] if parser.has_section("donate") else {}
+    try:
+        cfg.donate_rub_per_coin = max(0.0, float(str(d.get("rub_per_coin", "1")).replace(",", ".")))
+    except ValueError:
+        pass
+    cfg.donate_min_coins = max(1, _int(d.get("min_coins"), cfg.donate_min_coins))
+    cfg.donate_payment = d.get("payment", "").strip()
+    cfg.donate_contact = d.get("contact", "").strip()
+    cfg.map_image = f.get("map_image", "").strip()
 
     for section in parser.sections():
         if not section.startswith("server:"):
