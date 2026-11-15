@@ -85,6 +85,7 @@
 #include "bastion/economy.inc"
 #include "bastion/families.inc"   // семьи: организации игроков
 #include "bastion/wounded.inc"    // ранение вместо смерти, /revive, /aid
+#include "bastion/admin_give.inc" // админ: /givegun /aheal /setarmour /disarm /healall /takemoney
 #include "bastion/robbery.inc"    // /rob Ч ограбление магазинов
 #include "bastion/drugs.inc"      // наркотики: кусты, торговец, эффекты, ломка
 #include "bastion/worklife.inc"   // работы: рыбак, фермер, инкассатор, мусорщик

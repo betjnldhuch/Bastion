@@ -160,6 +160,12 @@ static Wound_StandUp(playerid, Float:hp)
 	GameTextForPlayer(playerid, "~g~Revived", 2000, 4);
 }
 
+// Админ поднял (/aheal, /healall)
+stock Wound_AdminRevive(playerid)
+{
+	if (gWounded[playerid]) Wound_StandUp(playerid, 100.0);
+}
+
 // В больницу (время вышло или /dead) — как обычная смерть
 static Wound_ToHospital(playerid)
 {
