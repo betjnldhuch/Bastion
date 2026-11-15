@@ -45,6 +45,7 @@ jobs:
           fi
 
       - uses: actions/upload-artifact@v4
+        continue-on-error: true   # квота артефактов не должна валить сборку
         with:
           name: rp-amx
           path: |
