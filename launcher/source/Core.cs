@@ -52,6 +52,7 @@ namespace BastionLauncher
         public string UpdateUrl = "";
         public string GameUrl = "";
         public string ClientPackUrl = "";
+        public string UiUrl = "";      // красивые окна на ПК (UiPack.cs), «-» — не ставить
         // Кнопки вверху окна: link = НАЗВАНИЕ | https://… (из launcher.ini или servers.ini в сети)
         public List<string[]> Links = new List<string[]>();
 
@@ -104,6 +105,7 @@ namespace BastionLauncher
                 else if (key == "game_url") c.GameUrl = val;
                 else if (key == "game_md5") c.GameMd5 = val;
                 else if (key == "client_pack_url") c.ClientPackUrl = val;
+                else if (key == "ui_url") c.UiUrl = val;
                 else if (key == "link") AddLink(c.Links, val);
                 else if (key == "require_rp_name") c.RequireRpName = (val == "1" || val.ToLowerInvariant() == "true");
                 else if (key == "server")

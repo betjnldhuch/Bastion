@@ -1261,6 +1261,11 @@ namespace BastionLauncher
                 SyncPack(gta, false, true);
                 return;
             }
+            if (!uiChecked && UiPack.Effective(cfg.UiUrl).Length > 0)
+            {
+                SyncUi(gta);
+                return;
+            }
 
             if (tMods.Checked && !CheckMods(false)) return;
             SaveSettings(false);
@@ -1513,6 +1518,48 @@ namespace BastionLauncher
                         }
                         packChecked = true;
                         if (thenPlay) Play();
+                    }));
+                }
+                catch (Exception) { }
+            });
+            th.IsBackground = true;
+            th.Start();
+        }
+
+        // ---------------- красивые окна на ПК (UiPack.cs) ----------------
+        bool uiChecked;
+
+        // Поставить или обновить bastion_ui и продолжить запуск. Ошибка запуск не останавливает.
+        void SyncUi(string gta)
+        {
+            if (installing) return;
+            installing = true;
+            string label = play.Text;
+            play.Text = "ПРОВЕРКА…"; play.Enabled = false; play.Invalidate();
+            string url = UiPack.Effective(cfg.UiUrl);
+            Thread th = new Thread(delegate ()
+            {
+                string error = null, info = null;
+                try
+                {
+                    info = UiPack.Sync(gta, url, delegate (string msg)
+                    {
+                        try { BeginInvoke(new MethodInvoker(delegate { SetStatus(msg); })); } catch (Exception) { }
+                    });
+                }
+                catch (Exception ex) { error = ex.Message; }
+                try
+                {
+                    BeginInvoke(new MethodInvoker(delegate
+                    {
+                        installing = false;
+                        play.Enabled = true;
+                        play.Text = label; play.Invalidate();
+                        UpdatePlayLabel();
+                        uiChecked = true;
+                        if (error != null) SetStatus("Окна Bastion не обновились (" + error + "), будут обычные.");
+                        else if (info != null) SetStatus(info);
+                        Play();
                     }));
                 }
                 catch (Exception) { }

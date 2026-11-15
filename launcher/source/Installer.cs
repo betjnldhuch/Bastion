@@ -433,7 +433,7 @@ namespace BastionLauncher
             }
         }
 
-        static void Download(string url, string target, Action<string> progress, int attempts)
+        internal static void Download(string url, string target, Action<string> progress, int attempts)
         {
             for (int attempt = 1; ; attempt++)
             {
