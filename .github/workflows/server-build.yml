@@ -44,6 +44,25 @@ jobs:
             echo "::warning::Compiler warnings, see log above"
           fi
 
+      - name: Check backup scripts (PowerShell)
+        shell: pwsh
+        working-directory: server/tools
+        run: |
+          foreach ($f in Get-ChildItem *.ps1) {
+            $err = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$null, [ref]$err) | Out-Null
+            if ($err) { $err | ForEach-Object { Write-Error "$($f.Name): $_" }; exit 1 }
+          }
+          . ./backup_common.ps1
+          $data = [byte[]](1..200000 | ForEach-Object { $_ % 251 })
+          $enc = Protect-BackupBytes $data 'test-пароль'
+          $dec = Unprotect-BackupBytes $enc 'test-пароль'
+          if ([Convert]::ToBase64String($dec) -ne [Convert]::ToBase64String($data)) { throw 'round-trip mismatch' }
+          $bad = $false
+          try { Unprotect-BackupBytes $enc 'wrong' | Out-Null } catch { $bad = $true }
+          if (-not $bad) { throw 'wrong password accepted' }
+          Write-Host 'backup crypto OK'
+
       - uses: actions/upload-artifact@v4
         # Квота артефактов не должна валить проверку компиляции.
         continue-on-error: true
