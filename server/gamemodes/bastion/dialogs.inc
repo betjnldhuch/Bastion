@@ -202,5 +202,9 @@ enum
 	DIALOG_FR_MENU,
 	DIALOG_FR_BACK,
 	DIALOG_FR_ONLINE,
-	DIALOG_FR_LEAVE
+	DIALOG_FR_LEAVE,
+
+	// --- /setspawn > Организация и /fspawnaccess (spawns.inc)
+	DIALOG_SETSPAWN_F,
+	DIALOG_FSPAWN_ACCESS
 }
