@@ -71,6 +71,7 @@
 #include "bastion/backup.inc"      // копии базы раз в сутки, /backup
 #include "bastion/dev.inc"         // разработка в игре: /pos, /dev, маппинг /mo
 #include "bastion/textures.inc"    // перекраска объектов маппинга: /mt
+#include "bastion/interiors.inc"  // interiors built from objects: showroom
 #include "bastion/doors.inc"       // входы в здания: LSPD
 #include "bastion/places.inc"     // точки новых систем, которые ставит админ: /place
 #include "bastion/factions.inc"   // после admin.inc: использует Admin_Check
@@ -147,6 +148,7 @@ public OnGameModeInit()
 	Licenses_Init();
 	Needs_Init();
 	Dev_Init();           // свои объекты карты, убранные здания
+	Interiors_Init();
 	Doors_Init();         // входы в здания (маркеры LSPD)
 	Econ_Init();          // казна, налоги, журнал денег
 	Debts_Init();         // счета долгов в accounts
