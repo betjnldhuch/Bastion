@@ -71,6 +71,7 @@
 #include "bastion/backup.inc"      // копии базы раз в сутки, /backup
 #include "bastion/dev.inc"         // разработка в игре: /pos, /dev, маппинг /mo
 #include "bastion/textures.inc"    // перекраска объектов маппинга: /mt
+#include "bastion/interiors.inc"  // interiors built from objects: showroom
 #include "bastion/doors.inc"       // входы в здани€: LSPD
 #include "bastion/places.inc"     // точки новых систем, которые ставит админ: /place
 #include "bastion/factions.inc"   // после admin.inc: использует Admin_Check
@@ -81,6 +82,7 @@
 #include "bastion/phone.inc"
 #include "bastion/fbi.inc"        // ‘Ѕ–: маскировка, прослушка, слежка, досье
 #include "bastion/business.inc"
+#include "bastion/bizplus.inc"    // новые виды бизнесов: склад, наценка, меню владельца
 #include "bastion/garage.inc"
 #include "bastion/gps.inc"        // /markers Ч правка маркеров в игре, /gps
 #include "bastion/debts.inc"      // долги штату: налоги и штрафы отдельными счетами
@@ -142,11 +144,13 @@ public OnGameModeInit()
 	Turfs_Init();
 	Bank_Init();
 	Business_Init();
+	BizX_Init();
 	Gates_Init();
 	Fps_Init();
 	Licenses_Init();
 	Needs_Init();
 	Dev_Init();           // свои объекты карты, убранные здани€
+	Interiors_Init();
 	Doors_Init();         // входы в здани€ (маркеры LSPD)
 	Econ_Init();          // казна, налоги, журнал денег
 	Debts_Init();         // счета долгов в accounts
@@ -342,6 +346,7 @@ public OnPlayerSpawn(playerid)
 	Turfs_ShowForPlayer(playerid);      // районы банд на радаре
 	Wound_OnSpawn(playerid);            // после смерти Ч лежит раненым на месте
 	Hud_OnSpawn(playerid);              // панель статуса (hud.inc)
+	BizX_OnSpawn(playerid);             // стиль бо€ из спортзала (bizplus.inc)
 	return 1;
 }
 
@@ -424,6 +429,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Vehicles_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Bank_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Business_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (BizX_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Keys_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Fuel_OnDialog(playerid, dialogid, response, inputtext)) return 1;
 	if (Licenses_OnDialog(playerid, dialogid, response, listitem)) return 1;

@@ -6,7 +6,9 @@
 //  BIZ_SALE_SHARE% от каждой покупки и BIZ_PAYDAY_INCOME каждый PayDay.
 //  Забрать деньги из кассы: /bizcash (стоя у своего бизнеса).
 //
-//  Типы: 1 — магазин 24/7, 2 — бар, 3 — одежда, 4 — оружейный, 5 — казино (casino.inc).
+//  Типы: 1 — магазин 24/7, 2 — бар, 3 — одежда, 4 — оружейный, 5 — казино (casino.inc),
+//  6 — АЗС, 7 — автомастерская, 8 — закусочная, 9 — аптека, 10 — ночной клуб, 11 — спортзал,
+//  12 — хозтовары, 13 — электроника, 14 — лотерея. Склад, наценка, меню владельца: bizplus.inc.
 //  Админы (4+): /createbiz [тип] [цена] [название], /delbiz
 //
 //  Интерьер: у каждого бизнеса стандартный интерьер GTA по его типу (временное решение).
@@ -34,14 +36,25 @@ enum
 	BIZ_BAR,        // 2 — бар
 	BIZ_CLOTHES,    // 3 — одежда
 	BIZ_GUNS,       // 4 — оружейный
-	BIZ_CASINO      // 5 — казино (casino.inc)
+	BIZ_CASINO,     // 5 — казино (casino.inc)
+	// новые типы добавляй только в конец: номер типа хранится в базе
+	BIZ_FUEL,       // 6 — АЗС: магазин + доход с заправок рядом (fuel.inc)
+	BIZ_STO,        // 7 — автомастерская: запчасти + доход с СТО рядом (garage.inc)
+	BIZ_FASTFOOD,   // 8 — закусочная
+	BIZ_PHARMACY,   // 9 — аптека
+	BIZ_CLUB,       // 10 — ночной клуб
+	BIZ_GYM,        // 11 — спортзал: стили боя
+	BIZ_HARDWARE,   // 12 — хозтовары
+	BIZ_ELECTRO,    // 13 — электроника
+	BIZ_LOTTERY     // 14 — лотерея
 }
-#define BIZ_TYPES           6
+#define BIZ_TYPES           15
 
-static const gBizTypeNames[BIZ_TYPES][24] = { "-", "Магазин 24/7", "Бар", "Магазин одежды", "Оружейный магазин", "Казино" };
+static const gBizTypeNames[BIZ_TYPES][24] = { "-", "Магазин 24/7", "Бар", "Магазин одежды", "Оружейный магазин", "Казино",
+	"АЗС", "Автомастерская", "Закусочная", "Аптека", "Ночной клуб", "Спортзал", "Хозтовары", "Электроника", "Лотерея" };
 
-// Стандартные интерьеры по типу бизнеса: номер интерьера и точка у двери (x, y, z, угол)
-static const gBizIntId[BIZ_TYPES] = { 0, 17, 11, 15, 1, 10 };
+// Стандартные интерьеры по типу бизнеса: номер интерьера и точка у двери (x, y, z, угол). 0 — без интерьера, торговля у значка
+static const gBizIntId[BIZ_TYPES] = { 0, 17, 11, 15, 1, 10, 0, 0, 10, 6, 17, 5, 0, 0, 0 };
 static const Float:gBizIntPos[BIZ_TYPES][4] =
 {
 	{ 0.0, 0.0, 0.0, 0.0 },
@@ -49,7 +62,16 @@ static const Float:gBizIntPos[BIZ_TYPES][4] =
 	{ 501.98, -69.15, 998.76, 180.0 },      // бар Ten Green Bottles
 	{ 207.74, -109.02, 1005.13, 0.0 },      // Binco
 	{ 286.15, -40.64, 1001.52, 0.0 },       // Ammu-Nation
-	{ 2018.95, 1017.09, 996.88, 90.0 }      // казино Four Dragons
+	{ 2018.95, 1017.09, 996.88, 90.0 },     // казино Four Dragons
+	{ 0.0, 0.0, 0.0, 0.0 },                 // АЗС: у значка
+	{ 0.0, 0.0, 0.0, 0.0 },                 // автомастерская: у значка
+	{ 363.11, -74.88, 1001.51, 315.0 },     // закусочная Burger Shot
+	{ -26.69, -55.71, 1003.55, 0.0 },       // аптека (зал 24/7)
+	{ 493.39, -22.72, 1000.68, 0.0 },       // клуб Alhambra
+	{ 772.11, -3.90, 1000.73, 0.0 },        // спортзал Ganton
+	{ 0.0, 0.0, 0.0, 0.0 },                 // хозтовары: у значка
+	{ 0.0, 0.0, 0.0, 0.0 },                 // электроника: у значка
+	{ 0.0, 0.0, 0.0, 0.0 }                  // лотерея: у значка
 };
 
 // Что можно купить
@@ -61,7 +83,9 @@ enum
 	ITEM_ARMOUR,    // бронежилет
 	ITEM_SKIN,      // одежда (value = скин)
 	ITEM_FOOD,      // еда в баре сразу (value = +HP, value2 = +% сытости)
-	ITEM_INV        // вещь в инвентарь (value = INV_* из needs.inc, value2 = штук)
+	ITEM_INV,       // вещь в инвентарь (value = INV_* из needs.inc, value2 = штук)
+	ITEM_FSTYLE,    // стиль боя в спортзале (value = FIGHT_STYLE_*), bizplus.inc
+	ITEM_LOTTERY    // лотерейный билет (value = во сколько раз главный приз больше цены), bizplus.inc
 }
 
 enum E_BIZ_ITEM
@@ -105,8 +129,54 @@ static const gBizItems[][E_BIZ_ITEM] =
 	{ BIZ_GUNS,    "Desert Eagle",      1500, ITEM_WEAPON, 24, 35  },
 	{ BIZ_GUNS,    "Дробовик",          2000, ITEM_WEAPON, 25, 30  },
 	{ BIZ_GUNS,    "MP5",               3000, ITEM_WEAPON, 29, 120 },
-	{ BIZ_GUNS,    "Бронежилет",        1000, ITEM_ARMOUR, 100, 0  }
+	{ BIZ_GUNS,    "Бронежилет",        1000, ITEM_ARMOUR, 100, 0  },
+	// --- новые типы (цены базовые: владелец меняет их наценкой, bizplus.inc)
+	{ BIZ_FUEL,    "Вода (в сумку)",    15,   ITEM_INV,    INV_WATER, 1 },
+	{ BIZ_FUEL,    "Хот-дог (в сумку)", 40,   ITEM_INV,    INV_HOTDOG, 1 },
+	{ BIZ_FUEL,    "Сигареты (10 шт.)", 45,   ITEM_INV,    INV_CIGARETTES, 10 },
+	{ BIZ_FUEL,    "Ремкомплект",       450,  ITEM_INV,    INV_REPAIRKIT, 1 },
+	{ BIZ_STO,     "Ремкомплект",       350,  ITEM_INV,    INV_REPAIRKIT, 1 },
+	{ BIZ_STO,     "Домкрат",           700,  ITEM_INV,    INV_JACK, 1 },
+	{ BIZ_STO,     "Огнетушитель",      380,  ITEM_WEAPON, 42, 500 },
+	{ BIZ_FASTFOOD, "Бургер (здесь)",   50,   ITEM_FOOD,   20, 40 },
+	{ BIZ_FASTFOOD, "Комбо-обед (здесь)", 110, ITEM_FOOD,  50, 80 },
+	{ BIZ_FASTFOOD, "Бургер (в сумку)", 55,   ITEM_INV,    INV_BURGER, 1 },
+	{ BIZ_FASTFOOD, "Пицца (в сумку)",  85,   ITEM_INV,    INV_PIZZA, 1 },
+	{ BIZ_FASTFOOD, "Хот-дог (в сумку)", 28,  ITEM_INV,    INV_HOTDOG, 1 },
+	{ BIZ_FASTFOOD, "Вода (в сумку)",   10,   ITEM_INV,    INV_WATER, 1 },
+	{ BIZ_PHARMACY, "Аптечка (в сумку)", 130, ITEM_INV,    INV_MEDKIT, 1 },
+	{ BIZ_PHARMACY, "Бинт",             40,   ITEM_INV,    INV_BANDAGE, 1 },
+	{ BIZ_PHARMACY, "Лечение (+50 HP)", 100,  ITEM_HEAL,   50, 0 },
+	{ BIZ_PHARMACY, "Полное лечение",   180,  ITEM_HEAL,   100, 0 },
+	{ BIZ_CLUB,    "Коктейль (+15 HP)", 40,   ITEM_FOOD,   15, 5 },
+	{ BIZ_CLUB,    "Шампанское (+30 HP)", 90, ITEM_FOOD,   30, 5 },
+	{ BIZ_CLUB,    "Закуски (сытость)", 80,   ITEM_FOOD,   10, 40 },
+	{ BIZ_CLUB,    "Пиво (в сумку)",    30,   ITEM_INV,    INV_BEER, 1 },
+	{ BIZ_CLUB,    "Сигареты (10 шт.)", 50,   ITEM_INV,    INV_CIGARETTES, 10 },
+	{ BIZ_GYM,     "Бокс",              3000, ITEM_FSTYLE, 5,  0 },
+	{ BIZ_GYM,     "Кунг-фу",           5000, ITEM_FSTYLE, 6,  0 },
+	{ BIZ_GYM,     "Уличный бой",       4000, ITEM_FSTYLE, 7,  0 },
+	{ BIZ_GYM,     "Захваты и удары ногой", 4500, ITEM_FSTYLE, 15, 0 },
+	{ BIZ_GYM,     "Обычный стиль",     100,  ITEM_FSTYLE, 4,  0 },
+	{ BIZ_GYM,     "Протеин (+25 HP)",  60,   ITEM_FOOD,   25, 15 },
+	{ BIZ_GYM,     "Вода (в сумку)",    10,   ITEM_INV,    INV_WATER, 1 },
+	{ BIZ_HARDWARE, "Лопата",           300,  ITEM_WEAPON, 6,  1 },
+	{ BIZ_HARDWARE, "Бита",             180,  ITEM_WEAPON, 5,  1 },
+	{ BIZ_HARDWARE, "Клюшка для гольфа", 350, ITEM_WEAPON, 2,  1 },
+	{ BIZ_HARDWARE, "Баллончик краски", 250,  ITEM_WEAPON, 41, 500 },
+	{ BIZ_HARDWARE, "Огнетушитель",     400,  ITEM_WEAPON, 42, 500 },
+	{ BIZ_HARDWARE, "Ремкомплект",      380,  ITEM_INV,    INV_REPAIRKIT, 1 },
+	{ BIZ_HARDWARE, "Домкрат",          750,  ITEM_INV,    INV_JACK, 1 },
+	{ BIZ_HARDWARE, "Маска",            450,  ITEM_INV,    INV_MASK, 1 },
+	{ BIZ_ELECTRO, "Телефон",           PHONE_PRICE, ITEM_PHONE, 0, 0 },
+	{ BIZ_ELECTRO, "Фотоаппарат",       600,  ITEM_WEAPON, 43, 36 },
+	{ BIZ_ELECTRO, "Игральные кости",   25,   ITEM_INV,    INV_DICE, 1 },
+	{ BIZ_LOTTERY, "Билет «Мелочь»",    50,   ITEM_LOTTERY, 20, 0 },
+	{ BIZ_LOTTERY, "Билет «Удача»",     250,  ITEM_LOTTERY, 40, 0 },
+	{ BIZ_LOTTERY, "Билет «Джекпот»",   1000, ITEM_LOTTERY, 100, 0 }
 };
+
+stock Biz_ItemType(item)  { return gBizItems[item][biType]; }
 
 enum E_BIZ
 {
@@ -128,7 +198,10 @@ enum E_BIZ
 	Float:bIX, Float:bIY, Float:bIZ, Float:bIA,   // точка внутри у двери
 	bExitMk,                    // маркер-стрелка у двери внутри (markers.inc)
 	bOInt,                      // где стоит вход: интерьер (0 — улица)
-	bOWorld                     // и мир (как в базе: дом хранится как BIZ_HOUSE_W + номер дома)
+	bOWorld,                    // и мир (как в базе: дом хранится как BIZ_HOUSE_W + номер дома)
+	bMarkup,                    // цены владельца, % от базовых (bizplus.inc)
+	bStock,                     // товар на складе, $ по закупочной цене (bizplus.inc)
+	bEarned                     // сколько бизнес принёс в кассу за всё время
 }
 new Biz[MAX_BUSINESSES][E_BIZ];
 new gBizCount = 0;
@@ -253,6 +326,9 @@ stock Biz_Add(dbid, const name[], type, owner, const ownerName[], price, Float:x
 	Biz[b][bExitMk] = -1;
 	Biz[b][bOInt] = oint;
 	Biz[b][bOWorld] = oworld;
+	Biz[b][bMarkup] = 100;
+	Biz[b][bStock] = 0;
+	Biz[b][bEarned] = 0;
 	Biz_ApplyInt(b, -1, 0, 0.0, 0.0, 0.0, 0.0);     // стандартный интерьер по типу
 	Biz_Refresh(b);
 	return b;
@@ -526,8 +602,7 @@ stock Business_PayDay()
 	for (new b = 0; b < gBizCount; b++)
 	{
 		if (Biz[b][bOwner] == 0) continue;
-		Biz[b][bTill] += BIZ_PAYDAY_INCOME;
-		Biz_Save(b);
+		BizX_PayDay(b);     // доход по типу бизнеса (bizplus.inc)
 	}
 }
 
@@ -546,7 +621,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 	new item = gBuyList[playerid][listitem];
 	if (item < 0 || item >= sizeof (gBizItems) || gBizItems[item][biType] != Biz[b][bType]) return 1;
 
-	new price = gBizItems[item][biPrice];
+	new price = BizX_Price(b, gBizItems[item][biPrice]);    // с наценкой владельца
 	if (GetMoney(playerid) < price)
 	{
 		SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", price);
@@ -579,6 +654,14 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 				return 1;
 			}
 		}
+		case ITEM_FSTYLE:
+		{
+			if (BizX_GetStyle(playerid) == gBizItems[item][biValue])
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Ты уже дерёшься в этом стиле.");
+				return 1;
+			}
+		}
 		case ITEM_WEAPON, ITEM_ARMOUR:
 		{
 			if (Biz[b][bType] == BIZ_GUNS && gBizItems[item][biKind] == ITEM_WEAPON && !Licenses_Has(playerid, LIC_GUN))
@@ -607,6 +690,8 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 			SetPlayerHealth(playerid, hp);
 		}
 		case ITEM_WEAPON: GivePlayerWeapon(playerid, WEAPON:gBizItems[item][biValue], gBizItems[item][biValue2]);
+		case ITEM_FSTYLE: BizX_SetStyle(playerid, gBizItems[item][biValue]);
+		case ITEM_LOTTERY: BizX_Lottery(playerid, price, gBizItems[item][biValue]);
 		case ITEM_ARMOUR: SetPlayerArmour(playerid, float(gBizItems[item][biValue]));
 		case ITEM_INV:
 		{
@@ -630,11 +715,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 		}
 	}
 
-	if (Biz[b][bOwner] != 0)
-	{
-		Biz[b][bTill] += price * BIZ_SALE_SHARE / 100;
-		Biz_Save(b);
-	}
+	BizX_Sale(b, price, gBizItems[item][biPrice]);    // касса и склад (bizplus.inc)
 	Account_Save(playerid);
 	SendClientMessage(playerid, COLOR_GREEN, "Ты купил: %s за $%d.", gBizItems[item][biName], price);
 	return 1;
@@ -654,7 +735,7 @@ stock bool:Cmd_Buy(playerid)
 	for (new i = 0; i < sizeof (gBizItems) && n < sizeof (gBuyList[]); i++)
 	{
 		if (gBizItems[i][biType] != Biz[b][bType]) continue;
-		format(line, sizeof line, "%s\t$%d\n", gBizItems[i][biName], gBizItems[i][biPrice]);
+		format(line, sizeof line, "%s\t$%d\n", gBizItems[i][biName], BizX_Price(b, gBizItems[i][biPrice]));
 		strcat(list, line);
 		gBuyList[playerid][n++] = i;
 	}
@@ -678,9 +759,10 @@ stock bool:Cmd_BuyBiz(playerid)
 	Biz[b][bTill] = 0;
 	GetPlayerName(playerid, Biz[b][bOwnerName], MAX_PLAYER_NAME);
 	Biz_Save(b);
+	BizX_OnBought(b);       // стартовый товар на склад, цены 100% (bizplus.inc)
 	Biz_Refresh(b);
 	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_GREEN, "Поздравляем! «%s» теперь твой. Касса: /bizcash, информация: /bizinfo", Biz[b][bName]);
+	SendClientMessage(playerid, COLOR_GREEN, "Поздравляем! «%s» теперь твой. Управление: ALT у бизнеса или /bizmenu", Biz[b][bName]);
 	return true;
 }
 
@@ -735,8 +817,14 @@ stock bool:Cmd_CreateBiz(playerid, const params[])
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, type, price, name[32];
 	if (!NextIntParam(params, pos, type) || type <= BIZ_NONE || type >= BIZ_TYPES
-		|| !NextIntParam(params, pos, price) || price < 1 || !RestParam(params, pos, name))
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /createbiz [тип 1-5] [цена] [название]  (1 24/7, 2 бар, 3 одежда, 4 оружие, 5 казино)");
+		|| !NextIntParam(params, pos, price) || price < 0 || !RestParam(params, pos, name))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Использование: /createbiz [тип 1-14] [цена, 0 — стандартная по типу] [название]");
+		SendClientMessage(playerid, COLOR_GREY, "1 24/7, 2 бар, 3 одежда, 4 оружие, 5 казино, 6 АЗС, 7 автомастерская, 8 закусочная, 9 аптека,");
+		SendClientMessage(playerid, COLOR_GREY, "10 ночной клуб, 11 спортзал, 12 хозтовары, 13 электроника, 14 лотерея. АЗС и мастерскую ставь рядом с заправкой / СТО.");
+		return true;
+	}
+	if (price == 0) price = BizX_DefaultPrice(type);
 	if (gBizCount >= MAX_BUSINESSES) return SendClientMessage(playerid, COLOR_GREY, "Достигнут лимит бизнесов (MAX_BUSINESSES).");
 
 	new Float:x, Float:y, Float:z, Float:a;

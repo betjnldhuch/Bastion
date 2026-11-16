@@ -84,7 +84,7 @@
 #define BANK_ATM_FEE_PCT    1                // комисси€ за сн€тие в банкомате, % (0 Ч без комиссии)
 #define BANK_TRANSFER_FEE_PCT 1              // комисси€ за перевод, % (0 Ч без комиссии)
 #define BANK_INTEREST_PERMILLE 1             // проценты на остаток каждый PayDay, в дес€тых дол€х % (1 = 0.1%)
-#define BANK_INTEREST_MAX   500              // максимум процентов за один PayDay
+#define BANK_INTEREST_MAX   100              // максимум процентов за один PayDay
 #define PAYDAY_TO_BANK      true             // зарплата на счЄт (true) или наличными (false)
 
 // “елефон (phone.inc)
