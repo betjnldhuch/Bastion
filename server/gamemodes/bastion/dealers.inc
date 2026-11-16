@@ -30,18 +30,24 @@ enum E_DEALER
 {
 	dlName[32],
 	dlWhat[24],                 // что продаёт, для надписи
-	Float:dlX, Float:dlY, Float:dlZ,                    // значок
+	Float:dlX, Float:dlY, Float:dlZ,                    // значок (точка покупки)
+	dlWorld, dlInt,                                     // мир и интерьер значка
 	Float:dlSX, Float:dlSY, Float:dlSZ, Float:dlSA      // где появляется купленный транспорт
 }
 
 // Места — стандартные салоны игры. Значки правятся в игре: /markers, выдача: /dealerspawn
 static gDealer[][E_DEALER] =
 {
-	{ "Автосалон «Эконом»",  "машину или мотоцикл", 2131.8, -1150.6, 24.1,   2124.0, -1135.0, 25.3, 0.0 },    // Coutt & Schutz, Лос-Сантос
-	{ "Автосалон «Премиум»", "машину",              542.3, -1291.6, 17.2,    552.0, -1270.0, 17.3, 0.0 },     // Grotti, Родео
-	{ "Авиасалон",           "вертолёт",            1685.8, -2238.9, 13.5,   1800.0, -2450.0, 13.8, 180.0 }   // аэропорт Лос-Сантоса
+	// Bastion Motors у Coutt & Schutz: покупка у стойки менеджера в зале (interiors.inc), машину выдают на улице
+	{ "Автосалон «Эконом»",  "машину или мотоцикл", 2850.0, -2839.8, 1501.0, SALON_WORLD, SALON_INTERIOR,   2124.0, -1135.0, 25.3, 0.0 },
+	{ "Автосалон «Премиум»", "машину",              542.3, -1291.6, 17.2, 0, 0,    552.0, -1270.0, 17.3, 0.0 },     // Grotti, Родео
+	{ "Авиасалон",           "вертолёт",            1685.8, -2238.9, 13.5, 0, 0,   1800.0, -2450.0, 13.8, 180.0 }   // аэропорт Лос-Сантоса
 };
 static gDealerMk[sizeof (gDealer)] = { -1, ... };
+
+// Что стоит на подиумах зала Bastion Motors (SALON_SLOTS мест, interiors.inc)
+static const gShowModels[SALON_SLOTS] = { 401, 516, 405, 426, 489, 521 };
+static bool:gVehShow[MAX_VEHICLES];     // выставочная машина: закрыта, уехать нельзя
 
 // { салон, модель, цена }. Итоговые цены — из таблицы экономики сервера
 static const gDealerCars[][3] =
@@ -127,10 +133,32 @@ stock Dealers_Init()
 	new text[96];
 	for (new d = 0; d < sizeof (gDealer); d++)
 	{
-		gDealerMk[d] = Marker_Create(MK_DEALER, d, gDealer[d][dlName], 1274, gDealer[d][dlX], gDealer[d][dlY], gDealer[d][dlZ], 0, 0, GPS_TRANSPORT);
+		gDealerMk[d] = Marker_Create(MK_DEALER, d, gDealer[d][dlName], 1274, gDealer[d][dlX], gDealer[d][dlY], gDealer[d][dlZ],
+			gDealer[d][dlWorld], gDealer[d][dlInt], GPS_TRANSPORT);
 		format(text, sizeof text, "{FFFF00}%s\n{FFFFFF}ALT — купить %s", gDealer[d][dlName], gDealer[d][dlWhat]);
 		Marker_SetLabel(gDealerMk[d], text);
 	}
+
+	// Выставочные машины на подиумах зала
+	new Float:x, Float:y, Float:z, Float:a;
+	for (new i = 0; i < SALON_SLOTS; i++)
+	{
+		Salon_GetSlot(i, x, y, z, a);
+		new v = CreateVehicle(gShowModels[i], x, y, z, a, 1, 1, 60);
+		if (v == INVALID_VEHICLE_ID) continue;
+		LinkVehicleToInterior(v, SALON_INTERIOR);
+		SetVehicleVirtualWorld(v, SALON_WORLD);
+		gVehShow[v] = true;
+		Dealers_OnVehicleSpawn(v);
+	}
+}
+
+// Из Vehicles_OnSpawn: выставочная машина всегда закрыта
+stock Dealers_OnVehicleSpawn(vehicleid)
+{
+	if (!gVehShow[vehicleid]) return;
+	LinkVehicleToInterior(vehicleid, SALON_INTERIOR);
+	SetVehicleParamsEx(vehicleid, 0, 0, 0, 1, 0, 0, 0);
 }
 
 // У какого салона стоит игрок (-1 — ни у какого)
@@ -183,7 +211,7 @@ stock bool:Cmd_BuyCar(playerid)
 {
 	if (Debts_BlockBuy(playerid)) return true;      // большой долг штату (debts.inc)
 	new d = Dealer_Nearby(playerid);
-	if (d == -1) return SendClientMessage(playerid, COLOR_GREY, "Ты должен быть в автосалоне (значок доллара, /gps > Транспорт).");
+	if (d == -1) return SendClientMessage(playerid, COLOR_GREY, "Подойди к значку доллара в автосалоне (/gps > Транспорт). В «Экономе» он в зале у стойки менеджера.");
 	if (Dealer_LimitHit(playerid)) return true;
 
 	new list[1600] = "Модель\tЦена\n";
@@ -422,8 +450,16 @@ stock Vehicles_OnDialog(playerid, dialogid, response, listitem)
 stock bool:Cmd_DealerSpawn(playerid)
 {
 	if (!Admin_Check(playerid, ADMIN_MAX_LEVEL)) return true;
-	new d = Dealer_Nearby(playerid, 150.0);
-	if (d == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом (150 м) нет салона. Встань там, где салон должен выдавать транспорт.");
+	// салон ищем по его нынешнему месту выдачи: значок может быть внутри здания
+	new d = -1;
+	if (GetPlayerVirtualWorld(playerid) == 0 && GetPlayerInterior(playerid) == 0)
+	{
+		for (new i = 0; i < sizeof (gDealer); i++)
+		{
+			if (IsPlayerInRangeOfPoint(playerid, 150.0, gDealer[i][dlSX], gDealer[i][dlSY], gDealer[i][dlSZ])) { d = i; break; }
+		}
+	}
+	if (d == -1) return SendClientMessage(playerid, COLOR_GREY, "Встань на улице там, где салон должен выдавать транспорт (не дальше 150 м от нынешнего места выдачи).");
 
 	new Float:x, Float:y, Float:z, Float:a, v = GetPlayerVehicleID(playerid);
 	if (v != 0)

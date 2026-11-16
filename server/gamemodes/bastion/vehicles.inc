@@ -246,6 +246,7 @@ stock Vehicles_OnSpawn(vehicleid)
 		Vehicle_ApplyLock(vehicleid);
 		Garage_ApplyMods(vehicleid);    // респавн снимает тюнинг — вешаем обратно
 	}
+	Dealers_OnVehicleSpawn(vehicleid);  // выставочные машины салона остаются закрытыми
 }
 
 // Подсказка при посадке за руль (из OnPlayerStateChange)
