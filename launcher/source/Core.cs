@@ -566,9 +566,15 @@ namespace BastionLauncher
             if (!done)
             {
                 // ключ кладём в первую секцию файла (или в начало, если секций нет)
-                int at = 0;
+                int at = -1;
                 for (int i = 0; i < lines.Count; i++)
                     if (lines[i].Trim().StartsWith("[")) { at = i + 1; break; }
+                if (at < 0)
+                {
+                    // файла ещё нет (плагин создаёт его при первом запуске): секция по имени файла, как у ModernFpsLimit
+                    lines.Insert(0, "[" + Path.GetFileNameWithoutExtension(LimiterIni) + "]");
+                    at = 1;
+                }
                 lines.Insert(at, LimiterKey + "=" + fps);
             }
             File.WriteAllLines(path, lines.ToArray(), Encoding.Default);

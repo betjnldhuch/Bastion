@@ -66,7 +66,8 @@ jobs:
             /out:..\BastionLauncher.exe Core.cs Ui.cs Installer.cs Updater.cs ClientPack.cs UiPack.cs Secrets.cs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      # Пакет FPS (до 165 FPS): загрузчик ASI, снятие лимита SA-MP и фиксы физики/разрешения.
+      # Пакет FPS (до 165 FPS): загрузчик ASI, снятие лимита SA-MP (ModernFpsLimit) и SilentPatch.
+      # FramerateVigilante готовых сборок на GitHub не имеет — его кладут в fps\ руками.
       # Берём с официальных релизов авторов на GitHub (см. launcher/fps/README.txt).
       # Чего-то не нашлось — сборка не падает, в логе будет предупреждение.
       - name: Fetch FPS pack
@@ -103,15 +104,7 @@ jobs:
           try { Fetch "ThirteenAG/Ultimate-ASI-Loader" '^Ultimate-ASI-Loader\.zip$' @("dinput8.dll") } catch { Write-Host "::warning::$_" }
           try { Fetch "xKumorio/ModernFpsLimit" '\.(zip|7z|rar|asi)$' @("ModernFpsLimit.asi", "ModernFpsLimit.ini") } catch { Write-Host "::warning::$_" }
           try { Fetch "CookiePLMonster/SilentPatch" '^SilentPatchSA.*\.(zip|7z|rar)$' @("SilentPatchSA.asi", "SilentPatchSA.ini") } catch { Write-Host "::warning::$_" }
-          try { Fetch "GTAmodding/FramerateVigilante" '\.(zip|7z|rar|asi)$' @("*SA*.asi") } catch { Write-Host "::warning::$_" }
           Get-ChildItem $fps | Format-Table Name, Length
-          # DEBUG (временно): строки ModernFpsLimit и как собирать FramerateVigilante
-          $bytes = [IO.File]::ReadAllBytes("$fps\ModernFpsLimit.asi"); $txt = [Text.Encoding]::ASCII.GetString($bytes)
-          [regex]::Matches($txt, "[ -~]{4,}") | ForEach-Object { $_.Value } | Where-Object { $_ -match "(?i)ini|fps|limit|frame" } | Select-Object -First 80
-          $u = [Text.Encoding]::Unicode.GetString($bytes)
-          [regex]::Matches($u, "[ -~]{4,}") | ForEach-Object { $_.Value } | Where-Object { $_ -match "(?i)ini|fps|limit|frame" } | Select-Object -First 40
-          gh api repos/GTAmodding/FramerateVigilante/contents/readme.md -H "Accept: application/vnd.github.raw"
-          gh api repos/GTAmodding/FramerateVigilante/contents/FramerateVigilante --jq '.[].name'
 
       - name: Package BastionLauncher folder
         shell: pwsh
