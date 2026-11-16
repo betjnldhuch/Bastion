@@ -213,6 +213,10 @@ enum
 	DIALOG_DONATE_MONEY,
 	DIALOG_DONATE_INPUT,
 	DIALOG_DONATE_UI,            // HTML-окно доната (ui.inc)
+	DIALOG_DONATE_VIP,           // выбор уровня VIP
+	DIALOG_VIP,                  // /vip (vip.inc): от DIALOG_VIP до DIALOG_VIP_INFO
+	DIALOG_VIP_PERKS,
+	DIALOG_VIP_INFO,
 
 	// --- Аренда мопедов (rental.inc)
 	DIALOG_RENTAL,

@@ -180,9 +180,13 @@ static Wound_ToHospital(playerid)
 	SetPlayerHealth(playerid, 100.0);
 	SetCameraBehindPlayer(playerid);
 	Needs_OnHospital(playerid);
-	GiveMoney(playerid, -HOSPITAL_FEE, "счёт больницы");
-	Econ_ToTreasury(HOSPITAL_FEE);
-	SendClientMessage(playerid, COLOR_WHITE, "Тебя довезли до больницы и вылечили. Счёт за лечение: $%d.", HOSPITAL_FEE);
+	new fee = Vip_HospitalFee(playerid, HOSPITAL_FEE);   // скидка VIP (vip.inc)
+	if (fee > 0)
+	{
+		GiveMoney(playerid, -fee, "счёт больницы");
+		Econ_ToTreasury(fee);
+	}
+	SendClientMessage(playerid, COLOR_WHITE, "Тебя довезли до больницы и вылечили. Счёт за лечение: $%d.", fee);
 }
 
 public Wound_OnSecond()
