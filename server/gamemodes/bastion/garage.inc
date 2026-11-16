@@ -48,7 +48,8 @@ static gModWheels[MAX_VEHICLES];
 static gModC1[MAX_VEHICLES] = { -1, ... };
 static gModC2[MAX_VEHICLES] = { -1, ... };
 
-static gImpoundFine[MAX_PLAYERS];   // штраф за машину на штрафстоянке (0 = машина не там)
+static gImpoundFine[MAX_PLAYERS];   // штраф за машину на штрафстоянке (0 = машин там нет)
+static gImpoundDb[MAX_PLAYERS];     // какая из машин игрока там стоит (id в vehicles); если их несколько — первая
 
 static const gWheelIds[] = { 1025, 1073, 1074, 1075, 1076, 1077, 1078, 1079, 1080, 1081, 1082, 1083, 1084, 1085, 1096, 1097, 1098 };
 static const gWheelNames[][] = { "Offroad", "Shadow", "Mega", "Rimshine", "Wires", "Classic", "Twist", "Cutter", "Switch", "Grove", "Import", "Dollar", "Trance", "Atomic", "Ahab", "Virtual", "Access" };
@@ -166,7 +167,7 @@ stock Garage_ApplyMods(vehicleid)
 // Из Vehicles_SpawnPersonal: тюнинг из базы
 stock Garage_LoadMods(playerid, vehicleid)
 {
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT nitro, hydra, wheels, c1, c2 FROM vehicles WHERE owner = %d", Player[playerid][pDbId]);
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT nitro, hydra, wheels, c1, c2 FROM vehicles WHERE id = %d", gPlayerVehDb[playerid]);
 	if (r == DBResult:0) return;
 	if (DB_GetRowCount(r) > 0)
 	{
@@ -182,8 +183,8 @@ stock Garage_LoadMods(playerid, vehicleid)
 
 static Garage_SaveMods(playerid, vehicleid)
 {
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET nitro = %d, hydra = %d, wheels = %d, c1 = %d, c2 = %d WHERE owner = %d",
-		gModNitro[vehicleid], gModHydra[vehicleid], gModWheels[vehicleid], gModC1[vehicleid], gModC2[vehicleid], Player[playerid][pDbId]));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET nitro = %d, hydra = %d, wheels = %d, c1 = %d, c2 = %d WHERE id = %d",
+		gModNitro[vehicleid], gModHydra[vehicleid], gModWheels[vehicleid], gModC1[vehicleid], gModC2[vehicleid], gPlayerVehDb[playerid]));
 }
 
 // ---------------------------------------------------------------------
@@ -354,13 +355,24 @@ stock Garage_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 //  Штрафстоянка
 // ---------------------------------------------------------------------
 // После входа в аккаунт (из Vehicles_LoadForPlayer)
-stock Garage_LoadPlayer(playerid)
+// Какая машина игрока стоит на штрафстоянке (машин несколько — берём первую, остальные по очереди)
+static Garage_FindImpound(playerid)
 {
 	gImpoundFine[playerid] = 0;
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT impound FROM vehicles WHERE owner = %d", Player[playerid][pDbId]);
+	gImpoundDb[playerid] = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT impound, id FROM vehicles WHERE owner = %d AND impound > 0 ORDER BY id LIMIT 1", Player[playerid][pDbId]);
 	if (r == DBResult:0) return;
-	if (DB_GetRowCount(r) > 0) gImpoundFine[playerid] = DB_GetFieldInt(r, 0);
+	if (DB_GetRowCount(r) > 0)
+	{
+		gImpoundFine[playerid] = DB_GetFieldInt(r, 0);
+		gImpoundDb[playerid] = DB_GetFieldInt(r, 1);
+	}
 	DB_FreeResultSet(r);
+}
+
+stock Garage_LoadPlayer(playerid)
+{
+	Garage_FindImpound(playerid);
 	if (gImpoundFine[playerid] > 0)
 		SendClientMessage(playerid, COLOR_ORANGE, "Твоя машина на штрафстоянке (штраф $%d). Забрать: ALT на штрафстоянке у LSPD.", gImpoundFine[playerid]);
 }
@@ -464,10 +476,11 @@ stock bool:Cmd_Impound(playerid, const params[])
 	{
 		if (IsPlayerConnected(i) && GetPlayerVehicleID(i) == v) RemovePlayerFromVehicle(i);
 	}
+	new vdb = gPlayerVehDb[owner];
 	Vehicles_UnloadForPlayer(owner);
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET impound = %d, imp_by = '%q', imp_date = %d, imp_reason = '%q' WHERE owner = %d",
-		fine, GetRPName(playerid), gettime(), reason, Player[owner][pDbId]));
-	gImpoundFine[owner] = fine;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET impound = %d, imp_by = '%q', imp_date = %d, imp_reason = '%q' WHERE id = %d",
+		fine, GetRPName(playerid), gettime(), reason, vdb));
+	Garage_FindImpound(owner);
 
 	GiveMoney(playerid, IMPOUND_REWARD, "премия за эвакуацию");
 	Account_Save(playerid);
@@ -486,8 +499,8 @@ stock bool:Cmd_Unimpound(playerid)
 	if (gImpoundFine[playerid] <= 0) return SendClientMessage(playerid, COLOR_GREY, "Твоей машины здесь нет.");
 	// кто, когда и за что отправил машину сюда
 	new by[MAX_PLAYER_NAME], when[24], reason[64];
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT IFNULL(imp_by, ''), strftime('%q', imp_date, 'unixepoch', 'localtime'), IFNULL(imp_reason, ''), IFNULL(imp_date, 0) FROM vehicles WHERE owner = %d",
-		"%d.%m.%Y %H:%M", Player[playerid][pDbId]);
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT IFNULL(imp_by, ''), strftime('%q', imp_date, 'unixepoch', 'localtime'), IFNULL(imp_reason, ''), IFNULL(imp_date, 0) FROM vehicles WHERE id = %d",
+		"%d.%m.%Y %H:%M", gImpoundDb[playerid]);
 	if (r != DBResult:0)
 	{
 		if (DB_GetRowCount(r) > 0)
@@ -524,21 +537,15 @@ static Garage_Unimpound(playerid)
 	Econ_ToTreasury(fine);
 
 	new Float:x = Garage[g][gaX] + 4.0, Float:y = Garage[g][gaY], Float:z = Garage[g][gaZ] + 0.5;
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET impound = 0, x = %f, y = %f, z = %f, a = 0.0 WHERE owner = %d",
-		x, y, z, Player[playerid][pDbId]));
-	gImpoundFine[playerid] = 0;
-	new v = Vehicles_SpawnFromDb(playerid);
-	if (v != INVALID_VEHICLE_ID)
-	{
-		// бензин — сколько было при эвакуации
-		new DBResult:r = DB_ExecuteQuery(gDB, "SELECT fuel FROM vehicles WHERE owner = %d", Player[playerid][pDbId]);
-		if (r != DBResult:0)
-		{
-			if (DB_GetRowCount(r) > 0 && DB_GetFieldFloat(r, 0) >= 0.0) Fuel_Set(v, DB_GetFieldFloat(r, 0));
-			DB_FreeResultSet(r);
-		}
-	}
+	new vdb = gImpoundDb[playerid];
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET impound = 0, x = %f, y = %f, z = %f, a = 0.0 WHERE id = %d",
+		x, y, z, vdb));
+	// выкупленная машина становится текущей (бензин — сколько было при эвакуации), прежняя уходит в гараж
+	Vehicles_Summon(playerid, vdb);
+	Garage_FindImpound(playerid);     // на стоянке могла остаться ещё одна
 	SendClientMessage(playerid, COLOR_GREEN, "Штраф $%d оплачен. Машина стоит рядом, припаркуй её: /park", fine);
+	if (gImpoundFine[playerid] > 0)
+		SendClientMessage(playerid, COLOR_ORANGE, "На штрафстоянке осталась ещё одна твоя машина (штраф $%d).", gImpoundFine[playerid]);
 	return 1;
 }
 

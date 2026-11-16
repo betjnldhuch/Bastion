@@ -116,8 +116,8 @@ stock Fuel_SavePersonal(playerid)
 {
 	new v = gPlayerVeh[playerid];
 	if (v == INVALID_VEHICLE_ID || Player[playerid][pDbId] == 0) return;
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET fuel = %f WHERE owner = %d",
-		Fuel_Get(v), Player[playerid][pDbId]));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET fuel = %f WHERE id = %d",
+		Fuel_Get(v), gPlayerVehDb[playerid]));
 }
 
 // Из Vehicles_LoadForPlayer: бензин личной машины и канистра
@@ -135,7 +135,7 @@ stock Fuel_LoadPlayer(playerid)
 
 	new v = gPlayerVeh[playerid];
 	if (v == INVALID_VEHICLE_ID) return;
-	r = DB_ExecuteQuery(gDB, "SELECT fuel FROM vehicles WHERE owner = %d", Player[playerid][pDbId]);
+	r = DB_ExecuteQuery(gDB, "SELECT fuel FROM vehicles WHERE id = %d", gPlayerVehDb[playerid]);
 	if (r != DBResult:0)
 	{
 		if (DB_GetRowCount(r) > 0)

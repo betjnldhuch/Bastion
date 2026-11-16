@@ -2,22 +2,15 @@
 //  vehicles.inc — транспорт.
 //  * Двигатель заводится вручную: /engine
 //  * Общественные машины стоят у спавна
-//  * Автосалон: /buycar, своя машина: /park /lock /sellcar
+//  * Своя машина: /park /lock. У игрока может быть несколько машин и вертолётов
+//    (таблица vehicles, по строке на каждую), но на улице стоит одна — «текущая»:
+//    gPlayerVeh — её машина в игре, gPlayerVehDb — её id в базе. Остальные «в гараже»,
+//    их вызывают через /cars (dealers.inc).
+//  * Автосалоны и авиасалон: /buycar, /sellcar, /cars — dealers.inc
 //  * Админ-машины: /veh /dveh (admin.inc)
 //  * Бензин, АЗС, спидометр — fuel.inc
 //  * СТО (ремонт, тюнинг) и штрафстоянка — garage.inc
 // =====================================================================
-
-// Автосалон (Coutt & Schutz, Лос-Сантос)
-#define DEALER_X            2131.8
-#define DEALER_Y            -1150.6
-#define DEALER_Z            24.1
-#define DEALER_SPAWN_X      2124.0
-#define DEALER_SPAWN_Y      -1135.0
-#define DEALER_SPAWN_Z      25.3
-#define DEALER_SPAWN_A      0.0
-
-static gDealerMk = -1;          // маркер автосалона (двигается в игре: /markers)
 
 #define PERSONAL_RESPAWN    600     // через сколько секунд брошенная машина вернётся на парковку
 
@@ -34,20 +27,86 @@ new bool:gVehAdmin[MAX_VEHICLES];   // создана админом через /veh
 new gVehFaction[MAX_VEHICLES];      // машина фракции (FACTION_*, 0 = не фракционная)
 new gVehCargo[MAX_VEHICLES];        // припасы в кузове машины армии (factions.inc, /supply)
 new gVehCargoSrc[MAX_VEHICLES];     // откуда груз: 1 — база снабжения, 2 — склад армии
-new gPlayerVeh[MAX_PLAYERS] = { INVALID_VEHICLE_ID, ... };
+new gPlayerVeh[MAX_PLAYERS] = { INVALID_VEHICLE_ID, ... };    // текущая личная машина игрока в игре
+new gPlayerVehDb[MAX_PLAYERS];                                // её id в таблице vehicles (0 = нет)
 
-static const gDealerModels[] = { 462, 410, 401, 516, 405, 560 };
-static const gDealerPrices[] = { 3000, 9000, 12000, 18000, 25000, 60000 };
-static const gDealerNames[][] = { "Faggio (мопед)", "Manana", "Bravura", "Nebula", "Sentinel", "Sultan" };
-
-// Цена модели в автосалоне (для налога на машину; 10000, если модели нет в салоне)
-stock Vehicles_GetModelPrice(model)
+// ---------------------------------------------------------------------
+//  База: раньше у игрока могла быть одна машина (owner ... UNIQUE).
+//  Один раз пересобираем таблицу без этого ограничения. Все строки и все
+//  поля (тюнинг, бензин, штрафстоянка) переносятся как есть.
+// ---------------------------------------------------------------------
+static Vehicles_DbCount(const table[])
 {
-	for (new i = 0; i < sizeof (gDealerModels); i++)
+	new n = -1;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT COUNT(*) FROM %s", table);
+	if (r == DBResult:0) return -1;
+	if (DB_GetRowCount(r) > 0) n = DB_GetFieldInt(r, 0);
+	DB_FreeResultSet(r);
+	return n;
+}
+
+static Vehicles_Migrate()
+{
+	// «текущая» машина игрока: она появляется при входе
+	DB_AddColumn("vehicles", "active", "INTEGER DEFAULT 0");
+
+	new sql[1024];
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'vehicles'");
+	if (r == DBResult:0) return;
+	if (DB_GetRowCount(r) > 0) DB_GetFieldString(r, 0, sql, sizeof sql);
+	DB_FreeResultSet(r);
+
+	new u = strfind(sql, " UNIQUE", true);
+	new p = strfind(sql, "(");
+	if (u != -1 && p != -1 && strlen(sql) < sizeof (sql) - 1)
 	{
-		if (gDealerModels[i] == model) return gDealerPrices[i];
+		strdel(sql, u, u + 7);
+		new before = Vehicles_DbCount("vehicles");
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "DROP TABLE IF EXISTS vehicles_new"));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "BEGIN"));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE vehicles_new %s", sql[p]));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO vehicles_new SELECT * FROM vehicles"));
+		if (before < 0 || Vehicles_DbCount("vehicles_new") != before)
+		{
+			// что-то пошло не так — старая таблица остаётся нетронутой
+			DB_FreeResultSet(DB_ExecuteQuery(gDB, "ROLLBACK"));
+			DB_FreeResultSet(DB_ExecuteQuery(gDB, "DROP TABLE IF EXISTS vehicles_new"));
+			print("[Vehicles] ERROR: vehicles table was NOT migrated, still one vehicle per player.");
+			return;
+		}
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "DROP TABLE vehicles"));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "ALTER TABLE vehicles_new RENAME TO vehicles"));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET active = 1"));     // до сих пор машина была одна
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "COMMIT"));
+		printf("[Vehicles] Table vehicles migrated: several vehicles per player (%d rows kept).", before);
 	}
-	return 10000;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE INDEX IF NOT EXISTS idx_vehicles_owner ON vehicles (owner)"));
+}
+
+// Сколько у игрока личного транспорта (вместе с тем, что в гараже и на штрафстоянке)
+stock Vehicles_CountOwned(playerid)
+{
+	new n = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT COUNT(*) FROM vehicles WHERE owner = %d", Player[playerid][pDbId]);
+	if (r == DBResult:0) return 0;
+	if (DB_GetRowCount(r) > 0) n = DB_GetFieldInt(r, 0);
+	DB_FreeResultSet(r);
+	return n;
+}
+
+// Цена всего личного транспорта игрока по ценам салонов (для налога, economy.inc)
+stock Vehicles_GetOwnedValue(playerid)
+{
+	new value = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT model FROM vehicles WHERE owner = %d", Player[playerid][pDbId]);
+	if (r == DBResult:0) return 0;
+	for (new i = 0, rows = DB_GetRowCount(r); i < rows; i++)
+	{
+		value += Vehicles_GetModelPrice(DB_GetFieldInt(r, 0));
+		DB_SelectNextRow(r);
+	}
+	DB_FreeResultSet(r);
+	return value;
 }
 
 // ---------------------------------------------------------------------
@@ -62,16 +121,8 @@ stock Vehicles_Init()
 	AddStaticVehicleEx(462, 2497.0, -1680.0, 13.0, 0.0, -1, -1, 300);    // Faggio
 	AddStaticVehicleEx(462, 2499.0, -1680.0, 13.0, 0.0, -1, -1, 300);    // Faggio
 
-	// Автосалон
-	new Float:dx = DEALER_X, Float:dy = DEALER_Y, Float:dz = DEALER_Z;
-	gDealerMk = Marker_Create(MK_DEALER, 0, "Автосалон", 1274, dx, dy, dz, 0, 0, GPS_TRANSPORT);
-	Marker_SetLabel(gDealerMk, "{FFFF00}Автосалон\n{FFFFFF}ALT — купить машину");
-}
-
-// Игрок у автосалона
-stock Vehicles_IsNearDealer(playerid)
-{
-	return Marker_InRange(playerid, gDealerMk, 3.0);
+	Vehicles_Migrate();     // несколько машин у игрока
+	Dealers_Init();         // автосалоны и авиасалон (dealers.inc)
 }
 
 // Применить "двери закрыты / открыты" к машине
@@ -94,8 +145,8 @@ stock Vehicle_Clear(vehicleid)
 	Garage_ResetVehicle(vehicleid);   // garage.inc: без тюнинга
 }
 
-// Создать личную машину игрока
-stock Vehicles_SpawnPersonal(playerid, model, Float:x, Float:y, Float:z, Float:a, c1, c2, bool:locked)
+// Создать личную машину игрока (dbid — её строка в vehicles); она становится текущей
+stock Vehicles_SpawnPersonal(playerid, dbid, model, Float:x, Float:y, Float:z, Float:a, c1, c2, bool:locked)
 {
 	new v = CreateVehicle(model, x, y, z, a, c1, c2, PERSONAL_RESPAWN);
 	if (v == INVALID_VEHICLE_ID) return INVALID_VEHICLE_ID;
@@ -104,24 +155,55 @@ stock Vehicles_SpawnPersonal(playerid, model, Float:x, Float:y, Float:z, Float:a
 	gVehLocked[v] = locked;
 	Vehicle_ApplyLock(v);
 	gPlayerVeh[playerid] = v;
+	gPlayerVehDb[playerid] = dbid;
 	Garage_LoadMods(playerid, v);     // покраска и тюнинг (garage.inc)
 	return v;
 }
 
-// Создать личную машину из базы (если она не на штрафстоянке)
-stock Vehicles_SpawnFromDb(playerid)
+// Создать машину dbid из базы (если она этого игрока и не на штрафстоянке), с её бензином
+stock Vehicles_SpawnDb(playerid, dbid)
 {
 	new v = INVALID_VEHICLE_ID;
 	new DBResult:r = DB_ExecuteQuery(gDB,
-		"SELECT model, x, y, z, a, c1, c2, locked FROM vehicles WHERE owner = %d AND impound = 0", Player[playerid][pDbId]);
+		"SELECT model, x, y, z, a, c1, c2, locked, IFNULL(fuel, -1) FROM vehicles WHERE id = %d AND owner = %d AND impound = 0", dbid, Player[playerid][pDbId]);
 	if (r == DBResult:0) return v;
 	if (DB_GetRowCount(r) > 0)
 	{
-		v = Vehicles_SpawnPersonal(playerid, DB_GetFieldInt(r, 0),
+		new Float:fuel = DB_GetFieldFloat(r, 8);
+		v = Vehicles_SpawnPersonal(playerid, dbid, DB_GetFieldInt(r, 0),
 			DB_GetFieldFloat(r, 1), DB_GetFieldFloat(r, 2), DB_GetFieldFloat(r, 3), DB_GetFieldFloat(r, 4),
 			DB_GetFieldInt(r, 5), DB_GetFieldInt(r, 6), DB_GetFieldInt(r, 7) != 0);
+		if (v != INVALID_VEHICLE_ID && fuel >= 0.0) Fuel_Set(v, fuel);
 	}
 	DB_FreeResultSet(r);
+	return v;
+}
+
+// Запомнить, какая машина игрока текущая (она появится при следующем входе)
+stock Vehicles_SetActive(playerid, dbid)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET active = (id = %d) WHERE owner = %d", dbid, Player[playerid][pDbId]));
+}
+
+// Создать текущую машину игрока из базы. Если отмеченная стоит на штрафстоянке — первую свободную
+stock Vehicles_SpawnFromDb(playerid)
+{
+	new dbid = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB,
+		"SELECT id FROM vehicles WHERE owner = %d AND impound = 0 ORDER BY active DESC, id LIMIT 1", Player[playerid][pDbId]);
+	if (r == DBResult:0) return INVALID_VEHICLE_ID;
+	if (DB_GetRowCount(r) > 0) dbid = DB_GetFieldInt(r, 0);
+	DB_FreeResultSet(r);
+	if (dbid == 0) return INVALID_VEHICLE_ID;
+	return Vehicles_SpawnDb(playerid, dbid);
+}
+
+// Поменять текущую машину на dbid: прежняя уходит в гараж, эта появляется на своей парковке
+stock Vehicles_Summon(playerid, dbid)
+{
+	Vehicles_UnloadForPlayer(playerid);
+	new v = Vehicles_SpawnDb(playerid, dbid);
+	if (v != INVALID_VEHICLE_ID) Vehicles_SetActive(playerid, dbid);
 	return v;
 }
 
@@ -153,6 +235,7 @@ stock Vehicles_UnloadForPlayer(playerid)
 		DestroyVehicle(v);
 		gPlayerVeh[playerid] = INVALID_VEHICLE_ID;
 	}
+	gPlayerVehDb[playerid] = 0;
 }
 
 // Вызывается из OnVehicleSpawn: после респавна вернуть замок
@@ -170,7 +253,7 @@ stock Vehicles_OnBecomeDriver(playerid)
 {
 	new v = GetPlayerVehicleID(playerid);
 	if (gVehOwner[v] != 0 && gVehOwner[v] == Player[playerid][pDbId])
-		SendClientMessage(playerid, COLOR_BLUE, "Это твоя машина. 2 — двигатель, /park — припарковать, /lock — замок.");
+		SendClientMessage(playerid, COLOR_BLUE, "Это твоя машина. 2 — двигатель, /park — припарковать, /lock — замок, /cars — весь твой транспорт.");
 	else
 		SendClientMessage(playerid, COLOR_GREY, "Чтобы завести двигатель, нажми 2 (или /engine)");
 }
@@ -198,99 +281,30 @@ stock bool:Cmd_Engine(playerid)
 	return true;
 }
 
-stock bool:Cmd_BuyCar(playerid)
-{
-	if (Debts_BlockBuy(playerid)) return true;      // большой долг штату (debts.inc)
-	if (!Vehicles_IsNearDealer(playerid))
-		return SendClientMessage(playerid, COLOR_GREY, "Ты должен быть в автосалоне (значок доллара).");
-	if (gPlayerVeh[playerid] != INVALID_VEHICLE_ID)
-		return SendClientMessage(playerid, COLOR_GREY, "У тебя уже есть машина. Продать: /sellcar");
-	if (Garage_GetImpound(playerid) > 0)
-		return SendClientMessage(playerid, COLOR_GREY, "Твоя машина на штрафстоянке. Сначала забери её.");
-
-	new list[512] = "Модель\tЦена\n";
-	new line[64];
-	for (new i = 0; i < sizeof (gDealerModels); i++)
-	{
-		format(line, sizeof line, "%s\t$%d\n", gDealerNames[i], gDealerPrices[i]);
-		strcat(list, line);
-	}
-	ShowPlayerDialog(playerid, DIALOG_BUYCAR, DIALOG_STYLE_TABLIST_HEADERS, "Автосалон", "%s", "Купить", "Отмена", list);
-	return true;
-}
-
-// Ответ на окно автосалона (из OnDialogResponse)
-stock Vehicles_OnDialog(playerid, dialogid, response, listitem)
-{
-	if (dialogid != DIALOG_BUYCAR) return 0;
-	if (!response || listitem < 0 || listitem >= sizeof (gDealerModels)) return 1;
-	if (gPlayerVeh[playerid] != INVALID_VEHICLE_ID) return 1;
-
-	new price = gDealerPrices[listitem];
-	if (GetMoney(playerid) < price)
-	{
-		SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", price);
-		return 1;
-	}
-
-	new model = gDealerModels[listitem];
-	new c1 = random(126), c2 = random(126);
-	new v = Vehicles_SpawnPersonal(playerid, model, DEALER_SPAWN_X, DEALER_SPAWN_Y, DEALER_SPAWN_Z, DEALER_SPAWN_A, c1, c2, false);
-	if (v == INVALID_VEHICLE_ID)
-	{
-		SendClientMessage(playerid, COLOR_RED, "Не удалось создать машину (лимит транспорта).");
-		return 1;
-	}
-
-	GiveMoney(playerid, -price, "покупка машины");
-	DB_FreeResultSet(DB_ExecuteQuery(gDB,
-		"INSERT INTO vehicles (owner, model, x, y, z, a, c1, c2) VALUES (%d, %d, %f, %f, %f, %f, %d, %d)",
-		Player[playerid][pDbId], model, DEALER_SPAWN_X, DEALER_SPAWN_Y, DEALER_SPAWN_Z, DEALER_SPAWN_A, c1, c2));
-	Account_Save(playerid);
-
-	PutPlayerInVehicle(playerid, v, 0);
-	SendClientMessage(playerid, COLOR_GREEN, "Ты купил %s за $%d! Припаркуй её в удобном месте: /park", gDealerNames[listitem], price);
-	return 1;
-}
-
 stock bool:Cmd_Park(playerid)
 {
 	new v = GetPlayerVehicleID(playerid);
 	if (GetPlayerState(playerid) != PLAYER_STATE_DRIVER || v != gPlayerVeh[playerid])
 		return SendClientMessage(playerid, COLOR_GREY, "Ты должен сидеть за рулём своей машины.");
-
 	new Float:x, Float:y, Float:z, Float:a;
+	GetVehicleVelocity(v, x, y, z);
+	if (x * x + y * y + z * z > 0.0025) return SendClientMessage(playerid, COLOR_GREY, "Сначала остановись.");
+
+	new dbid = gPlayerVehDb[playerid];
 	GetVehiclePos(v, x, y, z);
 	GetVehicleZAngle(v, a);
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET x = %f, y = %f, z = %f, a = %f WHERE owner = %d",
-		x, y, z, a, Player[playerid][pDbId]));
+	Fuel_SavePersonal(playerid);
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET x = %f, y = %f, z = %f, a = %f, locked = %d WHERE id = %d",
+		x, y, z, a, gVehLocked[v] ? 1 : 0, dbid));
 
 	// Пересоздаём машину, чтобы она "запомнила" новое место респавна
-	new model = GetVehicleModel(v);
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT c1, c2 FROM vehicles WHERE owner = %d", Player[playerid][pDbId]);
-	new c1 = -1, c2 = -1;
-	if (r != DBResult:0)
-	{
-		if (DB_GetRowCount(r) > 0)
-		{
-			c1 = DB_GetFieldInt(r, 0);
-			c2 = DB_GetFieldInt(r, 1);
-		}
-		DB_FreeResultSet(r);
-	}
-	new bool:locked = gVehLocked[v];
-	new Float:fuel = Fuel_Get(v);
 	Vehicle_Clear(v);
 	DestroyVehicle(v);
 	gPlayerVeh[playerid] = INVALID_VEHICLE_ID;
-	new nv = Vehicles_SpawnPersonal(playerid, model, x, y, z, a, c1, c2, locked);
-	if (nv != INVALID_VEHICLE_ID)
-	{
-		Fuel_Set(nv, fuel);
-		Fuel_SavePersonal(playerid);
-	}
+	new nv = Vehicles_SpawnDb(playerid, dbid);
+	if (nv != INVALID_VEHICLE_ID) PutPlayerInVehicle(playerid, nv, 0);
 
-	SendClientMessage(playerid, COLOR_GREEN, "Машина припаркована. Здесь она будет появляться.");
+	SendClientMessage(playerid, COLOR_GREEN, "Транспорт припаркован. Здесь он будет появляться.");
 	return true;
 }
 
@@ -306,29 +320,9 @@ stock bool:Vehicles_ToggleLock(playerid)
 
 	gVehLocked[v] = !gVehLocked[v];
 	Vehicle_ApplyLock(v);
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET locked = %d WHERE owner = %d",
-		gVehLocked[v] ? 1 : 0, Player[playerid][pDbId]));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE vehicles SET locked = %d WHERE id = %d",
+		gVehLocked[v] ? 1 : 0, gPlayerVehDb[playerid]));
 	if (gVehLocked[v]) SendClientMessage(playerid, COLOR_WHITE, "Машина {FF6347}закрыта{FFFFFF}.");
 	else SendClientMessage(playerid, COLOR_WHITE, "Машина {33AA33}открыта{FFFFFF}.");
-	return true;
-}
-
-stock bool:Cmd_SellCar(playerid)
-{
-	new v = gPlayerVeh[playerid];
-	if (v == INVALID_VEHICLE_ID) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет машины.");
-	if (!Vehicles_IsNearDealer(playerid))
-		return SendClientMessage(playerid, COLOR_GREY, "Продать машину можно в автосалоне.");
-
-	new model = GetVehicleModel(v), refund = 1000;
-	for (new i = 0; i < sizeof (gDealerModels); i++)
-	{
-		if (gDealerModels[i] == model) refund = gDealerPrices[i] / 2;
-	}
-	Vehicles_UnloadForPlayer(playerid);
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM vehicles WHERE owner = %d", Player[playerid][pDbId]));
-	GiveMoney(playerid, refund, "продажа машины");
-	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_GREEN, "Машина продана за $%d.", refund);
 	return true;
 }

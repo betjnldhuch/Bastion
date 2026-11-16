@@ -36,6 +36,10 @@ enum
 	DIALOG_RULES,
 	DIALOG_REFERRAL,
 	DIALOG_BUYCAR,
+	DIALOG_BUYCAR_OK,       // подтверждение покупки в автосалоне (dealers.inc)
+	DIALOG_CARS,            // /cars: мой транспорт
+	DIALOG_MYHOUSES,        // /myhouses: мои дома (property.inc)
+	DIALOG_MYHOUSE_ACT,
 	DIALOG_HELP,
 	DIALOG_BANK,
 	DIALOG_BANK_DEPOSIT,
