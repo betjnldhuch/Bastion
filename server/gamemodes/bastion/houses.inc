@@ -57,10 +57,12 @@ new House[MAX_HOUSES][E_HOUSE];
 
 forward bool:Doors_Try(playerid);     // doors.inc подключён позже
 forward bool:Biz_TryDoor(playerid);
-forward bool:House_AtStore(playerid, h);   // business.inc: вход и выход из интерьера бизнеса
+forward bool:House_AtStore(playerid, h);
+forward bool:House_IsInside(playerid, h);   // business.inc: вход и выход из интерьера бизнеса
 new gHouseCount = 0;
 
 static gRentHouse[MAX_PLAYERS] = { -1, ... };          // какой дом снимает игрок (-1 = нет)
+static gMainHouse[MAX_PLAYERS];                         // id (в базе) главного дома: у него спавн. 0 — первый из своих
 static gHouseGunSlot[MAX_PLAYERS][HOUSE_WEAPON_SLOTS];  // пункты списка "взять оружие"
 
 // Готовые интерьеры для /createhouse (номер интерьера и координаты внутри)
@@ -89,6 +91,7 @@ static Houses_Init()
 	DB_AddColumn("houses", "sty", "REAL DEFAULT 0");
 	DB_AddColumn("houses", "stz", "REAL DEFAULT 0");
 	DB_AddColumn("accounts", "rent_house", "INTEGER DEFAULT 0");
+	DB_AddColumn("accounts", "main_house", "INTEGER DEFAULT 0");   // главный дом, когда домов несколько
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS house_weapons (house INTEGER NOT NULL, slot INTEGER NOT NULL, weapon INTEGER, ammo INTEGER, PRIMARY KEY (house, slot))"));
 }
 
@@ -269,15 +272,51 @@ stock House_GetNearby(playerid, Float:range = 2.5)
 	return -1;
 }
 
-// Дом, которым владеет игрок (-1 = нет)
+// Сколько домов у игрока
+stock House_CountOwned(playerid)
+{
+	if (Player[playerid][pDbId] == 0) return 0;
+	new n = 0;
+	for (new h = 0; h < gHouseCount; h++)
+	{
+		if (House[h][hOwner] == Player[playerid][pDbId]) n++;
+	}
+	return n;
+}
+
+// Главный дом игрока: у него спавн, он же показывается в /stats (-1 = домов нет).
+// Выбирается в /myhouses; пока не выбран (или тот дом продан) — первый из своих
+stock House_GetMain(playerid)
+{
+	if (Player[playerid][pDbId] == 0) return -1;
+	new first = -1;
+	for (new h = 0; h < gHouseCount; h++)
+	{
+		if (House[h][hOwner] != Player[playerid][pDbId]) continue;
+		if (House[h][hDbId] == gMainHouse[playerid]) return h;
+		if (first == -1) first = h;
+	}
+	return first;
+}
+
+// Сделать дом h главным (property.inc, /myhouses)
+stock House_SetMain(playerid, h)
+{
+	gMainHouse[playerid] = House[h][hDbId];
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET main_house = %d WHERE id = %d", gMainHouse[playerid], Player[playerid][pDbId]));
+}
+
+// Дом, которым владеет игрок (-1 = нет). Домов может быть несколько, поэтому команды
+// (/house, /sellhouse, /housepay, /lock...) работают с тем, где игрок находится:
+// сначала дом, внутри которого он стоит, потом дом, у двери которого стоит, иначе главный
 stock House_GetOwned(playerid)
 {
 	if (Player[playerid][pDbId] == 0) return -1;
-	for (new h = 0; h < gHouseCount; h++)
-	{
-		if (House[h][hOwner] == Player[playerid][pDbId]) return h;
-	}
-	return -1;
+	new h = Player[playerid][pHouseInside];
+	if (h >= 0 && h < gHouseCount && House[h][hOwner] == Player[playerid][pDbId] && House_IsInside(playerid, h)) return h;
+	h = House_GetNearby(playerid);
+	if (h != -1 && House[h][hOwner] == Player[playerid][pDbId]) return h;
+	return House_GetMain(playerid);
 }
 
 // Игрок на самом деле стоит внутри дома h. Отметка pHouseInside одна не годится: после больницы,
@@ -297,7 +336,7 @@ stock House_GetRented(playerid)
 // Для спавна у дома (вызывается из accounts.inc): свой дом важнее съёмного
 stock Houses_GetSpawn(playerid, &Float:x, &Float:y, &Float:z, &Float:a)
 {
-	new h = House_GetOwned(playerid);
+	new h = House_GetMain(playerid);
 	if (h == -1) h = Family_SpouseHouse(playerid);     // дом супруга (marriage.inc)
 	if (h == -1) h = gRentHouse[playerid];
 	if (h == -1) h = Family_HouseOf(playerid);         // семейный дом (families.inc)
@@ -313,7 +352,7 @@ stock Houses_GetSpawn(playerid, &Float:x, &Float:y, &Float:z, &Float:a)
 // Из OnPlayerSpawn: дом стоит внутри здания (общежитие) — вернуть игроку интерьер и мир
 stock Houses_OnSpawn(playerid)
 {
-	new h = House_GetOwned(playerid);
+	new h = House_GetMain(playerid);
 	if (h == -1) h = Family_SpouseHouse(playerid);
 	if (h == -1) h = gRentHouse[playerid];
 	if (h == -1) h = Family_HouseOf(playerid);
@@ -352,10 +391,15 @@ stock House_Save(h)
 stock Houses_LoadPlayer(playerid)
 {
 	gRentHouse[playerid] = -1;
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT rent_house FROM accounts WHERE id = %d", Player[playerid][pDbId]);
+	gMainHouse[playerid] = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT rent_house, main_house FROM accounts WHERE id = %d", Player[playerid][pDbId]);
 	if (r == DBResult:0) return;
 	new dbid = 0;
-	if (DB_GetRowCount(r) > 0) dbid = DB_GetFieldInt(r, 0);
+	if (DB_GetRowCount(r) > 0)
+	{
+		dbid = DB_GetFieldInt(r, 0);
+		gMainHouse[playerid] = DB_GetFieldInt(r, 1);
+	}
 	DB_FreeResultSet(r);
 	if (dbid == 0) return;
 
@@ -482,7 +526,8 @@ stock bool:Cmd_BuyHouse(playerid)
 	new h = House_GetNearby(playerid);
 	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "Рядом нет дома. Подойди к зелёному домику.");
 	if (House[h][hOwner] != 0) return SendClientMessage(playerid, COLOR_GREY, "Этот дом уже куплен.");
-	if (House_GetOwned(playerid) != -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя уже есть дом. Сначала продай его: /sellhouse");
+	if (House_CountOwned(playerid) >= Props_MaxHouses(playerid))     // лимит домов (property.inc)
+		return SendClientMessage(playerid, COLOR_GREY, "У тебя уже %d дом(а) — это твой лимит. Продай один (/sellhouse) или повысь VIP. Список: /myhouses", House_CountOwned(playerid));
 	if (GetMoney(playerid) < House[h][hPrice]) return SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", House[h][hPrice]);
 
 	GiveMoney(playerid, -House[h][hPrice], "покупка дома");
@@ -500,6 +545,8 @@ stock bool:Cmd_BuyHouse(playerid)
 
 	SendClientMessage(playerid, COLOR_GREEN, "Поздравляем! Ты купил дом №%d за $%d. Войти: /enter, замок: /lock, меню: /house", House[h][hDbId], House[h][hPrice]);
 	SendClientMessage(playerid, COLOR_WHITE, "Налог $%d в час списывается со счёта дома. Пополнить: /housepay [сумма]", House_GetTax(h));
+	if (House_CountOwned(playerid) > 1)
+		SendClientMessage(playerid, COLOR_WHITE, "Домов у тебя теперь %d из %d. Список и выбор дома для спавна: /myhouses", House_CountOwned(playerid), Props_MaxHouses(playerid));
 	return true;
 }
 

@@ -195,6 +195,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/buycar", true))      { Cmd_BuyCar(playerid); return 1; }
 	if (!strcmp(cmd, "/park", true))        { Cmd_Park(playerid); return 1; }
 	if (!strcmp(cmd, "/sellcar", true))     { Cmd_SellCar(playerid); return 1; }
+	if (Props_OnCommand(playerid, cmd, cmdtext[pos])) return 1;     // /cars, /myhouses, /dealerspawn
 	if (!strcmp(cmd, "/fill", true))        { Cmd_Fill(playerid); return 1; }
 	if (!strcmp(cmd, "/fuel", true))        { Cmd_Fuel(playerid); return 1; }
 	if (!strcmp(cmd, "/canister", true))    { Cmd_Canister(playerid); return 1; }

@@ -116,9 +116,9 @@ static bool:Econ_Charge(playerid, sum, const reason[])
 // Налог на машину в час (0 — нет машины)
 stock Econ_GetCarTax(playerid)
 {
-	new v = gPlayerVeh[playerid];
-	if (v == INVALID_VEHICLE_ID) return 0;
-	new tax = Vehicles_GetModelPrice(GetVehicleModel(v)) * gTaxCar / 1000;
+	new value = Vehicles_GetOwnedValue(playerid);     // цена всего личного транспорта (vehicles.inc)
+	if (value <= 0) return 0;
+	new tax = value / 1000 * gTaxCar;
 	if (tax < TAX_CAR_MIN_SUM) tax = TAX_CAR_MIN_SUM;
 	if (tax > TAX_CAR_MAX_SUM) tax = TAX_CAR_MAX_SUM;
 	return tax;

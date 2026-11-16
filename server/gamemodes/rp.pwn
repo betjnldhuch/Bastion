@@ -84,6 +84,8 @@
 #include "bastion/business.inc"
 #include "bastion/bizplus.inc"    // новые виды бизнесов: склад, наценка, меню владельца
 #include "bastion/garage.inc"
+#include "bastion/dealers.inc"    // автосалоны и авиасалон, /cars Ч несколько машин у игрока
+#include "bastion/property.inc"   // лимиты домов и транспорта (в том числе по VIP), /myhouses
 #include "bastion/gps.inc"        // /markers Ч правка маркеров в игре, /gps
 #include "bastion/debts.inc"      // долги штату: налоги и штрафы отдельными счетами
 #include "bastion/economy.inc"
@@ -427,6 +429,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Spawns_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Admin_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Vehicles_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Props_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Bank_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Business_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (BizX_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
