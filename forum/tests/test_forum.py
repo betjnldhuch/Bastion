@@ -268,6 +268,36 @@ class ForumTest(unittest.TestCase):
         self.assertEqual(server._safe_next("https://evil.com"), "/")
         self.assertEqual(server._safe_next("/t/5"), "/t/5")
 
+    def test_server_logs(self):
+        player, admin = Client(self.base), Client(self.base)
+        self.assertEqual(player.get("/logs")[0], 200)  # гость — страница входа
+        player.login("Ivan_Petrov")
+        self.assertEqual(player.get("/logs")[0], 403)
+        admin.login("Pal_Layach")
+        code, html = admin.get("/logs")
+        self.assertEqual(code, 200)
+        self.assertIn("Привет всем, кто продаст машину?", html)  # текст из Windows-1251
+        self.assertIn("Аптечка", html)
+        _, html = admin.get("/logs?name=ivan_petrov")
+        self.assertIn("Desert Eagle", html)  # Ivan_Petrov — во втором нике
+        self.assertNotIn("Аптечка", html)
+        _, html = admin.get("/logs?type=money&type=admin")
+        self.assertIn("/pay -&gt; Tony Ballas", html)
+        self.assertIn("Чит на деньги", html)
+        self.assertNotIn("Привет всем", html)
+        _, html = admin.get("/logs?text=" + urllib.parse.quote("ПРИВЕТ"))
+        self.assertIn("Привет всем", html)
+        self.assertNotIn("Desert Eagle", html)
+        _, html = admin.get("/logs?ip=10.0.0.*&name=Cheater_*")
+        self.assertIn("дай денег", html)
+        self.assertNotIn("Привет всем", html)
+        today = __import__("time").strftime("%Y-%m-%d")
+        _, html = admin.get("/logs?from=" + today)
+        self.assertNotIn("Аптечка", html)  # вчерашняя запись
+        code, csv_text = admin.get("/logs.csv?type=chat")
+        self.assertEqual(code, 200)
+        self.assertIn("Привет всем", csv_text)
+
 
 if __name__ == "__main__":
     unittest.main()

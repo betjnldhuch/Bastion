@@ -459,6 +459,7 @@ stock Faction_Log(f, const text[], kind = FLOG_OTHER)
 	gettime(hour, minute, second);
 	format(line, sizeof line, "%02d.%02d %02d:%02d  %s", day, month, hour, minute, text);
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO faction_logs (faction, date, text, kind) VALUES (%d, %d, '%q', %d)", f, gettime(), line, kind));
+	Log_OnFaction(f, Faction[f][fName], text);
 }
 
 stock Faction_SaveBank(f)

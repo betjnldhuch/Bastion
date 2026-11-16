@@ -215,6 +215,7 @@ stock Bank_Log(account, type, amount, other = 0)
 stock Bank_MoneyLog(account, amount, cash, const reason[])
 {
 	if (account <= 0 || amount == 0) return;
+	Log_OnBank(account, amount, reason);
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO money_log (time, account, amount, cash, reason) VALUES (%d, %d, %d, %d, 'банк: %q')",
 		gettime(), account, amount, cash, reason));
 }

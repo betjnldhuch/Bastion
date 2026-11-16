@@ -267,6 +267,7 @@ stock Admin_LogName(const admin[], adminDb, const action[], const target[], targ
 	DB_FreeResultSet(DB_ExecuteQuery(gDB,
 		"INSERT INTO admin_log (date, admin, admin_id, action, target, target_id, value, reason) VALUES (%d, '%q', %d, '%q', '%q', %d, %d, '%q')",
 		gettime(), admin, adminDb, action, target, targetDb, value, reason));
+	Log_OnAdmin(admin, adminDb, action, target, targetDb, reason, value);
 	printf("[admin] %s: %s %s (%d) %s", admin, action, target, value, reason);
 }
 
@@ -1920,6 +1921,7 @@ stock Admin_OnCommand(playerid, const cmd[], const params[])
 	if (!strcmp(cmd, "/unbanip", true))     { Cmd_UnbanIp(playerid, params); return 1; }
 	if (!strcmp(cmd, "/backup", true))      { Cmd_Backup(playerid); return 1; }
 	if (!strcmp(cmd, "/alog", true))        { Cmd_ALog(playerid, params); return 1; }
+	if (!strcmp(cmd, "/logs", true))        { Cmd_Logs(playerid, params); return 1; }
 	if (!strcmp(cmd, "/veh", true))         { Cmd_Veh(playerid, params); return 1; }
 	if (!strcmp(cmd, "/dveh", true))        { Cmd_DVeh(playerid); return 1; }
 	if (!strcmp(cmd, "/givemoney", true))   { Cmd_GiveMoney(playerid, params); return 1; }

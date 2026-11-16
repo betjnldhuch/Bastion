@@ -1172,6 +1172,7 @@ static Fam_Log(s, kind, const text[])
 	gettime(hour, minute, second);
 	format(line, sizeof line, "%02d.%02d %02d:%02d  %s", day, month, hour, minute, text);
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO family_logs (family, date, kind, text) VALUES (%d, %d, %d, '%q')", Family[s][famDb], gettime(), kind, line));
+	Log_OnFamily(Family[s][famDb], Family[s][famName], text);
 }
 
 // Сообщение семье и запись в журнал (текст сообщения начинается с «[Тип] »)

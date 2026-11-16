@@ -116,6 +116,8 @@ def layout(ctx, title, body, crumbs=None, status=200, script=""):
         account = f'<a class="btn small" href="/login?next={e(nxt)}">Войти</a>'
     discord = f'<a href="{e(cfg.discord)}" target="_blank" rel="noopener">Discord</a>' if cfg.discord else ""
     donate_admin = '<a href="/donate/requests">Заявки доната</a>' if ctx.perm.is_admin else ""
+    if getattr(ctx.perm, "can_view_logs", False):
+        donate_admin += '<a href="/logs">Логи</a>'
     nav = "".join(
         f'<li><a href="{e(u)}">{e(t)}</a></li>' for t, u in crumbs or [])
     crumbs_html = (f'<ol class="crumbs"><li><a href="/forum">Форум</a></li>{nav}</ol>' if crumbs else "")
@@ -490,6 +492,80 @@ def modlog(ctx, rows):
                 f'<td>{link(x)}</td><td class="muted">{e(x["details"])}</td></tr>' for x in rows)
     return layout(ctx, "Журнал модерации", f'<div class="page-head"><h1>Журнал модерации</h1></div>'
                   f'<section class="card"><table class="list">{r}</table></section>', crumbs=[("Журнал", "/modlog")])
+
+
+LOG_TYPE_CLS = {"conn": "lt-conn", "chat": "lt-chat", "cmd": "lt-chat", "money": "lt-money", "bank": "lt-money",
+                "item": "lt-item", "admin": "lt-admin", "kill": "lt-kill", "dmg": "lt-kill", "ac": "lt-admin"}
+
+
+def _size(n):
+    for unit in ("Б", "КБ", "МБ", "ГБ"):
+        if n < 1024 or unit == "ГБ":
+            return f"{n:.0f} {unit}" if unit == "Б" else f"{n:.1f} {unit}"
+        n /= 1024
+
+
+def logs(ctx, f, servers, rows, more, error, size):
+    def url(**over):
+        q = {"server": f["server"], "name": f["name"], "type": ",".join(f["types"]), "text": f["text"],
+             "ip": f["ip"], "from": f["from"], "to": f["to"]}
+        q.update(over)
+        return urllib.parse.urlencode({k: v for k, v in q.items() if v not in ("", None, 0)})
+
+    def who(name):
+        if not name:
+            return ""
+        return f'<a href="/logs?{e(url(name=name, before=""))}" title="Все записи игрока">{e(name)}</a>'
+
+    def ip_link(ip):
+        return f'<a class="muted" href="/logs?{e(url(ip=ip, name="", before=""))}" title="Все с этого IP">{e(ip)}</a>' if ip else ""
+
+    trs = []
+    for r in rows:
+        t = r["type"]
+        target = f' <span class="muted">→</span> {who(r["tname"])}' if r["tname"] else ""
+        trs.append(
+            f'<tr><td class="nowrap mono">{time.strftime("%d.%m.%y %H:%M:%S", time.localtime(r["time"]))}</td>'
+            f'<td><span class="badge {LOG_TYPE_CLS.get(t, "")}">{e(game.LOG_TYPES.get(t, t))}</span></td>'
+            f'<td class="nowrap">{who(r["name"])}{target}</td>'
+            f'<td class="logtext">{e(r["text"])}</td><td class="nowrap">{ip_link(r["ip"])}</td></tr>')
+    table = ""
+    if rows:
+        table = ('<div class="scroll-x"><table class="list logs"><tr><th>Время</th><th>Тип</th><th>Игрок</th><th>Что</th><th>IP</th></tr>'
+                 + "".join(trs) + "</table></div>")
+    elif not error:
+        table = '<div class="empty">Ничего не найдено.</div>'
+    nav = ""
+    if more and rows:
+        nav = f'<a class="btn ghost" href="/logs?{e(url(before=rows[-1]["id"]))}">Ещё старее →</a> '
+    if rows:
+        nav += f'<a class="btn ghost" href="/logs.csv?{e(url())}">Скачать CSV (Excel)</a>'
+    server_sel = ""
+    if len(servers) > 1:
+        opts = "".join(f'<option value="{e(k)}"{" selected" if k == f["server"] else ""}>{e(ctx.cfg.servers[k].name)}</option>'
+                       for k in servers)
+        server_sel = f'<label>Сервер<select name="server">{opts}</select></label>'
+    else:
+        server_sel = f'<input type="hidden" name="server" value="{e(f["server"])}">'
+    checks = "".join(
+        f'<label class="chip"><input type="checkbox" name="type" value="{k}"{" checked" if k in f["types"] else ""}>{e(v)}</label>'
+        for k, v in game.LOG_TYPES.items())
+    err = f'<div class="card notice">{e(error)}</div>' if error else ""
+    body = f"""<div class="page-head"><div><h1>Журнал сервера</h1>
+<p class="muted">Все события из игры: входы с IP, чат и команды, деньги, вещи, админ-действия, убийства и урон, фракции и семьи.
+Клик по нику или IP — все записи по нему. Ник можно с * (Ivan_*). Размер журнала: {_size(size)}.</p></div></div>
+<form action="/logs" method="get" class="card logs-form">
+<div class="row-form">{server_sel}
+<label>Ник (игрок или кому)<input name="name" value="{e(f["name"])}" placeholder="Ivan_Petrov"></label>
+<label>Текст<input name="text" value="{e(f["text"])}" placeholder="слово из чата, причина, команда"></label>
+<label>IP<input name="ip" value="{e(f["ip"])}" placeholder="1.2.3.4 или 1.2.*"></label>
+<label>С<input type="datetime-local" name="from" value="{e(f["from"])}"></label>
+<label>По<input type="datetime-local" name="to" value="{e(f["to"])}"></label>
+</div>
+<div class="chips">{checks}</div>
+<div class="row-form"><button class="btn">Найти</button><a class="btn ghost" href="/logs">Сбросить</a></div>
+</form>{err}<section class="card">{table}<div class="pager-row">{nav}</div></section>"""
+    return layout(ctx, "Журнал сервера", body, crumbs=[("Журнал сервера", "/logs")])
 
 
 def error(ctx, code, text):

@@ -146,6 +146,7 @@ stock GiveMoney(playerid, amount, const reason[] = "")
 	ResetPlayerMoney(playerid);
 	GivePlayerMoney(playerid, Player[playerid][pMoney]);
 	Econ_LogMoney(playerid, amount, reason);
+	Log_OnMoney(playerid, amount, reason);
 }
 
 stock GetMoney(playerid)
