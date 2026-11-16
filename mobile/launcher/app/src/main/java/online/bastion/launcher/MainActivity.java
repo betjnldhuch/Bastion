@@ -760,6 +760,9 @@ public class MainActivity extends Activity {
         leftPanel.addView(option("Размер кнопок", new String[]{"S", "M", "L"},
                 new int[]{0, 1, 2}, cfg.buttonSize,
                 new Pick() { @Override public void set(int v) { cfg.buttonSize = v; } }));
+        leftPanel.addView(option("Клавиатура в чате", new String[]{"Bastion", "Телефона"},
+                new int[]{0, 1}, cfg.keyboard,
+                new Pick() { @Override public void set(int v) { cfg.keyboard = v; } }));
 
         TextView diagnostics = Ui.ghostButton(this, "Диагностика");
         diagnostics.setOnClickListener(new View.OnClickListener() {
@@ -867,6 +870,7 @@ public class MainActivity extends Activity {
         i.putExtra("bastion.quality", cfg.quality);
         i.putExtra("bastion.chat_lines", cfg.chatLines);
         i.putExtra("bastion.button_size", cfg.buttonSize);
+        i.putExtra("bastion.system_keyboard", cfg.keyboard == 1);
         if (clientConfig != null) i.putExtra("bastion.config", clientConfig.getAbsolutePath());
         return i;
     }
