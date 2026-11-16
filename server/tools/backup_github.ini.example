@@ -1,0 +1,16 @@
+# Bastion Online: settings for backup_github.ps1. Rename to backup_github.ini.
+# Keep this file private: do not publish it and do not send it to anyone.
+
+# Token: github.com -> Settings -> Developer settings -> Fine-grained tokens -> Generate new token.
+# Repository access: Only select repositories -> bastion-backups.
+# Permissions: Contents -> Read and write. Do NOT reuse BASTION_GH_TOKEN (it is inside the launcher).
+TOKEN=PUT-YOUR-TOKEN-HERE
+
+# Private repository for backups (owner/name). Backups are refused if it is public.
+REPO=the-gta-man/bastion-backups
+
+# Archive password. Without it the backup cannot be opened. Write it down somewhere else too.
+PASSWORD=PUT-A-LONG-PASSWORD-HERE
+
+# How many newest backups to keep on GitHub
+KEEP=30
