@@ -185,7 +185,7 @@ stock Needs_OnMinute()
 		if (++gHungerTick[i] >= HUNGER_MINUTES)
 		{
 			gHungerTick[i] = 0;
-			if (gHunger[i] > 0)
+			if (gHunger[i] > 0 && !Vip_SkipHunger(i))   // VIP голодает медленнее (vip.inc)
 			{
 				gHunger[i]--;
 				Needs_SaveHunger(i);

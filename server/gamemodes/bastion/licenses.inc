@@ -166,6 +166,12 @@ static Licenses_Set(playerid, lic, bool:value)
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET %s = %d WHERE id = %d", gLicColumns[lic], value ? 1 : 0, Player[playerid][pDbId]));
 }
 
+// Выдать лицензию без экзамена (донат-магазин, donate.inc)
+stock Licenses_Give(playerid, lic)
+{
+	if (lic >= 1 && lic < LIC_COUNT) Licenses_Set(playerid, lic, true);
+}
+
 // Какая лицензия нужна для модели: 0 — никакой
 stock Licenses_ForModel(model)
 {

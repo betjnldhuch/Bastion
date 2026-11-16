@@ -80,9 +80,11 @@ stock Hospital_Bill(playerid)
 		SendClientMessage(playerid, COLOR_WHITE, "Тебя вылечили в больнице. Лечение оплатила страховка.");
 		return;
 	}
-	GiveMoney(playerid, -HOSPITAL_FEE, "счёт больницы");
-	Hospital_Income(HOSPITAL_FEE);
-	SendClientMessage(playerid, COLOR_WHITE, "Тебя вылечили в больнице. Счёт за лечение: $%d. Страховка — в регистратуре.", HOSPITAL_FEE);
+	new fee = Vip_HospitalFee(playerid, HOSPITAL_FEE);   // скидка VIP (vip.inc)
+	if (fee <= 0) { SendClientMessage(playerid, COLOR_WHITE, "Тебя вылечили в больнице. Для твоего VIP лечение бесплатно."); return; }
+	GiveMoney(playerid, -fee, "счёт больницы");
+	Hospital_Income(fee);
+	SendClientMessage(playerid, COLOR_WHITE, "Тебя вылечили в больнице. Счёт за лечение: $%d. Страховка — в регистратуре.", fee);
 }
 
 // ---------------------------------------------------------------------
