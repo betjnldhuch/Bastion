@@ -17,10 +17,11 @@
 #define ECON_LOG_MIN        500     // писать в журнал суммы от $500 (с причиной — любые)
 #define ECON_LOG_DAYS       30
 #define TAX_INCOME_DEFAULT  10      // %
-#define TAX_CAR_DEFAULT     2       // ‰ от цены машины в час
+#define TAX_CAR_DEFAULT     1       // ‰ от цены машины в час
 #define TAX_INCOME_MAX      50
 #define TAX_CAR_MAX         20
 #define TAX_CAR_MIN_SUM     10      // налог на машину не меньше $10 в час
+#define TAX_CAR_MAX_SUM     500     // налог на машину не больше $500 в час (вертолёты, люкс)
 
 static gTreasury = 0;
 static gTaxIncome = TAX_INCOME_DEFAULT;
@@ -119,6 +120,7 @@ stock Econ_GetCarTax(playerid)
 	if (v == INVALID_VEHICLE_ID) return 0;
 	new tax = Vehicles_GetModelPrice(GetVehicleModel(v)) * gTaxCar / 1000;
 	if (tax < TAX_CAR_MIN_SUM) tax = TAX_CAR_MIN_SUM;
+	if (tax > TAX_CAR_MAX_SUM) tax = TAX_CAR_MAX_SUM;
 	return tax;
 }
 
@@ -154,8 +156,8 @@ stock bool:Cmd_Taxes(playerid)
 {
 	new text[700];
 	format(text, sizeof text,
-		"{FFFFFF}Казна штата: {33AA33}$%d\n\n{FFFF00}Налоги\n{FFFFFF}С зарплаты: %d%%\nНа машину: %d‰ от цены в час (не меньше $%d)\nНа дом: 0.1%% цены в час (не меньше $%d), со счёта дома\nНалог на машину копится на налоговом счёте: /debts\n\nТвой налог на машину: $%d в час",
-		gTreasury, gTaxIncome, gTaxCar, TAX_CAR_MIN_SUM, HOUSE_TAX_MIN, Econ_GetCarTax(playerid));
+		"{FFFFFF}Казна штата: {33AA33}$%d\n\n{FFFF00}Налоги\n{FFFFFF}С зарплаты: %d%%\nНа машину: %d‰ от цены в час (от $%d до $%d)\nНа дом: 0.1%% цены в час (не меньше $%d), со счёта дома\nНалог на машину копится на налоговом счёте: /debts\n\nТвой налог на машину: $%d в час",
+		gTreasury, gTaxIncome, gTaxCar, TAX_CAR_MIN_SUM, TAX_CAR_MAX_SUM, HOUSE_TAX_MIN, Econ_GetCarTax(playerid));
 	new h = House_GetOwned(playerid);
 	if (h != -1)
 	{
