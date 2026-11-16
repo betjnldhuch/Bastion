@@ -171,9 +171,11 @@ public OnGameModeInit()
 	Social_Init();        // таблицы для ботов ВК/Telegram (social.inc)
 	Backup_Init();        // копия базы, если сегодняшней ещё нет
 
-	new hour;
-	gettime(hour);
+	new hour, minute;
+	gettime(hour, minute);
 	SetWorldTime(hour);
+	// PayDay — при смене часа. Запуск посреди часа не должен сразу давать зарплату.
+	if (minute > 0) gLastPayDayHour = hour;
 
 	SetTimer("OnMinuteTimer", 60000, true);
 	return 1;
@@ -214,6 +216,7 @@ public OnPlayerConnect(playerid)
 		return 1;
 	}
 	Log_OnConnect(playerid);
+	Chat_FloodReset(playerid);
 	SendClientMessage(playerid, COLOR_BLUE, "Добро пожаловать на %s!", SERVER_NAME);
 	return 1;
 }
@@ -379,6 +382,7 @@ public OnPlayerText(playerid, text[])
 {
 	if (!Player[playerid][pLogged]) return 0;
 	if (Admin_IsMuted(playerid)) return 0;
+	if (Chat_IsFlood(playerid, false)) return 0;   // антифлуд (chat.inc)
 	// Игроки не могут красить текст кодами {RRGGBB}: так подделывают системные сообщения
 	if (Player[playerid][pAdmin] < 1) StripColorCodes(text);
 	if (text[0] == '\0') return 0;
@@ -390,7 +394,11 @@ public OnPlayerText(playerid, text[])
 public OnPlayerCommandText(playerid, cmdtext[])
 {
 	if (!strcmp(cmdtext, "/__bui")) return UI_OnPcHello(playerid);   // ПК-плагин HTML-окон (ui.inc)
-	if (Player[playerid][pLogged]) Log_OnCommand(playerid, cmdtext);
+	if (Player[playerid][pLogged])
+	{
+		if (Chat_IsFlood(playerid, true)) return 1;   // антифлуд (chat.inc)
+		Log_OnCommand(playerid, cmdtext);
+	}
 	return Commands_Process(playerid, cmdtext);
 }
 
@@ -513,7 +521,8 @@ public OnMinuteTimer()
 	Casino_OnMinute();      // розыгрыш лотереи
 	Rental_OnMinute();      // срок аренды мопедов
 
-	if (minute == 0 && hour != gLastPayDayHour)
+	// По смене часа, а не по minute == 0: таймер со временем сдвигается и может пропустить нулевую минуту
+	if (hour != gLastPayDayHour)
 	{
 		gLastPayDayHour = hour;
 		PayDay();

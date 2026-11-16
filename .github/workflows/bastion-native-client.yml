@@ -84,4 +84,4 @@ jobs:
           name: Bastion-SAMP-native-armeabi-v7a
           path: native-output/libs/armeabi-v7a/libsamp.so
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 3

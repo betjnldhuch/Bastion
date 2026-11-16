@@ -184,7 +184,7 @@ jobs:
           name: Bastion-Launcher-SAMP-Mobile-debug
           path: mobile/artifacts/Bastion-Launcher-SAMP-Mobile-debug.apk
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 3
 
       - name: Upload native libraries for crash symbolization
         uses: actions/upload-artifact@v4

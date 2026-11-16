@@ -187,7 +187,7 @@ stock AdminTools_OnClickMap(playerid, Float:x, Float:y, Float:z)
 	// get_ground_z).  лиент и так присылает z земли (+1.5), берЄм еЄ как есть.
 	if (IsPlayerMobile[playerid])
 	{
-		if (z < 1.0) { GivePlayerWeapon(playerid, 46, 1); z = 300.0; } // место не прогружено Ч с парашютом
+		if (z < 1.0) { GivePlayerWeapon(playerid, WEAPON_PARACHUTE, 1); z = 300.0; } // место не прогружено Ч с парашютом
 		SetPlayerPos(playerid, x, y, z + 0.5);
 	}
 	else SetPlayerPosFindZ(playerid, x, y, (z < 1.0) ? 300.0 : z + 1.0);

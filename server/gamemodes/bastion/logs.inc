@@ -415,6 +415,18 @@ static Log_Sanitize(str[])
 	}
 }
 
+// “екст дл€ LIKE: %, _ и ! ищутс€ как обычные символы (ESCAPE '!')
+static Log_LikeEscape(const src[], dest[], size = sizeof (dest))
+{
+	new j = 0;
+	for (new i = 0; src[i] != '\0' && j < size - 2; i++)
+	{
+		if (src[i] == '%' || src[i] == '_' || src[i] == '!') dest[j++] = '!';
+		dest[j++] = src[i];
+	}
+	dest[j] = '\0';
+}
+
 stock bool:Cmd_Logs(playerid, const params[])
 {
 	if (!Admin_Check(playerid, LOG_VIEW_LEVEL)) return true;
@@ -446,14 +458,15 @@ stock bool:Cmd_Logs(playerid, const params[])
 	Log_Sanitize(text);
 	Log_Flush();    // чтобы видеть и самые свежие записи
 
-	new where[256], part[96];
+	new where[384], part[192], like[130];
 	strcat(where, "1");
 	if (who[0] != '\0') { format(part, sizeof part, " AND (name = '%s' COLLATE NOCASE OR tname = '%s' COLLATE NOCASE)", who, who); strcat(where, part); }
 	if (type != -1) { format(part, sizeof part, " AND type = '%s'", gLogTypeKeys[type]); strcat(where, part); }
 	if (text[0] != '\0')
 	{
 		// ѕоиск по тексту без ника и типа просматривает таблицу целиком Ч ограничиваем последними запис€ми
-		format(part, sizeof part, " AND text LIKE '%%%s%%' AND id > (SELECT IFNULL(MAX(id), 0) FROM logs) - %d", text, LOG_VIEW_SCAN);
+		Log_LikeEscape(text, like);
+		format(part, sizeof part, " AND text LIKE '%%%s%%' ESCAPE '!' AND id > (SELECT IFNULL(MAX(id), 0) FROM logs) - %d", like, LOG_VIEW_SCAN);
 		strcat(where, part);
 	}
 
