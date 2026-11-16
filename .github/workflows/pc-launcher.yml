@@ -105,6 +105,12 @@ jobs:
           try { Fetch "CookiePLMonster/SilentPatch" '^SilentPatchSA.*\.(zip|7z|rar)$' @("SilentPatchSA.asi", "SilentPatchSA.ini") } catch { Write-Host "::warning::$_" }
           try { Fetch "GTAmodding/FramerateVigilante" '\.(zip|7z|rar|asi)$' @("*SA*.asi") } catch { Write-Host "::warning::$_" }
           Get-ChildItem $fps | Format-Table Name, Length
+          # DEBUG (временно): как настраивается ModernFpsLimit и где брать FramerateVigilante
+          gh api repos/xKumorio/ModernFpsLimit/readme -H "Accept: application/vnd.github.raw"
+          $bytes = [IO.File]::ReadAllBytes("$fps\ModernFpsLimit.asi"); $txt = [Text.Encoding]::ASCII.GetString($bytes)
+          [regex]::Matches($txt, '[\x20-\x7e]{3,}') | ForEach-Object { $_.Value } | Where-Object { $_ -match '(?i)ini|fps|limit|\[' } | Select-Object -First 60
+          gh api repos/GTAmodding/FramerateVigilante/contents --jq '.[].name'
+          gh api repos/GTAmodding/FramerateVigilante/tags --jq '.[].name'
 
       - name: Package BastionLauncher folder
         shell: pwsh
