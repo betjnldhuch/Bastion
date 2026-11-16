@@ -633,5 +633,168 @@ namespace BastionLauncher
     }
 
     // -----------------------------------------------------------------
+    //  Окно выбора разрешения GTA SA.
+    //  При первом запуске (нет gta_sa.set) или на ПК с двумя видеокартами
+    //  игра спрашивает устройство и разрешение экрана. Лаунчер после запуска
+    //  сам выбирает разрешение рабочего стола и жмёт OK, игрок окна не видит.
+    //  Трогаем только окна игры со списком (ComboBox/ListBox): сообщения об
+    //  ошибках без списка остаются как есть.
+    // -----------------------------------------------------------------
+    static class VideoModeAuto
+    {
+        delegate bool EnumProc(IntPtr h, IntPtr l);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool EnumWindows(EnumProc cb, IntPtr l);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr parent, EnumProc cb, IntPtr l);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        static extern int GetClassName(IntPtr h, StringBuilder sb, int max);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern int GetDlgCtrlID(IntPtr h);
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        static extern IntPtr SendMessageTimeout(IntPtr h, int msg, IntPtr w, IntPtr l, int flags, int timeout, out IntPtr result);
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        static extern IntPtr SendMessageTimeout(IntPtr h, int msg, IntPtr w, StringBuilder l, int flags, int timeout, out IntPtr result);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool PostMessage(IntPtr h, int msg, IntPtr w, IntPtr l);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr GetDC(IntPtr h);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern int ReleaseDC(IntPtr h, IntPtr dc);
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")] static extern int GetDeviceCaps(IntPtr dc, int index);
+
+        const int WM_COMMAND = 0x0111, IDOK = 1, SMTO_ABORTIFHUNG = 2;
+        const int CB_GETCOUNT = 0x0146, CB_GETLBTEXT = 0x0148, CB_GETLBTEXTLEN = 0x0149, CB_SETCURSEL = 0x014E;
+        const int LB_SETCURSEL = 0x0186, LB_GETTEXT = 0x0189, LB_GETTEXTLEN = 0x018A, LB_GETCOUNT = 0x018B;
+        const int SELCHANGE = 1;   // CBN_SELCHANGE и LBN_SELCHANGE
+        static readonly Regex Mode = new Regex(@"(\d{3,5})\s*[xXхХ×*]\s*(\d{3,5})(?:\s*[xXхХ×*]\s*(\d{1,2}))?");
+
+        static int deskW, deskH;
+
+        // Следить за окнами игры 2 минуты после запуска (в своём потоке: лаунчер может закрыться раньше)
+        public static void Watch()
+        {
+            Thread t = new Thread(Run);
+            t.IsBackground = false;   // закрытие лаунчера не обрывает слежку
+            t.Start();
+        }
+
+        static void Run()
+        {
+            try
+            {
+                IntPtr dc = GetDC(IntPtr.Zero);
+                deskW = GetDeviceCaps(dc, 118);   // DESKTOPHORZRES: настоящий размер, без масштаба Windows
+                deskH = GetDeviceCaps(dc, 117);   // DESKTOPVERTRES
+                ReleaseDC(IntPtr.Zero, dc);
+            }
+            catch (Exception) { }
+            if (deskW <= 0 || deskH <= 0) { deskW = Screen.PrimaryScreen.Bounds.Width; deskH = Screen.PrimaryScreen.Bounds.Height; }
+
+            HashSet<IntPtr> done = new HashSet<IntPtr>();
+            DateTime end = DateTime.Now.AddSeconds(120);
+            bool seen = false;
+            while (DateTime.Now < end)
+            {
+                try
+                {
+                    HashSet<uint> pids = new HashSet<uint>();
+                    foreach (Process p in Process.GetProcessesByName("gta_sa")) { pids.Add((uint)p.Id); p.Dispose(); }
+                    if (pids.Count > 0) seen = true;
+                    else if (seen) return;   // игра закрылась
+                    if (pids.Count > 0)
+                    {
+                        List<IntPtr> dialogs = new List<IntPtr>();
+                        EnumWindows(delegate (IntPtr h, IntPtr l)
+                        {
+                            uint pid;
+                            GetWindowThreadProcessId(h, out pid);
+                            if (pids.Contains(pid) && IsWindowVisible(h) && ClassOf(h) == "#32770") dialogs.Add(h);
+                            return true;
+                        }, IntPtr.Zero);
+                        foreach (IntPtr d in dialogs)
+                            if (!done.Contains(d) && Handle(d)) done.Add(d);
+                    }
+                }
+                catch (Exception) { }
+                Thread.Sleep(250);
+            }
+        }
+
+        static string ClassOf(IntPtr h)
+        {
+            StringBuilder sb = new StringBuilder(64);
+            GetClassName(h, sb, sb.Capacity);
+            return sb.ToString();
+        }
+
+        // Окно игры со списком: выбрать разрешение (если это список разрешений) и нажать OK
+        static bool Handle(IntPtr dlg)
+        {
+            List<IntPtr> lists = new List<IntPtr>();
+            IntPtr ok = IntPtr.Zero;
+            EnumChildWindows(dlg, delegate (IntPtr h, IntPtr l)
+            {
+                string c = ClassOf(h).ToLowerInvariant();
+                if (c == "combobox" || c == "listbox") lists.Add(h);
+                else if (c == "button" && GetDlgCtrlID(h) == IDOK) ok = h;
+                return true;
+            }, IntPtr.Zero);
+            if (lists.Count == 0) return true;   // не наше окно (ошибка и т.п.) — не трогаем
+
+            foreach (IntPtr list in lists)
+            {
+                bool combo = ClassOf(list).ToLowerInvariant() == "combobox";
+                int count = (int)Send(list, combo ? CB_GETCOUNT : LB_GETCOUNT, 0);
+                int best = -1;
+                long bestScore = -1;
+                for (int i = 0; i < count && i < 1000; i++)
+                {
+                    long s = Score(Text(list, combo, i));
+                    if (s > bestScore) { bestScore = s; best = i; }
+                }
+                if (best < 0 || bestScore <= 0) continue;   // не список разрешений (например, выбор устройства)
+                Send(list, combo ? CB_SETCURSEL : LB_SETCURSEL, best);
+                int id = GetDlgCtrlID(list);
+                IntPtr r;
+                SendMessageTimeout(dlg, WM_COMMAND, (IntPtr)((SELCHANGE << 16) | (id & 0xFFFF)), list, SMTO_ABORTIFHUNG, 2000, out r);
+            }
+            Thread.Sleep(150);
+            if (!IsWindow(dlg)) return true;
+            PostMessage(dlg, WM_COMMAND, (IntPtr)IDOK, ok);
+            return true;
+        }
+
+        static IntPtr Send(IntPtr h, int msg, int w)
+        {
+            IntPtr r;
+            SendMessageTimeout(h, msg, (IntPtr)w, IntPtr.Zero, SMTO_ABORTIFHUNG, 2000, out r);
+            return r;
+        }
+
+        static string Text(IntPtr list, bool combo, int i)
+        {
+            int len = (int)Send(list, combo ? CB_GETLBTEXTLEN : LB_GETTEXTLEN, i);
+            if (len <= 0 || len > 512) return "";
+            StringBuilder sb = new StringBuilder(len + 2);
+            IntPtr r;
+            SendMessageTimeout(list, combo ? CB_GETLBTEXT : LB_GETTEXT, (IntPtr)i, sb, SMTO_ABORTIFHUNG, 2000, out r);
+            return sb.ToString();
+        }
+
+        // Чем лучше разрешение, тем больше число. 0 — строка не похожа на разрешение.
+        // Лучше всего — ровно как у рабочего стола в 32 бита, дальше — самое большое, что влезает в экран.
+        static long Score(string s)
+        {
+            Match m = Mode.Match(s);
+            if (!m.Success) return 0;
+            long w = long.Parse(m.Groups[1].Value), h = long.Parse(m.Groups[2].Value);
+            int bits = m.Groups[3].Success ? int.Parse(m.Groups[3].Value) : 32;
+            long score = w * h;                                     // до ~33 млн
+            if (bits == 32) score += 100000000L;
+            if (w <= deskW && h <= deskH) score += 1000000000L;
+            if (w == deskW && h == deskH) score += 10000000000L;
+            return score;
+        }
+    }
+
+    // -----------------------------------------------------------------
     //  Окно лаунчера
 }

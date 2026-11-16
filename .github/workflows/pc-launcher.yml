@@ -66,6 +66,46 @@ jobs:
             /out:..\BastionLauncher.exe Core.cs Ui.cs Installer.cs Updater.cs ClientPack.cs UiPack.cs Secrets.cs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      # Пакет FPS (до 165 FPS): загрузчик ASI, снятие лимита SA-MP и фиксы физики/разрешения.
+      # Берём с официальных релизов авторов на GitHub (см. launcher/fps/README.txt).
+      # Чего-то не нашлось — сборка не падает, в логе будет предупреждение.
+      - name: Fetch FPS pack
+        shell: pwsh
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $fps = (Resolve-Path launcher\fps).Path
+          $tmp = Join-Path $env:RUNNER_TEMP "fpspack"
+          New-Item -ItemType Directory -Force $tmp | Out-Null
+          function Fetch([string]$repo, [string]$pattern, [string[]]$take) {
+            $rels = gh api "repos/$repo/releases?per_page=30" | ConvertFrom-Json
+            $asset = $null
+            foreach ($r in $rels) { foreach ($a in $r.assets) { if (-not $asset -and $a.name -match $pattern) { $asset = $a; $tag = $r.tag_name } } }
+            if (-not $asset) {
+              $names = ($rels | Select-Object -First 3 | ForEach-Object { $_.assets.name }) -join ", "
+              Write-Host "::warning::$repo — нет файла по маске $pattern. Есть: $names"
+              return
+            }
+            $d = Join-Path $tmp ($repo -replace '/', '_')
+            New-Item -ItemType Directory -Force $d | Out-Null
+            $f = Join-Path $d $asset.name
+            Invoke-WebRequest $asset.browser_download_url -OutFile $f
+            $src = Join-Path $d "x"
+            New-Item -ItemType Directory -Force $src | Out-Null
+            if ($f -match '\.(zip|7z|rar)$') { 7z x $f "-o$src" -y | Out-Null } else { Copy-Item $f $src }
+            foreach ($t in $take) {
+              $hit = Get-ChildItem $src -Recurse -File -Filter $t | Where-Object { $_.FullName -notmatch 'x64|win64|amd64' } | Select-Object -First 1
+              if ($hit) { Copy-Item $hit.FullName $fps -Force; Write-Host "+ $($hit.Name)  ($repo $tag / $($asset.name))" }
+              else { Write-Host "::warning::$repo $tag — в $($asset.name) нет $t. Внутри: $((Get-ChildItem $src -Recurse -File).Name -join ', ')" }
+            }
+          }
+          try { Fetch "ThirteenAG/Ultimate-ASI-Loader" '^Ultimate-ASI-Loader\.zip$' @("dinput8.dll") } catch { Write-Host "::warning::$_" }
+          try { Fetch "xKumorio/ModernFpsLimit" '\.(zip|7z|rar|asi)$' @("ModernFpsLimit.asi", "ModernFpsLimit.ini") } catch { Write-Host "::warning::$_" }
+          try { Fetch "CookiePLMonster/SilentPatch" '^SilentPatchSA.*\.(zip|7z|rar)$' @("SilentPatchSA.asi", "SilentPatchSA.ini") } catch { Write-Host "::warning::$_" }
+          try { Fetch "GTAmodding/FramerateVigilante" '\.(zip|7z|rar|asi)$' @("*SA*.asi") } catch { Write-Host "::warning::$_" }
+          Get-ChildItem $fps | Format-Table Name, Length
+
       - name: Package BastionLauncher folder
         shell: pwsh
         run: |
