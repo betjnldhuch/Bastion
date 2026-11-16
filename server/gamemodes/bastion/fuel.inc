@@ -389,6 +389,7 @@ stock Fuel_OnDialog(playerid, dialogid, response, const inputtext[])
 		new cost = FUEL_CANISTER * price;
 		if (GetMoney(playerid) < cost) { SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", cost); return 1; }
 		GiveMoney(playerid, -cost);
+		BizX_FuelSale(playerid, cost);     // доля владельцу АЗС рядом (bizplus.inc)
 		gPlayerCanister[playerid] = 1;
 		Fuel_SaveCanister(playerid);
 		Account_Save(playerid);
@@ -417,6 +418,7 @@ stock Fuel_OnDialog(playerid, dialogid, response, const inputtext[])
 		cost = liters * price;
 	}
 	GiveMoney(playerid, -cost);
+	BizX_FuelSale(playerid, cost);         // доля владельцу АЗС рядом (bizplus.inc)
 	Fuel_Set(v, Fuel_Get(v) + float(liters));
 	if (v == gPlayerVeh[playerid]) Fuel_SavePersonal(playerid);
 	Account_Save(playerid);
