@@ -225,6 +225,8 @@ stock Cmd_GotoSpawn(playerid, const params[])
 #define FSPAWN_LIST_MAX     16
 
 static gSetSpawnFMap[MAX_PLAYERS][FSPAWN_PICK_MAX + 1];
+static gFSpawnDelMap[MAX_PLAYERS][MAX_FSPAWNS];   // строка окна /delfspawn -> номер спавна
+static gFSpawnDelPick[MAX_PLAYERS];                // выбранный к удалению номер
 
 static FSpawn_FindByDbId(dbid)
 {
@@ -302,22 +304,52 @@ stock bool:Cmd_AddFSpawn(playerid, const params[])
 	gFSpawn[s][fsDbId] = DB_LastInsertId();
 	SendClientMessage(playerid, COLOR_ADMIN, "Доп. спавн №%d «%s» для «%s» создан. Его видит только лидер, остальным открывает он: /fspawnaccess [id] %d",
 		gFSpawn[s][fsDbId], name, Faction_GetName(f), gFSpawn[s][fsDbId]);
+	SendClientMessage(playerid, COLOR_GREY, "Удалить: /delfspawn %d (или /delfspawn — список).", gFSpawn[s][fsDbId]);
 	return true;
 }
 
+// Убрать доп. спавн s из базы и из памяти. Кто его выбрал, появится в главном офисе.
+static FSpawn_Delete(s)
+{
+	new dbid = gFSpawn[s][fsDbId];
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM faction_spawns WHERE id = %d", dbid));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM fspawn_access WHERE spawn = %d", dbid));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET spawn_ref = 0 WHERE spawn_mode = %d AND spawn_ref = %d", SPAWN_FACTION, dbid));
+	for (new i = 0; i < MAX_PLAYERS; i++)
+		if (gSpawnMode[i] == SPAWN_FACTION && gSpawnRef[i] == dbid) gSpawnRef[i] = 0;
+	new last = gFSpawnCount - 1;
+	if (s != last) gFSpawn[s] = gFSpawn[last];
+	gFSpawnCount--;
+}
+
+// Окно со всеми доп. спавнами: выбрать, какой убрать
+static FSpawn_ShowDelete(playerid)
+{
+	if (gFSpawnCount == 0) return SendClientMessage(playerid, COLOR_GREY, "Доп. спавнов нет. Создать: /addfspawn [фракция] [название]");
+	new list[4096], line[96];
+	strcat(list, "№\tФракция\tНазвание\n");
+	for (new s = 0; s < gFSpawnCount; s++)
+	{
+		format(line, sizeof line, "%d\t%s\t%s\n", gFSpawn[s][fsDbId], Faction_GetName(gFSpawn[s][fsFaction]), gFSpawn[s][fsName]);
+		strcat(list, line);
+		gFSpawnDelMap[playerid][s] = gFSpawn[s][fsDbId];
+	}
+	for (new s = gFSpawnCount; s < MAX_FSPAWNS; s++) gFSpawnDelMap[playerid][s] = -1;
+	ShowPlayerDialog(playerid, DIALOG_FSPAWN_DEL, DIALOG_STYLE_TABLIST_HEADERS, "Удалить доп. спавн", "%s", "Удалить", "Закрыть", list);
+	return 1;
+}
+
+// /delfspawn [№] — без номера открывает список
 stock bool:Cmd_DelFSpawn(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, dbid;
-	if (!NextIntParam(params, pos, dbid)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /delfspawn [№] (номера: /fspawns)");
+	if (!NextIntParam(params, pos, dbid)) { FSpawn_ShowDelete(playerid); return true; }
 	new s = FSpawn_FindByDbId(dbid);
-	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "Доп. спавна с таким номером нет. Список: /fspawns");
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM faction_spawns WHERE id = %d", dbid));
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM fspawn_access WHERE spawn = %d", dbid));
-	SendClientMessage(playerid, COLOR_ADMIN, "Доп. спавн №%d «%s» убран. Кто его выбрал, появится в главном офисе.", dbid, gFSpawn[s][fsName]);
-	new last = gFSpawnCount - 1;
-	if (s != last) gFSpawn[s] = gFSpawn[last];
-	gFSpawnCount--;
+	if (s == -1) return SendClientMessage(playerid, COLOR_GREY, "Доп. спавна с таким номером нет. Список: /delfspawn");
+	SendClientMessage(playerid, COLOR_ADMIN, "Доп. спавн №%d «%s» (%s) убран. Кто его выбрал, появится в главном офисе.",
+		dbid, gFSpawn[s][fsName], Faction_GetName(gFSpawn[s][fsFaction]));
+	FSpawn_Delete(s);
 	return true;
 }
 
@@ -347,6 +379,7 @@ stock bool:Cmd_FSpawns(playerid, const params[])
 	}
 	if (shown == 0) SendClientMessage(playerid, COLOR_GREY, "Доп. спавнов нет. Их ставит админ: /addfspawn [фракция] [название]");
 	else SendClientMessage(playerid, COLOR_GREY, "Открыть игроку: /fspawnaccess [id] [номера через запятую], 0 — только главный, auto — по взводу.");
+	if (shown > 0 && Player[playerid][pAdmin] >= 4) SendClientMessage(playerid, COLOR_GREY, "Удалить спавн: /delfspawn (список) или /delfspawn [№].");
 	return true;
 }
 
@@ -565,6 +598,29 @@ static Spawns_Choose(playerid, mode, ref)
 // Из OnDialogResponse
 stock Spawns_OnDialog(playerid, dialogid, response, listitem)
 {
+	if (dialogid == DIALOG_FSPAWN_DEL)
+	{
+		if (!response || Player[playerid][pAdmin] < 4) return 1;
+		if (listitem < 0 || listitem >= MAX_FSPAWNS || gFSpawnDelMap[playerid][listitem] <= 0) return 1;
+		new s = FSpawn_FindByDbId(gFSpawnDelMap[playerid][listitem]);
+		if (s == -1) { SendClientMessage(playerid, COLOR_GREY, "Этого спавна уже нет."); FSpawn_ShowDelete(playerid); return 1; }
+		gFSpawnDelPick[playerid] = gFSpawn[s][fsDbId];
+		ShowPlayerDialog(playerid, DIALOG_FSPAWN_DEL_OK, DIALOG_STYLE_MSGBOX, "Удалить доп. спавн",
+			"Удалить спавн №%d «%s» (%s)?\nКто его выбрал, будет появляться в главном офисе.", "Удалить", "Назад",
+			gFSpawn[s][fsDbId], gFSpawn[s][fsName], Faction_GetName(gFSpawn[s][fsFaction]));
+		return 1;
+	}
+	if (dialogid == DIALOG_FSPAWN_DEL_OK)
+	{
+		if (Player[playerid][pAdmin] < 4) return 1;
+		if (!response) { FSpawn_ShowDelete(playerid); return 1; }
+		new s = FSpawn_FindByDbId(gFSpawnDelPick[playerid]);
+		if (s == -1) { SendClientMessage(playerid, COLOR_GREY, "Этого спавна уже нет."); return 1; }
+		SendClientMessage(playerid, COLOR_ADMIN, "Доп. спавн №%d «%s» убран.", gFSpawn[s][fsDbId], gFSpawn[s][fsName]);
+		FSpawn_Delete(s);
+		if (gFSpawnCount > 0) FSpawn_ShowDelete(playerid);
+		return 1;
+	}
 	if (dialogid == DIALOG_SETSPAWN_F)
 	{
 		if (!response) { Cmd_SetSpawn(playerid); return 1; }

@@ -258,5 +258,7 @@ enum
 
 	// --- /setspawn > Организация и /fspawnaccess (spawns.inc)
 	DIALOG_SETSPAWN_F,
-	DIALOG_FSPAWN_ACCESS
+	DIALOG_FSPAWN_ACCESS,
+	DIALOG_FSPAWN_DEL,       // /delfspawn без номера: список доп. спавнов
+	DIALOG_FSPAWN_DEL_OK     // подтверждение удаления
 }
