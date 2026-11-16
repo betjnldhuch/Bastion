@@ -71,3 +71,4 @@ jobs:
           path: |
             server/gamemodes/rp.amx
             server/gamemodes/build.log
+          retention-days: 3

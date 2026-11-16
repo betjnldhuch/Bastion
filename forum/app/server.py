@@ -24,6 +24,7 @@ MAX_BODY = 20000
 MAX_TITLE = 120
 POST_COOLDOWN = 15            # секунд между сообщениями одного человека
 LOGIN_WINDOW, LOGIN_TRIES = 600, 6
+LOGIN_TRIES_IP = 20          # неверных входов с одного IP за LOGIN_WINDOW (перебор одного пароля по многим никам)
 COOKIE = "bf_session"
 ANON_COOKIE = "bf_anon"
 QUIET = False
@@ -716,10 +717,16 @@ def do_login(app, ctx, query, form):
         return views.login(ctx, nxt, name, server_key, "Выберите сервер.")
 
     now = time.time()
+    ip_key = None if ctx.local else "ip:" + ctx.ip   # за локальным прокси у всех один адрес
     with app._lock:
+        if len(app._login_fails) > 5000:
+            app._login_fails = {k: v for k, v in app._login_fails.items() if v and now - v[-1] < LOGIN_WINDOW}
         fails = [t for t in app._login_fails.get(name.lower(), []) if now - t < LOGIN_WINDOW]
         app._login_fails[name.lower()] = fails
-    if len(fails) >= LOGIN_TRIES:
+        ip_fails = [t for t in app._login_fails.get(ip_key, []) if now - t < LOGIN_WINDOW] if ip_key else []
+        if ip_key:
+            app._login_fails[ip_key] = ip_fails
+    if len(fails) >= LOGIN_TRIES or len(ip_fails) >= LOGIN_TRIES_IP:
         return views.login(ctx, nxt, name, server_key,
                            "Слишком много неверных попыток. Подождите 10 минут.")
     if not gdb.available():
@@ -729,6 +736,8 @@ def do_login(app, ctx, query, form):
     if not acc or not game.check_password(password, acc.get("salt"), acc.get("password")):
         with app._lock:
             app._login_fails.setdefault(name.lower(), []).append(now)
+            if ip_key:
+                app._login_fails.setdefault(ip_key, []).append(now)
         return views.login(ctx, nxt, name, server_key,
                            "Неверный ник или пароль. Используйте данные от игрового аккаунта.")
     with app._lock:

@@ -66,6 +66,7 @@ jobs:
           name: Bastion-gamemodes
           path: out/Bastion-gamemodes.zip
           if-no-files-found: error
+          retention-days: 1
 
   release:
     needs: [apk, pc, server]

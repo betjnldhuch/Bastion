@@ -103,7 +103,7 @@
 
 **Автобэкап в GitHub (вне ПК).** Создай на github.com приватный репозиторий `bastion-backups` и fine-grained токен только на него (Contents: Read and write; `BASTION_GH_TOKEN` не используй, он зашит в лаунчер). Положи все `server/tools/backup_*` рядом с `omp-server.exe` и запусти `backup_install.bat`: он создаст `backup_github.ini` (впиши токен и пароль архива), сделает пробную выгрузку и добавит задачу «Bastion backup» в Планировщик (каждый день в 05:00). Архив с базой, `config.json` и мелкими файлами `scriptfiles` шифруется паролем и лежит в Releases → `db-backups`, хранятся 30 последних. Скачать и распаковать: `powershell -ExecutionPolicy Bypass -File backup_restore.ps1` (`-List` — список копий). Лог: `backup_github.log`.
 
-Вернуть базу из копии: останови сервер, переименуй нужный `rp_backup_....db` в `rp.db`, запусти сервер.
+Вернуть базу из копии: останови сервер, переименуй нужный `rp_backup_....db` в `rp.db`, удали `rp.db-wal` и `rp.db-shm` (если есть), запусти сервер.
 
 ## 7. Как играть: команды и места
 

@@ -7,6 +7,7 @@
 #
 # Unpacks into the folder "restore_<name>" next to this script. It does NOT touch rp.db:
 # stop the server and copy restore_...\scriptfiles\rp.db into scriptfiles yourself.
+# Then delete scriptfiles\rp.db-wal and scriptfiles\rp.db-shm if they are there (old WAL files).
 
 param([string]$Name = '', [string]$File = '', [switch]$List,
       [string]$Config = (Join-Path $PSScriptRoot 'backup_github.ini'))
@@ -41,4 +42,4 @@ $zip = Join-Path ([IO.Path]::GetTempPath()) "$base.zip"
 Expand-Archive -Path $zip -DestinationPath $out -Force
 Remove-Item $zip -Force
 Write-Host "Unpacked to $out"
-Write-Host "To restore: stop the server, copy $out\scriptfiles\rp.db to scriptfiles\rp.db, start the server."
+Write-Host "To restore: stop the server, copy $out\scriptfiles\rp.db to scriptfiles\rp.db, delete scriptfiles\rp.db-wal and rp.db-shm if present, start the server."

@@ -5,6 +5,43 @@
 //  /s Ч крик, /b Ч OOC (нероле) р€дом, /pm Ч личное сообщение.
 // =====================================================================
 
+// ---------------------------------------------------------------------
+//  јнтифлуд: не чаще одного сообщени€ в CHAT_FLOOD_MS и одной команды
+//  в CMD_FLOOD_MS. јдмины не ограничены. ѕредупреждение Ч не чаще раза в 2 с.
+// ---------------------------------------------------------------------
+#define CHAT_FLOOD_MS   1000
+#define CMD_FLOOD_MS    500
+
+static gFloodChatAt[MAX_PLAYERS];
+static gFloodCmdAt[MAX_PLAYERS];
+static gFloodWarnAt[MAX_PLAYERS];
+
+stock Chat_FloodReset(playerid)
+{
+	new now = GetTickCount();
+	gFloodChatAt[playerid] = now - CHAT_FLOOD_MS;
+	gFloodCmdAt[playerid] = now - CMD_FLOOD_MS;
+	gFloodWarnAt[playerid] = now - 2000;
+}
+
+// true Ч сообщение или команду отбросить
+stock bool:Chat_IsFlood(playerid, bool:command)
+{
+	if (Player[playerid][pAdmin] >= 1) return false;
+	new now = GetTickCount();
+	if (command)
+	{
+		if (now - gFloodCmdAt[playerid] >= CMD_FLOOD_MS) { gFloodCmdAt[playerid] = now; return false; }
+	}
+	else if (now - gFloodChatAt[playerid] >= CHAT_FLOOD_MS) { gFloodChatAt[playerid] = now; return false; }
+	if (now - gFloodWarnAt[playerid] >= 2000)
+	{
+		gFloodWarnAt[playerid] = now;
+		SendClientMessage(playerid, COLOR_GREY, "Ќе так быстро.");
+	}
+	return true;
+}
+
 // »м€ дл€ чата р€дом: человека в маске не узнать
 stock Chat_Name(playerid)
 {
@@ -17,9 +54,25 @@ stock Chat_Name(playerid)
 // »з OnPlayerText
 stock Chat_OnText(playerid, const text[])
 {
-	new msg[144];
-	format(msg, sizeof msg, "%s говорит: %s", Chat_Name(playerid), text);
-	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_WHITE, msg);
+	new full[256], msg[144];
+	format(full, sizeof full, "%s говорит: %s", Chat_Name(playerid), text);
+	if (strlen(full) < sizeof msg)
+	{
+		SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_WHITE, full);
+	}
+	else
+	{
+		// ƒлинна€ фраза не влезает в одну строку чата (143 символа): переносим по пробелу
+		new cut = 120;
+		for (new i = 120; i > 80; i--) if (full[i] == ' ') { cut = i; break; }
+		strmid(msg, full, 0, cut);
+		strcat(msg, " ...");
+		SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_WHITE, msg);
+		msg[0] = EOS;
+		strcat(msg, "... ");
+		strcat(msg, full[cut + (full[cut] == ' ' ? 1 : 0)]);
+		SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_WHITE, msg);
+	}
 	SetPlayerChatBubble(playerid, "%s", COLOR_WHITE, CHAT_RADIUS, 5000, text);
 	Phone_OnText(playerid, text);   // если говорит по телефону Ч слышит и собеседник (phone.inc)
 }
