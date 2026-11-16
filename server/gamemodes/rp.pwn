@@ -71,6 +71,7 @@
 #include "bastion/backup.inc"      // копии базы раз в сутки, /backup
 #include "bastion/dev.inc"         // разработка в игре: /pos, /dev, маппинг /mo
 #include "bastion/textures.inc"    // перекраска объектов маппинга: /mt
+#include "bastion/interiors.inc"  // interiors built from objects: showroom
 #include "bastion/doors.inc"       // входы в здания: LSPD
 #include "bastion/places.inc"     // точки новых систем, которые ставит админ: /place
 #include "bastion/factions.inc"   // после admin.inc: использует Admin_Check
@@ -81,6 +82,7 @@
 #include "bastion/phone.inc"
 #include "bastion/fbi.inc"        // ФБР: маскировка, прослушка, слежка, досье
 #include "bastion/business.inc"
+#include "bastion/bizplus.inc"    // новые виды бизнесов: склад, наценка, меню владельца
 #include "bastion/garage.inc"
 #include "bastion/dealers.inc"    // автосалоны и авиасалон, /cars — несколько машин у игрока
 #include "bastion/property.inc"   // лимиты домов и транспорта (в том числе по VIP), /myhouses
@@ -144,11 +146,13 @@ public OnGameModeInit()
 	Turfs_Init();
 	Bank_Init();
 	Business_Init();
+	BizX_Init();
 	Gates_Init();
 	Fps_Init();
 	Licenses_Init();
 	Needs_Init();
 	Dev_Init();           // свои объекты карты, убранные здания
+	Interiors_Init();
 	Doors_Init();         // входы в здания (маркеры LSPD)
 	Econ_Init();          // казна, налоги, журнал денег
 	Debts_Init();         // счета долгов в accounts
@@ -173,9 +177,11 @@ public OnGameModeInit()
 	Social_Init();        // таблицы для ботов ВК/Telegram (social.inc)
 	Backup_Init();        // копия базы, если сегодняшней ещё нет
 
-	new hour;
-	gettime(hour);
+	new hour, minute;
+	gettime(hour, minute);
 	SetWorldTime(hour);
+	// PayDay — при смене часа. Запуск посреди часа не должен сразу давать зарплату.
+	if (minute > 0) gLastPayDayHour = hour;
 
 	SetTimer("OnMinuteTimer", 60000, true);
 	return 1;
@@ -216,6 +222,7 @@ public OnPlayerConnect(playerid)
 		return 1;
 	}
 	Log_OnConnect(playerid);
+	Chat_FloodReset(playerid);
 	SendClientMessage(playerid, COLOR_BLUE, "Добро пожаловать на %s!", SERVER_NAME);
 	return 1;
 }
@@ -341,6 +348,7 @@ public OnPlayerSpawn(playerid)
 	Turfs_ShowForPlayer(playerid);      // районы банд на радаре
 	Wound_OnSpawn(playerid);            // после смерти — лежит раненым на месте
 	Hud_OnSpawn(playerid);              // панель статуса (hud.inc)
+	BizX_OnSpawn(playerid);             // стиль боя из спортзала (bizplus.inc)
 	return 1;
 }
 
@@ -381,6 +389,7 @@ public OnPlayerText(playerid, text[])
 {
 	if (!Player[playerid][pLogged]) return 0;
 	if (Admin_IsMuted(playerid)) return 0;
+	if (Chat_IsFlood(playerid, false)) return 0;   // антифлуд (chat.inc)
 	// Игроки не могут красить текст кодами {RRGGBB}: так подделывают системные сообщения
 	if (Player[playerid][pAdmin] < 1) StripColorCodes(text);
 	if (text[0] == '\0') return 0;
@@ -392,7 +401,11 @@ public OnPlayerText(playerid, text[])
 public OnPlayerCommandText(playerid, cmdtext[])
 {
 	if (!strcmp(cmdtext, "/__bui")) return UI_OnPcHello(playerid);   // ПК-плагин HTML-окон (ui.inc)
-	if (Player[playerid][pLogged]) Log_OnCommand(playerid, cmdtext);
+	if (Player[playerid][pLogged])
+	{
+		if (Chat_IsFlood(playerid, true)) return 1;   // антифлуд (chat.inc)
+		Log_OnCommand(playerid, cmdtext);
+	}
 	return Commands_Process(playerid, cmdtext);
 }
 
@@ -419,6 +432,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Props_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Bank_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Business_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (BizX_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Keys_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Fuel_OnDialog(playerid, dialogid, response, inputtext)) return 1;
 	if (Licenses_OnDialog(playerid, dialogid, response, listitem)) return 1;
@@ -516,7 +530,8 @@ public OnMinuteTimer()
 	Casino_OnMinute();      // розыгрыш лотереи
 	Rental_OnMinute();      // срок аренды мопедов
 
-	if (minute == 0 && hour != gLastPayDayHour)
+	// По смене часа, а не по minute == 0: таймер со временем сдвигается и может пропустить нулевую минуту
+	if (hour != gLastPayDayHour)
 	{
 		gLastPayDayHour = hour;
 		PayDay();

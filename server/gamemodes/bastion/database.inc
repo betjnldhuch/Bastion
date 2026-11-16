@@ -22,6 +22,10 @@ stock DB_Init()
 
 	// Ѕазу читает ещЄ и форум. ≈сли она на мгновение зан€та Ч ждЄм до 3 секунд, а не тер€ем запись
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "PRAGMA busy_timeout = 3000"));
+	// WAL: запись не ждЄт fsync на каждый запрос и не блокирует чтение форумом.
+	// –€дом с rp.db по€в€тс€ rp.db-wal и rp.db-shm Ч это нормально, при остановке сервера они сливаютс€ в базу.
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "PRAGMA journal_mode = WAL"));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "PRAGMA synchronous = NORMAL"));
 
 	// јккаунты игроков
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, password TEXT NOT NULL, salt TEXT NOT NULL, money INTEGER DEFAULT 0, level INTEGER DEFAULT 1, exp INTEGER DEFAULT 0, skin INTEGER DEFAULT 60, admin INTEGER DEFAULT 0, job INTEGER DEFAULT 0, reg_date INTEGER DEFAULT 0)"));

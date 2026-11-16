@@ -234,6 +234,7 @@ static bool:Garage_Pay(playerid, price, const reason[] = "СТО")
 		return false;
 	}
 	GiveMoney(playerid, -price, reason);
+	if (!strcmp(reason, "СТО")) BizX_ServiceSale(playerid, BIZ_STO, price);     // доля владельцу мастерской рядом (bizplus.inc)
 	Account_Save(playerid);
 	return true;
 }

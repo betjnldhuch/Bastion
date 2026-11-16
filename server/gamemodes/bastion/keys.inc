@@ -116,7 +116,7 @@ stock Keys_ShowBizMenu(playerid, b)
 	if (Biz[b][bOwner] != 0 && Biz[b][bOwner] == Player[playerid][pDbId])
 	{
 		gBizMenuActs[playerid][n++] = 2; strcat(list, "Забрать деньги из кассы\n");
-		gBizMenuActs[playerid][n++] = 3; strcat(list, "Информация\n");
+		gBizMenuActs[playerid][n++] = 3; strcat(list, "Управление бизнесом\n");
 	}
 	if (n == 1) { Cmd_Buy(playerid); return; }      // чужой бизнес — сразу магазин
 	for (new i = n; i < 4; i++) gBizMenuActs[playerid][i] = -1;
@@ -141,7 +141,7 @@ stock Keys_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 				case 0: Cmd_Buy(playerid);
 				case 1: Cmd_BuyBiz(playerid);
 				case 2: Cmd_BizCash(playerid);
-				case 3: Cmd_BizInfo(playerid);
+				case 3: Cmd_BizMenu(playerid);     // bizplus.inc
 			}
 			return 1;
 		}
