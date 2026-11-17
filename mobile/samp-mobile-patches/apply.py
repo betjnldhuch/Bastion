@@ -972,4 +972,34 @@ replace_exact(cpp / "gui/gui.cpp", """    if (pPlayerTags) pPlayerTags->Render(r
     if (pPlayerTags) pPlayerTags->Render(renderer());
 """)
 
+# ---------------------------------------------------------------------------
+# 15. /rec (reconnect). open.mp cannot make one client time out: the server kicks,
+#     and the stock client stops at "Server closed the connection". Before the kick
+#     the server sends a hidden dialog captioned "[bastion:rec]" (only to clients
+#     whose version has "-bui2" or newer). The client remembers it and treats the
+#     following disconnect like a lost connection, so it reconnects by itself.
+# ---------------------------------------------------------------------------
+replace_exact(cpp / "net/netgame.cpp", "int iNetModeSendMultiplier = 2;\n",
+"int iNetModeSendMultiplier = 2;\nbool g_bBastionRec = false;   // Bastion: server asked for /rec, next kick = reconnect\n")
+replace_exact(cpp / "net/netgame.cpp", """void CNetGame::Packet_DisconnectionNotification(Packet *pkt)
+{
+""", """void CNetGame::Packet_DisconnectionNotification(Packet *pkt)
+{
+	if (g_bBastionRec)
+	{
+		g_bBastionRec = false;
+		Packet_ConnectionLost(pkt);
+		return;
+	}
+""")
+replace_exact(cpp / "net/netrpc.cpp", "	stringCompressor->DecodeString(szMessage, 4096, &bsData);\n",
+"""	stringCompressor->DecodeString(szMessage, 4096, &bsData);
+	if (!strcmp(szTitle, "[bastion:rec]"))
+	{
+		extern bool g_bBastionRec;
+		g_bBastionRec = true;   // the server kicks right after this; reconnect instead of stopping
+		return;
+	}
+""")
+
 print("SAMP-Mobile prepared for Bastion: library module, Bastion storage, :game process, no Firebase.")

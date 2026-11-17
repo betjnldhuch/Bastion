@@ -1782,6 +1782,33 @@ stock bool:Cmd_FBank(playerid)
 // =====================================================================
 //  Склад фракции (/fstorage)
 // =====================================================================
+// Что лежит на складе фракции. Медикам оружие и броня не нужны: у них только аптечки,
+// которые они делают из материалов (медикаменты) и берут в сумку для /aid.
+static bool:Faction_StoreHas(f, it)
+{
+	if (Faction_IsMedic(f)) return (it == FITEM_MEDKIT);
+	return (it >= 0 && it < MAX_FITEMS);
+}
+
+// Цена закупки за 1 шт.: госструктуры платят из общака, банды и медики делают сами из материалов
+static Faction_StoreCost(f, it)
+{
+	if (!Faction_IsState(f) || Faction_IsMedic(f)) return 0;
+	return gFItemPrice[it];
+}
+
+// Строка окна склада -> предмет. MAX_FITEMS — строка «Пополнить», -1 — нет такой строки.
+static Faction_StoreRowItem(f, row)
+{
+	new n = 0;
+	for (new it = 0; it < MAX_FITEMS; it++)
+	{
+		if (!Faction_StoreHas(f, it)) continue;
+		if (n++ == row) return it;
+	}
+	return (row == n) ? MAX_FITEMS : -1;
+}
+
 stock bool:Cmd_FStorage(playerid)
 {
 	new f = Player[playerid][pFaction];
@@ -1789,13 +1816,17 @@ stock bool:Cmd_FStorage(playerid)
 	if (!Faction_AtBase(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Склад доступен только на базе фракции (у раздевалки).");
 
 	new body[900], line[96];
+	new bool:medic = Faction_IsMedic(f);
 	strcat(body, "Снаряжение\tНа складе\tЦена закупки\n");
 	for (new it = 0; it < MAX_FITEMS; it++)
 	{
-		format(line, sizeof line, "%s\t%d шт.\t$%d\n", gFItemName[it], gFStore[f][it], gFItemPrice[it]);
+		if (!Faction_StoreHas(f, it)) continue;
+		if (medic) format(line, sizeof line, "%s (в сумку)\t%d шт.\t%d мат.\n", gFItemName[it], gFStore[f][it], gFItemMats[it]);
+		else format(line, sizeof line, "%s\t%d шт.\t$%d\n", gFItemName[it], gFStore[f][it], gFItemPrice[it]);
 		strcat(body, line);
 	}
-	strcat(body, "{FFFF00}» Пополнить склад (закупка, у банд — изготовление)\t{AFAFAF}по праву\t");
+	if (medic) strcat(body, "{FFFF00}» Сделать медикаменты из материалов\t{AFAFAF}по праву\t");
+	else strcat(body, "{FFFF00}» Пополнить склад (закупка, у банд — изготовление)\t{AFAFAF}по праву\t");
 	new title[64];
 	format(title, sizeof title, "Склад: материалов %d", Faction[f][fMats]);
 	ShowPlayerDialog(playerid, DIALOG_FSTORE, DIALOG_STYLE_TABLIST_HEADERS, title, "%s", "Взять", "Закрыть", body);
@@ -1810,9 +1841,16 @@ stock Faction_TakeItem(playerid, it)
 	if (!FPerm_Need(playerid, FP_STORE_TAKE)) return 1;
 	if (Faction_IsState(f) && !Player[playerid][pDuty])
 		return SendClientMessage(playerid, COLOR_GREY, "Сначала заступи на смену: /duty.");
+	if (!Faction_StoreHas(f, it)) return 1;
 	if (gFStore[f][it] <= 0) return SendClientMessage(playerid, COLOR_GREY, "На складе нет: %s. Лидер может закупить в /fstorage.", gFItemName[it]);
 
-	switch (it)
+	if (Faction_IsMedic(f))
+	{
+		// медик берёт аптечку в сумку: ей он лечит раненых (/aid)
+		if (!Inv_Add(playerid, INV_MEDKIT, 1))
+			return SendClientMessage(playerid, COLOR_GREY, "В сумке нет места для аптечки (до %d шт.).", Inv_GetMax(INV_MEDKIT));
+	}
+	else switch (it)
 	{
 		case FITEM_ARMOUR: SetPlayerArmour(playerid, 100.0);
 		case FITEM_MEDKIT: SetPlayerHealth(playerid, 100.0);
@@ -1834,9 +1872,11 @@ stock Faction_ShowBuyList(playerid)
 	new f = Player[playerid][pFaction];
 	new body[900], line[96];
 	new bool:gov = Faction_IsState(f);    // госструктуры платят из общака, банды делают оружие сами — только из материалов
+	if (Faction_IsMedic(f)) gov = false;    // медики делают медикаменты сами — только из материалов
 	strcat(body, "Снаряжение\tЦена за 1 шт.\tМатериалов за 1 шт.\tНа складе\n");
 	for (new it = 0; it < MAX_FITEMS; it++)
 	{
+		if (!Faction_StoreHas(f, it)) continue;
 		format(line, sizeof line, "%s\t$%d\t%d\t%d шт.\n", gFItemName[it], gov ? gFItemPrice[it] : 0, gFItemMats[it], gFStore[f][it]);
 		strcat(body, line);
 	}
@@ -2062,9 +2102,11 @@ stock Factions_OnDialog(playerid, dialogid, response, listitem, const inputtext[
 		case DIALOG_FSTORE:
 		{
 			if (!response) return 1;
-			if (listitem >= 0 && listitem < MAX_FITEMS)
+			new it = Faction_StoreRowItem(f, listitem);
+			if (it == -1) return 1;
+			if (it < MAX_FITEMS)
 			{
-				Faction_TakeItem(playerid, listitem);
+				Faction_TakeItem(playerid, it);
 				return 1;
 			}
 			if (!FPerm_Need(playerid, FP_STORE_BUY)) return 1;
@@ -2073,11 +2115,12 @@ stock Factions_OnDialog(playerid, dialogid, response, listitem, const inputtext[
 		case DIALOG_FSTORE_BUY:
 		{
 			if (!response) { Cmd_FStorage(playerid); return 1; }
-			if (listitem < 0 || listitem >= MAX_FITEMS) return 1;
-			gLSelItem[playerid] = listitem;
+			new it = Faction_StoreRowItem(f, listitem);
+			if (it < 0 || it >= MAX_FITEMS) return 1;
+			gLSelItem[playerid] = it;
 			ShowPlayerDialog(playerid, DIALOG_FSTORE_BUY_QTY, DIALOG_STYLE_INPUT, "Закупка",
 				"%s — $%d и %d материалов за 1 шт.\nСколько закупить? (1-100)\nВ общаке: $%d, материалов: %d", "Купить", "Назад",
-				gFItemName[listitem], Faction_IsState(f) ? gFItemPrice[listitem] : 0, gFItemMats[listitem], Faction[f][fBank], Faction[f][fMats]);
+				gFItemName[it], Faction_StoreCost(f, it), gFItemMats[it], Faction[f][fBank], Faction[f][fMats]);
 		}
 		case DIALOG_FSTORE_BUY_QTY:
 		{
@@ -2085,13 +2128,13 @@ stock Factions_OnDialog(playerid, dialogid, response, listitem, const inputtext[
 			if (!FPerm_Need(playerid, FP_STORE_BUY)) return 1;
 			if (!Faction_AtBase(playerid)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от базы."); return 1; }
 			new it = gLSelItem[playerid];
-			if (it < 0 || it >= MAX_FITEMS) return 1;
+			if (it < 0 || it >= MAX_FITEMS || !Faction_StoreHas(f, it)) return 1;
 			if (!IsNumeric(inputtext) || (amount = strval(inputtext)) < 1 || amount > 100)
 			{
 				SendClientMessage(playerid, COLOR_GREY, "Количество от 1 до 100.");
 				return 1;
 			}
-			new cost = Faction_IsState(f) ? (amount * gFItemPrice[it]) : 0;   // банды делают оружие сами, без денег
+			new cost = amount * Faction_StoreCost(f, it);   // банды и медики делают сами, без денег
 			new need = amount * gFItemMats[it];
 			if (Faction[f][fMats] < need)
 			{
