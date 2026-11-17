@@ -297,6 +297,8 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/createfaction", true)) { Cmd_CreateFaction(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delfaction", true))  { Cmd_DelFaction(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/flist", true))       { Cmd_FList(playerid); return 1; }
+	if (!strcmp(cmd, "/setftype", true))    { Cmd_SetFType(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/gov", true))         { Cmd_Gov(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fhide", true))       { Cmd_FHide(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fcolor", true))      { Cmd_FColor(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/addfactory", true))  { Cmd_AddFactory(playerid, cmdtext[pos]); return 1; }

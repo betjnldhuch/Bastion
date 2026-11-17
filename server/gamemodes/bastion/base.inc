@@ -64,6 +64,11 @@ enum
 // Силовая структура: полиция, ФБР и созданные в игре фракции этого типа
 // (наручники, розыск, арест, штрафы, решётки камер). Сама функция — в factions.inc.
 forward bool:Faction_IsLaw(f);
+// Функции с тегом, которые зовутся раньше своего файла (иначе warning 208 при компиляции)
+forward bool:Admin_Check(playerid, level);
+forward bool:IsPlayerNearPlayer(playerid, target, Float:range);
+forward bool:Wound_IsWounded(playerid);
+forward bool:Marker_IsSecret(m);
 forward bool:Faction_IsValid(f);
 
 // Всё, что мы знаем об игроке. Поля с "сохраняется" пишутся в базу.
