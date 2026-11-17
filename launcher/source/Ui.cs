@@ -969,7 +969,10 @@ namespace BastionLauncher
             // выше 90 лаунчер хранит сам (в sa-mp.cfg SA-MP больше 90 не примет)
             FpsPack.Load();
             int fpsNow;
-            if (!int.TryParse(Samp.GetValue("BastionFps"), out fpsNow)) fpsNow = sc.GetInt("fpslimit", 90);
+            // по умолчанию — максимум (165), если пакет FPS на месте; без пакета SA-MP выше 90 не даст
+            if (!int.TryParse(Samp.GetValue("BastionFps"), out fpsNow)) fpsNow = FpsPack.Available ? FpsPack.MaxFps : FpsPack.SampMax;
+            // раньше выше 90 было нельзя: тем, у кого стояло 90, один раз поднимаем до максимума
+            if (fpsNow == FpsPack.SampMax && FpsPack.Available && Samp.GetValue("BastionFpsMax") != "1") fpsNow = FpsPack.MaxFps;
             segFps = new Slider(FpsPack.MinFps, FpsPack.MaxFps, fpsNow);
             segFps.Marks = FpsPack.Marks;
             segFps.Bounds = new Rectangle(200, 148, 280, 38);
@@ -1118,6 +1121,7 @@ namespace BastionLauncher
                 Samp.SetValue("BastionCheckMods", tMods.Checked ? "1" : "0");
                 Samp.SetValue("BastionCloseOnPlay", tClose.Checked ? "1" : "0");
                 Samp.SetValue("BastionFps", segFps.Value.ToString());
+                Samp.SetValue("BastionFpsMax", "1");
                 string exe = Path.Combine(gtaPath.Text.Trim(), "gta_sa.exe");
                 if (gtaPath.Text.Trim().Length > 0 && File.Exists(exe)) Samp.SetValue("gta_sa_exe", exe);
                 if (showStatus) SetStatus("Настройки сохранены.");
@@ -1297,6 +1301,7 @@ namespace BastionLauncher
                 psi.WorkingDirectory = gta;
                 psi.UseShellExecute = true;
                 Process.Start(psi);
+                VideoModeAuto.Watch();   // окно выбора разрешения при первом входе — выберем сами
                 SetStatus("Запускаю " + s.Name + "…");
                 if (tClose.Checked) { System.Windows.Forms.Timer t = new System.Windows.Forms.Timer(); t.Interval = 1500; t.Tick += delegate { t.Stop(); Close(); }; t.Start(); }
             }
