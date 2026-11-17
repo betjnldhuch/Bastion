@@ -1063,12 +1063,9 @@ namespace BastionLauncher
             bool packIn = FpsPack.Available && FpsPack.Installed(gta);
             if (want > FpsPack.SampMax && !FpsPack.Available)
             {
-                DialogResult r = MessageBox.Show(this,
-                    "Чтобы FPS был выше 90, рядом с лаунчером нужна папка fps с пакетом FPS (снятие лимита и фиксы физики). " +
-                    "Её пока нет, поэтому игра запустится с лимитом 90.\r\n\r\nЗапустить с 90 FPS?",
-                    cfg.Title, MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
-                if (r != DialogResult.OK) return false;
+                // пакета FPS нет (старая сборка лаунчера без папки fps) — без лишнего окна, просто 90
                 want = FpsPack.SampMax;
+                SetStatus("Нет папки fps рядом с лаунчером — игра пойдёт с 90 FPS. Скачай свежий лаунчер.");
             }
             else if (want > FpsPack.SampMax && !packIn)
             {

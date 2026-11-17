@@ -127,9 +127,10 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      # Ручной запуск: exe кладётся в релиз «builds» (не занимает место артефактов Actions)
+      # Ручной запуск и каждый push в main: лаунчер кладётся в релиз «builds».
+      # Не зависит от квоты артефактов Actions (из-за неё релизы main перестали выходить).
       - name: Publish to builds release
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
