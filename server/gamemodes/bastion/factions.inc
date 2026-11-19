@@ -76,7 +76,9 @@ enum
 	FTYPE_GANG,         // банда: районы, войны
 	FTYPE_CIVIL,        // гос. организация без особых прав (мэрия, СМИ и т.п.)
 	FTYPE_ARMY,         // армия: возит материалы
-	FTYPE_PRISON        // охрана тюрьмы (prison.inc)
+	FTYPE_PRISON,       // охрана тюрьмы (prison.inc)
+	FTYPE_FBI,          // спецслужба: права полиции + спецсредства ФБР (fbi.inc), смена в штатском
+	FTYPE_GOV           // правительство: бюджет штата, /gov — объявления, лидер меняет налоги (/settax)
 }
 
 // Материалы: армия возит их с базы снабжения на свой склад, а оттуда — госструктурам
@@ -345,7 +347,19 @@ stock bool:Faction_IsGang(f)
 // Силовая структура (объявлена в base.inc)
 stock bool:Faction_IsLaw(f)
 {
-	return (f > FACTION_NONE && f < MAX_FACTIONS && Faction[f][fType] == FTYPE_LAW);
+	return (f > FACTION_NONE && f < MAX_FACTIONS && (Faction[f][fType] == FTYPE_LAW || Faction[f][fType] == FTYPE_FBI));
+}
+
+// Спецслужба (ФБР и фракции этого типа): маскировка, прослушка, слежка, досье, смена в штатском
+stock bool:Faction_IsFbi(f)
+{
+	return (f > FACTION_NONE && f < MAX_FACTIONS && Faction[f][fType] == FTYPE_FBI);
+}
+
+// Правительство
+stock bool:Faction_IsGov(f)
+{
+	return (f > FACTION_NONE && f < MAX_FACTIONS && Faction[f][fType] == FTYPE_GOV);
 }
 
 stock bool:Faction_IsMedic(f)
@@ -363,7 +377,8 @@ stock Faction_BuiltinType(f)
 {
 	switch (f)
 	{
-		case FACTION_POLICE, FACTION_FBI: return FTYPE_LAW;
+		case FACTION_POLICE: return FTYPE_LAW;
+		case FACTION_FBI: return FTYPE_FBI;
 		case FACTION_EMS: return FTYPE_MEDIC;
 		case FACTION_GROVE, FACTION_BALLAS, FACTION_AZTECAS: return FTYPE_GANG;
 		case FACTION_ARMY: return FTYPE_ARMY;
@@ -374,9 +389,10 @@ stock Faction_BuiltinType(f)
 // Какой набор названий рангов по умолчанию (строка gDefRankNames)
 stock Faction_RankSet(f)
 {
-	if (f == FACTION_FBI) return 3;
 	switch (Faction[f][fType])
 	{
+		case FTYPE_FBI: return 3;
+		case FTYPE_GOV: return 5;
 		case FTYPE_LAW: return 0;
 		case FTYPE_MEDIC: return 1;
 		case FTYPE_ARMY: return 4;
@@ -726,6 +742,9 @@ stock bool:Cmd_FHide(playerid, const params[])
 	return true;
 }
 
+
+forward Factions_Migrate();
+
 // Перенос фракции на другой номер. Делается при запуске, до загрузки всего остального
 // (из OnGameModeInit сразу после DB_Init), один раз: строка в faction_moves помечается done.
 // Первый перенос — 8 -> последний номер, чтобы после 7 шли обычные 8, 9...
@@ -832,6 +851,7 @@ stock Factions_Init()
 {
 	Factions_CreateTables();
 	Factions_LoadHidden();
+	Factions_Migrate();
 
 	// Какие фракции есть: 1..7 постоянные, остальные — созданные в игре (строка в базе)
 	for (new f = 1; f < MAX_FACTIONS; f++)
@@ -846,7 +866,7 @@ stock Factions_Init()
 		for (new i = 0; i < trows; i++)
 		{
 			new f = DB_GetFieldInt(tr, 0), type = DB_GetFieldInt(tr, 1);
-			if (f >= FACTION_BUILTIN && f < MAX_FACTIONS && type >= FTYPE_LAW && (type <= FTYPE_CIVIL || type == FTYPE_PRISON)) Faction[f][fType] = type;
+			if (f >= FACTION_BUILTIN && f < MAX_FACTIONS && type >= FTYPE_LAW && type <= FTYPE_GOV && type != FTYPE_ARMY) Faction[f][fType] = type;
 			DB_SelectNextRow(tr);
 		}
 		DB_FreeResultSet(tr);
@@ -1351,7 +1371,7 @@ stock bool:Cmd_Duty(playerid, bool:plain = false)
 
 	new rank = Player[playerid][pRank];
 	if (rank < 1 || rank > MAX_RANK) rank = 1;
-	if (plain && f != FACTION_FBI) plain = false;
+	if (plain && !Faction_IsFbi(f)) plain = false;
 	Player[playerid][pDuty] = true;
 	ResetPlayerWeapons(playerid);
 	if (plain)
@@ -2836,21 +2856,22 @@ stock bool:Cmd_FIntLock(playerid, const params[])
 //  Дальше фракция настраивается как обычная: /setfspawn, /setfduty, /setfint,
 //  /addfcar, /fcolor, /fedit, /makeleader; ранги, скины и зарплаты — лидер в /lmenu.
 // =====================================================================
-static const gFTypeName[7][24] =
+static const gFTypeName[9][24] =
 {
-	"нет", "силовая структура", "медики", "банда", "гос. организация", "армия", "тюрьма"
+	"нет", "силовая структура", "медики", "банда", "гос. организация", "армия", "тюрьма", "спецслужба", "правительство"
 };
-static const gFTypeColor[7] = { 0xFFFFFFFF, 0x3A6EFFFF, 0xFF8080FF, 0xE0A030FF, 0xC8C8C8FF, 0x6B8E23FF, 0xD2691EFF };
-static const gFTypeSkin[7]  = { 0, 280, 274, 21, 17, 287, 71 };
+static const gFTypeColor[9] = { 0xFFFFFFFF, 0x3A6EFFFF, 0xFF8080FF, 0xE0A030FF, 0xC8C8C8FF, 0x6B8E23FF, 0xD2691EFF, 0x2F4F7FFF, 0xE8E8E8FF };
+static const gFTypeSkin[9]  = { 0, 280, 274, 21, 17, 287, 71, 286, 147 };
 
 stock bool:Cmd_CreateFaction(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, type, name[32];
-	if (!NextIntParam(params, pos, type) || type < FTYPE_LAW || (type > FTYPE_CIVIL && type != FTYPE_PRISON) || !RestParam(params, pos, name))
+	if (!NextIntParam(params, pos, type) || type < FTYPE_LAW || type > FTYPE_GOV || type == FTYPE_ARMY || !RestParam(params, pos, name))
 	{
 		SendClientMessage(playerid, COLOR_GREY, "Использование: /createfaction [тип] [название]");
-		SendClientMessage(playerid, COLOR_GREY, "Типы: 1 — силовая (права полиции), 2 — медики, 3 — банда, 4 — гос. организация без особых прав, 6 — тюрьма (охрана).");
+		SendClientMessage(playerid, COLOR_GREY, "Типы: 1 — силовая (права полиции), 2 — медики, 3 — банда, 4 — гос. организация без особых прав, 6 — тюрьма (охрана),");
+		SendClientMessage(playerid, COLOR_GREY, "7 — спецслужба (как ФБР: маскировка, прослушка, слежка, штатское), 8 — правительство (/gov, налоги). Сменить тип: /setftype");
 		return true;
 	}
 	if (!Faction_IsGoodName(name, 2, 31)) return SendClientMessage(playerid, COLOR_GREY, "Название: от 2 до 31 символа, без фигурных скобок и знака процента.");
@@ -4541,7 +4562,7 @@ stock Locker_Show(playerid)
 	if (Player[playerid][pDuty]) strcat(list, "Переодеться в свою одежду {AFAFAF}(закончить смену)\n");
 	else strcat(list, "Переодеться в форму {AFAFAF}(начать смену)\n");
 	strcat(list, "Взять снаряжение {AFAFAF}(оружие, бронежилет, аптечка)");
-	if (f == FACTION_FBI && !Player[playerid][pDuty]) strcat(list, "\nЗаступить в штатском {AFAFAF}(без формы, тайно)");
+	if (Faction_IsFbi(f) && !Player[playerid][pDuty]) strcat(list, "\nЗаступить в штатском {AFAFAF}(без формы, тайно)");
 	ShowPlayerDialog(playerid, DIALOG_LOCKER, DIALOG_STYLE_LIST, Faction_GetName(f), "%s", "Выбрать", "Закрыть", list);
 }
 
@@ -5115,4 +5136,107 @@ static Faction_MoveRows(a, b)
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE markers SET ref = %d WHERE type = %d AND ref = %d", STORE_REF + b, MK_FACTION, STORE_REF + a));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE markers SET ref = %d WHERE type = %d AND ref = %d", FDOOR_REF + b * 2, MK_DOOR, FDOOR_REF + a * 2));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE markers SET ref = %d WHERE type = %d AND ref = %d", FDOOR_REF + b * 2 + 1, MK_DOOR, FDOOR_REF + a * 2 + 1));
+}
+
+// /gov [текст] — объявление правительства всем (ранг 5+ правительства)
+stock bool:Cmd_Gov(playerid, const params[])
+{
+	new f = Player[playerid][pFaction];
+	if (!Faction_IsGov(f)) return SendClientMessage(playerid, COLOR_GREY, "Это доступно только правительству.");
+	if (Player[playerid][pRank] < 5) return SendClientMessage(playerid, COLOR_GREY, "Объявления делает ранг 5 и выше.");
+	if (params[0] == '\0') return SendClientMessage(playerid, COLOR_GREY, "Использование: /gov [текст] — объявление правительства для всех");
+	new msg[144];
+	format(msg, sizeof msg, "[Правительство] %s (%s): %s", GetRPName(playerid), Faction_GetRankName(f, Player[playerid][pRank]), params);
+	SendClientMessageToAll(0xE8E8E8FF, msg);
+	return true;
+}
+
+// Разовые правки базы при запуске (каждая — один раз, имя пишется в server_migrations)
+public Factions_Migrate()
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS server_migrations (name TEXT PRIMARY KEY)"));
+	new bool:done = false;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT COUNT(*) FROM server_migrations WHERE name = 'secret_faction_fbi'");
+	if (r != DBResult:0)
+	{
+		if (DB_GetRowCount(r) > 0) done = DB_GetFieldInt(r, 0) > 0;
+		DB_FreeResultSet(r);
+	}
+	if (!done)
+	{
+	// скрытая фракция (бывшая 8) — не полиция, а спецслужба как ФБР
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE factions SET ftype = %d WHERE id = %d AND ftype = %d", FTYPE_FBI, FACTION_SECRET_ID, FTYPE_LAW));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR IGNORE INTO server_migrations (name) VALUES ('secret_faction_fbi')"));
+	}
+	Factions_MigrateInteriors();
+	return 1;
+}
+
+// Армия и банды из тесных залов interiors.inc переезжают в большие интерьеры GTA (у каждой банды свой).
+// Трогаем только то, что стоит в старом зале: вход внутри, спавн, раздевалку и их правки из /markers.
+static const Float:gOrgIntMove[][] =
+{
+	// фракция, центр старого зала x, y, новый интерьер, x, y, z
+	{ 7.0, 2650.0, -2850.0, 18.0, 1290.41,    1.95, 1001.02 },  // армия -> большой склад
+	{ 3.0, 2450.0, -2850.0,  5.0, 1267.84, -776.96, 1091.91 },  // Grove -> особняк Мэдд Догга
+	{ 4.0, 2450.0, -2850.0,  2.0, 2536.53, -1294.84, 1044.12 }, // Ballas -> наркопритон Биг Смоука
+	{ 5.0, 2450.0, -2850.0,  3.0, -2636.72, 1402.92, 906.46 }   // Aztecas -> клуб Джиззи
+};
+
+static Factions_MigrateInteriors()
+{
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT COUNT(*) FROM server_migrations WHERE name = 'org_interiors_v2'");
+	new bool:done = false;
+	if (r != DBResult:0)
+	{
+		if (DB_GetRowCount(r) > 0) done = DB_GetFieldInt(r, 0) > 0;
+		DB_FreeResultSet(r);
+	}
+	if (done) return;
+	// спавн у мэрии совпадал с автошколой: кто там спавнится и имеет свой офис — спавнится внутри офиса
+	DB_FreeResultSet(DB_ExecuteQuery(gDB,
+		"UPDATE factions SET sx = (SELECT d.ix FROM faction_doors d WHERE d.faction = factions.id), sy = (SELECT d.iy FROM faction_doors d WHERE d.faction = factions.id), sz = (SELECT d.iz FROM faction_doors d WHERE d.faction = factions.id), sa = (SELECT d.ia FROM faction_doors d WHERE d.faction = factions.id), sint = (SELECT d.iint FROM faction_doors d WHERE d.faction = factions.id), sworld = (SELECT d.iworld FROM faction_doors d WHERE d.faction = factions.id) WHERE abs(sx - %f) < 6 AND abs(sy - %f) < 6 AND EXISTS (SELECT 1 FROM faction_doors d WHERE d.faction = factions.id AND d.has_in = 1)",
+		LIC_SCHOOL_X, LIC_SCHOOL_Y));
+	for (new i = 0; i < sizeof gOrgIntMove; i++)
+	{
+		new f = floatround(gOrgIntMove[i][0]), inter = floatround(gOrgIntMove[i][3]);
+		new Float:cx = gOrgIntMove[i][1], Float:cy = gOrgIntMove[i][2];
+		new Float:nx = gOrgIntMove[i][4], Float:ny = gOrgIntMove[i][5], Float:nz = gOrgIntMove[i][6];
+		DB_FreeResultSet(DB_ExecuteQuery(gDB,
+			"UPDATE faction_doors SET iint = %d, ix = %f, iy = %f, iz = %f, ia = 0 WHERE faction = %d AND iint = 1 AND iz > 1400 AND abs(ix - %f) < 40 AND abs(iy - %f) < 40",
+			inter, nx, ny, nz, f, cx, cy));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB,
+			"UPDATE factions SET sint = %d, sx = %f, sy = %f, sz = %f WHERE id = %d AND sint = 1 AND sz > 1400 AND abs(sx - %f) < 40 AND abs(sy - %f) < 40",
+			inter, nx, ny, nz, f, cx, cy));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB,
+			"UPDATE factions SET dint = %d, dx = %f, dy = %f, dz = %f WHERE id = %d AND dint = 1 AND dz > 1400 AND abs(dx - %f) < 40 AND abs(dy - %f) < 40",
+			inter, nx + 1.5, ny, nz, f, cx, cy));
+		// правки маркеров (/markers) в старом зале больше не нужны
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM markers WHERE type = %d AND ref = %d AND z > 1400", MK_FACTION, f));
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM markers WHERE type = %d AND ref = %d AND z > 1400", MK_DOOR, FDOOR_REF + f * 2 + 1));
+	}
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR IGNORE INTO server_migrations (name) VALUES ('org_interiors_v2')"));
+	print("[Factions] Army and gang bases moved to large GTA interiors.");
+}
+
+// /setftype [№] [тип] — сменить тип фракции, созданной в игре (админ 7)
+stock bool:Cmd_SetFType(playerid, const params[])
+{
+	if (!Admin_Check(playerid, ADMIN_MAX_LEVEL)) return true;
+	new pos = 0, f, type;
+	if (!NextIntParam(params, pos, f) || !NextIntParam(params, pos, type) || !Faction_IsValid(f) || f < FACTION_BUILTIN
+		|| type < FTYPE_LAW || type > FTYPE_GOV || type == FTYPE_ARMY)
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setftype [№ фракции 8+] [тип: 1 силовая, 2 медики, 3 банда, 4 гос., 6 тюрьма, 7 спецслужба, 8 правительство]");
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && Player[i][pLogged] && Player[i][pFaction] == f) Faction_EndDuty(i);
+	}
+	Faction[f][fType] = type;
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE factions SET ftype = %d WHERE id = %d", type, f));
+	for (new i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (IsPlayerConnected(i) && Player[i][pLogged] && Player[i][pFaction] == f) Faction_UpdateColor(i);
+	}
+	SendClientMessage(playerid, COLOR_ADMIN, "Фракция %d «%s» теперь: %s. Участники сняты со смены.", f, Faction_GetName(f), gFTypeName[type]);
+	return true;
 }

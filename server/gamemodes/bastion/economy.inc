@@ -171,7 +171,9 @@ stock bool:Cmd_Taxes(playerid)
 
 stock bool:Cmd_SetTax(playerid, const params[])
 {
-	if (!Admin_Check(playerid, ADMIN_MAX_LEVEL)) return true;
+	// налоги мен€ет главный админ или лидер и заместитель правительства
+	new bool:gov = Faction_IsGov(Player[playerid][pFaction]) && Player[playerid][pRank] >= MAX_RANK - 1;
+	if (!gov && !Admin_Check(playerid, ADMIN_MAX_LEVEL)) return true;
 	new pos = 0, kind[16], value;
 	if (!NextParam(params, pos, kind) || !NextIntParam(params, pos, value))
 		return SendClientMessage(playerid, COLOR_GREY, "»спользование: /settax income [0-%d %%] или /settax car [0-%d Й]", TAX_INCOME_MAX, TAX_CAR_MAX);

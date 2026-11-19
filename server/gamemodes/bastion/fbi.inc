@@ -33,7 +33,7 @@ static gTrackTimer[MAX_PLAYERS] = { -1, ... };
 
 static bool:Fbi_Is(playerid, rank = 1)
 {
-	if (Player[playerid][pFaction] != FACTION_FBI)
+	if (!Faction_IsFbi(Player[playerid][pFaction]))
 	{
 		SendClientMessage(playerid, COLOR_GREY, "Это доступно только сотрудникам ФБР.");
 		return false;
@@ -96,7 +96,7 @@ stock bool:Cmd_FDisguise(playerid, const params[])
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	SendClientMessage(playerid, COLOR_WHITE, "Ты в форме «%s» (%s). Снять: /disguise", Faction_GetName(f), Faction_GetRankName(f, rank));
 	format(msg, sizeof msg, "%s замаскировался под «%s».", GetRPName(playerid), Faction_GetName(f));
-	Faction_Log(FACTION_FBI, msg);
+	Faction_Log(Player[playerid][pFaction], msg);
 	return true;
 }
 
@@ -112,7 +112,7 @@ stock bool:Cmd_Disguise(playerid, const params[])
 		Fbi_ResetDisguise(playerid);
 		new rank = Player[playerid][pRank];
 		if (rank < 1 || rank > MAX_RANK) rank = 1;
-		SetPlayerSkin(playerid, gRankSkin[FACTION_FBI][rank - 1]);
+		SetPlayerSkin(playerid, gRankSkin[Player[playerid][pFaction]][rank - 1]);
 		Faction_UpdateColor(playerid);
 		format(msg, sizeof msg, "%s переодевается обратно в форму.", GetRPName(playerid));
 		SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
@@ -127,7 +127,7 @@ stock bool:Cmd_Disguise(playerid, const params[])
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	SendClientMessage(playerid, COLOR_WHITE, "Ты в маскировке: на карте и над головой ты как обычный гражданский. Снять: /disguise");
 	format(msg, sizeof msg, "%s ушёл в маскировку.", GetRPName(playerid));
-	Faction_Log(FACTION_FBI, msg);
+	Faction_Log(Player[playerid][pFaction], msg);
 	return true;
 }
 
@@ -145,7 +145,7 @@ stock bool:Cmd_Tap(playerid, const params[])
 	SendClientMessage(playerid, COLOR_TAP, "Прослушка номера %d на %d мин. Звонки и SMS будут приходить сюда. Снять: /untap", number, TAP_MINUTES);
 	new msg[96];
 	format(msg, sizeof msg, "%s поставил на прослушку номер %d.", GetRPName(playerid), number);
-	Faction_Log(FACTION_FBI, msg);
+	Faction_Log(Player[playerid][pFaction], msg);
 	return true;
 }
 
@@ -165,14 +165,14 @@ stock bool:Cmd_TapF(playerid, const params[])
 	if (!Fbi_Is(playerid, TAP_RANK)) return true;
 	new pos = 0, f;
 	if (!NextIntParam(params, pos, f)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /tapf [фракция] — слушать рацию %d мин (номера: /flist). Снять: /untap", TAP_MINUTES);
-	if (!Faction_IsValid(f) || f == FACTION_FBI || Faction_IsHidden(f)) return SendClientMessage(playerid, COLOR_GREY, "Такую организацию слушать нельзя. Номера: /flist");
+	if (!Faction_IsValid(f) || Faction_IsFbi(f) || Faction_IsHidden(f)) return SendClientMessage(playerid, COLOR_GREY, "Такую организацию слушать нельзя. Номера: /flist");
 	gTapFaction[playerid] = f;
 	gTapFUntil[playerid] = gettime() + TAP_MINUTES * 60;
 	if (Faction_IsGang(f)) SendClientMessage(playerid, COLOR_TAP, "Прослушка рации «%s» и чата банд /gd на %d мин. Снять: /untap", Faction_GetName(f), TAP_MINUTES);
 	else SendClientMessage(playerid, COLOR_TAP, "Прослушка рации «%s» на %d мин. Снять: /untap", Faction_GetName(f), TAP_MINUTES);
 	new msg[96];
 	format(msg, sizeof msg, "%s поставил на прослушку рацию «%s».", GetRPName(playerid), Faction_GetName(f));
-	Faction_Log(FACTION_FBI, msg);
+	Faction_Log(Player[playerid][pFaction], msg);
 	return true;
 }
 
@@ -180,7 +180,7 @@ stock bool:Cmd_TapF(playerid, const params[])
 static bool:Fbi_TapFActive(i)
 {
 	if (gTapFaction[i] == 0) return false;
-	if (!IsPlayerConnected(i) || Player[i][pFaction] != FACTION_FBI || gTapFUntil[i] < gettime())
+	if (!IsPlayerConnected(i) || !Faction_IsFbi(Player[i][pFaction]) || gTapFUntil[i] < gettime())
 	{
 		if (IsPlayerConnected(i)) SendClientMessage(i, COLOR_TAP, "Прослушка рации закончилась.");
 		gTapFaction[i] = 0;
@@ -214,7 +214,7 @@ static Fbi_TapSend(numA, numB, const text[])
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (gTapNumber[i] == 0) continue;
-		if (!IsPlayerConnected(i) || gTapUntil[i] < now || Player[i][pFaction] != FACTION_FBI)
+		if (!IsPlayerConnected(i) || gTapUntil[i] < now || !Faction_IsFbi(Player[i][pFaction]))
 		{
 			if (IsPlayerConnected(i) && gTapUntil[i] < now) SendClientMessage(i, COLOR_TAP, "Прослушка номера %d закончилась.", gTapNumber[i]);
 			gTapNumber[i] = 0;
@@ -291,7 +291,7 @@ stock bool:Cmd_Track(playerid, const params[])
 	SendClientMessage(playerid, COLOR_TAP, "Слежка за %s [%d]: красная метка на карте, %d мин. Снять: /track", GetRPName(target), target, TRACK_MINUTES);
 	new msg[96];
 	format(msg, sizeof msg, "%s установил слежку за %s.", GetRPName(playerid), GetRPName(target));
-	Faction_Log(FACTION_FBI, msg);
+	Faction_Log(Player[playerid][pFaction], msg);
 	return true;
 }
 

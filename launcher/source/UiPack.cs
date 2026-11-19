@@ -18,7 +18,7 @@ namespace BastionLauncher
 {
     static class UiPack
     {
-        public const string DefaultUrl = "gh://the-gta-man/Bastion/bastion-ui/BastionUI-PC.zip";
+        public const string DefaultUrl = "gh://betjnldhuch/bastion/bastion-ui/BastionUI-PC.zip";
         const string Mark = "bastion_ui\\installed.sha256";
 
         public static string Effective(string fromIni)
