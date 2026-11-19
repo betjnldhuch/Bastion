@@ -19,6 +19,7 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -160,10 +161,10 @@ public class MainActivity extends Activity {
         top.setOrientation(LinearLayout.HORIZONTAL);
         top.setGravity(Gravity.CENTER_VERTICAL);
 
-        View mark = new View(this);
-        mark.setBackgroundColor(Ui.ORANGE);
-        LinearLayout.LayoutParams markLp = new LinearLayout.LayoutParams(Ui.dp(7), Ui.dp(7));
-        markLp.rightMargin = Ui.dp(10);
+        ImageView mark = new ImageView(this);
+        mark.setImageResource(R.drawable.logo_shield);
+        LinearLayout.LayoutParams markLp = new LinearLayout.LayoutParams(Ui.dp(22), Ui.dp(22));
+        markLp.rightMargin = Ui.dp(8);
         top.addView(mark, markLp);
 
         TextView brand = Ui.text(this, "BASTION ONLINE", 11, Ui.MUTED, Ui.heavy);
@@ -191,26 +192,15 @@ public class MainActivity extends Activity {
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
 
-        TextView hero = Ui.text(this, "BASTION", 46, Ui.TEXT, Ui.heavy);
-        hero.setLetterSpacing(-0.035f);
-        hero.setShadowLayer(Ui.dp(5), 0, Ui.dp(3), 0x99000000);
-        left.addView(hero, new LinearLayout.LayoutParams(MATCH, WRAP));
-
-        LinearLayout subtitle = new LinearLayout(this);
-        subtitle.setOrientation(LinearLayout.HORIZONTAL);
-        subtitle.setGravity(Gravity.CENTER_VERTICAL);
-        View orangeDash = new View(this);
-        orangeDash.setBackgroundColor(Ui.ORANGE);
-        LinearLayout.LayoutParams dashLp = new LinearLayout.LayoutParams(Ui.dp(34), Ui.dp(3));
-        dashLp.rightMargin = Ui.dp(12);
-        subtitle.addView(orangeDash, dashLp);
-        TextView tagline = Ui.text(this, "ONLINE  ·  SAN ANDREAS MULTIPLAYER", 10, Ui.MUTED, Ui.heavy);
-        tagline.setLetterSpacing(0.19f);
-        subtitle.addView(tagline);
-        LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(MATCH, WRAP);
-        subLp.topMargin = Ui.dp(9);
-        subLp.bottomMargin = Ui.dp(24);
-        left.addView(subtitle, subLp);
+        ImageView hero = new ImageView(this);
+        hero.setImageResource(R.drawable.logo_banner);
+        hero.setAdjustViewBounds(true);
+        hero.setScaleType(ImageView.ScaleType.FIT_START);
+        hero.setContentDescription("Bastion Online");
+        LinearLayout.LayoutParams heroLp = new LinearLayout.LayoutParams(MATCH, Ui.dp(112));
+        heroLp.leftMargin = -Ui.dp(8);
+        heroLp.bottomMargin = Ui.dp(14);
+        left.addView(hero, heroLp);
 
         left.addView(Ui.caption(this, "Новости"));
         ScrollView newsScroll = new ScrollView(this);

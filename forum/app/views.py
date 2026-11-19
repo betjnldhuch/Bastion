@@ -130,10 +130,14 @@ def layout(ctx, title, body, crumbs=None, status=200, script=""):
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{e(page_title)}</title>
 <link rel="stylesheet" href="/static/style.css">
-<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/static/favicon.ico" sizes="any">
+<link rel="icon" href="/static/favicon-48.png" type="image/png" sizes="48x48">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta property="og:image" content="/static/og-banner.jpg">
+<meta name="theme-color" content="#0d0e11">
 </head><body>
 <header class="top"><div class="wrap">
-  <a class="logo" href="/"><span>{e(cfg.title.upper())}</span></a>
+  <a class="logo" href="/"><img src="/static/logo-shield.png" alt="" width="30" height="30"><span>{e(cfg.title.upper())}</span></a>
   <nav class="menu">
     <a href="/map">Карта</a><a href="/forum">Форум</a><a href="/donate">Донат</a><a href="/team">Администрация</a><a href="/bans">Баны</a>{discord}{donate_admin}
     <form action="/search" method="get" class="search"><input name="q" placeholder="Поиск" aria-label="Поиск"></form>
@@ -608,7 +612,7 @@ def site_home(ctx, news):
     news_block = (f'<section class="card"><h3>Новости</h3><ul class="recent">{news_html}</ul></section>'
                   if news else "")
     body = f"""<section class="site-hero"><div>
-<h1>{e(ctx.cfg.title)}</h1><p>{e(ctx.cfg.subtitle)}</p></div>
+<h1><img class="hero-logo" src="/static/logo-banner.png" alt="{e(ctx.cfg.title)}" width="960" height="418"></h1><p>{e(ctx.cfg.subtitle)}</p></div>
 <div class="srv-cards">{server_cards(ctx)}</div></section>
 <nav class="tiles">{tiles}</nav>{news_block}"""
     return layout(ctx, "", body)
