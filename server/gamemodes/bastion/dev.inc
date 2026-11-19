@@ -67,6 +67,13 @@ stock Dev_Init()
 		new rows = DB_GetRowCount(r);
 		for (new i = 0; i < rows && gMapCount < MAX_MAP_OBJECTS; i++)
 		{
+			if (!Map_IsSafeModel(DB_GetFieldInt(r, 1)))
+			{
+				// Несуществующая модель роняет клиент: Warning(opcode 0x107) Exception 0xC0000005 при входе.
+				printf("[Dev] Map: skipped object #%d, invalid model %d (delete: /mo or DB map_objects).", DB_GetFieldInt(r, 0), DB_GetFieldInt(r, 1));
+				DB_SelectNextRow(r);
+				continue;
+			}
 			new o = CreateObject(DB_GetFieldInt(r, 1), DB_GetFieldFloat(r, 2), DB_GetFieldFloat(r, 3), DB_GetFieldFloat(r, 4),
 				DB_GetFieldFloat(r, 5), DB_GetFieldFloat(r, 6), DB_GetFieldFloat(r, 7), MAP_DRAW_DISTANCE);
 			if (o != INVALID_OBJECT_ID)
@@ -328,9 +335,17 @@ static Map_Save(s)
 		x, y, z, rx, ry, rz, gMapDbId[s]));
 }
 
+// Модели объектов, которые есть у клиента 0.3.7: GTA SA (615..18630) + SA-MP (18631..19902) + свои (AddSimpleModel).
+// 0..614 — скины и транспорт, 19903+ — только 0.3.DL; такие объекты дают Warning(opcode 0x107) у игроков.
+stock Map_IsSafeModel(model)
+{
+	if (IsValidCustomModel(model)) return 1;
+	return (model >= 615 && model <= 19902);
+}
+
 static Map_Create(model, Float:x, Float:y, Float:z, Float:rx, Float:ry, Float:rz)
 {
-	if (gMapCount >= MAX_MAP_OBJECTS) return -1;
+	if (gMapCount >= MAX_MAP_OBJECTS || !Map_IsSafeModel(model)) return -1;
 	new o = CreateObject(model, x, y, z, rx, ry, rz, MAP_DRAW_DISTANCE);
 	if (o == INVALID_OBJECT_ID) return -1;
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO map_objects (model, x, y, z, rx, ry, rz) VALUES (%d, %f, %f, %f, %f, %f, %f)",
@@ -378,7 +393,7 @@ stock bool:Cmd_Mo(playerid, const params[])
 	if (!strcmp(sub, "new", true))
 	{
 		new model;
-		if (!NextIntParam(params, pos, model) || model < 300 || model > 20000)
+		if (!NextIntParam(params, pos, model) || !Map_IsSafeModel(model))
 			return SendClientMessage(playerid, COLOR_GREY, "Использование: /mo new [модель], например /mo new 1225 (бочка)");
 		new Float:x, Float:y, Float:z, Float:a;
 		GetPlayerPos(playerid, x, y, z);
