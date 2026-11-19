@@ -27,6 +27,8 @@ h1 { font-size: 26px; } h2 { font-size: 18px; } h3 { font-size: 15px; color: var
 .logo span { font-family: "Russo One", sans-serif; font-size: 20px; color: var(--orange); }
 .logo small { color: var(--dim); text-transform: uppercase; letter-spacing: 2px; font-size: 11px; }
 .logo:hover { text-decoration: none; }
+.logo { align-items: center; }
+.logo img { display: block; width: 30px; height: 30px; }
 .menu { display: flex; align-items: center; gap: 16px; flex: 1; flex-wrap: wrap; }
 .menu a { color: var(--text); font-size: 14px; }
 .search input { background: var(--card); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 6px 10px; width: 170px; }
@@ -201,6 +203,7 @@ table.list td { padding: 8px; border-top: 1px solid var(--line); }
   background: radial-gradient(circle at 0 0, rgba(255,122,26,.25), transparent 60%), radial-gradient(circle at 100% 100%, rgba(58,139,255,.10), transparent 50%), var(--card); border: 1px solid var(--line); }
 .site-hero h1 { font-size: 44px; color: var(--orange); margin: 0; line-height: 1.1; }
 .site-hero p { color: var(--dim); margin: 8px 0 0; font-size: 16px; }
+.site-hero .hero-logo { display: block; width: 500px; max-width: 100%; height: auto; margin: -12px 0 -6px -14px; }
 .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 16px 0; }
 .tile { display: flex; flex-direction: column; gap: 6px; padding: 22px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); color: var(--text); transition: border-color .15s, transform .15s; }
 .tile:hover { text-decoration: none; color: var(--text); border-color: var(--orange); transform: translateY(-2px); }
