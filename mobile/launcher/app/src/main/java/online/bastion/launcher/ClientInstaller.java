@@ -17,7 +17,7 @@ import java.util.Set;
 
 /** Downloads Bastion-owned assets listed in the public manifest. */
 public final class ClientInstaller {
-    private static final String MANIFEST_URL = "https://raw.githubusercontent.com/the-gta-man/Bastion/main/mobile/installer/manifest.json";
+    private static final String MANIFEST_URL = "https://raw.githubusercontent.com/betjnldhuch/bastion/main/mobile/installer/manifest.json";
     private static final int CONNECT_TIMEOUT = 15000;
     private static final int READ_TIMEOUT = 30000;
     private static final long MAX_FILE_SIZE = 512L * 1024L * 1024L;
