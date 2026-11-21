@@ -642,7 +642,7 @@ button { font: inherit; cursor: pointer; }
           html += '<div class="acts"><button type="button" class="btn primary" id="bu">' + use + '</button></div>';
         } else {
           html += '<div class="acts">' + (use ? '<button type="button" class="btn primary" id="bu">' + use + '</button>' : '') +
-            '<button type="button" class="btn" id="bg">🤝 Передать</button><button type="button" class="btn danger" id="bd">🗑 Выбросить</button></div>' +
+            '<button type="button" class="btn" id="bg">Передать</button><button type="button" class="btn danger" id="bd">Выбросить</button></div>' +
             (use ? '<div class="tip">Повторный тап по вещи — использовать</div>' : '');
         }
         det.innerHTML = html;
@@ -839,7 +839,7 @@ button { font: inherit; cursor: pointer; }
         hunger: 64, hp: 87, mask: 0, outMax: 5, sel: 3, skin: 60, canister: 10, money: 15400, outfits: [[100, 105], [101, 230]], ground: [[4, 6, 2, 'Вода'], [9, 100, 230, 'Одежда']],
         items: [[1, 2, 5, 'Бургер', '+40% сытости'], [6, 4, 5, 'Вода', '+10% сытости, +5 HP'], [3, 1, 3, 'Аптечка', '+50 HP'],
           [4, 2, 3, 'Ремкомплект', 'чинит машину рядом'], [8, 14, 20, 'Сигареты', 'покурить'], [11, 1, 1, 'Игральные кости', 'бросить кости (RP)'],
-          [12, 1, 1, 'Маска', 'прячет ник'], [17, 7, 30, 'Рыба', 'сдать рыбаку']], phone: 1, note: 'Обмен: 50 монет -> $50000.', ok: 1, rules: [['Ролевая игра', 'Веди себя как житель города. Не выходи из роли без причины (NonRP).'], ['DM и DB', 'Нельзя убивать без RP-причины (DM) и давить игроков машиной (DB).'], ['Читы и баги', 'Запрещены читы, сторонние программы и использование ошибок сервера.']] } });
+          [12, 1, 1, 'Маска', 'прячет ник'], [17, 7, 30, 'Рыба', 'сдать рыбаку']], phone: 1, note: /donate/.test(location.hash) ? 'Обмен: 50 монет -> $50000.' : '', ok: 1, rules: [['Ролевая игра', 'Веди себя как житель города. Не выходи из роли без причины (NonRP).'], ['DM и DB', 'Нельзя убивать без RP-причины (DM) и давить игроков машиной (DB).'], ['Читы и баги', 'Запрещены читы, сторонние программы и использование ошибок сервера.']] } });
     document.body.style.background = '#2b3440';
   }
 })();
