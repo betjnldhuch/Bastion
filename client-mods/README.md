@@ -40,3 +40,24 @@
 
 Сборка: `python client-mods/tools/build_lspd.py <папка с оригинальными txd> <папка для результата>`.
 Готовые `.txd` в репозиторий не кладём: в них остаются оригинальные текстуры Rockstar.
+
+## radar/ — значки фракций на радаре и карте (ПК)
+
+`src/*.png` (64×64) — упрощённые значки из эмблем фракций (`mobile/launcher/app/src/main/assets/ui/emblems`),
+рисует их `tools/make_radar_icons.py`. Полные эмблемы в 16–20 px не читаются, поэтому щит цвета фракции и знак.
+
+| Значок SA-MP | Текстура hud.txd | Наш значок |
+|---|---|---|
+| 62 | radar_gangG | Grove |
+| 59 | radar_gangP | Ballas |
+| 60 | radar_gangY | Vagos |
+| 58 | radar_gangB | Aztecas |
+| 30 | radar_police | LSPD |
+| 22 | radar_hostpital | Больница |
+| 61 | radar_gangN | ФБР |
+| 40 | radar_THETRUTH | Армия |
+| 8 | radar_BIGSMOKE | Мэрия |
+| 23 | radar_LOCO | СМИ |
+
+Сборка: `python client-mods/tools/build_radar.py <оригинальный models/hud.txd> <папка для результата>`,
+готовый `hud.txd` кладётся в `models/` игры. Значок на точку ставит админ в `/markers`.

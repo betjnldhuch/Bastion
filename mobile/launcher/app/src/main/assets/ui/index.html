@@ -226,6 +226,10 @@ button { font: inherit; cursor: pointer; }
 .card.samp input.search { height: 38px; margin: 0 0 8px; font-size: 14px; padding: 0 12px 0 34px;
   background: #0e1013 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%238c9098' stroke-width='2'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='m11 11 4 4'/%3E%3C/svg%3E") no-repeat 11px 50%; }
 .list .r.hide { display: none; }
+.card.samp h1.has-emb { display: flex; align-items: center; gap: 12px; }
+.emb-h { width: 56px; height: 56px; flex: none; filter: drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
+.emb-r { width: 22px; height: 22px; vertical-align: -6px; margin-right: 6px; }
+@media (max-height: 420px) { .emb-h { width: 40px; height: 40px; } .emb-r { width: 18px; height: 18px; vertical-align: -4px; } }
 .list .nothing { padding: 14px 12px; color: var(--muted); font-size: 13px; }
 .list { flex: 1 1 auto !important; min-height: 64px; overflow: auto; margin: 0 0 12px; border: 1px solid var(--line);
   border-radius: 10px; background: #0e1013; }
@@ -254,6 +258,20 @@ button { font: inherit; cursor: pointer; }
   // {RRGGBB} — цвета SA-MP в тексте: убираем
   function plain(s) { return String(s == null ? '' : s).replace(/\{[0-9a-fA-F]{6}\}/g, ''); }
   // {RRGGBB} → цветной текст (как в игре: цвет действует до следующего тега)
+  // Эмблемы фракций: assets/ui/emblems/<ключ>.png (256x256, прозрачный фон). Фракцию узнаём по названию.
+  var EMBLEMS = [
+    ['grove', /grove/], ['ballas', /ballas/], ['vagos', /vagos/], ['aztecas', /aztec/],
+    ['fbi', /(^|[^a-zа-яё])(fbi|фбр)([^a-zа-яё]|$)/], ['army', /арми|army|military|нацгвард|national guard/],
+    ['hospital', /больниц|hospital|(^|[^a-zа-яё])(ems|медик|medic)/], ['cityhall', /мэри|city ?hall|правительств|government/],
+    ['news', /(^|[^a-zа-яё])(сми|news|cnn)([^a-zа-яё]|$)|радиоцентр/], ['lspd', /lspd|полиц|police/]
+  ];
+  function emblemOf(s) {
+    s = plain(s).toLowerCase();
+    for (var i = 0; i < EMBLEMS.length; i++) if (EMBLEMS[i][1].test(s)) return EMBLEMS[i][0];
+    return '';
+  }
+  function emblemImg(key, cls) { return key ? '<img class="' + cls + '" src="emblems/' + key + '.png" alt="" draggable="false" onerror="this.parentNode.removeChild(this)">' : ''; }
+
   function colorize(s) {
     var out = '', parts = String(s == null ? '' : s).split(/\{([0-9a-fA-F]{6})\}/);
     for (var i = 0; i < parts.length; i++) {
@@ -678,7 +696,10 @@ button { font: inherit; cursor: pointer; }
       var style = +d.style || 0, text = String(d.text || '').replace(/\r/g, '');
       var isInput = style === 1 || style === 3, isList = style === 2 || style === 4 || style === 5;
       var html = '<form class="card samp" id="f" autocomplete="off">' + closeBtn() +
-        '<div class="brand">BASTION ONLINE</div><h1>' + (colorize(d.caption) || '&nbsp;') + '</h1>';
+        '<div class="brand">BASTION ONLINE</div>';
+      var emb = emblemOf(d.caption);
+      html += emb ? '<h1 class="has-emb">' + emblemImg(emb, 'emb-h') + '<span>' + colorize(d.caption) + '</span></h1>'
+        : '<h1>' + (colorize(d.caption) || '&nbsp;') + '</h1>';
       var rows = [], sel = 0;
       if (isList) {
         var lines = text.split('\n');
@@ -692,13 +713,17 @@ button { font: inherit; cursor: pointer; }
         });
         var hc = head != null ? head.split(/\t+/).slice(0, 4) : null;
         if (hc && hc.length > cols) cols = hc.length;
-        var grid = 'grid-template-columns:' + (cols > 1 ? 'minmax(0,1.6fr) repeat(' + (cols - 1) + ',minmax(0,1fr))' : 'minmax(0,1fr)');
+        // Список организаций (/orgs и т.п.): эмблема у названия фракции
+        var orgList = /организац|фракци|faction|банд/i.test(plain(d.caption) + ' ' + (head || ''));
+        var narrow = hc && cols > 2 && /^(№|#|id)$/i.test(plain(hc[0]).trim());   // узкая колонка номера
+        var grid = 'grid-template-columns:' + (narrow ? '3em minmax(0,1.6fr) repeat(' + (cols - 2) + ',minmax(0,1fr))'
+          : cols > 1 ? 'minmax(0,1.6fr) repeat(' + (cols - 1) + ',minmax(0,1fr))' : 'minmax(0,1fr)');
         if (rows.length > 12) html += '<input id="q" class="search" type="text" placeholder="Поиск по списку" autocapitalize="off" spellcheck="false">';
         html += '<div class="list" id="list">' +
           (hc ? '<div class="r hd" style="' + grid + '">' + hc.map(function (c) { return '<div>' + colorize(c) + '</div>'; }).join('') + '</div>' : '') +
           rows.map(function (c, i) {
             return '<div class="r' + (i === 0 ? ' sel' : '') + '" data-i="' + i + '" style="' + grid + '">' +
-              c.map(function (x) { return '<div>' + colorize(x) + '</div>'; }).join('') + '</div>';
+              c.map(function (x) { return '<div>' + (orgList ? emblemImg(emblemOf(x), 'emb-r') : '') + colorize(x) + '</div>'; }).join('') + '</div>';
           }).join('') + '<div class="nothing" id="none" hidden>Ничего не найдено</div></div>';
       } else {
         html += '<div class="text' + (isInput ? ' bare' : '') + '">' + colorize(text) + '</div>';
@@ -821,12 +846,14 @@ button { font: inherit; cursor: pointer; }
     3: ['Смена пароля', 'Введите новый пароль:'],
     4: ['Магазин', 'Аптечка\t{4CD07D}$500\nБронежилет\t{4CD07D}$1500\nТелефон\t{4CD07D}$800'],
     5: ['Игроки онлайн', 'Ник\tУровень\tПинг\nIvan_Petrov\t5\t42\nAnna_Smirnova\t12\t87\nOleg_Sokolov\t3\t51\nMaria_Volkova\t8\t64\nDenis_Orlov\t21\t33\n' +
-      'Sergey_Lebedev\t2\t120\nIrina_Kozlova\t15\t47\nPavel_Morozov\t6\t58\nOlga_Popova\t9\t71\nNikita_Fedorov\t4\t39\nAlina_Egorova\t11\t44\nRoman_Pavlov\t7\t95\nKirill_Zaitsev\t13\t62']
+      'Sergey_Lebedev\t2\t120\nIrina_Kozlova\t15\t47\nPavel_Morozov\t6\t58\nOlga_Popova\t9\t71\nNikita_Fedorov\t4\t39\nAlina_Egorova\t11\t44\nRoman_Pavlov\t7\t95\nKirill_Zaitsev\t13\t62'],
+    6: ['{10A010}Grove Street Families', 'Информация\t{AFAFAF}твой ранг: Hustla\nУчастники онлайн\t{33AA33}7 {AFAFAF}(на смене 3)\nВесь состав\t24 чел.\nОбщак\t{33AA33}$45000 {AFAFAF}(на базе)'],
+    7: ['Все организации', '№\tОрганизация\tНастроено\n1\t{3A6EFF}Полиция LSPD\t\n2\t{FF8080}Больница LS (EMS)\t\n3\t{10A010}Grove Street Families\t\n4\t{B040FF}The Ballas\t\n5\t{00C8F0}Varrios Los Aztecas\t\n6\t{6C8CD5}ФБР\t\n7\t{6B8E23}Армия\t\n8\t{FFD700}Los Santos Vagos\t\n9\t{CCCCCC}Мэрия\t\n10\t{E5484D}СМИ\t']
   };
-  var mh = /^#samp([0-5])$/.exec(location.hash);
+  var mh = /^#samp([0-7])$/.exec(location.hash);
   if (!window.BastionNative && mh) {
     BastionUI.open({ window: 'samp', button1: 'Выбрать', button2: +mh[1] ? 'Отмена' : '',
-      data: { style: +mh[1], caption: SAMPLE[mh[1]][0], text: SAMPLE[mh[1]][1] } });
+      data: { style: [0, 1, 2, 3, 4, 5, 4, 5][mh[1]], caption: SAMPLE[mh[1]][0], text: SAMPLE[mh[1]][1] } });
     document.body.style.background = '#2b3440';
   } else if (!window.BastionNative && location.hash) {
     BastionUI.open({ window: location.hash.slice(1).replace(/-vip$/, ''), button1: 'Войти', button2: 'Выход',

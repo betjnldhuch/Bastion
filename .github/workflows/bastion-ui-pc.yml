@@ -84,6 +84,7 @@ jobs:
           Copy-Item "$cef\Resources\locales\ru.pak", "$cef\Resources\locales\en-US.pak" "$ui\locales"
           Copy-Item mobile\launcher\app\src\main\assets\ui\index.html "$ui\ui"
           Copy-Item mobile\launcher\app\src\main\assets\ui\items "$ui\ui" -Recurse
+          Copy-Item mobile\launcher\app\src\main\assets\ui\emblems "$ui\ui" -Recurse
           Copy-Item launcher\fonts\RussoOne-Regular.ttf "$ui\fonts"
           Copy-Item client-mods\bastion-ui\README.txt $root
           # ASI Loader (ThirteenAG, MIT) — грузит bastion_ui.asi в игру
