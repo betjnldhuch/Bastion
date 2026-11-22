@@ -147,7 +147,7 @@ button { font: inherit; cursor: pointer; }
 /* --- Сумка (инвентарь) --- */
 .card.inv { width: min(780px, 100%); height: min(560px, 100%); display: flex; flex-direction: column; padding: 18px 20px 16px; }
 .card.inv > * { flex: none; }
-.inv-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 0 44px 12px 0; flex-wrap: wrap; }
+.inv-head { min-height: 36px; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 44px 12px 0; flex-wrap: wrap; }
 .inv-head h1 { margin: 2px 0 0; }
 .inv-head .wallet .pill { height: 30px; }
 .meter { width: 46px; height: 6px; border-radius: 3px; background: #0e1013; overflow: hidden; }
@@ -163,9 +163,14 @@ button { font: inherit; cursor: pointer; }
   grid-auto-rows: max-content; gap: 8px; padding: 10px; border-radius: 12px; background: #0e1013; border: 1px solid var(--line); align-content: start; }
 .slot { position: relative; aspect-ratio: 1 / 1; border-radius: 10px; border: 1px solid var(--line); color: var(--text); padding: 0;
   background: linear-gradient(160deg, #20242a, var(--panel-hi)); display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.slot .ico { font-size: 32px; line-height: 1; filter: drop-shadow(0 3px 4px rgba(0,0,0,.5)); }
-.slot .qty { position: absolute; right: 6px; bottom: 7px; font-family: "Russo One", sans-serif; font-size: 12px; color: var(--text);
-  text-shadow: 0 1px 2px #000; }
+.slot { flex-direction: column; gap: 3px; padding: 6px 4px 8px; }
+.ico { display: flex; align-items: center; justify-content: center; line-height: 1; }
+.ico img, .detail .big img { width: 100%; height: 100%; object-fit: contain; }
+.slot .ico { width: 64%; height: 64%; font-size: 30px; filter: drop-shadow(0 3px 4px rgba(0,0,0,.5)); }
+.slot .nm { max-width: 100%; font-size: 10px; line-height: 1.1; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slot.sel .nm { color: var(--text); }
+.slot .qty { position: absolute; right: 4px; top: 4px; min-width: 18px; padding: 1px 5px; border-radius: 6px; background: rgba(0,0,0,.55);
+  font-family: "Russo One", sans-serif; font-size: 11px; color: var(--text); text-align: center; }
 .slot .lvl { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255,255,255,.05); }
 .slot .lvl i { display: block; height: 100%; background: var(--accent); opacity: .8; }
 .slot .badge { position: absolute; left: 5px; top: 5px; font-size: 9px; letter-spacing: .05em; padding: 1px 5px; border-radius: 5px;
@@ -180,7 +185,7 @@ button { font: inherit; cursor: pointer; }
 .slots .none b { display: block; font-size: 36px; margin-bottom: 6px; }
 .detail { flex: none; width: 250px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: auto; }
 .detail .top { display: flex; gap: 12px; align-items: center; }
-.detail .big { width: 64px; height: 64px; flex: none; border-radius: 14px; border: 1px solid var(--line); font-size: 36px;
+.detail .big { width: 64px; height: 64px; flex: none; padding: 6px; border-radius: 14px; border: 1px solid var(--line); font-size: 36px;
   background: radial-gradient(circle at 50% 35%, rgba(255,122,26,.22), var(--panel-hi) 70%); display: flex; align-items: center; justify-content: center; }
 .detail h2 { font-family: "Russo One", sans-serif; font-weight: 400; font-size: 18px; margin: 0 0 2px; line-height: 1.2; }
 .detail .cnt { color: var(--muted); font-size: 12px; }
@@ -193,6 +198,8 @@ button { font: inherit; cursor: pointer; }
 .btn.danger { color: #ff9a9d; border-color: rgba(229,72,77,.35); }
 .detail .ph { margin: auto 0; text-align: center; color: var(--dim); font-size: 13px; }
 .detail .ph b { display: block; font-size: 30px; margin-bottom: 6px; opacity: .6; }
+.detail .tip { text-align: center; color: var(--dim); font-size: 11px; }
+.inv .note { transition: opacity .4s; } .inv .note.gone { opacity: 0; }
 .sheet { display: flex; flex-direction: column; gap: 8px; background: #0e1013; border: 1px solid var(--line); border-radius: 10px; padding: 10px; animation: rise .18s ease-out; }
 .sheet label { margin: 0; }
 .sheet input { height: 40px; font-size: 16px; padding: 0 12px; }
@@ -204,7 +211,7 @@ button { font: inherit; cursor: pointer; }
   .slots { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); } }
 @media (max-height: 420px) { .card.inv { padding: 10px 14px; } .inv-head { margin-bottom: 6px; } .inv-head h1 { font-size: 18px; }
   .chips { margin-bottom: 6px; } .chip { height: 26px; } .slots { grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 6px; padding: 6px; }
-  .slot .ico { font-size: 26px; } .detail { width: 230px; gap: 6px; } .detail .big { width: 48px; height: 48px; font-size: 28px; }
+  .slot { padding: 4px 3px 6px; gap: 1px; } .slot .ico { font-size: 22px; } .slot .nm { font-size: 9px; } .detail { width: 230px; gap: 6px; } .detail .big { width: 48px; height: 48px; font-size: 28px; }
   .detail .what { padding: 6px 8px; font-size: 12px; } .detail .what.fold { display: none; } .detail .btn { height: 36px; } .stepper button, .sheet input { height: 34px; } .inv-head .wallet .pill { height: 26px; } }
 /* Обычные диалоги SA-MP (окно "samp") */
 .card.samp { width: min(520px, 100%); display: flex; flex-direction: column; padding-top: 18px; }
@@ -524,32 +531,40 @@ button { font: inherit; cursor: pointer; }
     },
     // Сумка: сетка вещей + карточка. Ответ "u|g|d вещь [аргументы]" (needs.inc, InvHtml_OnResponse)
     inventory: function (d, m) {
-      var ICO = { 1: '🍔', 2: '🌭', 3: '⛑️', 4: '🔧', 5: '🍕', 6: '💧', 7: '🍺', 8: '🚬', 9: '🩹', 10: '💐', 11: '🎲', 12: '🎭',
-        13: '🔩', 14: '🌱', 15: '🌿', 16: '❄️', 17: '🐟', 18: '🛠️' };
+      // Иконки: assets/ui/items/<файл>.png (256x256, прозрачный фон). Нет файла — показывается эмодзи.
+      var ICO = { 1: ['burger', '🍔'], 2: ['hotdog', '🌭'], 3: ['medkit', '⛑️'], 4: ['repair_kit', '🔧'], 5: ['pizza', '🍕'], 6: ['water', '💧'],
+        7: ['beer', '🍺'], 8: ['cigarettes', '🚬'], 9: ['bandage', '🩹'], 10: ['flowers', '💐'], 11: ['dice', '🎲'], 12: ['mask', '🎭'],
+        13: ['materials', '🔩'], 14: ['seeds', '🌱'], 15: ['weed', '🌿'], 16: ['cocaine', '❄️'], 17: ['fish', '🐟'], 18: ['jack', '🛠️'],
+        canister: ['canister', '⛽'], outfit: ['outfit', '👕'], none: ['', '📦'] };
+      function pic(key) {
+        var c = ICO[key] || ICO.none;
+        return c[0] ? '<img src="items/' + c[0] + '.png" alt="" draggable="false" onerror="this.parentNode.textContent=\'' + c[1] + '\'">' : c[1];
+      }
       var USE = { 1: 'Съесть', 2: 'Съесть', 5: 'Съесть', 6: 'Выпить', 7: 'Выпить', 3: 'Подлечиться', 9: 'Перевязаться',
         4: 'Починить машину', 8: 'Закурить', 10: 'Взять в руки', 11: 'Бросить кости', 13: 'Сделать оружие', 14: 'Посадить',
         15: 'Покурить', 16: 'Употребить', 18: 'Поставить на колёса' };
       var CAT = { 1: 'food', 2: 'food', 5: 'food', 6: 'food', 7: 'food' };
       var all = [];
       (d.items || []).forEach(function (it) {
-        all.push({ k: it[0], n: it[1], max: it[2], t: plain(it[3]), s: plain(it[4]), ico: ICO[it[0]] || '📦', cat: CAT[it[0]] || 'misc' });
+        all.push({ k: it[0], n: it[1], max: it[2], t: plain(it[3]), s: plain(it[4]), ico: pic(it[0]), cat: CAT[it[0]] || 'misc' });
       });
-      if (d.canister > 0) all.push({ k: 0, n: d.canister, max: 0, t: 'Канистра бензина', s: 'Встань рядом с машиной и залей бензин в бак.', ico: '⛽', cat: 'misc', fixed: 1 });
+      if (d.canister > 0) all.push({ k: 0, n: d.canister, max: 0, t: 'Канистра бензина', s: 'Встань рядом с машиной и залей бензин в бак.', ico: pic('canister'), cat: 'misc', fixed: 1 });
       (d.outfits || []).forEach(function (o) {
-        all.push({ k: o[0], n: 1, max: 1, t: 'Одежда', s: 'Скин ' + o[1] + '. Снятая одежда ляжет на её место в сумке.', ico: '👕', cat: 'wear', skin: o[1] });
+        all.push({ k: o[0], n: 1, max: 1, t: 'Одежда', s: 'Скин ' + o[1] + '. Снятая одежда ляжет на её место в сумке.', ico: pic('outfit'), cat: 'wear', skin: o[1] });
       });
       // Рядом на земле: [номер, вещь (100 — одежда), кол-во или скин, название]
       (d.ground || []).forEach(function (g) {
         var wear = g[1] === 100;
-        all.push({ k: 'p' + g[0], drop: g[0], n: wear ? 1 : g[2], max: 0, t: plain(g[3]), ico: wear ? '👕' : ICO[g[1]] || '📦', cat: 'ground',
+        all.push({ k: 'p' + g[0], drop: g[0], n: wear ? 1 : g[2], max: 0, t: plain(g[3]), ico: pic(wear ? 'outfit' : g[1]), cat: 'ground',
           skin: wear ? g[2] : 0, s: 'Лежит на земле рядом с тобой. Через несколько минут исчезнет.' });
       });
       // Что даёт: только у еды, питья и лечения, у остального — просто подсказка
       var GIVES = { 1: 1, 2: 1, 3: 1, 5: 1, 6: 1, 7: 1, 9: 1 };
       var tabs = [['all', 'Всё'], ['food', 'Еда'], ['misc', 'Вещи'], ['wear', 'Одежда']];
       if ((d.ground || []).length) tabs.push(['ground', 'Рядом']);
-      var tab = 'all', sel = null, sheet = '';
+      var tab = 'all', sel = null, sheet = '', tapped = false;
       all.forEach(function (it) { if (it.k === d.sel) sel = it; });
+      if (!sel && all.length && all[0].cat !== 'ground') sel = all[0];   // сразу видно, что можно сделать
 
       function inTab(it, c) { return c === 'all' ? it.cat !== 'ground' : it.cat === c; }
       function count(c) { return all.filter(function (it) { return inTab(it, c); }).length; }
@@ -560,7 +575,7 @@ button { font: inherit; cursor: pointer; }
         var cells = list.map(function (it, i) {
           return '<button type="button" class="slot' + (it === sel ? ' sel' : '') + (it.cat === 'wear' ? ' wear' : '') + (it.cat === 'ground' ? ' ground' : '') + '" data-i="' + all.indexOf(it) + '">' +
             (it.k === 12 && d.mask ? '<em class="badge">НАДЕТА</em>' : '') +
-            '<span class="ico">' + it.ico + '</span>' + (it.n > 1 || it.max > 1 ? '<span class="qty">' + it.n + '</span>' : '') +
+            '<span class="ico">' + it.ico + '</span><span class="nm">' + esc(it.t) + '</span>' + (it.n > 1 ? '<span class="qty">' + it.n + '</span>' : '') +
             (it.max > 1 ? '<span class="lvl"><i style="width:' + Math.round(100 * it.n / it.max) + '%"></i></span>' : '') + '</button>';
         });
         var pad = Math.ceil(Math.max(list.length, 14) / 7) * 7 - list.length;
@@ -570,24 +585,28 @@ button { font: inherit; cursor: pointer; }
 
         var outs = (d.outfits || []).length;
         root.innerHTML = '<div class="card inv">' + closeBtn() +
-          '<div class="inv-head"><div><div class="brand">BASTION ONLINE</div><h1>Сумка</h1></div><div class="wallet">' +
+          '<div class="inv-head"><h1>Сумка</h1><div class="wallet">' +
           '<div class="pill">❤️ <b>' + (d.hp | 0) + '</b>' + meter(d.hp | 0) + '</div>' +
           '<div class="pill">🍗 <b>' + (d.hunger | 0) + '%</b>' + meter(d.hunger | 0) + '</div>' +
           '<div class="pill">👕 <b>' + outs + '/' + (d.outMax || 5) + '</b></div>' +
           (d.money != null ? '<div class="pill">💵 <b>$' + String(d.money | 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + '</b></div>' : '') +
           (d.mask ? '<div class="pill gold">🎭 <b>в маске</b></div>' : '') + '</div></div>' +
-          (note ? '<div class="note ' + (ok ? 'ok' : 'bad') + '">' + esc(plain(note)) + '</div>' : '') +
+          (note ? '<div class="note ' + (ok ? 'ok' : 'bad') + '" id="inote">' + esc(plain(note)) + '</div>' : '') +
           '<div class="chips">' + tabs.map(function (t) {
             return '<button type="button" class="chip' + (t[0] === tab ? ' sel' : '') + '" data-t="' + t[0] + '">' + t[1] + '<span>' + count(t[0]) + '</span></button>';
           }).join('') + '</div>' +
           '<div class="inv-body"><div class="slots">' + cells.join('') + '</div><div class="detail" id="det"></div></div></div>';
         document.getElementById('x').onclick = function () { respond(0, -1, ''); };
+        var nt = document.getElementById('inote');   // сообщение после действия гаснет само
+        if (nt) setTimeout(function () { nt.classList.add('gone'); setTimeout(function () { if (nt.parentNode) nt.parentNode.removeChild(nt); }, 400); }, 4000);
         Array.prototype.forEach.call(root.querySelectorAll('.chip'), function (el) {
           el.onclick = function () { tab = el.getAttribute('data-t'); render(); };
         });
         Array.prototype.forEach.call(root.querySelectorAll('.slot[data-i]'), function (el) {
           el.onclick = function () {
-            sel = all[+el.getAttribute('data-i')]; sheet = '';
+            var pick = all[+el.getAttribute('data-i')];
+            if (pick === sel && tapped && !sheet) { var b = document.getElementById('bu'); if (b) b.click(); return; }   // второй тап — использовать
+            sel = pick; sheet = ''; tapped = true;
             Array.prototype.forEach.call(root.querySelectorAll('.slot.sel'), function (o) { o.classList.remove('sel'); });
             el.classList.add('sel');
             detail();
@@ -609,7 +628,7 @@ button { font: inherit; cursor: pointer; }
         if (!sel) { det.innerHTML = '<div class="ph"><b>👆</b>Выбери вещь, чтобы использовать, передать или выбросить.</div>'; return; }
         var it = sel, use = useLabel(it);
         var html = '<div class="top"><div class="big">' + it.ico + '</div><div><h2>' + esc(it.t) + '</h2><div class="cnt">' +
-          (it.skin ? 'Скин <b>' + it.skin + '</b>' : it.fixed ? '<b>' + it.n + '</b> л' : it.cat === 'ground' ? '<b>' + it.n + '</b> шт. на земле' : '<b>' + it.n + '</b> / ' + it.max + ' шт.') + '</div></div></div>' +
+          (it.skin ? 'Скин <b>' + it.skin + '</b>' : it.fixed ? '<b>' + it.n + '</b> л' : it.cat === 'ground' ? '<b>' + it.n + '</b> шт. на земле' : '<b>' + it.n + '</b> из ' + it.max + ' шт.') + '</div></div></div>' +
           '<div class="what' + (sheet ? ' fold' : '') + '">' + (GIVES[it.k] && it.cat !== 'ground' ? 'Даёт: <b>' + esc(it.s) + '</b>' : esc(it.s.charAt(0).toUpperCase() + it.s.slice(1))) + '</div>';
         if (sheet === 'g' || sheet === 'd') {
           html += '<form class="sheet" id="sf" autocomplete="off">' +
@@ -623,7 +642,8 @@ button { font: inherit; cursor: pointer; }
           html += '<div class="acts"><button type="button" class="btn primary" id="bu">' + use + '</button></div>';
         } else {
           html += '<div class="acts">' + (use ? '<button type="button" class="btn primary" id="bu">' + use + '</button>' : '') +
-            '<button type="button" class="btn" id="bg">Передать</button><button type="button" class="btn danger" id="bd">Выбросить</button></div>';
+            '<button type="button" class="btn" id="bg">Передать</button><button type="button" class="btn danger" id="bd">Выбросить</button></div>' +
+            (use ? '<div class="tip">Повторный тап по вещи — использовать</div>' : '');
         }
         det.innerHTML = html;
         var bu = document.getElementById('bu'), bg = document.getElementById('bg'), bd = document.getElementById('bd');
@@ -819,7 +839,7 @@ button { font: inherit; cursor: pointer; }
         hunger: 64, hp: 87, mask: 0, outMax: 5, sel: 3, skin: 60, canister: 10, money: 15400, outfits: [[100, 105], [101, 230]], ground: [[4, 6, 2, 'Вода'], [9, 100, 230, 'Одежда']],
         items: [[1, 2, 5, 'Бургер', '+40% сытости'], [6, 4, 5, 'Вода', '+10% сытости, +5 HP'], [3, 1, 3, 'Аптечка', '+50 HP'],
           [4, 2, 3, 'Ремкомплект', 'чинит машину рядом'], [8, 14, 20, 'Сигареты', 'покурить'], [11, 1, 1, 'Игральные кости', 'бросить кости (RP)'],
-          [12, 1, 1, 'Маска', 'прячет ник'], [17, 7, 30, 'Рыба', 'сдать рыбаку']], phone: 1, note: 'Обмен: 50 монет -> $50000.', ok: 1, rules: [['Ролевая игра', 'Веди себя как житель города. Не выходи из роли без причины (NonRP).'], ['DM и DB', 'Нельзя убивать без RP-причины (DM) и давить игроков машиной (DB).'], ['Читы и баги', 'Запрещены читы, сторонние программы и использование ошибок сервера.']] } });
+          [12, 1, 1, 'Маска', 'прячет ник'], [17, 7, 30, 'Рыба', 'сдать рыбаку']], phone: 1, note: /donate/.test(location.hash) ? 'Обмен: 50 монет -> $50000.' : '', ok: 1, rules: [['Ролевая игра', 'Веди себя как житель города. Не выходи из роли без причины (NonRP).'], ['DM и DB', 'Нельзя убивать без RP-причины (DM) и давить игроков машиной (DB).'], ['Читы и баги', 'Запрещены читы, сторонние программы и использование ошибок сервера.']] } });
     document.body.style.background = '#2b3440';
   }
 })();
