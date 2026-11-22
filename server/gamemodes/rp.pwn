@@ -106,6 +106,8 @@
 #include "bastion/keys.inc"
 #include "bastion/fps.inc"
 #include "bastion/hud.inc"        // свой HUD: панель статуса и спидометр
+#include "bastion/docs.inc"       // документы в сумке: паспорт, медкарта, лицензии
+#include "bastion/skills.inc"     // навыки оружи€ с прокачкой: /skills
 #include "bastion/help.inc"       // /help: разделы со всеми командами
 #include "bastion/commands.inc"
 
@@ -150,6 +152,7 @@ public OnGameModeInit()
 	Gates_Init();
 	Fps_Init();
 	Licenses_Init();
+	Skills_Init();         // навыки оружи€ в accounts (skills.inc)
 	Needs_Init();
 	Dev_Init();           // свои объекты карты, убранные здани€
 	Interiors_Init();
@@ -244,6 +247,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Jobs_OnDisconnect(playerid);
 	Licenses_Abort(playerid);
 	Phone_HangUp(playerid);
+	Skills_OnDisconnect(playerid);      // навыки оружи€ (skills.inc)
 	Account_Save(playerid);
 	Vehicles_UnloadForPlayer(playerid);
 	Fuel_OnDisconnect(playerid);
@@ -349,6 +353,14 @@ public OnPlayerSpawn(playerid)
 	Wound_OnSpawn(playerid);            // после смерти Ч лежит раненым на месте
 	Hud_OnSpawn(playerid);              // панель статуса (hud.inc)
 	BizX_OnSpawn(playerid);             // стиль бо€ из спортзала (bizplus.inc)
+	Skills_OnSpawn(playerid);           // навыки оружи€ (skills.inc)
+	return 1;
+}
+
+// ¬ыстрел: попадани€ качают навык оружи€ (skills.inc)
+public OnPlayerWeaponShot(playerid, WEAPON:weaponid, BULLET_HIT_TYPE:hittype, hitid, Float:fX, Float:fY, Float:fZ)
+{
+	Skills_OnShot(playerid, weaponid, hittype, hitid);
 	return 1;
 }
 
@@ -529,6 +541,7 @@ public OnMinuteTimer()
 	Drugs_OnMinute();       // кусты растут, ломка
 	Casino_OnMinute();      // розыгрыш лотереи
 	Rental_OnMinute();      // срок аренды мопедов
+	Skills_OnMinute();      // навыки оружи€: лимит за минуту, сохранение
 
 	// ѕо смене часа, а не по minute == 0: таймер со временем сдвигаетс€ и может пропустить нулевую минуту
 	if (hour != gLastPayDayHour)
