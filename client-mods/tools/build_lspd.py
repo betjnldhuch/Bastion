@@ -127,7 +127,7 @@ txdpatch.patch(os.path.join(src_dir, 'genintintpoliceb.txd'), os.path.join(out_d
                 'cop_cellwall': sq('bpd3_cell_tiles.png'), 'cop_cellwall_btm': sq('bpd_cell_wall_btm.png'),
                 'cop_cellfloor': sq('bpd3_cell_floor.png'),
                 'p_door1': door, 'lockers': sq('bpd3_lockers.png'), 'cop_bench': bench, 'pol_dor_surr2': surr,
-                'pol_flr164': sq('bpd4_terrazzo.png'),
+                'pol_flr164': sq('bpd4_terrazzo.png'), 'p_floor3': sq('bpd4_floor_diamond.png'),
                 'mp_shop_window': framed(orig_b['mp_shop_window'], L('bpd4_wired_glass.png'), 10)})
 txdpatch.patch(os.path.join(src_dir, 'genintintpolicea.txd'), os.path.join(out_dir, 'genintintpolicea.txd'),
                {'copcell_bars': bars, 'cop_notice': board,

@@ -43,6 +43,7 @@
 | cops_chrome | genintintpolicea.txd | шлифованная сталь (bpd4_brushed_steel) |
 | mp_shop_window | genintintpoliceb.txd | армированное стекло в раме (bpd4_wired_glass) |
 | pol_flr164 | genintintpoliceb.txd | пол коридора, терраццо (bpd4_terrazzo) |
+| p_floor3 | genintintpoliceb.txd | пол кабинетов, серая плитка по диагонали (bpd4_floor_diamond) |
 
 Лежат в `src/`, но пока не используются (этих текстур нет в txd полиции, нужен файл, где они есть):
 bpd4_blue_fabric (BLUE_FABRIC), bpd4_black_leather (CJ_CUSHION2), bpd4_wood_planks (CJ_WOOD1),
