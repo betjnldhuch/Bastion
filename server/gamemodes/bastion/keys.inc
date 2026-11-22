@@ -234,7 +234,7 @@ stock Keys_Interact(playerid)
 	{
 		if (House[h][hOwner] == 0)
 		{
-			ShowPlayerDialog(playerid, DIALOG_CONFIRM_HOUSE, DIALOG_STYLE_MSGBOX, "Покупка дома",
+			ShowPlayerDialog(playerid, DIALOG_CONFIRM_HOUSE, DIALOG_STYLE_MSGBOX, House_Caption(h, "Покупка жилья"),
 				"{FFFFFF}Дом №%d продаётся.\nЦена: {FFFF00}$%d\n\n{FFFFFF}Купить?", "Купить", "Отмена", House[h][hDbId], House[h][hPrice]);
 		}
 		else Cmd_Enter(playerid);

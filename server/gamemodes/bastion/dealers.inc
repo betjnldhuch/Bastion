@@ -311,17 +311,18 @@ stock bool:Cmd_SellCar(playerid)
 stock bool:Cmd_Cars(playerid)
 {
 	new list[1024] = "Транспорт\tГде\n";
-	new line[80], name[32], n = 0;
+	new line[100], name[32], n = 0;
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, model, impound FROM vehicles WHERE owner = %d ORDER BY id LIMIT %d", Player[playerid][pDbId], CARS_MENU_MAX);
 	if (r != DBResult:0)
 	{
 		for (new i = 0, rows = DB_GetRowCount(r); i < rows; i++)
 		{
-			new dbid = DB_GetFieldInt(r, 0);
+			new dbid = DB_GetFieldInt(r, 0), ic = Prop_VehicleIcon(DB_GetFieldInt(r, 1));
 			Hud_GetVehicleName(DB_GetFieldInt(r, 1), name);
-			if (DB_GetFieldInt(r, 2) > 0) format(line, sizeof line, "%s\t{FF6347}штрафстоянка\n", name);
-			else if (dbid == gPlayerVehDb[playerid]) format(line, sizeof line, "%s\t{33AA33}на улице (GPS)\n", name);
-			else format(line, sizeof line, "%s\t{AFAFAF}в гараже (вызвать)\n", name);
+			// {10C0nn} — значок вида транспорта в окне UI (base.inc, Prop_IconCaption)
+			if (DB_GetFieldInt(r, 2) > 0) format(line, sizeof line, "{10C0%02d}{FFFFFF}%s\t{FF6347}штрафстоянка\n", ic, name);
+			else if (dbid == gPlayerVehDb[playerid]) format(line, sizeof line, "{10C0%02d}{FFFFFF}%s\t{33AA33}на улице (GPS)\n", ic, name);
+			else format(line, sizeof line, "{10C0%02d}{FFFFFF}%s\t{AFAFAF}в гараже (вызвать)\n", ic, name);
 			strcat(list, line);
 			gCarsMenu[playerid][n++] = dbid;
 			DB_SelectNextRow(r);
@@ -333,7 +334,7 @@ stock bool:Cmd_Cars(playerid)
 
 	new title[48];
 	format(title, sizeof title, "Мой транспорт (%d из %d)", n, Props_MaxVehicles(playerid));
-	ShowPlayerDialog(playerid, DIALOG_CARS, DIALOG_STYLE_TABLIST_HEADERS, title, "%s", "Выбрать", "Закрыть", list);
+	ShowPlayerDialog(playerid, DIALOG_CARS, DIALOG_STYLE_TABLIST_HEADERS, Prop_IconCaption(PROP_ICON_GARAGE, title), "%s", "Выбрать", "Закрыть", list);
 	return true;
 }
 

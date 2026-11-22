@@ -302,18 +302,23 @@ function vipImg(level, cls) {
     ['fuel', /^азс|заправк/], ['sto', /автомастерск|^сто$/], ['fastfood', /закусочн/]];
   function bizOf(s) { var m = BIZ_TAG.exec(String(s || '')); return m && BIZ_KEYS[+m[1]] ? 'biz/' + BIZ_KEYS[+m[1]] : ''; }
   // Значки работ: assets/ui/jobs/<ключ>.png. Тег {10B0nn} в заголовке (base.inc, Job_IconCaption), nn — JOB_* из base.inc.
-  // Водитель автобуса (4) и развозчик пиццы (2) пока без значков.
   var JOB_TAG = /\{10B0(\d\d)\}/i;
-  var JOB_KEYS = { 1: 'loader', 3: 'taxi', 5: 'trucker', 6: 'mechanic', 7: 'fisher', 8: 'farmer', 9: 'collector', 10: 'garbage' };
+  var JOB_KEYS = { 1: 'loader', 2: 'pizza', 3: 'taxi', 4: 'bus', 5: 'trucker', 6: 'mechanic', 7: 'fisher', 8: 'farmer', 9: 'collector', 10: 'garbage' };
   // GPS «Работы»: значок по названию точки («Работа: Таксист»)
   var JOB_NAMES = [['loader', /грузчик/], ['taxi', /таксист/], ['trucker', /дальнобой/], ['mechanic', /механик/],
-    ['fisher', /рыбак/], ['farmer', /фермер/], ['collector', /инкассатор/], ['garbage', /мусорщик/]];
+    ['fisher', /рыбак/], ['farmer', /фермер/], ['collector', /инкассатор/], ['garbage', /мусорщик/],
+    ['bus', /автобус/], ['pizza', /пицц/]];
   function jobOf(s) { var m = JOB_TAG.exec(String(s || '')); return m && JOB_KEYS[+m[1]] ? 'jobs/' + JOB_KEYS[+m[1]] : ''; }
   function jobByName(s) {
     s = plain(s).toLowerCase();
     for (var i = 0; i < JOB_NAMES.length; i++) if (JOB_NAMES[i][1].test(s)) return 'jobs/' + JOB_NAMES[i][0];
     return '';
   }
+  // Значки имущества: assets/ui/property/<ключ>.png. Тег {10C0nn} (base.inc, Prop_IconCaption) в заголовке окна
+  // или в начале строки списка (/myhouses, /cars): 01 дом, 02 квартира, 03 особняк, 04 гараж, 05 машина, 06 лодка, 07 вертолёт.
+  var PROP_TAG = /\{10C0(\d\d)\}/i;
+  var PROP_KEYS = { 1: 'house', 2: 'apartment', 3: 'mansion', 4: 'garage', 5: 'car', 6: 'boat', 7: 'heli' };
+  function propOf(s) { var m = PROP_TAG.exec(String(s || '')); return m && PROP_KEYS[+m[1]] ? 'property/' + PROP_KEYS[+m[1]] : ''; }
   function bizByName(s) {
     s = plain(s).toLowerCase().trim();
     for (var i = 0; i < BIZ_NAMES.length; i++) if (BIZ_NAMES[i][1].test(s)) return 'biz/' + BIZ_NAMES[i][0];
@@ -769,7 +774,8 @@ function vipImg(level, cls) {
       var isInput = style === 1 || style === 3, isList = style === 2 || style === 4 || style === 5;
       var html = '<form class="card samp" id="f" autocomplete="off">' + closeBtn() +
         '<div class="brand">BASTION ONLINE</div>';
-      var emb = bizOf(d.caption) || jobOf(d.caption), cap = String(d.caption == null ? '' : d.caption).replace(BIZ_TAG, '').replace(JOB_TAG, '');
+      var emb = bizOf(d.caption) || jobOf(d.caption) || propOf(d.caption),
+        cap = String(d.caption == null ? '' : d.caption).replace(BIZ_TAG, '').replace(JOB_TAG, '').replace(PROP_TAG, '');
       if (!emb) emb = emblemOf(cap);
       html += emb ? '<h1 class="has-emb">' + emblemImg(emb, 'emb-h') + '<span>' + colorize(cap) + '</span></h1>'
         : '<h1>' + (colorize(cap) || '&nbsp;') + '</h1>';
@@ -799,8 +805,8 @@ function vipImg(level, cls) {
           rows.map(function (c, i) {
             return '<div class="r' + (i === 0 ? ' sel' : '') + '" data-i="' + i + '" style="' + grid + '">' +
               c.map(function (x, j) {
-                var ic = orgList ? emblemOf(x) : j !== 0 ? '' : bizList ? bizByName(x) : jobList ? jobByName(x) : '';
-                return '<div>' + emblemImg(ic, 'emb-r') + colorize(x) + '</div>';
+                var ic = orgList ? emblemOf(x) : j !== 0 ? '' : bizList ? bizByName(x) : jobList ? jobByName(x) : propOf(x);
+                return '<div>' + emblemImg(ic, 'emb-r') + colorize(x.replace(PROP_TAG, '')) + '</div>';
               }).join('') + '</div>';
           }).join('') + '<div class="nothing" id="none" hidden>Ничего не найдено</div></div>';
       } else {
@@ -916,7 +922,7 @@ function vipImg(level, cls) {
   }
 
   // Предпросмотр в браузере ПК: index.html#login / #register / #gender / #donate / #donate-vip / #inventory / #stats,
-  // обычные диалоги: #samp0 … #samp5 (стиль диалога), #samp6-7 фракции, #samp8-9 бизнесы, #samp10-11 работы
+  // обычные диалоги: #samp0 … #samp5 (стиль диалога), #samp6-7 фракции, #samp8-9 бизнесы, #samp10-11 работы, #samp12-14 имущество
   var SAMPLE = {
     0: ['{FF7A1A}Информация', 'Добро пожаловать на {FF7A1A}Bastion{FFFFFF}!\nВаш баланс: {4CD07D}$15 000\n{A9C4E4}Удачной игры.'],
     1: ['Перевод денег', 'Введите сумму перевода игроку {FF7A1A}Ivan_Petrov{FFFFFF}:'],
@@ -933,12 +939,18 @@ function vipImg(level, cls) {
     10: ['{10B003}{FFFFFF}Устройство на работу', '{FFFFFF}Работа: {FF9900}Таксист\n\n{FFFFFF}Вози пассажиров и принимай вызовы диспетчера (/taxi).\n\n' +
       '{AAAAAA}Стаж: каждые 20 заданий +5% к оплате (до +50%).\n\n{FFFFFF}Устроиться?'],
     11: ['Работы', 'Работа: Грузчик {AAAAAA}— 350 м\nРабота: Таксист {AAAAAA}— 1.2 км\nРабота: Дальнобойщик {AAAAAA}— 1.3 км\nРабота: Механик {AAAAAA}— 2.1 км\n' +
-      'Работа: Рыбак {AAAAAA}— 2.4 км\nРабота: Фермер {AAAAAA}— 3.0 км\nРабота: Инкассатор {AAAAAA}— 3.6 км\nРабота: Мусорщик {AAAAAA}— 4.2 км\nРабота: Водитель автобуса {AAAAAA}— 1.4 км']
+      'Работа: Рыбак {AAAAAA}— 2.4 км\nРабота: Фермер {AAAAAA}— 3.0 км\nРабота: Инкассатор {AAAAAA}— 3.6 км\nРабота: Мусорщик {AAAAAA}— 4.2 км\nРабота: Водитель автобуса {AAAAAA}— 1.4 км\n' +
+      'Работа: Развозчик пиццы {AAAAAA}— 1.8 км'],
+    12: ['{10C001}{FFFFFF}Мои дома (3 из 4)', 'Жильё\tСчёт дома\tНалог в час\n{10C001}{FFFFFF}Дом №3 {FFFF00}(главный)\t{33AA33}$1200\t$50\n' +
+      '{10C002}{FFFFFF}Квартира №17\t{33AA33}$300\t$20\n{10C003}{FFFFFF}Особняк №25\t{FF6347}$-400\t$400'],
+    13: ['{10C004}{FFFFFF}Мой транспорт (3 из 4)', 'Транспорт\tГде\n{10C005}{FFFFFF}Sultan\t{33AA33}на улице (GPS)\n' +
+      '{10C005}{FFFFFF}Infernus\t{AFAFAF}в гараже (вызвать)\n{10C007}{FFFFFF}Maverick\t{AFAFAF}в гараже (вызвать)'],
+    14: ['{10C003}{FFFFFF}Покупка особняка', '{FFFFFF}Особняк №25 продаётся.\nЦена: {FFFF00}$400000\n\n{FFFFFF}Купить?']
   };
-  var mh = /^#samp([0-9]|1[01])$/.exec(location.hash);
+  var mh = /^#samp([0-9]|1[0-4])$/.exec(location.hash);
   if (!window.BastionNative && mh) {
     BastionUI.open({ window: 'samp', button1: 'Выбрать', button2: +mh[1] ? 'Отмена' : '',
-      data: { style: [0, 1, 2, 3, 4, 5, 4, 5, 5, 5, 0, 2][mh[1]], caption: SAMPLE[mh[1]][0], text: SAMPLE[mh[1]][1] } });
+      data: { style: [0, 1, 2, 3, 4, 5, 4, 5, 5, 5, 0, 2, 5, 5, 0][mh[1]], caption: SAMPLE[mh[1]][0], text: SAMPLE[mh[1]][1] } });
     document.body.style.background = '#2b3440';
   } else if (!window.BastionNative && location.hash) {
     BastionUI.open({ window: location.hash.slice(1).replace(/-vip$/, ''), button1: 'Войти', button2: 'Выход',

@@ -248,6 +248,32 @@ stock Job_IconCaption(job, const title[])
 	return s;
 }
 
+// Значок имущества: невидимый тег {10C0nn} в заголовке окна или в начале строки списка, UI рисует значок из ui/property.
+#define PROP_ICON_HOUSE         1
+#define PROP_ICON_APARTMENT     2
+#define PROP_ICON_MANSION       3
+#define PROP_ICON_GARAGE        4
+#define PROP_ICON_CAR           5
+#define PROP_ICON_BOAT          6
+#define PROP_ICON_HELI          7
+stock Prop_IconCaption(kind, const title[])
+{
+	new s[64];
+	format(s, sizeof s, "{10C0%d%d}{FFFFFF}%s", kind / 10 % 10, kind % 10, title);
+	return s;
+}
+
+// Значок личного транспорта по модели: вертолёт, лодка или машина
+stock Prop_VehicleIcon(model)
+{
+	switch (model)
+	{
+		case 417, 425, 447, 465, 469, 487, 488, 497, 501, 548, 563: return PROP_ICON_HELI;
+		case 430, 446, 452, 453, 454, 472, 473, 484, 493, 595: return PROP_ICON_BOAT;
+	}
+	return PROP_ICON_CAR;
+}
+
 // Вырезать из текста цветовые коды вида {RRGGBB}
 stock StripColorCodes(text[])
 {
