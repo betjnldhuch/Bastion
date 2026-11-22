@@ -352,7 +352,7 @@ stock bool:Cmd_Fill(playerid)
 	if (need <= 0) return SendClientMessage(playerid, COLOR_GREY, "Бак уже полный.");
 
 	gFuelStationFor[playerid] = s;
-	ShowPlayerDialog(playerid, DIALOG_FUEL_FILL, DIALOG_STYLE_INPUT, "АЗС",
+	ShowPlayerDialog(playerid, DIALOG_FUEL_FILL, DIALOG_STYLE_INPUT, Biz_IconCaption(6, "АЗС"),
 		"{FFFFFF}В баке: {FFFF00}%d{FFFFFF} из %d л.\nЦена: ${FFFF00}%d{FFFFFF} за литр. Полный бак: ${FFFF00}%d\n\nСколько литров залить? (пусто — полный бак)",
 		"Заправить", "Отмена", have, FUEL_TANK, FuelStation[s][fsPrice], need * FuelStation[s][fsPrice]);
 	return true;
@@ -369,7 +369,7 @@ stock bool:Fuel_TryCanisterShop(playerid)
 		return true;
 	}
 	gFuelStationFor[playerid] = s;
-	ShowPlayerDialog(playerid, DIALOG_FUEL_CAN, DIALOG_STYLE_MSGBOX, "АЗС",
+	ShowPlayerDialog(playerid, DIALOG_FUEL_CAN, DIALOG_STYLE_MSGBOX, Biz_IconCaption(6, "АЗС"),
 		"{FFFFFF}Канистра бензина на %d л.\nЦена: ${FFFF00}%d\n\n{FFFFFF}Купить?", "Купить", "Отмена",
 		FUEL_CANISTER, FUEL_CANISTER * FuelStation[s][fsPrice]);
 	return true;

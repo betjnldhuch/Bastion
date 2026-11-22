@@ -129,11 +129,11 @@ stock Rental_TryAlt(playerid)
 	if (Rental_Near(playerid) == -1) return 0;
 	if (gRentVeh[playerid] != INVALID_VEHICLE_ID)
 	{
-		ShowPlayerDialog(playerid, DIALOG_RENTAL, DIALOG_STYLE_MSGBOX, "Аренда мопеда",
+		ShowPlayerDialog(playerid, DIALOG_RENTAL, DIALOG_STYLE_MSGBOX, Biz_IconCaption(BIZ_ICON_RENTAL, "Аренда мопеда"),
 			"{FFFFFF}У тебя уже есть мопед (осталось %d мин).\nСдать его?", "Сдать", "Отмена", gRentLeft[playerid]);
 		return 1;
 	}
-	ShowPlayerDialog(playerid, DIALOG_RENTAL, DIALOG_STYLE_MSGBOX, "Аренда мопеда",
+	ShowPlayerDialog(playerid, DIALOG_RENTAL, DIALOG_STYLE_MSGBOX, Biz_IconCaption(BIZ_ICON_RENTAL, "Аренда мопеда"),
 		"{FFFFFF}Мопед Faggio на {FFFF00}%d мин{FFFFFF} за {33AA33}$%d{FFFFFF}.\nКроме тебя за руль никто не сядет. Сдать раньше: /unrentmoped\n\nВзять?",
 		"Взять", "Отмена", gRentMinutes, gRentPrice);
 	return 1;

@@ -332,7 +332,7 @@ stock Bank_ShowAccounts(playerid)
 		format(line, sizeof (line), "{33AA33}+ Открыть новый счёт{FFFFFF} ($%d)", BANK_OPEN_COST);
 		strcat(body, line);
 	}
-	ShowPlayerDialog(playerid, DIALOG_BANK_ACCOUNTS, DIALOG_STYLE_LIST, "Мои счета", "%s", "Выбрать", "Назад", body);
+	ShowPlayerDialog(playerid, DIALOG_BANK_ACCOUNTS, DIALOG_STYLE_LIST, Biz_IconCaption(BIZ_ICON_BANK, "Мои счета"), "%s", "Выбрать", "Назад", body);
 	return 1;
 }
 
@@ -417,7 +417,7 @@ static Bank_CloseExtra(playerid, accid)
 // ---------------------------------------------------------------------
 stock Bank_ShowMenu(playerid)
 {
-	ShowPlayerDialog(playerid, DIALOG_BANK, DIALOG_STYLE_LIST, "Bastion Bank",
+	ShowPlayerDialog(playerid, DIALOG_BANK, DIALOG_STYLE_LIST, Biz_IconCaption(BIZ_ICON_BANK, "Bastion Bank"),
 		"Баланс и номер счёта\nПоложить деньги\nСнять деньги\nПеревести игроку (по id)\nПеревести по номеру счёта\nМои счета\nИстория операций\nОплатить налоги ($%d)\nОплатить штрафы ($%d)",
 		"Выбрать", "Закрыть", Debts_Get(playerid, DEBT_TAX), Debts_Get(playerid, DEBT_FINE));
 }

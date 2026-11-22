@@ -289,7 +289,23 @@ function vipImg(level, cls) {
     for (var i = 0; i < EMBLEMS.length; i++) if (EMBLEMS[i][1].test(s)) return EMBLEMS[i][0];
     return '';
   }
-  function emblemImg(key, cls) { return key ? '<img class="' + cls + '" src="emblems/' + key + '.png" alt="" draggable="false" onerror="this.parentNode.removeChild(this)">' : ''; }
+  function emblemImg(key, cls) {
+    return key ? '<img class="' + cls + '" src="' + (key.indexOf('/') < 0 ? 'emblems/' + key : key) + '.png" alt="" draggable="false" onerror="this.parentNode.removeChild(this)">' : '';
+  }
+  // Значки бизнесов: assets/ui/biz/<ключ>.png. Сервер ставит в заголовок невидимый тег {B12Cnn} (base.inc, Biz_IconCaption):
+  // nn — вид бизнеса (01-14 как в business.inc), 20 автосалон, 21 аренда, 22 банк. Нет значка — без картинки.
+  var BIZ_TAG = /\{B12C(\d\d)\}/i;
+  var BIZ_KEYS = { 1: 'shop', 2: 'bar', 3: 'clothes', 4: 'guns', 5: 'casino', 6: 'fuel', 7: 'sto', 8: 'fastfood',
+    20: 'dealer', 21: 'rental', 22: 'bank' };
+  // Список видов (/biztypes): значок по названию вида
+  var BIZ_NAMES = [['shop', /24\/7/], ['bar', /^бар/], ['clothes', /одежд/], ['guns', /оружейн/], ['casino', /^казино/],
+    ['fuel', /^азс|заправк/], ['sto', /автомастерск|^сто$/], ['fastfood', /закусочн/]];
+  function bizOf(s) { var m = BIZ_TAG.exec(String(s || '')); return m && BIZ_KEYS[+m[1]] ? 'biz/' + BIZ_KEYS[+m[1]] : ''; }
+  function bizByName(s) {
+    s = plain(s).toLowerCase().trim();
+    for (var i = 0; i < BIZ_NAMES.length; i++) if (BIZ_NAMES[i][1].test(s)) return 'biz/' + BIZ_NAMES[i][0];
+    return '';
+  }
 
   function colorize(s) {
     var out = '', parts = String(s == null ? '' : s).split(/\{([0-9a-fA-F]{6})\}/);
@@ -740,9 +756,10 @@ function vipImg(level, cls) {
       var isInput = style === 1 || style === 3, isList = style === 2 || style === 4 || style === 5;
       var html = '<form class="card samp" id="f" autocomplete="off">' + closeBtn() +
         '<div class="brand">BASTION ONLINE</div>';
-      var emb = emblemOf(d.caption);
-      html += emb ? '<h1 class="has-emb">' + emblemImg(emb, 'emb-h') + '<span>' + colorize(d.caption) + '</span></h1>'
-        : '<h1>' + (colorize(d.caption) || '&nbsp;') + '</h1>';
+      var emb = bizOf(d.caption), cap = String(d.caption == null ? '' : d.caption).replace(BIZ_TAG, '');
+      if (!emb) emb = emblemOf(cap);
+      html += emb ? '<h1 class="has-emb">' + emblemImg(emb, 'emb-h') + '<span>' + colorize(cap) + '</span></h1>'
+        : '<h1>' + (colorize(cap) || '&nbsp;') + '</h1>';
       var rows = [], sel = 0;
       if (isList) {
         var lines = text.split('\n');
@@ -757,7 +774,8 @@ function vipImg(level, cls) {
         var hc = head != null ? head.split(/\t+/).slice(0, 4) : null;
         if (hc && hc.length > cols) cols = hc.length;
         // Список организаций (/orgs и т.п.): эмблема у названия фракции
-        var orgList = /организац|фракци|faction|банд/i.test(plain(d.caption) + ' ' + (head || ''));
+        var orgList = /организац|фракци|faction|банд/i.test(plain(cap) + ' ' + (head || ''));
+        var bizList = !orgList && /виды бизнес/i.test(plain(cap));   // /biztypes: значок у вида
         var narrow = hc && cols > 2 && /^(№|#|id)$/i.test(plain(hc[0]).trim());   // узкая колонка номера
         var grid = 'grid-template-columns:' + (narrow ? '3em minmax(0,1.6fr) repeat(' + (cols - 2) + ',minmax(0,1fr))'
           : cols > 1 ? 'minmax(0,1.6fr) repeat(' + (cols - 1) + ',minmax(0,1fr))' : 'minmax(0,1fr)');
@@ -766,7 +784,10 @@ function vipImg(level, cls) {
           (hc ? '<div class="r hd" style="' + grid + '">' + hc.map(function (c) { return '<div>' + colorize(c) + '</div>'; }).join('') + '</div>' : '') +
           rows.map(function (c, i) {
             return '<div class="r' + (i === 0 ? ' sel' : '') + '" data-i="' + i + '" style="' + grid + '">' +
-              c.map(function (x) { return '<div>' + (orgList ? emblemImg(emblemOf(x), 'emb-r') : '') + colorize(x) + '</div>'; }).join('') + '</div>';
+              c.map(function (x, j) {
+                var ic = orgList ? emblemOf(x) : bizList && j === 0 ? bizByName(x) : '';
+                return '<div>' + emblemImg(ic, 'emb-r') + colorize(x) + '</div>';
+              }).join('') + '</div>';
           }).join('') + '<div class="nothing" id="none" hidden>Ничего не найдено</div></div>';
       } else {
         html += '<div class="text' + (isInput ? ' bare' : '') + '">' + colorize(text) + '</div>';
@@ -881,7 +902,7 @@ function vipImg(level, cls) {
   }
 
   // Предпросмотр в браузере ПК: index.html#login / #register / #gender / #donate / #donate-vip / #inventory / #stats,
-  // обычные диалоги: #samp0 … #samp5 (стиль диалога)
+  // обычные диалоги: #samp0 … #samp5 (стиль диалога), #samp6-7 фракции, #samp8-9 бизнесы
   var SAMPLE = {
     0: ['{FF7A1A}Информация', 'Добро пожаловать на {FF7A1A}Bastion{FFFFFF}!\nВаш баланс: {4CD07D}$15 000\n{A9C4E4}Удачной игры.'],
     1: ['Перевод денег', 'Введите сумму перевода игроку {FF7A1A}Ivan_Petrov{FFFFFF}:'],
@@ -891,12 +912,15 @@ function vipImg(level, cls) {
     5: ['Игроки онлайн', 'Ник\tУровень\tПинг\nIvan_Petrov\t5\t42\nAnna_Smirnova\t12\t87\nOleg_Sokolov\t3\t51\nMaria_Volkova\t8\t64\nDenis_Orlov\t21\t33\n' +
       'Sergey_Lebedev\t2\t120\nIrina_Kozlova\t15\t47\nPavel_Morozov\t6\t58\nOlga_Popova\t9\t71\nNikita_Fedorov\t4\t39\nAlina_Egorova\t11\t44\nRoman_Pavlov\t7\t95\nKirill_Zaitsev\t13\t62'],
     6: ['{10A010}Grove Street Families', 'Информация\t{AFAFAF}твой ранг: Hustla\nУчастники онлайн\t{33AA33}7 {AFAFAF}(на смене 3)\nВесь состав\t24 чел.\nОбщак\t{33AA33}$45000 {AFAFAF}(на базе)'],
-    7: ['Все организации', '№\tОрганизация\tНастроено\n1\t{3A6EFF}Полиция LSPD\t\n2\t{FF8080}Больница LS (EMS)\t\n3\t{10A010}Grove Street Families\t\n4\t{B040FF}The Ballas\t\n5\t{00C8F0}Varrios Los Aztecas\t\n6\t{6C8CD5}ФБР\t\n7\t{6B8E23}Армия\t\n8\t{FFD700}Los Santos Vagos\t\n9\t{CCCCCC}Мэрия\t\n10\t{E5484D}СМИ\t']
+    7: ['Все организации', '№\tОрганизация\tНастроено\n1\t{3A6EFF}Полиция LSPD\t\n2\t{FF8080}Больница LS (EMS)\t\n3\t{10A010}Grove Street Families\t\n4\t{B040FF}The Ballas\t\n5\t{00C8F0}Varrios Los Aztecas\t\n6\t{6C8CD5}ФБР\t\n7\t{6B8E23}Армия\t\n8\t{FFD700}Los Santos Vagos\t\n9\t{CCCCCC}Мэрия\t\n10\t{E5484D}СМИ\t'],
+    8: ['{B12C08}{FFFFFF}Burger Shot Ganton', 'Товар\tЦена\nБургер\t$30\nКартошка\t$15\nКола\t$10'],
+    9: ['Виды бизнесов', 'Вид\tЦена у штата\tДоход за PayDay\nМагазин 24/7\t$50000\t$500\nБар\t$30000\t$300\nМагазин одежды\t$35000\t$350\n' +
+      'Оружейный магазин\t$80000\t$800\nКазино\t$200000\t$2000\nАЗС\t$60000\t$600\nАвтомастерская\t$70000\t$700\nЗакусочная\t$25000\t$250\nАптека\t$40000\t$400']
   };
-  var mh = /^#samp([0-7])$/.exec(location.hash);
+  var mh = /^#samp([0-9])$/.exec(location.hash);
   if (!window.BastionNative && mh) {
     BastionUI.open({ window: 'samp', button1: 'Выбрать', button2: +mh[1] ? 'Отмена' : '',
-      data: { style: [0, 1, 2, 3, 4, 5, 4, 5][mh[1]], caption: SAMPLE[mh[1]][0], text: SAMPLE[mh[1]][1] } });
+      data: { style: [0, 1, 2, 3, 4, 5, 4, 5, 5, 5][mh[1]], caption: SAMPLE[mh[1]][0], text: SAMPLE[mh[1]][1] } });
     document.body.style.background = '#2b3440';
   } else if (!window.BastionNative && location.hash) {
     BastionUI.open({ window: location.hash.slice(1).replace(/-vip$/, ''), button1: 'Войти', button2: 'Выход',

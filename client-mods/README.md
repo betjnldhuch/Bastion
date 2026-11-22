@@ -41,7 +41,7 @@
 Сборка: `python client-mods/tools/build_lspd.py <папка с оригинальными txd> <папка для результата>`.
 Готовые `.txd` в репозиторий не кладём: в них остаются оригинальные текстуры Rockstar.
 
-## radar/ — значки фракций на радаре и карте (ПК)
+## radar/ — значки фракций и бизнесов на радаре и карте (ПК)
 
 `src/*.png` (64×64) — упрощённые значки из эмблем фракций (`mobile/launcher/app/src/main/assets/ui/emblems`),
 рисует их `tools/make_radar_icons.py`. Полные эмблемы в 16–20 px не читаются, поэтому щит цвета фракции и знак.
@@ -58,6 +58,23 @@
 | 40 | radar_THETRUTH | Армия |
 | 8 | radar_BIGSMOKE | Мэрия |
 | 23 | radar_LOCO | СМИ |
+
+Бизнесы (`src/biz_*.png`, рисует `tools/make_biz_radar_icons.py` из `ui/biz`):
+
+| Значок SA-MP | Текстура hud.txd | Наш значок |
+|---|---|---|
+| 24 | radar_MADDOG | Магазин 24/7 |
+| 13 | radar_CESARVIAPANDO | Заправка |
+| 55 | radar_impound | Автосалон |
+| 49 | radar_dateDrink | Бар |
+| 10 | radar_burgerShot | Закусочная |
+| 6 | radar_ammugun | Оружейный |
+| 27 | radar_modGarage | СТО |
+| 25 | radar_mafiaCasino | Казино |
+| 26 | radar_MCSTRAP | Отель |
+| 34 | radar_RYDER | Аренда авто |
+| 45 | radar_tshirt | Одежда |
+| 52 | radar_cash | Банк |
 
 Сборка: `python client-mods/tools/build_radar.py <оригинальный models/hud.txd> <папка для результата>`,
 готовый `hud.txd` кладётся в `models/` игры. Значок на точку ставит админ в `/markers`.

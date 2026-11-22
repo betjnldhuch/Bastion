@@ -345,7 +345,7 @@ stock bool:Cmd_BizMenu(playerid)
 	gMenuActs[playerid][n++] = BXA_SELL; strcat(list, line);
 	for (new i = n; i < sizeof (gMenuActs[]); i++) gMenuActs[playerid][i] = -1;
 
-	ShowPlayerDialog(playerid, DIALOG_BIZX_MENU, DIALOG_STYLE_TABLIST_HEADERS, Biz[b][bName], "%s", "Выбрать", "Закрыть", list);
+	ShowPlayerDialog(playerid, DIALOG_BIZX_MENU, DIALOG_STYLE_TABLIST_HEADERS, Biz_IconCaption(Biz[b][bType], Biz[b][bName]), "%s", "Выбрать", "Закрыть", list);
 	return true;
 }
 
@@ -365,7 +365,7 @@ static BizX_ShowInfo(playerid, b)
 		if (t == BIZ_STO) strcat(text, "Мастерская получает ещё и выручку с СТО рядом.\n");
 	}
 	else strcat(text, "\n{AFAFAF}Этому бизнесу товар не нужен.\n");
-	ShowPlayerDialog(playerid, DIALOG_BIZX_INFO, DIALOG_STYLE_MSGBOX, "Мой бизнес", "%s", "Назад", "Закрыть", text);
+	ShowPlayerDialog(playerid, DIALOG_BIZX_INFO, DIALOG_STYLE_MSGBOX, Biz_IconCaption(t, "Мой бизнес"), "%s", "Назад", "Закрыть", text);
 }
 
 // /biztypes — виды бизнесов (всем)
