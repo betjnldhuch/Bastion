@@ -1,6 +1,7 @@
 // =====================================================================
 //  Bastion Online Launcher — окно (дизайн v2)
 //  Тёмный минимализм, оранжевый только на акцентах.
+//  Фон: случайная сцена по времени суток (LoadScreens.cs).
 //  Свой фон: положи background.jpg (или .png) рядом с exe, 1000x600.
 // =====================================================================
 using System;
@@ -624,6 +625,7 @@ namespace BastionLauncher
                     break;
                 }
             }
+            if (bgImage == null) bgImage = LoadScreens.Pick();
         }
 
         Bitmap BuildBackground()
@@ -641,7 +643,7 @@ namespace BastionLauncher
                     float iw = bgImage.Width * k, ih = bgImage.Height * k;
                     g.DrawImage(bgImage, (W - iw) / 2, (H - ih) / 2, iw, ih);
                     using (LinearGradientBrush lg = new LinearGradientBrush(new Rectangle(0, 0, W, H),
-                        Color.FromArgb(150, Theme.Bg), Color.FromArgb(235, Theme.Bg), LinearGradientMode.Horizontal))
+                        Color.FromArgb(120, Theme.Bg), Color.FromArgb(215, Theme.Bg), LinearGradientMode.Horizontal))
                         g.FillRectangle(lg, 0, 0, W, H);
                 }
                 else
@@ -1294,6 +1296,7 @@ namespace BastionLauncher
             SaveSettings(false);
             if (!ApplyFps(gta)) return;
             FixSkimmer(gta);
+            try { LoadScreens.Apply(gta); } catch (Exception) { }   // экран загрузки по времени суток
 
             try
             {

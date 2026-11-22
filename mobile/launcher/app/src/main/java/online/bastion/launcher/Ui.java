@@ -1,11 +1,14 @@
 package online.bastion.launcher;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RadialGradient;
+import android.graphics.Rect;
 import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -117,14 +120,60 @@ public final class Ui {
     }
 
     // ------------------------------------------------------------------
-    //  Фон: тёмный градиент, тёплое свечение в углу и тонкие диагонали.
+    //  Фон: случайная сцена по локальному времени суток
+    //  (assets/loadscreens/<сцена>_<day|sunset|night>.jpg: день 7–17,
+    //  закат 17–20, ночь 20–7) под затемнением. Без картинки — тёмный
+    //  градиент, тёплое свечение в углу и тонкие диагонали.
     // ------------------------------------------------------------------
+    public static final String[] SCENES = {"pier", "chase", "grove", "lv", "vinewood"};
+
+    public static String period(java.util.Calendar c) {
+        int h = c.get(java.util.Calendar.HOUR_OF_DAY);
+        if (h >= 7 && h < 17) return "day";
+        if (h >= 17 && h < 20) return "sunset";
+        return "night";
+    }
+
+    public static Bitmap loadScreen(Context c) {
+        String name = SCENES[new java.util.Random().nextInt(SCENES.length)] + "_"
+                + period(java.util.Calendar.getInstance());
+        try (java.io.InputStream in = c.getAssets().open("loadscreens/" + name + ".jpg")) {
+            return BitmapFactory.decodeStream(in);
+        } catch (Exception | OutOfMemoryError e) {
+            return null;
+        }
+    }
+
     public static final class Background extends View {
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        public Background(Context c) { super(c); }
+        private final Paint img = new Paint(Paint.FILTER_BITMAP_FLAG);
+        private final Bitmap bmp;
+        private final Rect src = new Rect();
+        private final Rect dst = new Rect();
+        public Background(Context c) { super(c); bmp = loadScreen(c); }
 
         @Override protected void onDraw(Canvas cv) {
             int w = getWidth(), h = getHeight();
+            if (bmp != null && w > 0 && h > 0) {
+                // «cover»: обрезаем по центру под пропорции экрана
+                int bw = bmp.getWidth(), bh = bmp.getHeight();
+                if ((long) bw * h > (long) bh * w) {
+                    int cw = (int) ((long) bh * w / h);
+                    src.set((bw - cw) / 2, 0, (bw + cw) / 2, bh);
+                } else {
+                    int ch = (int) ((long) bw * h / w);
+                    src.set(0, (bh - ch) / 2, bw, (bh + ch) / 2);
+                }
+                dst.set(0, 0, w, h);
+                cv.drawBitmap(bmp, src, dst, img);
+                // затемнение, чтобы читались панели и текст
+                p.setShader(new LinearGradient(0, 0, w, 0, 0x8C0B0C0F, 0xD90B0C0F, Shader.TileMode.CLAMP));
+                cv.drawRect(0, 0, w, h, p);
+                p.setShader(new LinearGradient(0, h * 0.55f, 0, h, 0x000B0C0F, 0xE60B0C0F, Shader.TileMode.CLAMP));
+                cv.drawRect(0, h * 0.55f, w, h, p);
+                p.setShader(null);
+                return;
+            }
             p.setShader(new LinearGradient(0, 0, 0, h, 0xFF101216, 0xFF07080A, Shader.TileMode.CLAMP));
             cv.drawRect(0, 0, w, h, p);
             p.setShader(new RadialGradient(w * 0.08f, -h * 0.1f, Math.max(w, h) * 0.55f,
