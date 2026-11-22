@@ -228,6 +228,18 @@ stock RandomString(dest[], length, size = sizeof (dest))
 	dest[length] = '\0';
 }
 
+// Заголовок окна со значком: невидимый тег {B12Cnn} (nn — вид: 01-14 бизнесы, 20 автосалон, 21 аренда, 22 банк),
+// по нему окно UI (ui/index.html) ставит значок из ui/biz. В обычном окне SA-MP тег — просто цвет, его не видно.
+#define BIZ_ICON_DEALER     20
+#define BIZ_ICON_RENTAL     21
+#define BIZ_ICON_BANK       22
+stock Biz_IconCaption(kind, const title[])
+{
+	new s[64];
+	format(s, sizeof s, "{B12C%d%d}{FFFFFF}%s", kind / 10 % 10, kind % 10, title);
+	return s;
+}
+
 // Вырезать из текста цветовые коды вида {RRGGBB}
 stock StripColorCodes(text[])
 {

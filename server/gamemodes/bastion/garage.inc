@@ -214,13 +214,13 @@ static Garage_ShowTune(playerid)
 	GetVehicleHealth(v, hp);
 	if (v == gPlayerVeh[playerid])
 	{
-		ShowPlayerDialog(playerid, DIALOG_TUNE, DIALOG_STYLE_TABLIST_HEADERS, "СТО",
+		ShowPlayerDialog(playerid, DIALOG_TUNE, DIALOG_STYLE_TABLIST_HEADERS, Biz_IconCaption(BIZ_STO, "СТО"),
 			"Услуга\tЦена\nРемонт (сейчас %.0f%%)\t$%d\nПокраска\t$%d\nЗакись азота\t$%d\nГидравлика\t$%d\nДиски\t$%d\nСнять весь тюнинг\tбесплатно",
 			"Выбрать", "Уехать", hp / 10.0, TUNE_REPAIR_PRICE, TUNE_PAINT_PRICE, TUNE_NITRO_PRICE, TUNE_HYDRA_PRICE, TUNE_WHEELS_PRICE);
 	}
 	else
 	{
-		ShowPlayerDialog(playerid, DIALOG_TUNE, DIALOG_STYLE_TABLIST_HEADERS, "СТО",
+		ShowPlayerDialog(playerid, DIALOG_TUNE, DIALOG_STYLE_TABLIST_HEADERS, Biz_IconCaption(BIZ_STO, "СТО"),
 			"Услуга\tЦена\nРемонт (сейчас %.0f%%)\t$%d\n{AFAFAF}Тюнинг — только своей машине\t",
 			"Выбрать", "Уехать", hp / 10.0, TUNE_REPAIR_PRICE);
 	}

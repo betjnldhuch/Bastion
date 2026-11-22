@@ -741,7 +741,7 @@ stock bool:Cmd_Buy(playerid)
 	}
 	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "Здесь пока ничего не продают.");
 	gBuyBiz[playerid] = b;
-	ShowPlayerDialog(playerid, DIALOG_BIZ_BUY, DIALOG_STYLE_TABLIST_HEADERS, Biz[b][bName], "%s", "Купить", "Закрыть", list);
+	ShowPlayerDialog(playerid, DIALOG_BIZ_BUY, DIALOG_STYLE_TABLIST_HEADERS, Biz_IconCaption(Biz[b][bType], Biz[b][bName]), "%s", "Купить", "Закрыть", list);
 	return true;
 }
 

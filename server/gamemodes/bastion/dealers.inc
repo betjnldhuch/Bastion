@@ -224,7 +224,7 @@ stock bool:Cmd_BuyCar(playerid)
 		strcat(list, line);
 	}
 	gDealerAt[playerid] = d;
-	ShowPlayerDialog(playerid, DIALOG_BUYCAR, DIALOG_STYLE_TABLIST_HEADERS, gDealer[d][dlName], "%s", "Выбрать", "Отмена", list);
+	ShowPlayerDialog(playerid, DIALOG_BUYCAR, DIALOG_STYLE_TABLIST_HEADERS, Biz_IconCaption(BIZ_ICON_DEALER, gDealer[d][dlName]), "%s", "Выбрать", "Отмена", list);
 	return true;
 }
 
@@ -423,7 +423,7 @@ stock Vehicles_OnDialog(playerid, dialogid, response, listitem)
 			gDealerPick[playerid] = i;
 			new name[32];
 			Hud_GetVehicleName(gDealerCars[i][1], name);
-			ShowPlayerDialog(playerid, DIALOG_BUYCAR_OK, DIALOG_STYLE_MSGBOX, gDealer[d][dlName],
+			ShowPlayerDialog(playerid, DIALOG_BUYCAR_OK, DIALOG_STYLE_MSGBOX, Biz_IconCaption(BIZ_ICON_DEALER, gDealer[d][dlName]),
 				"{FFFFFF}Купить {FFFF00}%s{FFFFFF} за {33AA33}$%d{FFFFFF}?\n\nУ тебя $%d. При продаже салон вернёт %d%% цены.\nТранспорта у тебя сейчас: %d из %d.",
 				"Купить", "Назад", name, gDealerCars[i][2], GetMoney(playerid), DEALER_REFUND_PCT,
 				Vehicles_CountOwned(playerid), Props_MaxVehicles(playerid));

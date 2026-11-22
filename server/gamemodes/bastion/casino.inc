@@ -74,7 +74,7 @@ stock bool:Casino_Show(playerid, b)
 {
 	if (gCasSpin[playerid] > 0) return SendClientMessage(playerid, COLOR_GREY, "Дождись результата.");
 	gCasBiz[playerid] = b;
-	ShowPlayerDialog(playerid, DIALOG_CASINO, DIALOG_STYLE_TABLIST_HEADERS, Biz[b][bName],
+	ShowPlayerDialog(playerid, DIALOG_CASINO, DIALOG_STYLE_TABLIST_HEADERS, Biz_IconCaption(BIZ_CASINO, Biz[b][bName]),
 		"Игра\tВыигрыш\nРулетка: красное / чёрное\tx2\nРулетка: число 0-36\tx36\nКости против крупье\tx2", "Играть", "Уйти");
 	return true;
 }
