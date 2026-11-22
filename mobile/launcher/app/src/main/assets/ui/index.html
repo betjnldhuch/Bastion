@@ -843,14 +843,12 @@ function vipImg(level, cls) {
             '<div class="error" id="err"></div>' +
             '<div class="row" style="margin:0"><button type="button" class="btn" id="cn">Отмена</button><button type="submit" class="btn primary">' +
             (sheet === 'g' ? (it.cat === 'docs' ? 'Показать' : 'Передать') : 'Выбросить') + '</button></div></form>';
-        } else if (it.cat === 'docs') {
-          html += '<div class="acts"><button type="button" class="btn primary" id="bu">Открыть</button>' +
-            '<button type="button" class="btn" id="bg" style="grid-column:1/-1">Показать игроку</button></div><div class="tip">Документы нельзя выбросить или передать</div>';
         } else if (it.fixed || it.cat === 'ground') {
           html += '<div class="acts"><button type="button" class="btn primary" id="bu">' + use + '</button></div>';
         } else {
           html += '<div class="acts">' + (use ? '<button type="button" class="btn primary" id="bu">' + use + '</button>' : '') +
-            '<button type="button" class="btn" id="bg">Передать</button><button type="button" class="btn danger" id="bd">Выбросить</button></div>' +
+            '<button type="button" class="btn" id="bg">' + (it.cat === 'docs' ? 'Показать' : 'Передать') + '</button>' +
+            '<button type="button" class="btn danger" id="bd"' + (it.cat === 'docs' ? ' disabled' : '') + '>Выбросить</button></div>' +
             (use ? '<div class="tip">Повторный тап по вещи — использовать</div>' : '');
         }
         det.innerHTML = html;

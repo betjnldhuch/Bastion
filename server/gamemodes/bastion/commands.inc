@@ -199,6 +199,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/places", true))      { Cmd_Places(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/unplace", true))     { Cmd_Unplace(playerid); return 1; }
 	if (!strcmp(cmd, "/gotoplace", true))   { Cmd_GotoPlace(playerid, cmdtext[pos]); return 1; }
+	if (Docs_OnCommand(playerid, cmd, cmdtext[pos])) return 1;      // /passport, /showpass, /showmedcard, /showlic (docs.inc)
 	if (Drugs_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
 	if (WorkLife_OnCommand(playerid, cmd)) return 1;
 	if (Casino_OnCommand(playerid, cmd)) return 1;
@@ -206,7 +207,6 @@ stock Commands_Process(playerid, const input[])
 	if (Hospital_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
 	if (Marriage_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
 	if (Donate_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
-	if (Docs_OnCommand(playerid, cmd, cmdtext[pos])) return 1;      // /passport, /showpass (docs.inc)
 	if (Skills_OnCommand(playerid, cmd, cmdtext[pos])) return 1;    // /skills, /setskill (skills.inc)
 
 	// --- работа (jobs.inc) ---

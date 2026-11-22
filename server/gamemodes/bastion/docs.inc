@@ -7,11 +7,11 @@
 //      просроченная тоже лежит, но в ней написано «просрочена»;
 //    лицензии — после первой лицензии (licenses.inc).
 //  Документы нельзя выбросить или передать: «Использовать» — открыть
-//  самому, «Передать» — показать игроку рядом (у него откроется окно).
+//  самому, кнопка «Передать» у них становится «Показать» (у игрока откроется окно).
 //  Окно: HTML «document» в клиенте Bastion (index.html), иначе диалог.
 //
-//  Команды: /passport — свой паспорт, /showpass [id] — показать паспорт.
-//  Медкарта и лицензии: /medcard, /showmedcard, /licenses, /showlic (как раньше).
+//  Команды: /passport — свой паспорт; показать игроку рядом (откроется окно):
+//  /showpass [id], /showmedcard [id], /showlic [id].
 // =====================================================================
 
 #define DOC_SHOW_RANGE      3.0
@@ -48,6 +48,18 @@ static bool:Docs_HasAnyLicense(playerid)
 {
 	for (new l = 1; l < LIC_COUNT; l++) if (Licenses_Has(playerid, l)) return true;
 	return false;
+}
+
+// Есть ли документ (для меню ALT)
+stock Docs_Has(playerid, item)
+{
+	switch (item)
+	{
+		case INV_PASSPORT: return Player[playerid][pDbId] != 0;
+		case INV_MEDCARD: return Hospital_MedcardUntil(playerid) > 0;
+		case INV_LICENSES: return Docs_HasAnyLicense(playerid);
+	}
+	return 0;
 }
 
 // Какие документы лежат в сумке. Перед каждым показом сумки (needs.inc).
@@ -247,18 +259,22 @@ stock bool:Cmd_Passport(playerid)
 	return true;
 }
 
-stock bool:Cmd_ShowPass(playerid, const params[])
+static Docs_CmdShow(playerid, item, const params[], const usage[])
 {
 	new pos = 0, why[96];
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: /showpass [id]");
-	if (!Docs_ShowTo(playerid, INV_PASSPORT, target, why)) SendClientMessage(playerid, COLOR_GREY, "%s", why);
-	return true;
+	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: %s [id]", usage);
+	if (!Docs_Has(playerid, item))
+		return SendClientMessage(playerid, COLOR_GREY, item == INV_MEDCARD ? ("У тебя нет медкарты, её дают в больнице.") : ("У тебя нет лицензий."));
+	if (!Docs_ShowTo(playerid, item, target, why)) SendClientMessage(playerid, COLOR_GREY, "%s", why);
+	return 1;
 }
 
 stock bool:Docs_OnCommand(playerid, const cmd[], const params[])
 {
 	if (!strcmp(cmd, "/passport", true) || !strcmp(cmd, "/pass", true)) { Cmd_Passport(playerid); return true; }
-	if (!strcmp(cmd, "/showpass", true))  { Cmd_ShowPass(playerid, params); return true; }
+	if (!strcmp(cmd, "/showpass", true))    { Docs_CmdShow(playerid, INV_PASSPORT, params, cmd); return true; }
+	if (!strcmp(cmd, "/showmedcard", true)) { Docs_CmdShow(playerid, INV_MEDCARD, params, cmd); return true; }
+	if (!strcmp(cmd, "/showlic", true))     { Docs_CmdShow(playerid, INV_LICENSES, params, cmd); return true; }
 	return false;
 }
