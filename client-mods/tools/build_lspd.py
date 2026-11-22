@@ -59,7 +59,7 @@ def notes():
 board = Image.new('RGB', (1024, 1024), (120, 90, 60))
 board.paste(mirror(bg), (0, 0))                                      # не используется моделью
 board.paste(mirror(notes()), (512, 0))                              # объявления (правила висели на каждой доске)
-board.paste(mirror(poster('bpd2_wanted.png', (0, 0, 512, 992))), (0, 512))   # «Разыскивается»
+board.paste(mirror(poster('bpd4_wanted_empty.png')), (0, 512))   # «Разыскивается»
 board.paste(mirror(bg), (512, 512))                                  # не используется моделью
 desk = L('bpd2_reception_wood.png').convert('RGB').crop((160, 330, 860, 1000)).resize((128, 128), Image.LANCZOS)
 # Второй пак (отдельные картинки из ChatGPT)
@@ -127,7 +127,7 @@ txdpatch.patch(os.path.join(src_dir, 'genintintpoliceb.txd'), os.path.join(out_d
                 'cop_cellwall': sq('bpd3_cell_tiles.png'), 'cop_cellwall_btm': sq('bpd_cell_wall_btm.png'),
                 'cop_cellfloor': sq('bpd3_cell_floor.png'),
                 'p_door1': door, 'lockers': sq('bpd3_lockers.png'), 'cop_bench': bench, 'pol_dor_surr2': surr,
-                'pol_flr164': sq('bpd4_terrazzo.png'), 'p_floor3': sq('bpd4_floor_diamond.png'),
+                'pol_flr164': sq('bpd4_terrazzo3.png'), 'p_floor3': sq('bpd4_carpet.png'), 'pol_flr2': sq('bpd4_floor_diamond.png'),
                 'mp_shop_window': framed(orig_b['mp_shop_window'], L('bpd4_wired_glass.png'), 10)})
 txdpatch.patch(os.path.join(src_dir, 'genintintpolicea.txd'), os.path.join(out_dir, 'genintintpolicea.txd'),
                {'copcell_bars': bars, 'cop_notice': board,
