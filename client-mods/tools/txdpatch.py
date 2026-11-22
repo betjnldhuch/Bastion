@@ -35,3 +35,36 @@ def patch(src,dst,repl):
     missing=set(repl)-done
     assert not missing, missing
     open(dst,'wb').write(out)
+
+# Read textures of a TXD into PIL images: {name: Image}. Supports DXT1/DXT3 and 8888 (D3D8/D3D9).
+def _c565(c): return ((c>>11&31)*255//31,(c>>5&63)*255//63,(c&31)*255//31)
+def _dxt(data,w,h,kind):
+    im=Image.new('RGBA',(w,h)); px=im.load(); o=0; bs=8 if kind==1 else 16
+    for by in range(0,h,4):
+        for bx in range(0,w,4):
+            blk=data[o:o+bs]; o+=bs
+            c0,c1,bits=struct.unpack('<HHI',blk[bs-8:]); a,b=_c565(c0),_c565(c1)
+            if c0>c1 or kind!=1:
+                cols=[a+(255,),b+(255,),tuple((2*x+y)//3 for x,y in zip(a,b))+(255,),tuple((x+2*y)//3 for x,y in zip(a,b))+(255,)]
+            else:
+                cols=[a+(255,),b+(255,),tuple((x+y)//2 for x,y in zip(a,b))+(255,),(0,0,0,0)]
+            for i in range(16):
+                x,y=bx+i%4,by+i//4
+                if x<w and y<h: px[x,y]=cols[bits>>(2*i)&3]
+    return im
+def read(src):
+    b=open(src,'rb').read(); res={}
+    for t,s,e in rw.chunks(b,0,len(b)):
+        if t!=0x16: continue
+        for ct,cs,ce in rw.chunks(b,s,e):
+            if ct!=0x15: continue
+            ss=next(x for x in rw.chunks(b,cs,ce) if x[0]==1)[1]
+            name=b[ss+8:ss+40].split(b'\0')[0].decode('latin1')
+            fourcc=struct.unpack_from('<I',b,ss+76)[0]; w,h,dep=struct.unpack_from('<HHB',b,ss+80)
+            p=ss+88+(1024 if dep==8 else 0); sz=struct.unpack_from('<I',b,p)[0]; data=b[p+4:p+4+sz]
+            if fourcc in (0x31545844,0x33545844): im=_dxt(data,w,h,1 if fourcc==0x31545844 else 3)
+            elif dep==32:
+                im=Image.frombytes('RGBA',(w,h),data[:w*h*4]); r,g,bb,a=im.split(); im=Image.merge('RGBA',(bb,g,r,a))
+            else: continue
+            res[name]=im
+    return res

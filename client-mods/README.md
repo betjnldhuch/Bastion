@@ -37,6 +37,16 @@
 | p_countr | genintintpoliceb.txd | дерево стойки |
 | copcell_bars | genintintpolicea.txd | решётка камеры (с прозрачностью) |
 | cop_notice | genintintpolicea.txd | доска объявлений: правила и «Разыскивается» (зеркально — модель натягивает текстуру отражённой) |
+| copstuff | genintintpolicea.txd | атлас мелочей: шкаф, клавиатура с ноутбуком, рация, монитор, лоток (bpd4_*) |
+| filing_cabnu | genintintpolicea.txd | боковина шкафа: тёмно-серый металл (bpd4_metal_panel) |
+| la_kitch1/2/3 | genintintpolicea.txd | кухня: серая столешница, светло-серые фасады (bpd4_kitchen_cabinet, bpd4_terrazzo) |
+| cops_chrome | genintintpolicea.txd | шлифованная сталь (bpd4_brushed_steel) |
+| mp_shop_window | genintintpoliceb.txd | армированное стекло в раме (bpd4_wired_glass) |
+| pol_flr164 | genintintpoliceb.txd | пол коридора, терраццо (bpd4_terrazzo) |
+
+Лежат в `src/`, но пока не используются (этих текстур нет в txd полиции, нужен файл, где они есть):
+bpd4_blue_fabric (BLUE_FABRIC), bpd4_black_leather (CJ_CUSHION2), bpd4_wood_planks (CJ_WOOD1),
+bpd4_subway_tile, bpd4_concrete.
 
 Сборка: `python client-mods/tools/build_lspd.py <папка с оригинальными txd> <папка для результата>`.
 Готовые `.txd` в репозиторий не кладём: в них остаются оригинальные текстуры Rockstar.
