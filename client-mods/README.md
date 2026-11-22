@@ -48,7 +48,7 @@
 
 Лежат в `src/`, но пока не используются (этих текстур нет в txd полиции, нужен файл, где они есть):
 bpd4_blue_fabric (BLUE_FABRIC), bpd4_black_leather (CJ_CUSHION2), bpd4_wood_planks (CJ_WOOD1),
-bpd4_subway_tile, bpd4_concrete, bpd4_brick, bpd4_sign_cells, bpd4_sign_interrogation, bpd4_sign_lockers, bpd4_sign_armory, bpd4_height_chart, bpd4_floor_grey_tile (таблички и ростомер нужна своя модель).
+bpd4_subway_tile, bpd4_concrete, bpd4_sign_cells, bpd4_sign_interrogation, bpd4_sign_lockers, bpd4_sign_armory, bpd4_height_chart, bpd4_floor_grey_tile (таблички и ростомер нужна своя модель).
 
 Сборка: `python client-mods/tools/build_lspd.py <папка с оригинальными txd> <папка для результата>`.
 Готовые `.txd` в репозиторий не кладём: в них остаются оригинальные текстуры Rockstar.
@@ -104,12 +104,29 @@ bpd4_subway_tile, bpd4_concrete, bpd4_brick, bpd4_sign_cells, bpd4_sign_interrog
 Сборка: `python client-mods/tools/build_radar.py <оригинальный models/hud.txd> <папка для результата>`,
 готовый `hud.txd` кладётся в `models/` игры. Значок на точку ставит админ в `/markers`.
 
-## bank/, bar/, shop/, gangs/, dealer/, hospital/ — заготовки для будущих интерьеров
+## Заготовки для будущих интерьеров (выбран лучший вариант из присланных, дубли удалены)
 
-Картинки из ChatGPT, пока никуда не подключены: мрамор (бежевый, два тёмных), дверь хранилища,
-стойка кассира; бар: две стойки и два варианта полок с бутылками; магазин: холодильник с напитками (v2_brands не использовать: реальные бренды), два стеллажа, серая плитка, вывеска 24/7; gangs: граффити Ballas с прозрачным фоном, флаг Grove, жёлтый облезлый кирпич; dealer: вывеска автосалона; hospital: зелёная стена с отбойником. В lspd/src запасной голубой терраццо (bpd4_terrazzo_blue).
+| Папка | Файл | Что | Куда планируется |
+|---|---|---|---|
+| bank/src | bank_marble_beige | бежевый мрамор плиткой | пол зала |
+| bank/src | bank_marble_dark | тёмный мрамор | пол у касс / хранилища |
+| bank/src | bank_teller_counter | стойка кассира | касса |
+| bank/src | bank_vault_door | дверь хранилища | хранилище |
+| bar/src | bar_counter_wood | фасад стойки | барная стойка |
+| bar/src | bar_back_shelves | полки с бутылками | стена за стойкой |
+| shop/src | shop_drinks_fridge | холодильник без брендов | 24/7 |
+| shop/src | shop_grocery_shelves | металлический стеллаж | 24/7 |
+| shop/src | shop_floor_grey_tile | серая плитка | пол 24/7 |
+| shop/src | shop_sign_247 | вывеска 24/7 | вход (или текстом с сервера) |
+| dealer/src | dealer_sign | вывеска «Автосалон Bastion» | автосалон |
+| hospital/src | hospital_wall_green | зелёная стена с отбойником | коридоры больницы |
+| gangs/src | ballas_graffiti | граффити Ballas, прозрачный фон | теги банд |
+| gangs/src | grove_flag | флаг Grove | район Grove |
+| gangs/src | yellow_brick_worn | жёлтый облезлый кирпич | стены в гетто |
+| common/src | garage_concrete_tyres, concrete_tiles, asphalt, parquet, plaster_beige, carpet_blue, corrugated_metal, brick_red | базовые бесшовные тайлы | любые интерьеры |
+| lspd/src | bpd4_sign_*, bpd4_height_chart | таблички и ростомер | текстом/объектом с сервера |
+| lspd/src | bpd4_blue_fabric, bpd4_black_leather, bpd4_wood_planks | обивка, подушки, дерево | мебель полиции, нужен gta_int.img |
+| lspd/src | bpd4_terrazzo_blue, bpd4_concrete, bpd4_subway_tile | запасные | если какой-то пол не понравится |
 
-## common/ — базовые бесшовные тайлы
-
-Для любых интерьеров: бетон гаража со следами шин, бетонная плитка, асфальт, паркет, бежевая штукатурка,
-синий ковролин, профнастил, красный кирпич v2. Пока никуда не подключены.
+Удалены как худшие дубли: второй холодильник (реальные бренды), деревянный стеллаж, полки и стойка бара в перспективе,
+тёмный мрамор 3:2, кирпич v1, лишняя серая плитка, второй ковролин и второй терраццо.
