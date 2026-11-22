@@ -261,5 +261,10 @@ enum
 	DIALOG_SETSPAWN_F,
 	DIALOG_FSPAWN_ACCESS,
 	DIALOG_FSPAWN_DEL,       // /delfspawn без номера: список доп. спавнов
-	DIALOG_FSPAWN_DEL_OK     // подтверждение удаления
+	DIALOG_FSPAWN_DEL_OK,    // подтверждение удаления
+
+	// --- Квест новичка (quest.inc)
+	DIALOG_QUEST,
+	DIALOG_QUEST_INTRO,
+	DIALOG_QUEST_MORE
 }

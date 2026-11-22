@@ -159,6 +159,7 @@ static Rental_Take(playerid)
 	if (gRentPrice > 0) GiveMoney(playerid, -gRentPrice, "аренда мопеда");
 	PutPlayerInVehicle(playerid, v, 0);
 	SendClientMessage(playerid, COLOR_GREEN, "Мопед твой на %d мин. Двигатель: 2. Сдать раньше: /unrentmoped.", gRentMinutes);
+	Quest_OnRental(playerid);           // квест новичка (quest.inc)
 	return 1;
 }
 

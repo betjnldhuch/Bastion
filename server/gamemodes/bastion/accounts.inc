@@ -185,6 +185,7 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			Player[playerid][pSkin] = (response && listitem == 1) ? SKIN_FEMALE : SKIN_MALE;
 			SendClientMessage(playerid, COLOR_GREEN, "Регистрация завершена! Тебе выдано $%d на старт.", START_MONEY);
 			SendClientMessage(playerid, COLOR_WHITE, "Список команд: /help");
+			Quest_OnRegister(playerid);     // квест новичка стартует сам (quest.inc)
 			Account_FinishLogin(playerid);
 			return 1;
 		}
@@ -291,6 +292,7 @@ stock Account_FinishLogin(playerid)
 	Squad_Load(playerid);               // взвод во фракции (factions.inc)
 	FPerm_OnLogin(playerid);            // личные права во фракции (fmanage.inc)
 	Markers_SyncPlayer(playerid);       // точки, которые видит только своя фракция (markers.inc)
+	Quest_OnLogin(playerid);            // квест новичка (quest.inc)
 
 	Account_SetNormalSpawn(playerid);
 	TogglePlayerSpectating(playerid, false);  // выход из режима наблюдения = спавн

@@ -101,6 +101,7 @@
 #include "bastion/hospital.inc"   // больница: лечение, страховка, медкарта
 #include "bastion/marriage.inc"   // свадьба, общий дом и семейный счёт
 #include "bastion/donate.inc"     // донат-меню: монеты, VIP
+#include "bastion/quest.inc"      // квест новичка «Первые шаги»: /quest
 #include "bastion/rental.inc"     // аренда мопедов: /addmoped, ALT у точки
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
@@ -172,6 +173,7 @@ public OnGameModeInit()
 	Hospital_Init();
 	Marriage_Init();
 	Donate_Init();
+	Quest_Init();          // поля квеста новичка в accounts (quest.inc)
 	Rental_Init();         // точки проката мопедов (rental.inc)
 	AC_Init();            // античит (anticheat.inc)
 	Social_Init();        // таблицы для ботов ВК/Telegram (social.inc)
@@ -457,6 +459,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Hospital_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Donate_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Rental_OnDialog(playerid, dialogid, response)) return 1;
+	if (Quest_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	return 0;
 }
 
@@ -580,6 +583,7 @@ stock PayDay()
 		Debts_PayDay(i);                        // напоминание о долгах, розыск должников (debts.inc)
 		Donate_PayDay(i);       // VIP: прибавка и двойной опыт (donate.inc)
 		Bank_PayDay(i);         // проценты по счёту и баланс (bank.inc)
+		Quest_OnPayDay(i);      // квест новичка: первая зарплата, +опыт (quest.inc)
 
 		if (Player[i][pExp] >= Player[i][pLevel] * EXP_PER_LEVEL)
 		{
