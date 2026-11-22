@@ -240,6 +240,14 @@ stock Biz_IconCaption(kind, const title[])
 	return s;
 }
 
+// Значок работы в заголовке окна: невидимый тег {10B0nn} (nn — JOB_* из base.inc), UI рисует значок из ui/jobs.
+stock Job_IconCaption(job, const title[])
+{
+	new s[64];
+	format(s, sizeof s, "{10B0%d%d}{FFFFFF}%s", job / 10 % 10, job % 10, title);
+	return s;
+}
+
 // Вырезать из текста цветовые коды вида {RRGGBB}
 stock StripColorCodes(text[])
 {

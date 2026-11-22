@@ -301,6 +301,19 @@ function vipImg(level, cls) {
   var BIZ_NAMES = [['shop', /24\/7/], ['bar', /^бар/], ['clothes', /одежд/], ['guns', /оружейн/], ['casino', /^казино/],
     ['fuel', /^азс|заправк/], ['sto', /автомастерск|^сто$/], ['fastfood', /закусочн/]];
   function bizOf(s) { var m = BIZ_TAG.exec(String(s || '')); return m && BIZ_KEYS[+m[1]] ? 'biz/' + BIZ_KEYS[+m[1]] : ''; }
+  // Значки работ: assets/ui/jobs/<ключ>.png. Тег {10B0nn} в заголовке (base.inc, Job_IconCaption), nn — JOB_* из base.inc.
+  // Водитель автобуса (4) и развозчик пиццы (2) пока без значков.
+  var JOB_TAG = /\{10B0(\d\d)\}/i;
+  var JOB_KEYS = { 1: 'loader', 3: 'taxi', 5: 'trucker', 6: 'mechanic', 7: 'fisher', 8: 'farmer', 9: 'collector', 10: 'garbage' };
+  // GPS «Работы»: значок по названию точки («Работа: Таксист»)
+  var JOB_NAMES = [['loader', /грузчик/], ['taxi', /таксист/], ['trucker', /дальнобой/], ['mechanic', /механик/],
+    ['fisher', /рыбак/], ['farmer', /фермер/], ['collector', /инкассатор/], ['garbage', /мусорщик/]];
+  function jobOf(s) { var m = JOB_TAG.exec(String(s || '')); return m && JOB_KEYS[+m[1]] ? 'jobs/' + JOB_KEYS[+m[1]] : ''; }
+  function jobByName(s) {
+    s = plain(s).toLowerCase();
+    for (var i = 0; i < JOB_NAMES.length; i++) if (JOB_NAMES[i][1].test(s)) return 'jobs/' + JOB_NAMES[i][0];
+    return '';
+  }
   function bizByName(s) {
     s = plain(s).toLowerCase().trim();
     for (var i = 0; i < BIZ_NAMES.length; i++) if (BIZ_NAMES[i][1].test(s)) return 'biz/' + BIZ_NAMES[i][0];
@@ -756,7 +769,7 @@ function vipImg(level, cls) {
       var isInput = style === 1 || style === 3, isList = style === 2 || style === 4 || style === 5;
       var html = '<form class="card samp" id="f" autocomplete="off">' + closeBtn() +
         '<div class="brand">BASTION ONLINE</div>';
-      var emb = bizOf(d.caption), cap = String(d.caption == null ? '' : d.caption).replace(BIZ_TAG, '');
+      var emb = bizOf(d.caption) || jobOf(d.caption), cap = String(d.caption == null ? '' : d.caption).replace(BIZ_TAG, '').replace(JOB_TAG, '');
       if (!emb) emb = emblemOf(cap);
       html += emb ? '<h1 class="has-emb">' + emblemImg(emb, 'emb-h') + '<span>' + colorize(cap) + '</span></h1>'
         : '<h1>' + (colorize(cap) || '&nbsp;') + '</h1>';
@@ -776,6 +789,7 @@ function vipImg(level, cls) {
         // Список организаций (/orgs и т.п.): эмблема у названия фракции
         var orgList = /организац|фракци|faction|банд/i.test(plain(cap) + ' ' + (head || ''));
         var bizList = !orgList && /виды бизнес/i.test(plain(cap));   // /biztypes: значок у вида
+        var jobList = !orgList && /^работы/i.test(plain(cap).trim());  // GPS «Работы»: значок у работы
         var narrow = hc && cols > 2 && /^(№|#|id)$/i.test(plain(hc[0]).trim());   // узкая колонка номера
         var grid = 'grid-template-columns:' + (narrow ? '3em minmax(0,1.6fr) repeat(' + (cols - 2) + ',minmax(0,1fr))'
           : cols > 1 ? 'minmax(0,1.6fr) repeat(' + (cols - 1) + ',minmax(0,1fr))' : 'minmax(0,1fr)');
@@ -785,7 +799,7 @@ function vipImg(level, cls) {
           rows.map(function (c, i) {
             return '<div class="r' + (i === 0 ? ' sel' : '') + '" data-i="' + i + '" style="' + grid + '">' +
               c.map(function (x, j) {
-                var ic = orgList ? emblemOf(x) : bizList && j === 0 ? bizByName(x) : '';
+                var ic = orgList ? emblemOf(x) : j !== 0 ? '' : bizList ? bizByName(x) : jobList ? jobByName(x) : '';
                 return '<div>' + emblemImg(ic, 'emb-r') + colorize(x) + '</div>';
               }).join('') + '</div>';
           }).join('') + '<div class="nothing" id="none" hidden>Ничего не найдено</div></div>';
@@ -902,7 +916,7 @@ function vipImg(level, cls) {
   }
 
   // Предпросмотр в браузере ПК: index.html#login / #register / #gender / #donate / #donate-vip / #inventory / #stats,
-  // обычные диалоги: #samp0 … #samp5 (стиль диалога), #samp6-7 фракции, #samp8-9 бизнесы
+  // обычные диалоги: #samp0 … #samp5 (стиль диалога), #samp6-7 фракции, #samp8-9 бизнесы, #samp10-11 работы
   var SAMPLE = {
     0: ['{FF7A1A}Информация', 'Добро пожаловать на {FF7A1A}Bastion{FFFFFF}!\nВаш баланс: {4CD07D}$15 000\n{A9C4E4}Удачной игры.'],
     1: ['Перевод денег', 'Введите сумму перевода игроку {FF7A1A}Ivan_Petrov{FFFFFF}:'],
@@ -915,12 +929,16 @@ function vipImg(level, cls) {
     7: ['Все организации', '№\tОрганизация\tНастроено\n1\t{3A6EFF}Полиция LSPD\t\n2\t{FF8080}Больница LS (EMS)\t\n3\t{10A010}Grove Street Families\t\n4\t{B040FF}The Ballas\t\n5\t{00C8F0}Varrios Los Aztecas\t\n6\t{6C8CD5}ФБР\t\n7\t{6B8E23}Армия\t\n8\t{FFD700}Los Santos Vagos\t\n9\t{CCCCCC}Мэрия\t\n10\t{E5484D}СМИ\t'],
     8: ['{B12C08}{FFFFFF}Burger Shot Ganton', 'Товар\tЦена\nБургер\t$30\nКартошка\t$15\nКола\t$10'],
     9: ['Виды бизнесов', 'Вид\tЦена у штата\tДоход за PayDay\nМагазин 24/7\t$50000\t$500\nБар\t$30000\t$300\nМагазин одежды\t$35000\t$350\n' +
-      'Оружейный магазин\t$80000\t$800\nКазино\t$200000\t$2000\nАЗС\t$60000\t$600\nАвтомастерская\t$70000\t$700\nЗакусочная\t$25000\t$250\nАптека\t$40000\t$400']
+      'Оружейный магазин\t$80000\t$800\nКазино\t$200000\t$2000\nАЗС\t$60000\t$600\nАвтомастерская\t$70000\t$700\nЗакусочная\t$25000\t$250\nАптека\t$40000\t$400'],
+    10: ['{10B003}{FFFFFF}Устройство на работу', '{FFFFFF}Работа: {FF9900}Таксист\n\n{FFFFFF}Вози пассажиров и принимай вызовы диспетчера (/taxi).\n\n' +
+      '{AAAAAA}Стаж: каждые 20 заданий +5% к оплате (до +50%).\n\n{FFFFFF}Устроиться?'],
+    11: ['Работы', 'Работа: Грузчик {AAAAAA}— 350 м\nРабота: Таксист {AAAAAA}— 1.2 км\nРабота: Дальнобойщик {AAAAAA}— 1.3 км\nРабота: Механик {AAAAAA}— 2.1 км\n' +
+      'Работа: Рыбак {AAAAAA}— 2.4 км\nРабота: Фермер {AAAAAA}— 3.0 км\nРабота: Инкассатор {AAAAAA}— 3.6 км\nРабота: Мусорщик {AAAAAA}— 4.2 км\nРабота: Водитель автобуса {AAAAAA}— 1.4 км']
   };
-  var mh = /^#samp([0-9])$/.exec(location.hash);
+  var mh = /^#samp([0-9]|1[01])$/.exec(location.hash);
   if (!window.BastionNative && mh) {
     BastionUI.open({ window: 'samp', button1: 'Выбрать', button2: +mh[1] ? 'Отмена' : '',
-      data: { style: [0, 1, 2, 3, 4, 5, 4, 5, 5, 5][mh[1]], caption: SAMPLE[mh[1]][0], text: SAMPLE[mh[1]][1] } });
+      data: { style: [0, 1, 2, 3, 4, 5, 4, 5, 5, 5, 0, 2][mh[1]], caption: SAMPLE[mh[1]][0], text: SAMPLE[mh[1]][1] } });
     document.body.style.background = '#2b3440';
   } else if (!window.BastionNative && location.hash) {
     BastionUI.open({ window: location.hash.slice(1).replace(/-vip$/, ''), button1: 'Войти', button2: 'Выход',

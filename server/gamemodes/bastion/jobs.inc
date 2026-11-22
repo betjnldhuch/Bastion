@@ -168,6 +168,7 @@ static gTaxiCaller[MAX_PLAYERS] = { INVALID_PLAYER_ID, ... };   // к кому едет т
 // Предложение механика (окно у игрока)
 static gMechOfferFrom[MAX_PLAYERS] = { INVALID_PLAYER_ID, ... };
 static gMechOfferFromDb[MAX_PLAYERS];
+static gHireJob[MAX_PLAYERS];                   // какую работу предложили в окне устройства
 static gMechOfferType[MAX_PLAYERS];             // 1 — ремонт, 2 — бензин
 
 // ---------------------------------------------------------------------
@@ -405,6 +406,36 @@ static bool:Jobs_InOwnVehicle(playerid)
 // ---------------------------------------------------------------------
 //  Команды
 // ---------------------------------------------------------------------
+// Короткое описание работы для окна устройства
+static Job_Desc(job)
+{
+	new s[160];
+	switch (job)
+	{
+		case JOB_LOADER:    strcat(s, "Носи ящики в порту. Платят за каждый ящик.");
+		case JOB_PIZZA:     strcat(s, "Развози пиццу на мопеде по адресам.");
+		case JOB_TAXI:      strcat(s, "Вози пассажиров и принимай вызовы диспетчера (/taxi).");
+		case JOB_BUS:       strcat(s, "Езди по маршруту и останавливайся на остановках.");
+		case JOB_TRUCKER:   strcat(s, "Развози грузы по штату. Чем дальше, тем больше платят.");
+		case JOB_MECHANIC:  strcat(s, "Чини машины и заправляй их на эвакуаторе (/repair, /refill).");
+		case JOB_FISHER:    strcat(s, "Лови рыбу на пирсе (/fish) и сдавай улов у значка работы.");
+		case JOB_FARMER:    strcat(s, "Собирай урожай на грядках и носи ящики в амбар.");
+		case JOB_COLLECTOR: strcat(s, "Объезжай банкоматы и отвози деньги в хранилище. Машину могут ограбить.");
+		case JOB_GARBAGE:   strcat(s, "Объезжай мусорные баки на мусоровозе и разгружайся на свалке.");
+	}
+	return s;
+}
+
+static Jobs_Hire(playerid, job)
+{
+	Job_Stop(playerid);
+	Player[playerid][pJob] = job;
+	gJobExp[playerid] = 0;
+	Jobs_SaveExp(playerid);
+	Account_Save(playerid);
+	SendClientMessage(playerid, COLOR_GREEN, "Ты устроился на работу: %s. Начать смену: /work", Job_GetName(job));
+}
+
 stock bool:Cmd_GetJob(playerid)
 {
 	new job = Jobs_GetNearbyHQ(playerid);
@@ -417,12 +448,13 @@ stock bool:Cmd_GetJob(playerid)
 	if (job != JOB_LOADER && job != JOB_PIZZA && (job < JOB_FISHER || WorkLife_NeedsLicense(job)) && !Licenses_Has(playerid, LIC_CAR))
 		return SendClientMessage(playerid, COLOR_GREY, "Сюда берут только с правами на авто. Автошкола — у мэрии (/exam).");
 
-	Job_Stop(playerid);
-	Player[playerid][pJob] = job;
-	gJobExp[playerid] = 0;
-	Jobs_SaveExp(playerid);
-	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_GREEN, "Ты устроился на работу: %s. Начать смену: /work", Job_GetName(job));
+	// Окно устройства на работу со значком работы (ui/jobs), само устройство — в Jobs_OnDialog
+	gHireJob[playerid] = job;
+	new text[512], cur[80];
+	if (Player[playerid][pJob] != JOB_NONE) format(cur, sizeof cur, "\n{FF6347}Сейчас работаешь: %s, стаж обнулится.", Job_GetName(Player[playerid][pJob]));
+	format(text, sizeof text, "{FFFFFF}Работа: {FF9900}%s\n\n{FFFFFF}%s\n\n{AAAAAA}Стаж: каждые %d заданий +5%% к оплате (до +%d%%).%s\n\n{FFFFFF}Устроиться?",
+		Job_GetName(job), Job_Desc(job), JOB_SKILL_STEP, JOB_SKILL_MAX_BONUS, cur);
+	ShowPlayerDialog(playerid, DIALOG_JOB_HIRE, DIALOG_STYLE_MSGBOX, Job_IconCaption(job, "Устройство на работу"), "%s", "Устроиться", "Отмена", text);
 	return true;
 }
 
@@ -581,10 +613,10 @@ static bool:Jobs_MechOffer(playerid, const params[], type)
 	gMechOfferFromDb[target] = Player[playerid][pDbId];
 	gMechOfferType[target] = type;
 	if (type == 1)
-		ShowPlayerDialog(target, DIALOG_JOB_OFFER, DIALOG_STYLE_MSGBOX, "Механик",
+		ShowPlayerDialog(target, DIALOG_JOB_OFFER, DIALOG_STYLE_MSGBOX, Job_IconCaption(JOB_MECHANIC, "Механик"),
 			"{FFFFFF}Механик %s предлагает починить машину.\nЦена: {FFFF00}$%d\n\n{FFFFFF}Согласен?", "Да", "Нет", GetRPName(playerid), MECH_REPAIR_PRICE);
 	else
-		ShowPlayerDialog(target, DIALOG_JOB_OFFER, DIALOG_STYLE_MSGBOX, "Механик",
+		ShowPlayerDialog(target, DIALOG_JOB_OFFER, DIALOG_STYLE_MSGBOX, Job_IconCaption(JOB_MECHANIC, "Механик"),
 			"{FFFFFF}Механик %s предлагает залить %d л бензина.\nЦена: {FFFF00}$%d\n\n{FFFFFF}Согласен?", "Да", "Нет", GetRPName(playerid), FUEL_CANISTER, MECH_FUEL_PRICE);
 	SendClientMessage(playerid, COLOR_WHITE, "Предложение отправлено %s.", GetRPName(target));
 	return true;
@@ -595,6 +627,20 @@ stock bool:Cmd_Refill(playerid, const params[]) { return Jobs_MechOffer(playerid
 
 stock Jobs_OnDialog(playerid, dialogid, response)
 {
+	if (dialogid == DIALOG_JOB_HIRE)
+	{
+		new job = gHireJob[playerid];
+		gHireJob[playerid] = JOB_NONE;
+		if (!response || job == JOB_NONE) return 1;
+		if (Jobs_GetNearbyHQ(playerid) != job)
+		{
+			SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от значка работы.");
+			return 1;
+		}
+		if (Player[playerid][pJob] == job) return 1;
+		Jobs_Hire(playerid, job);
+		return 1;
+	}
 	if (dialogid != DIALOG_JOB_OFFER) return 0;
 	new mech = gMechOfferFrom[playerid], type = gMechOfferType[playerid];
 	gMechOfferFrom[playerid] = INVALID_PLAYER_ID;
