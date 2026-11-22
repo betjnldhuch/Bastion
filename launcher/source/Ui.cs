@@ -467,6 +467,19 @@ namespace BastionLauncher
         string statusText = "";
         List<string[]> news = new List<string[]>();
         Image bgImage;
+        // Логотипы вшиты в exe (/resource в build.bat и pc-launcher.yml)
+        static readonly Image LogoBanner = Res("logo-banner.png");
+        static readonly Image LogoShield = Res("logo-shield.png");
+        static Image Res(string name)
+        {
+            try
+            {
+                using (Stream st = typeof(MainForm).Assembly.GetManifestResourceStream(name))
+                    if (st != null) using (Image tmp = Image.FromStream(st)) return new Bitmap(tmp);
+            }
+            catch (Exception) { }
+            return null;
+        }
         Bitmap bgCache;
         public Bitmap Background { get { if (bgCache == null) bgCache = BuildBackground(); return bgCache; } }
         System.Windows.Forms.Timer refresh;
@@ -691,11 +704,19 @@ namespace BastionLauncher
                 // мини-логотип в шапке
                 using (Font f = Theme.F(8.5f, FontStyle.Bold))
                 {
-                    g.FillRectangle(orange, 22, 14, 8, 8);
-                    Theme.Spaced(g, cfg.Title.ToUpperInvariant(), f, Theme.Dim, 40, 11, 2.5f);
+                    if (LogoShield != null) g.DrawImage(LogoShield, 16, 6, 24, 24);
+                    else g.FillRectangle(orange, 22, 14, 8, 8);
+                    Theme.Spaced(g, cfg.Title.ToUpperInvariant(), f, Theme.Dim, LogoShield != null ? 46 : 40, 11, 2.5f);
                 }
 
-                // крупный заголовок
+                // крупный заголовок: логотип-баннер, без него — нарисованный текст
+                if (LogoBanner != null)
+                {
+                    float lw = 450, lh = lw * LogoBanner.Height / LogoBanner.Width;
+                    g.DrawImage(LogoBanner, LeftX - 12, 236 - lh, lw, lh);
+                }
+                else
+                {
                 string title = cfg.Title.ToUpperInvariant();
                 string first = title, rest = "";
                 int sp = title.IndexOf(' ');
@@ -704,6 +725,7 @@ namespace BastionLauncher
                 g.FillRectangle(orange, LeftX, 196, 44, 4);
                 using (Font f = Theme.F(9f, FontStyle.Bold))
                     Theme.Spaced(g, (rest.Length > 0 ? rest + "  ·  " : "") + "SAN ANDREAS MULTIPLAYER", f, Theme.Dim, LeftX + 60, 190, 3f);
+                }
 
                 // новости
                 if (!settings.Visible)
