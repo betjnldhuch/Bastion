@@ -1,12 +1,12 @@
 // =====================================================================
-//  vip.inc Ч VIP с уровн€ми: Bronze, Silver, Gold, Platinum.
+//  vip.inc Ч VIP с уровн€ми: Bronze, Silver, Gold, Platinum, Diamond.
 //
 //  ѕодключаетс€ из donate.inc. VIP покупаетс€ за донат-монеты в /donate
 //  (или выдаЄтс€ админом: /setvip). ¬се цифры Ч в таблице ниже:
-//  столбцы идут по уровн€м 0 (нет VIP), 1 Bronze, 2 Silver, 3 Gold, 4 Platinum.
+//  столбцы идут по уровн€м 0 (нет VIP), 1 Bronze, 2 Silver, 3 Gold, 4 Platinum, 5 Diamond.
 //
 //  ƒл€ других модулей:
-//    Vip_GetLevel(playerid)      Ч уровень VIP игрока: 0 (нет) .. 4
+//    Vip_GetLevel(playerid)      Ч уровень VIP игрока: 0 (нет) .. 5
 //    Vip_HouseBonus(playerid)    Ч сколько домов сверх обычного лимита
 //    Vip_CarBonus(playerid)      Ч сколько машин сверх обычного лимита
 //    Vip_Discount(playerid)      Ч скидка в магазинах и на услуги, %
@@ -23,35 +23,35 @@
 //    /viptag    Ч надпись VIP над головой вкл/выкл  Silver+
 //    /vipfuel   Ч полный бак (сто€)                 Gold+
 //    /vipad     Ч объ€вление на весь сервер         Gold+
-//  јдмин 6+: /setvip [id] [уровень 0-4] [дней]
+//  јдмин 6+: /setvip [id] [уровень 0-5] [дней]
 // =====================================================================
 
-#define VIP_MAX             4
+#define VIP_MAX             5
 #define VIP_DAYS            30          // на сколько дней покупаетс€ VIP
 #define VIP_TAG_LEVEL       2           // с какого уровн€ надпись над головой
 #define VIP_JOIN_LEVEL      4           // с какого уровн€ объ€вление о входе на сервер
 #define VIP_DAILY_HOURS     20          // раз во столько часов даЄтс€ /vipbonus
 #define VIP_TAG_RANGE       15.0
 
-//                                             нет  Bronze  Silver  Gold    Platinum
-static const gVipName[VIP_MAX + 1][] =       { "нет", "Bronze", "Silver", "Gold", "Platinum" };
-static const gVipHex[VIP_MAX + 1][] =        { "AFAFAF", "CD7F32", "C8D0D8", "FFD700", "7FE8FF" };
-static const gVipColor[VIP_MAX + 1] =        { 0xAFAFAFFF, 0xCD7F32FF, 0xC8D0D8FF, 0xFFD700FF, 0x7FE8FFFF };
-static const gVipPrice[VIP_MAX + 1] =        { 0,   150,    300,    600,    1200 };  // монет за VIP_DAYS дней
-static const gVipPayday[VIP_MAX + 1] =       { 0,   1000,   2000,   3500,   5000 };  // прибавка $ к каждому PayDay
-static const gVipExp[VIP_MAX + 1] =          { 0,   0,      1,      1,      2 };     // доп. опыт за PayDay (1 = опыт x2, 2 = x3)
-static const gVipDaily[VIP_MAX + 1] =        { 0,   2000,   5000,   10000,  20000 }; // /vipbonus, $
-static const gVipDailyCoins[VIP_MAX + 1] =   { 0,   0,      0,      1,      3 };     // /vipbonus, донат-монет
-static const gVipHospital[VIP_MAX + 1] =     { 0,   25,     50,     100,    100 };   // скидка на счЄт больницы, %
-static const gVipHunger[VIP_MAX + 1] =       { 0,   0,      25,     50,     50 };    // голод медленнее на столько %
-static const gVipDiscount[VIP_MAX + 1] =     { 0,   0,      5,      10,     15 };    // скидка в магазинах, % (Vip_Discount)
-static const gVipHouses[VIP_MAX + 1] =       { 0,   0,      1,      2,      3 };     // доп. дома (Vip_HouseBonus)
-static const gVipCars[VIP_MAX + 1] =         { 0,   1,      1,      2,      3 };     // доп. машины (Vip_CarBonus)
+//                                             нет  Bronze  Silver  Gold    Platinum Diamond
+static const gVipName[VIP_MAX + 1][] =       { "нет", "Bronze", "Silver", "Gold", "Platinum", "Diamond" };
+static const gVipHex[VIP_MAX + 1][] =        { "AFAFAF", "CD7F32", "C8D0D8", "FFD700", "7FE8FF", "5AA9FF" };
+static const gVipColor[VIP_MAX + 1] =        { 0xAFAFAFFF, 0xCD7F32FF, 0xC8D0D8FF, 0xFFD700FF, 0x7FE8FFFF, 0x5AA9FFFF };
+static const gVipPrice[VIP_MAX + 1] =        { 0,   150,    300,    600,    1200,   2400 };  // монет за VIP_DAYS дней
+static const gVipPayday[VIP_MAX + 1] =       { 0,   1000,   2000,   3500,   5000,   7500 };  // прибавка $ к каждому PayDay
+static const gVipExp[VIP_MAX + 1] =          { 0,   0,      1,      1,      2,      3 };     // доп. опыт за PayDay (1 = опыт x2, 2 = x3)
+static const gVipDaily[VIP_MAX + 1] =        { 0,   2000,   5000,   10000,  20000,  35000 }; // /vipbonus, $
+static const gVipDailyCoins[VIP_MAX + 1] =   { 0,   0,      0,      1,      3,      5 };     // /vipbonus, донат-монет
+static const gVipHospital[VIP_MAX + 1] =     { 0,   25,     50,     100,    100,    100 };   // скидка на счЄт больницы, %
+static const gVipHunger[VIP_MAX + 1] =       { 0,   0,      25,     50,     50,     75 };    // голод медленнее на столько %
+static const gVipDiscount[VIP_MAX + 1] =     { 0,   0,      5,      10,     15,     20 };    // скидка в магазинах, % (Vip_Discount)
+static const gVipHouses[VIP_MAX + 1] =       { 0,   0,      1,      2,      3,      4 };     // доп. дома (Vip_HouseBonus)
+static const gVipCars[VIP_MAX + 1] =         { 0,   1,      1,      2,      3,      4 };     // доп. машины (Vip_CarBonus)
 // ѕерезар€дка команд в минутах; 0 Ч команда на этом уровне недоступна
-static const gVipFeedCd[VIP_MAX + 1] =       { 0,   0,      60,     45,     30 };
-static const gVipFixCd[VIP_MAX + 1] =        { 0,   0,      30,     20,     10 };
-static const gVipFuelCd[VIP_MAX + 1] =       { 0,   0,      0,      45,     30 };
-static const gVipAdCd[VIP_MAX + 1] =         { 0,   0,      0,      60,     30 };
+static const gVipFeedCd[VIP_MAX + 1] =       { 0,   0,      60,     45,     30,     20 };
+static const gVipFixCd[VIP_MAX + 1] =        { 0,   0,      30,     20,     10,     5 };
+static const gVipFuelCd[VIP_MAX + 1] =       { 0,   0,      0,      45,     30,     20 };
+static const gVipAdCd[VIP_MAX + 1] =         { 0,   0,      0,      60,     30,     20 };
 
 enum
 {
@@ -490,7 +490,7 @@ static Vip_RowCd(text[], size, const name[], const table[])
 
 stock Vip_ShowPerks(playerid)
 {
-	new text[1900], line[48], exp[VIP_MAX + 1];
+	new text[2400], line[48], exp[VIP_MAX + 1];
 	strcat(text, "{FFFFFF}ѕривилеги€");
 	for (new l = 1; l <= VIP_MAX; l++)
 	{

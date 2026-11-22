@@ -89,6 +89,18 @@ button { font: inherit; cursor: pointer; }
 .pill.gold { border-color: rgba(255,201,64,.45); background: rgba(255,201,64,.08); }
 .pill.gold b { color: var(--gold); }
 .pill.vip { border-color: rgba(255,201,64,.6); color: var(--gold); }
+.st-head { display: flex; align-items: center; gap: 12px; margin: 4px 0 12px; }
+.st-head h1 { margin: 0; }
+.st-badge { width: 64px; height: 64px; flex: none; object-fit: contain; filter: drop-shadow(0 3px 6px rgba(0,0,0,.45)); }
+.st-vip { font-family: "Russo One", sans-serif; font-size: 14px; margin-top: 2px; }
+.mut { color: var(--muted); }
+.st-rows { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0 0 12px; font-size: 14px; overflow: auto; }
+.st-rows dt { color: var(--muted); }
+.st-rows dd { margin: 0; color: var(--text); }
+@media (max-height: 420px) { .st-badge { width: 44px; height: 44px; } .st-head { margin: 0 0 6px; } .st-rows { gap: 2px 14px; font-size: 12.5px; } }
+.vbadge { width: 22px; height: 22px; flex: none; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
+.tier .tbadge { display: block; width: 64px; height: 64px; margin: 0 auto 2px; object-fit: contain; filter: drop-shadow(0 3px 6px rgba(0,0,0,.45)); }
+.good .ico img { width: 1.6em; height: 1.6em; object-fit: contain; vertical-align: middle; }
 .coin { width: 16px; height: 16px; border-radius: 50%; flex: none; background: radial-gradient(circle at 35% 30%, #fff3b0, var(--gold) 45%, #b8860b);
   box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
 .note { border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; font-size: 13px; animation: rise .22s ease-out; }
@@ -121,8 +133,8 @@ button { font: inherit; cursor: pointer; }
 .pack b { display: flex; align-items: center; justify-content: center; gap: 5px; font-family: "Russo One", sans-serif; font-weight: 400; font-size: 16px; color: var(--gold); }
 .pack span { display: block; color: var(--green); font-size: 13px; margin-top: 2px; }
 .pack em { display: inline-block; font-style: normal; font-size: 10px; margin-top: 3px; padding: 1px 6px; border-radius: 6px; background: rgba(76,208,125,.14); color: var(--green); }
-.card.shop.vipw { width: min(900px, 100%); }
-.tiers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; overflow: auto; min-height: 0; flex: 1 1 auto; }
+.card.shop.vipw { width: min(1080px, 100%); }
+.tiers { display: grid; grid-template-columns: repeat(var(--tn, 4), 1fr); gap: 8px; overflow: auto; min-height: 0; flex: 1 1 auto; }
 @media (max-width: 640px) { .tiers { grid-template-columns: 1fr 1fr; } }
 .tier { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 12px; border: 1px solid var(--line);
   border-top: 3px solid var(--tc); background: linear-gradient(180deg, rgba(255,255,255,.03), var(--panel-hi) 40%); }
@@ -135,6 +147,7 @@ button { font: inherit; cursor: pointer; }
 .tier li::before { content: ""; position: absolute; left: 0; top: 8px; width: 5px; height: 5px; border-radius: 50%; background: var(--tc); }
 .tier li b { color: var(--text); font-weight: 600; }
 .tier .btn { flex: none; height: 38px; font-size: 13px; }
+@media (max-height: 420px) { .tier .tbadge { width: 44px; height: 44px; } }
 .tier .btn[data-sure] { background: linear-gradient(180deg, var(--green), #2c9a57); }
 .packs { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
 @media (max-height: 420px) { .card.shop.vipw { display: block; } .vipw .shop-foot { display: none; } .vipw .row { margin-top: 8px; } .vipw .row .btn { height: 38px; } .tier ul { font-size: 11px; } }
@@ -248,6 +261,12 @@ button { font: inherit; cursor: pointer; }
 <body>
 <div id="root"></div>
 <script>
+var VIP_IMG = ['bronze', 'silver', 'gold', 'platinum', 'diamond'], VIP_NAME = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond'];
+var VIP_COLOR = ['CD7F32', 'C8D0D8', 'FFD700', '7FE8FF', '5AA9FF'];   // как gVipHex в vip.inc
+function vipImg(level, cls) {
+  var f = VIP_IMG[(level | 0) - 1];
+  return f ? '<img' + (cls ? ' class="' + cls + '"' : '') + ' src="vip/' + f + '.png" alt="" draggable="false" onerror="this.remove()">' : '';
+}
 (function () {
   var root = document.getElementById('root');
   var current = null;
@@ -397,6 +416,27 @@ button { font: inherit; cursor: pointer; }
       b1.onclick = function () { respond(1, -1, ''); };
       document.getElementById('b2').onclick = document.getElementById('x').onclick = function () { respond(0, -1, ''); };
     },
+    // Статистика (/stats, commands.inc): ник со значком VIP и строки
+    stats: function (d, m) {
+      var lv = d.vipLevel | 0, vc = VIP_COLOR[lv - 1];
+      function money(n) { return '$' + String(n | 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+      var rows = [
+        ['Уровень', (d.level | 0) + ' <span class="mut">(опыт ' + (d.exp | 0) + '/' + (d.expMax | 0) + ')</span>'],
+        ['Деньги', money(d.money) + ' <span class="mut">в банке ' + money(d.bank) + '</span>'],
+        ['Телефон', esc(d.phone)], ['Работа', esc(d.job)],
+        ['Фракция', esc(d.faction) + (d.rank ? ' <span class="mut">(' + esc(d.rank) + ')</span>' : '')],
+        ['Семья', esc(d.family)], ['Розыск', (d.wanted | 0) + ' зв.'], ['Долг штату', money(d.debt)],
+        ['Сытость', (d.hunger | 0) + '%'], ['Дом', esc(d.house)], ['Машина', esc(d.car)]
+      ];
+      if (d.admin > 0) rows.push(['Админка', String(d.admin | 0)]);
+      root.innerHTML = '<div class="card wide st">' + closeBtn() + '<div class="brand">BASTION ONLINE</div>' +
+        '<div class="st-head">' + (lv ? vipImg(lv, 'st-badge') : '') + '<div><h1>' + esc(d.name) + '</h1>' +
+        (lv ? '<div class="st-vip" style="color:#' + vc + '">VIP ' + VIP_NAME[lv - 1] + (d.vip > 0 ? ' · ещё ' + (d.vip | 0) + ' дн.' : '') + '</div>'
+            : '<div class="st-vip mut">Без VIP · /donate</div>') + '</div></div>' +
+        '<dl class="st-rows">' + rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl>' +
+        '<div class="row"><button class="btn primary" id="b1">' + esc(m.button1 || 'Закрыть') + '</button></div></div>';
+      document.getElementById('b1').onclick = document.getElementById('x').onclick = function () { respond(1, -1, ''); };
+    },
     referral: function (d, m) {
       root.innerHTML = '<form class="card" id="f" autocomplete="off"><div class="brand">BASTION ONLINE</div><h1>Кто тебя пригласил?</h1>' +
         '<p class="sub">Если на сервер тебя позвал друг, впиши его ник. Никто не звал — просто пропусти.</p>' +
@@ -414,6 +454,8 @@ button { font: inherit; cursor: pointer; }
         respond(1, -1, v);
       };
     },
+    // Значки VIP: assets/ui/vip/<уровень>.png (прозрачный фон), уровни 1..5 по возрастанию
+    // (vip.inc: Bronze, Silver, Gold, Platinum, Diamond).
     // Донат: магазин -> карточка товара или уровни VIP -> ответ "товар аргумент" (donate.inc)
     donate: function (d, m) {
       var coins = d.coins | 0, prices = d.prices || [], rate = d.rate || 1000;
@@ -425,8 +467,8 @@ button { font: inherit; cursor: pointer; }
       var maxBonus = Math.max.apply(null, [0].concat(pb));
       var goods = [
         { id: 0, ico: '💵', t: 'Игровые деньги', s: '1 монета = ' + money(rate) + '.' + (maxBonus ? ' За крупные пачки бонус до +' + maxBonus + '%.' : ''), p: packs[0], from: 1 },
-        { id: 1, ico: '👑', t: tiers.length ? 'VIP: 4 уровня' : 'VIP на ' + d.vipDays + ' дней', top: 1, from: tiers.length ? 1 : 0,
-          s: tiers.length ? 'Bronze, Silver, Gold, Platinum: прибавка к зарплате, опыт, ежедневный бонус, свои команды.' : 'Прибавка и двойной опыт каждый PayDay.',
+        { id: 1, ico: tiers.length ? vipImg(tiers.length) || '👑' : '👑', t: tiers.length ? 'VIP: ' + tiers.length + ' уровней' : 'VIP на ' + d.vipDays + ' дней', top: 1, from: tiers.length ? 1 : 0,
+          s: tiers.length ? tiers.map(function (t) { return t.n; }).join(', ') + ': прибавка к зарплате, опыт, ежедневный бонус, свои команды.' : 'Прибавка и двойной опыт каждый PayDay.',
           p: tiers.length ? tiers[0].p : prices[1] | 0, tag: 'ХИТ' },
         { id: 6, ico: '🎁', t: 'Кейс', s: 'Случайный приз: деньги, донат-монеты, VIP или редкий скин.', tag: 'НОВОЕ' },
         { id: 9, ico: '🚀', t: 'Стартовый набор', s: money(d.starterMoney | 0) + ', VIP ' + ((tiers[(d.starterVip | 0) - 1] || {}).n || '') + ' на ' + (d.starterDays | 0) + ' дн. и лицензия на авто. Один раз на аккаунт.',
@@ -452,7 +494,7 @@ button { font: inherit; cursor: pointer; }
       function head(title) {
         var t = tiers[lvl - 1];
         return closeBtn() + '<div class="shop-head"><div><div class="brand">BASTION ONLINE</div><h1>' + (title || 'Донат') + '</h1></div>' +
-          '<div class="wallet">' + (d.vip > 0 ? '<div class="pill vip"' + (t ? ' style="color:#' + t.c + ';border-color:#' + t.c + '"' : '') + '>👑 ' +
+          '<div class="wallet">' + (d.vip > 0 ? '<div class="pill vip"' + (t ? ' style="color:#' + t.c + ';border-color:#' + t.c + '"' : '') + '>' + (vipImg(lvl, 'vbadge') || '👑') + ' ' +
             (t ? esc(t.n) : 'VIP') + ' ещё <b>' + d.vip + '</b> дн.</div>' : '') +
           '<div class="pill gold"><i class="coin"></i><b>' + coins + '</b> монет</div></div></div>';
       }
@@ -497,10 +539,10 @@ button { font: inherit; cursor: pointer; }
       // Уровни VIP: первое нажатие — подтверждение, второе — покупка ("1 уровень")
       function vip(note, ok) {
         root.innerHTML = '<div class="card shop vipw">' + head('VIP на ' + (d.vipDays | 0) + ' дней') + noteBox(note, ok) +
-          '<div class="tiers">' + tiers.map(function (t, i) {
+          '<div class="tiers" style="--tn:' + Math.min(tiers.length, 5) + '">' + tiers.map(function (t, i) {
             var n = i + 1, low = lvl > n, short = coins < t.p;
             return '<div class="tier' + (lvl === n ? ' cur' : '') + '" style="--tc:#' + t.c + '">' +
-              '<div class="tn">' + esc(t.n) + (lvl === n ? '<em>ТВОЙ</em>' : '') + '</div><div class="tp">' + coin(t.p) + '</div>' +
+              vipImg(n, 'tbadge') + '<div class="tn">' + esc(t.n) + (lvl === n ? '<em>ТВОЙ</em>' : '') + '</div><div class="tp">' + coin(t.p) + '</div>' +
               '<ul>' + perks(t, n) + '</ul>' +
               '<button class="btn' + (low || short ? '' : ' primary') + '" data-n="' + n + '"' + (low || short ? ' disabled' : '') + '>' +
               (low ? 'Ниже твоего' : short ? 'Не хватает ' + (t.p - coins) : lvl === n ? 'Продлить' : lvl ? 'Улучшить' : 'Купить') + '</button></div>';
@@ -637,6 +679,7 @@ button { font: inherit; cursor: pointer; }
           '<div class="pill">🍗 <b>' + (d.hunger | 0) + '%</b>' + meter(d.hunger | 0) + '</div>' +
           '<div class="pill">👕 <b>' + outs + '/' + (d.outMax || 5) + '</b></div>' +
           (d.money != null ? '<div class="pill">💵 <b>$' + String(d.money | 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + '</b></div>' : '') +
+          (d.vipLevel > 0 && VIP_IMG[d.vipLevel - 1] ? '<div class="pill vip">' + vipImg(d.vipLevel, 'vbadge') + ' <b>VIP ' + VIP_NAME[d.vipLevel - 1] + '</b></div>' : '') +
           (d.mask ? '<div class="pill gold">🎭 <b>в маске</b></div>' : '') + '</div></div>' +
           (note ? '<div class="note ' + (ok ? 'ok' : 'bad') + '" id="inote">' + esc(plain(note)) + '</div>' : '') +
           '<div class="chips">' + tabs.map(function (t) {
@@ -872,7 +915,7 @@ button { font: inherit; cursor: pointer; }
     });
   }
 
-  // Предпросмотр в браузере ПК: index.html#login / #register / #gender / #donate / #donate-vip / #inventory,
+  // Предпросмотр в браузере ПК: index.html#login / #register / #gender / #donate / #donate-vip / #inventory / #stats,
   // обычные диалоги: #samp0 … #samp5 (стиль диалога), #samp6-7 фракции, #samp8-9 бизнесы, #samp10-11 работы
   var SAMPLE = {
     0: ['{FF7A1A}Информация', 'Добро пожаловать на {FF7A1A}Bastion{FFFFFF}!\nВаш баланс: {4CD07D}$15 000\n{A9C4E4}Удачной игры.'],
@@ -899,12 +942,13 @@ button { font: inherit; cursor: pointer; }
     document.body.style.background = '#2b3440';
   } else if (!window.BastionNative && location.hash) {
     BastionUI.open({ window: location.hash.slice(1).replace(/-vip$/, ''), button1: 'Войти', button2: 'Выход',
-      data: { name: 'Ivan_Petrov', min: 6, max: 32, coins: 420, vip: 12, vipLevel: 2, rate: 1000, packs: [10, 50, 100, 500, 1000], packBonus: [0, 5, 10, 20, 30], vipDays: 30, vipPayday: 2000,
+      data: { name: 'Ivan_Petrov', level: 7, exp: 12, expMax: 28, bank: 120000, phone: '777', job: 'Таксист', faction: 'LSPD', rank: 'Сержант', family: 'нет', wanted: 0, debt: 0, house: '№12', car: 'модель 560', admin: 0, min: 6, max: 32, coins: 420, vip: 12, vipLevel: 2, rate: 1000, packs: [10, 50, 100, 500, 1000], packBonus: [0, 5, 10, 20, 30], vipDays: 30, vipPayday: 2000,
         prices: [0, 300, 150, 200, 100, 150, 50, 100, 200, 100, 0], warns: 1, lics: 0, starter: 1, starterMoney: 50000, starterVip: 1, starterDays: 7, page: /vip$/.test(location.hash) ? 'vip' : '',
         tiers: [{ n: 'Bronze', c: 'CD7F32', p: 150, pay: 1000, exp: 1, day: 2000, dc: 0, hosp: 25, hun: 0, disc: 0, h: 0, car: 1, feed: 0, fix: 0, fuel: 0, ad: 0, tag: 0, join: 0 },
           { n: 'Silver', c: 'C8D0D8', p: 300, pay: 2000, exp: 2, day: 5000, dc: 0, hosp: 50, hun: 25, disc: 5, h: 1, car: 1, feed: 60, fix: 30, fuel: 0, ad: 0, tag: 1, join: 0 },
           { n: 'Gold', c: 'FFD700', p: 600, pay: 3500, exp: 2, day: 10000, dc: 1, hosp: 100, hun: 50, disc: 10, h: 2, car: 2, feed: 45, fix: 20, fuel: 45, ad: 60, tag: 1, join: 0 },
-          { n: 'Platinum', c: '7FE8FF', p: 1200, pay: 5000, exp: 3, day: 20000, dc: 3, hosp: 100, hun: 50, disc: 15, h: 3, car: 3, feed: 30, fix: 10, fuel: 30, ad: 30, tag: 1, join: 1 }],
+          { n: 'Platinum', c: '7FE8FF', p: 1200, pay: 5000, exp: 3, day: 20000, dc: 3, hosp: 100, hun: 50, disc: 15, h: 3, car: 3, feed: 30, fix: 10, fuel: 30, ad: 30, tag: 1, join: 1 },
+          { n: 'Diamond', c: '5AA9FF', p: 2400, pay: 7500, exp: 4, day: 35000, dc: 5, hosp: 100, hun: 75, disc: 20, h: 4, car: 4, feed: 20, fix: 5, fuel: 20, ad: 20, tag: 1, join: 1 }],
         hunger: 64, hp: 87, mask: 0, outMax: 5, sel: 3, skin: 60, canister: 10, money: 15400, outfits: [[100, 105], [101, 230]], ground: [[4, 6, 2, 'Вода'], [9, 100, 230, 'Одежда']],
         items: [[1, 2, 5, 'Бургер', '+40% сытости'], [6, 4, 5, 'Вода', '+10% сытости, +5 HP'], [3, 1, 3, 'Аптечка', '+50 HP'],
           [4, 2, 3, 'Ремкомплект', 'чинит машину рядом'], [8, 14, 20, 'Сигареты', 'покурить'], [11, 1, 1, 'Игральные кости', 'бросить кости (RP)'],
