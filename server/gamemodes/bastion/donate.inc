@@ -171,7 +171,7 @@ static bool:Donate_HasAllLic(playerid)
 // HTML-окно (клиент Bastion). page: "" Ч магазин, "vip" Ч сразу уровни VIP
 static Donate_ShowUI(playerid, const page[] = "")
 {
-	new json[2048], note[192], packs[64], bonus[48], tiers[900], part[24];
+	new json[2600], note[192], packs[64], bonus[48], tiers[1200], part[24];
 	UI_JsonEscape(note, gDonateNote[playerid]);
 	for (new i = 0; i < sizeof (gDonMoneyPacks); i++)
 	{
@@ -200,7 +200,7 @@ stock bool:Cmd_Donate(playerid)
 	new list[900], line[144];
 	format(list, sizeof list, "“овар\t÷ена\n");
 	format(line, sizeof line, "»гровые деньги\t1 монета = $%d\n", DONATE_MONEY_RATE); strcat(list, line);
-	format(line, sizeof line, "{FFD700}VIP: Bronze, Silver, Gold, Platinum%s\tот %d монет\n", Donate_IsVip(playerid) ? " (продлить, улучшить)" : "", Vip_LevelPrice(1)); strcat(list, line);
+	format(line, sizeof line, "{FFD700}VIP: Bronze, Silver, Gold, Platinum, Diamond%s\tот %d монет\n", Donate_IsVip(playerid) ? " (продлить, улучшить)" : "", Vip_LevelPrice(1)); strcat(list, line);
 	format(line, sizeof line, "Ћюбой скин (в сумку)\t%d монет\n", DONATE_SKIN_PRICE); strcat(list, line);
 	format(line, sizeof line, "+1 уровень\t%d монет\n", DONATE_LEVEL_PRICE); strcat(list, line);
 	format(line, sizeof line, "—н€ть все предупреждени€\t%d монет\n", DONATE_UNWARN_PRICE); strcat(list, line);

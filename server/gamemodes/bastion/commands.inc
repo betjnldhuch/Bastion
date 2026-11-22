@@ -26,13 +26,36 @@ stock bool:Cmd_Stats(playerid)
 	if (gPlayerVeh[playerid] == INVALID_VEHICLE_ID) strcat(car, "нет");
 	else format(car, sizeof car, "модель %d", GetVehicleModel(gPlayerVeh[playerid]));
 
+	new vipLevel = Vip_GetLevel(playerid);
+	if (UI_Has(playerid))
+	{
+		// HTML-окно «stats» (index.html): значок VIP рядом с ником
+		new json[1400], e[6][64];
+		UI_JsonEscape(e[0], Job_GetName(Player[playerid][pJob]));
+		UI_JsonEscape(e[1], Faction_GetName(Player[playerid][pFaction]));
+		UI_JsonEscape(e[2], Faction_GetRankName(Player[playerid][pFaction], Player[playerid][pRank]));
+		UI_JsonEscape(e[3], Family_GetPlayerText(playerid));
+		UI_JsonEscape(e[4], house);
+		UI_JsonEscape(e[5], car);
+		format(json, sizeof json,
+			"{\"name\":\"%s\",\"level\":%d,\"exp\":%d,\"expMax\":%d,\"money\":%d,\"bank\":%d,\"phone\":\"%s\",\"job\":\"%s\",\"faction\":\"%s\",\"rank\":\"%s\",\"family\":\"%s\",\"wanted\":%d,\"debt\":%d,\"hunger\":%d,\"house\":\"%s\",\"car\":\"%s\",\"admin\":%d,\"vipLevel\":%d,\"vip\":%d}",
+			GetRPName(playerid), Player[playerid][pLevel], Player[playerid][pExp], Player[playerid][pLevel] * EXP_PER_LEVEL,
+			GetMoney(playerid), Player[playerid][pBank], phone, e[0], e[1], e[2], e[3], Player[playerid][pWanted], Debts_Total(playerid),
+			Needs_GetHunger(playerid), e[4], e[5], Player[playerid][pAdmin], vipLevel, Vip_DaysLeft(playerid));
+		UI_Show(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "stats", json, "Закрыть");
+		return true;
+	}
+	new vip[48];
+	if (vipLevel > 0) format(vip, sizeof vip, "%s, ещё %d дн.", Vip_LevelName(vipLevel), Vip_DaysLeft(playerid));
+	else strcat(vip, "нет");
+
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Статистика",
-		"{FFFFFF}Имя: {33CCFF}%s\n{FFFFFF}Уровень: %d (опыт %d/%d)\nДеньги: $%d (в банке $%d)\nТелефон: %s\nРабота: %s\nФракция: %s (%s)\nСемья: %s\nРозыск: %d зв.\nДолг штату: $%d\nСытость: %d%%\nДом: %s\nМашина: %s\nАдминка: %d",
+		"{FFFFFF}Имя: {33CCFF}%s\n{FFFFFF}Уровень: %d (опыт %d/%d)\nДеньги: $%d (в банке $%d)\nТелефон: %s\nРабота: %s\nФракция: %s (%s)\nСемья: %s\nРозыск: %d зв.\nДолг штату: $%d\nСытость: %d%%\nДом: %s\nМашина: %s\nVIP: %s\nАдминка: %d",
 		"Закрыть", "",
 		GetRPName(playerid), Player[playerid][pLevel], Player[playerid][pExp], Player[playerid][pLevel] * EXP_PER_LEVEL,
 		GetMoney(playerid), Player[playerid][pBank], phone, Job_GetName(Player[playerid][pJob]),
 		Faction_GetName(Player[playerid][pFaction]), Faction_GetRankName(Player[playerid][pFaction], Player[playerid][pRank]),
-		Family_GetPlayerText(playerid), Player[playerid][pWanted], Debts_Total(playerid), Needs_GetHunger(playerid), house, car, Player[playerid][pAdmin]);
+		Family_GetPlayerText(playerid), Player[playerid][pWanted], Debts_Total(playerid), Needs_GetHunger(playerid), house, car, vip, Player[playerid][pAdmin]);
 	return true;
 }
 
