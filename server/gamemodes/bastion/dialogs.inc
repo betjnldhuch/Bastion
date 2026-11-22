@@ -107,6 +107,7 @@ enum
 
 	// --- Работы (jobs.inc)
 	DIALOG_JOB_OFFER,           // предложение механика игроку
+	DIALOG_JOB_HIRE,            // устройство на работу (ALT у значка, /getjob)
 
 	// --- Сумка (needs.inc): от DIALOG_INVENTORY до DIALOG_INV_UI
 	DIALOG_INVENTORY,
