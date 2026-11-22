@@ -954,8 +954,8 @@ stock Inv_ShowHtml(playerid)
 	}
 	new note[192];
 	UI_JsonEscape(note, gInvHtmlNote[playerid]);
-	format(part, sizeof part, "],\"skin\":%d,\"canister\":%d,\"note\":\"%s\",\"ok\":%d}",
-		Player[playerid][pSkin], Fuel_GetCanister(playerid), note, _:gInvHtmlOk[playerid]);
+	format(part, sizeof part, "],\"skin\":%d,\"canister\":%d,\"vipLevel\":%d,\"note\":\"%s\",\"ok\":%d}",
+		Player[playerid][pSkin], Fuel_GetCanister(playerid), Vip_GetLevel(playerid), note, _:gInvHtmlOk[playerid]);
 	strcat(json, part);
 	gInvHtmlNote[playerid][0] = '\0';
 	gInvHtmlSel[playerid] = -1;

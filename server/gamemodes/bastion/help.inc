@@ -429,7 +429,7 @@ static const gHelp[][E_HELP] =
 	{ HT_LIFE, "/spouse", "супруг, общий дом, семейный счёт" },
 	{ HT_LIFE, "/sbank [put|take] [сумма]", "семейный счёт (у банкомата или дома)" },
 	{ HT_LIFE, "/donate", "донат-магазин: деньги, VIP, кейс, скин, уровень, ник, номер, лицензии" },
-	{ HT_LIFE, "/vip", "статус VIP, привилегии уровней Bronze-Platinum, покупка" },
+	{ HT_LIFE, "/vip", "статус VIP, привилегии уровней Bronze-Diamond, покупка" },
 	{ HT_LIFE, "/promo [код]", "ввести промокод" },
 	{ HT_LIFE, "/vc [текст], /vipbonus", "VIP: чат VIP и ежедневный бонус" },
 	{ HT_LIFE, "/vipfeed, /vipfix, /viptag", "VIP Silver+: поесть, починить машину, надпись над головой" },
