@@ -36,7 +36,7 @@
 | p_floor4 | genintintpoliceb.txd | пол (bpd_floor) |
 | p_countr | genintintpoliceb.txd | дерево стойки |
 | copcell_bars | genintintpolicea.txd | решётка камеры (с прозрачностью) |
-| cop_notice | genintintpolicea.txd | доска объявлений: правила и пустой «Разыскивается» (bpd4_wanted_empty) (зеркально — модель натягивает текстуру отражённой) |
+| cop_notice | genintintpolicea.txd | доска объявлений: «Правила участка» (bpd4_rules) и пустой «Разыскивается» (bpd4_wanted_empty) (зеркально — модель натягивает текстуру отражённой) |
 | copstuff | genintintpolicea.txd | атлас мелочей: шкаф, клавиатура с ноутбуком, рация, монитор, лоток (bpd4_*) |
 | filing_cabnu | genintintpolicea.txd | боковина шкафа: тёмно-серый металл (bpd4_metal_panel) |
 | la_kitch1/2/3 | genintintpolicea.txd | кухня: серая столешница, светло-серые фасады (bpd4_kitchen_cabinet, bpd4_terrazzo) |
@@ -48,7 +48,7 @@
 
 Лежат в `src/`, но пока не используются (этих текстур нет в txd полиции, нужен файл, где они есть):
 bpd4_blue_fabric (BLUE_FABRIC), bpd4_black_leather (CJ_CUSHION2), bpd4_wood_planks (CJ_WOOD1),
-bpd4_subway_tile, bpd4_concrete, bpd4_brick, bpd4_sign_cells, bpd4_sign_interrogation, bpd4_sign_lockers (таблички нужна своя модель).
+bpd4_subway_tile, bpd4_concrete, bpd4_brick, bpd4_sign_cells, bpd4_sign_interrogation, bpd4_sign_lockers, bpd4_sign_armory, bpd4_height_chart, bpd4_floor_grey_tile (таблички и ростомер нужна своя модель).
 
 Сборка: `python client-mods/tools/build_lspd.py <папка с оригинальными txd> <папка для результата>`.
 Готовые `.txd` в репозиторий не кладём: в них остаются оригинальные текстуры Rockstar.
@@ -103,3 +103,8 @@ bpd4_subway_tile, bpd4_concrete, bpd4_brick, bpd4_sign_cells, bpd4_sign_interrog
 
 Сборка: `python client-mods/tools/build_radar.py <оригинальный models/hud.txd> <папка для результата>`,
 готовый `hud.txd` кладётся в `models/` игры. Значок на точку ставит админ в `/markers`.
+
+## bank/, bar/ — заготовки для будущих интерьеров
+
+Картинки из ChatGPT, пока никуда не подключены: мрамор (бежевый, два тёмных), дверь хранилища,
+стойка кассира; барная стойка и полки с бутылками.

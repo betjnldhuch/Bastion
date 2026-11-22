@@ -58,7 +58,12 @@ def notes():
     return q
 board = Image.new('RGB', (1024, 1024), (120, 90, 60))
 board.paste(mirror(bg), (0, 0))                                      # не используется моделью
-board.paste(mirror(notes()), (512, 0))                              # объявления (правила висели на каждой доске)
+def rules():
+    # «Правила участка» 3:4 по центру четверти на пробке
+    q = cork(); im = L('bpd4_rules.png').convert('RGB').resize((348, 464), Image.LANCZOS)
+    q.paste(Image.new('RGB', (348, 464), (25, 18, 12)), (88, 30)); q.paste(im, (82, 24))
+    return q
+board.paste(mirror(rules()), (512, 0))                              # правила участка
 board.paste(mirror(poster('bpd4_wanted_empty.png')), (0, 512))   # «Разыскивается»
 board.paste(mirror(bg), (512, 512))                                  # не используется моделью
 desk = L('bpd2_reception_wood.png').convert('RGB').crop((160, 330, 860, 1000)).resize((128, 128), Image.LANCZOS)
