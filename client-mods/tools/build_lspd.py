@@ -58,8 +58,13 @@ def notes():
     return q
 board = Image.new('RGB', (1024, 1024), (120, 90, 60))
 board.paste(mirror(bg), (0, 0))                                      # не используется моделью
-board.paste(mirror(notes()), (512, 0))                              # объявления (правила висели на каждой доске)
-board.paste(mirror(poster('bpd2_wanted.png', (0, 0, 512, 992))), (0, 512))   # «Разыскивается»
+def rules():
+    # «Правила участка» 3:4 по центру четверти на пробке
+    q = cork(); im = L('bpd4_rules.png').convert('RGB').resize((348, 464), Image.LANCZOS)
+    q.paste(Image.new('RGB', (348, 464), (25, 18, 12)), (88, 30)); q.paste(im, (82, 24))
+    return q
+board.paste(mirror(rules()), (512, 0))                              # правила участка
+board.paste(mirror(poster('bpd4_wanted_empty.png')), (0, 512))   # «Разыскивается»
 board.paste(mirror(bg), (512, 512))                                  # не используется моделью
 desk = L('bpd2_reception_wood.png').convert('RGB').crop((160, 330, 860, 1000)).resize((128, 128), Image.LANCZOS)
 # Второй пак (отдельные картинки из ChatGPT)
@@ -80,6 +85,44 @@ _c = Image.new('RGB', (256, 256), (10, 12, 18)); _c.paste(door, (0, 0)); door = 
 _d = ImageDraw.Draw(door)
 _d.line((237, 0, 237, 255), fill=(80, 95, 125), width=2)   # кромка створки
 _d.rectangle((0, 0, 2, 255), fill=(15, 18, 26))            # шов у петель
+
+# Пак 4: мебель, кухня, хром, окно, пол коридора.
+# Атлас copstuff: исходник 256x256, рисуем 512x512 поверх увеличенного оригинала,
+# оставляя на месте телефон и бумаги (их ChatGPT не рисовал).
+def pk4(n, crop=None, size=None):
+    im = L(n).convert('RGB')
+    if crop: im = im.crop(crop)
+    return im.resize(size, Image.LANCZOS) if size else im
+def copstuff_atlas(orig):
+    a = orig.convert('RGB').resize((512, 512), Image.LANCZOS)
+    a.paste(pk4('bpd4_filing_cabinet.png', (12, 12, 612, 612), (196, 252)), (2, 2))      # шкаф с ящиками
+    a.paste(pk4('bpd4_keyboard_laptop.png', (12, 12, 612, 612), (170, 256)), (200, 0))   # клавиатура и ноутбук вместо машинки
+    a.paste(pk4('bpd4_radio.png', (0, 40, 624, 624), (200, 256)), (0, 256))              # рация
+    a.paste(pk4('bpd4_crt_tray.png', (10, 50, 440, 520), (140, 130)), (372, 256))        # монитор
+    a.paste(pk4('bpd4_crt_tray.png', (430, 230, 624, 520), (140, 126)), (372, 386))      # лоток IN/OUT
+    return a
+def kitchen(orig, drawers):
+    # оригинал: сверху серая полоса столешницы, ниже деревянные фасады.
+    # столешница — серая крошка, фасады — светло-серый ламинат.
+    o = orig.convert('RGB').resize((256, 256), Image.LANCZOS)
+    top = pk4('bpd4_terrazzo.png', (0, 0, 512, 160), (256, 80))
+    if drawers:
+        from PIL import ImageOps
+        g = ImageOps.autocontrast(ImageOps.grayscale(o.crop((0, 80, 256, 256))).filter(ImageFilter.GaussianBlur(1.2)), cutoff=2)
+        body = g.point(lambda v: 95 + v * 115 // 255).convert('RGB')   # светло-серый ламинат, ручки темнее
+    else:
+        body = pk4('bpd4_kitchen_cabinet.png', (0, 0, 512, 470), (256, 176))
+    o.paste(top, (0, 0)); o.paste(body, (0, 80))
+    return o
+def cabnu(orig):
+    # левая половина — боковина шкафа: тёмно-серый металл; ящики справа оставляем
+    o = orig.convert('RGB').resize((256, 256), Image.LANCZOS)
+    o.paste(pk4('bpd4_metal_panel.png', (0, 0, 256, 512), (128, 256)), (0, 0)); return o
+orig_a = txdpatch.read(os.path.join(src_dir, 'genintintpolicea.txd'))
+orig_b = txdpatch.read(os.path.join(src_dir, 'genintintpoliceb.txd'))
+def framed(orig, inner, b):
+    o = orig.convert('RGB').resize((256, 256), Image.LANCZOS)
+    o.paste(inner.resize((256 - 2 * b, 256 - 2 * b), Image.LANCZOS), (b, b)); return o
 txdpatch.patch(os.path.join(src_dir, 'genintintpoliceb.txd'), os.path.join(out_dir, 'genintintpoliceb.txd'),
                {'coptop_blue': wall, 'copbtm_green': wains, 'p_floor4': floor, 'p_countr': desk,
                 'breezewall': sq('bpd_corridor_wall.png'), 'breezewall2': sq('bpd_corridor_wall.png'),
@@ -88,9 +131,15 @@ txdpatch.patch(os.path.join(src_dir, 'genintintpoliceb.txd'), os.path.join(out_d
                 'pol_flr3': sq('bpd3_floor_checker.png'), 'p_floor2': sq('bpd_floor_lino.png'),
                 'cop_cellwall': sq('bpd3_cell_tiles.png'), 'cop_cellwall_btm': sq('bpd_cell_wall_btm.png'),
                 'cop_cellfloor': sq('bpd3_cell_floor.png'),
-                'p_door1': door, 'lockers': sq('bpd3_lockers.png'), 'cop_bench': bench, 'pol_dor_surr2': surr})
+                'p_door1': door, 'lockers': sq('bpd3_lockers.png'), 'cop_bench': bench, 'pol_dor_surr2': surr,
+                'pol_flr164': sq('bpd4_terrazzo3.png'), 'p_floor3': sq('bpd4_carpet.png'), 'pol_flr2': sq('bpd4_floor_diamond.png'),
+                'mp_shop_window': framed(orig_b['mp_shop_window'], L('bpd4_wired_glass.png'), 10)})
 txdpatch.patch(os.path.join(src_dir, 'genintintpolicea.txd'), os.path.join(out_dir, 'genintintpolicea.txd'),
-               {'copcell_bars': bars, 'cop_notice': board})
+               {'copcell_bars': bars, 'cop_notice': board,
+                'copstuff': copstuff_atlas(orig_a['copstuff']), 'cops_chrome': sq('bpd4_brushed_steel.png', 128),
+                'la_kitch1': kitchen(orig_a['la_kitch1'], False), 'la_kitch2': kitchen(orig_a['la_kitch2'], True),
+                'la_kitch3': pk4('bpd4_kitchen_cabinet.png', (10, 40, 170, 460), (256, 256)),
+                'filing_cabnu': cabnu(orig_a['filing_cabnu'])})
 
 # Лампы на потолке (int_policea03a.txd, текстура striplight1)
 lamp = L('bpd2_ceiling.png').convert('RGB').crop((295, 280, 765, 605)).resize((128, 128), Image.LANCZOS)
