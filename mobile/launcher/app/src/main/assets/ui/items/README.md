@@ -25,3 +25,10 @@ PNG 256x256, прозрачный фон, предмет по центру с о
 | jack.png | Домкрат |
 | canister.png | Канистра бензина |
 | outfit.png | Одежда |
+| passport.png | Паспорт |
+| medcard.png | Медкарта |
+| licenses.png | Лицензии |
+
+Бургер, аптечка, вода, ремкомплект, сигареты, канистра — свои рендеры.
+Остальные — Microsoft Fluent Emoji 3D (MIT, github.com/microsoft/fluentui-emoji);
+паспорт и медкарта собраны из «Closed book» и «Clipboard» оттуда же.
