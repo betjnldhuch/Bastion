@@ -286,6 +286,7 @@ stock Job_Pay(playerid, base)
 	GiveMoney(playerid, pay);
 	gJobExp[playerid]++;
 	Jobs_SaveExp(playerid);
+	Quest_OnJobTask(playerid);          // квест новичка (quest.inc)
 	if (gJobExp[playerid] % JOB_SKILL_STEP == 0 && Job_GetBonus(playerid) <= JOB_SKILL_MAX_BONUS)
 		SendClientMessage(playerid, COLOR_GREEN, "Стаж растёт: %d заданий. Надбавка к оплате теперь %d%%.", gJobExp[playerid], Job_GetBonus(playerid));
 	return pay;
@@ -434,6 +435,7 @@ static Jobs_Hire(playerid, job)
 	Jobs_SaveExp(playerid);
 	Account_Save(playerid);
 	SendClientMessage(playerid, COLOR_GREEN, "Ты устроился на работу: %s. Начать смену: /work", Job_GetName(job));
+	Quest_OnHire(playerid);             // квест новичка (quest.inc)
 }
 
 stock bool:Cmd_GetJob(playerid)

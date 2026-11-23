@@ -178,6 +178,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/mt", true))          { Cmd_Mt(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/markers", true) || !strcmp(cmd, "/mk", true)) { Cmd_Markers(playerid); return 1; }
 	if (!strcmp(cmd, "/gps", true))         { Cmd_Gps(playerid); return 1; }
+	if (!strcmp(cmd, "/quest", true) || !strcmp(cmd, "/quests", true)) { Cmd_Quest(playerid); return 1; }
 
 	// --- чат (chat.inc) ---
 	if (!strcmp(cmd, "/me", true))          { Cmd_Me(playerid, cmdtext[pos]); return 1; }

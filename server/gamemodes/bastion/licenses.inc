@@ -310,6 +310,7 @@ static Licenses_EndExam(playerid, bool:passed, const reason[] = "")
 		Licenses_Set(playerid, lic, true);
 		SendClientMessage(playerid, COLOR_GREEN, "Экзамен сдан! Лицензия «%s» получена. Посмотреть: /licenses", gLicNames[lic]);
 		if (v != INVALID_VEHICLE_ID) SetPlayerPos(playerid, LIC_SCHOOL_X, LIC_SCHOOL_Y, LIC_SCHOOL_Z);
+		Quest_OnLicense(playerid, lic);     // квест новичка (quest.inc)
 	}
 	else
 	{

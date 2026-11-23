@@ -680,7 +680,11 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 	GiveMoney(playerid, -price);
 	switch (gBizItems[item][biKind])
 	{
-		case ITEM_PHONE: Phone_Give(playerid);
+		case ITEM_PHONE:
+		{
+			Phone_Give(playerid);
+			Quest_OnPhone(playerid);        // квест новичка (quest.inc)
+		}
 		case ITEM_HEAL:
 		{
 			new Float:hp;
@@ -707,6 +711,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 			SetPlayerHealth(playerid, hp);
 			Needs_Feed(playerid, gBizItems[item][biValue2]);
 			SendClientMessage(playerid, COLOR_WHITE, "—ытость: %d%%.", Needs_GetHunger(playerid));
+			Quest_OnEat(playerid);          // квест новичка (quest.inc)
 		}
 		case ITEM_SKIN:
 		{
