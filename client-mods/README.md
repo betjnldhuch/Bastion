@@ -53,6 +53,24 @@ bpd4_subway_tile, bpd4_concrete, bpd4_sign_cells, bpd4_sign_interrogation, bpd4_
 Сборка: `python client-mods/tools/build_lspd.py <папка с оригинальными txd> <папка для результата>`.
 Готовые `.txd` в репозиторий не кладём: в них остаются оригинальные текстуры Rockstar.
 
+## Банк, бар, 24/7 — замена текстур в `models/gta_int.img`
+
+Сборка: `python client-mods/tools/build_interiors.py <папка с оригинальными txd> <папка для результата>`.
+
+| Интерьер | Файл | Текстура GTA | Наша картинка |
+|---|---|---|---|
+| Банк (зал «Планировочного отдела», int 3) | papaerchaseoffice.txd | gun_floor1 | пол, bank_marble_beige |
+| | papaerchaseoffice.txd | ab_mottleGrey | пол, bank_marble_dark |
+| | papaerchaseoffice.txd | cof_wood2 | деревянные стойки, панели из bank_teller_counter |
+| Бар Ten Green Bottles (модель smllbarinterior) | cj_bar2.txd | GB_nastybar01 | фасад стойки, bar_counter_wood |
+| 24/7 | genintint711_1.txd, 711c.txd | CJ_7_11_TILE | пол, shop_floor_grey_tile |
+| | genintint711_1.txd, 711c.txd | CJ_7_11_win | полоса «24-7», shop_sign_247 |
+| | cj_ss_1.txd, cj_ss_2.txd | CJ_7_11_edge | ценник-полоса на полках |
+
+Не встали: стеллажи и холодильник 24/7 (в игре это текстуры коробок продуктов, развёртка не совпадает),
+полки бара, дверь хранилища, стена больницы (больница строится объектами с сервера из gta3.img) —
+их можно поставить только объектами с сервера.
+
 ## radar/ — значки фракций, бизнесов, работ и имущества на радаре и карте (ПК)
 
 `src/*.png` (64×64) — упрощённые значки из эмблем фракций (`mobile/launcher/app/src/main/assets/ui/emblems`),
