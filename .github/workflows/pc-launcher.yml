@@ -60,10 +60,13 @@ jobs:
         working-directory: launcher/source
         run: |
           $csc = "$env:WINDIR\Microsoft.NET\Framework\v4.0.30319\csc.exe"
+          # загрузочные экраны по времени суток (LoadScreens.cs)
+          $res = Get-ChildItem loadscreens\*.jpg | ForEach-Object { "/resource:loadscreens\$($_.Name),ls_$($_.Name)" }
+          if ($res.Count -ne 15) { Write-Error "expected 15 loadscreens, got $($res.Count)"; exit 1 }
           & $csc /nologo /codepage:65001 /target:winexe /platform:x86 /optimize+ `
             /r:System.Windows.Forms.dll /r:System.Drawing.dll `
-            /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll /win32icon:bastion.ico /resource:logo-banner.png,logo-banner.png /resource:logo-shield.png,logo-shield.png `
-            /out:..\BastionLauncher.exe Core.cs Ui.cs Installer.cs Updater.cs ClientPack.cs UiPack.cs Secrets.cs
+            /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll /win32icon:bastion.ico /resource:logo-banner.png,logo-banner.png /resource:logo-shield.png,logo-shield.png @res `
+            /out:..\BastionLauncher.exe Core.cs Ui.cs Installer.cs Updater.cs ClientPack.cs UiPack.cs LoadScreens.cs Secrets.cs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # Пакет FPS (до 165 FPS): загрузчик ASI, снятие лимита SA-MP (ModernFpsLimit) и SilentPatch.
