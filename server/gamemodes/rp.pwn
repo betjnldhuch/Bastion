@@ -414,7 +414,8 @@ public OnPlayerText(playerid, text[])
 
 public OnPlayerCommandText(playerid, cmdtext[])
 {
-	if (!strcmp(cmdtext, "/__bui")) return UI_OnPcHello(playerid);   // ПК-плагин HTML-окон (ui.inc)
+	if (!strcmp(cmdtext, "/__bui")) return UI_OnPcHello(playerid);
+	if (!strcmp(cmdtext, "/__bui ", false, 7)) return UI_OnPcHello(playerid, cmdtext[7]);   // "/__bui 2" — версия плагина   // ПК-плагин HTML-окон (ui.inc)
 	if (Player[playerid][pLogged])
 	{
 		if (Chat_IsFlood(playerid, true)) return 1;   // антифлуд (chat.inc)

@@ -16,6 +16,12 @@
 #define UI_CLIENT_TAG   "-bui"
 
 new bool:gUiSupported[MAX_PLAYERS];
+new gUiPcVersion[MAX_PLAYERS];       // версия bastion_ui.asi из /__bui N (0 — старый плагин или не ПК)
+new bool:gUiPcOldWarned[MAX_PLAYERS];
+
+// ПК-плагин bastion_ui.asi с этой версии умеет скрытую панель HUD ("[hud]", hud.inc).
+// Старый плагин показал бы её обычным окном с JSON.
+#define UI_PC_HUD_VERSION   2
 
 // Вызывается из OnPlayerConnect (rp.pwn)
 stock UI_OnConnect(playerid)
@@ -28,11 +34,12 @@ stock UI_OnConnect(playerid)
 
 // ПК-клиент с bastion_ui.asi: команда /__bui (из OnPlayerCommandText).
 // Окно входа уже показано обычным диалогом — показываем его заново HTML-окном.
-stock UI_OnPcHello(playerid)
+stock UI_OnPcHello(playerid, const params[] = "")
 {
 	if (gUiSupported[playerid]) return 1;
 	gUiSupported[playerid] = true;
-	printf("[ui] id=%d HTML-окна включены (ПК, bastion_ui.asi)", playerid);
+	gUiPcVersion[playerid] = strval(params);
+	printf("[ui] id=%d HTML-окна включены (ПК, bastion_ui.asi v%d)", playerid, gUiPcVersion[playerid]);
 	if (!Player[playerid][pLogged]) Account_ShowAuth(playerid);
 	return 1;
 }
@@ -40,6 +47,8 @@ stock UI_OnPcHello(playerid)
 stock UI_OnDisconnect(playerid)
 {
 	gUiSupported[playerid] = false;
+	gUiPcVersion[playerid] = 0;
+	gUiPcOldWarned[playerid] = false;
 }
 
 stock bool:UI_Has(playerid)

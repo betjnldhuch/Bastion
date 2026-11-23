@@ -1584,7 +1584,13 @@ namespace BastionLauncher
                         play.Text = label; play.Invalidate();
                         UpdatePlayLabel();
                         uiChecked = true;
-                        if (error != null) SetStatus("Окна Bastion не обновились (" + error + "), будут обычные.");
+                        if (error != null)
+                        {
+                            // Раньше ошибка была только в строке статуса, и игра сразу запускалась со старыми окнами
+                            SetStatus("Окна Bastion не обновились (" + error + ").");
+                            Warn("Окна Bastion не обновились: " + error + "\n\nИгра запустится со старыми окнами (без новой панели HUD). " +
+                                 "Закрой игру, если она открыта, и нажми ИГРАТЬ ещё раз.");
+                        }
                         else if (info != null) SetStatus(info);
                         Play();
                     }));

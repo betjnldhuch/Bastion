@@ -9,11 +9,12 @@
 //    значки двигателя, фар и замков.
 //    На ПК — справа внизу, на телефоне — сверху по центру под панелью.
 //
-//  Клиент Bastion (APK и ПК с bastion_ui.asi, UI_Has) рисует панель сам
-//  в стиле окон (ui/index.html, BastionUI.hud): ХП, броня, наличные, банк,
-//  сытость, уровень. Данные идут скрытым диалогом "[hud]" (HUD_DIALOG_ID)
-//  только когда у игрока нет открытого окна; клиент его не показывает,
-//  а стандартные полоски ХП/брони и деньги GTA прячет. Остальным — текстдравы.
+//  Панель статуса рисует только клиент Bastion (APK и ПК с bastion_ui.asi новой
+//  версии, UI_HasHud) в стиле окон (ui/index.html, BastionUI.hud): ХП, броня,
+//  наличные, банк, сытость, уровень. Данные идут скрытым диалогом "[hud]"
+//  (HUD_DIALOG_ID) только когда у игрока нет открытого окна; клиент его не
+//  показывает, а стандартные полоски ХП/брони и деньги GTA прячет.
+//  Старая панель из текстдравов убрана: с ней на экране было две панели.
 //
 //  Игрокам:
 //    /hud     — спрятать / показать панель статуса
@@ -35,23 +36,6 @@
 #define HUD_COL_WARN        0xF2C94CFF
 #define HUD_COL_BAD         0xEB5757FF
 
-// Панель статуса
-#define HUD_STATUS_W        110.0
-#define HUD_BAR_W           74.0
-enum
-{
-	HS_BG,
-	HS_ACCENT,
-	HS_LOGO,
-	HS_ID,
-	HS_FOOD_LBL,
-	HS_FOOD_BG,
-	HS_FOOD_FILL,
-	HS_BANK,
-	HS_LEVEL,
-	HS_COUNT
-}
-
 // Спидометр
 #define HUD_SPEEDO_W        120.0
 #define HUD_SPEEDO_BAR_W    82.0
@@ -72,19 +56,14 @@ enum
 	SP_COUNT
 }
 
-static PlayerText:gHudStatus[MAX_PLAYERS][HS_COUNT];
 static PlayerText:gHudSpeedo[MAX_PLAYERS][SP_COUNT];
-static bool:gHudStatusOn[MAX_PLAYERS];
+static bool:gHudWant[MAX_PLAYERS];        // игрок заспавнился — панель нужна
 static bool:gHudSpeedoOn[MAX_PLAYERS];
 static bool:gHudStatusHidden[MAX_PLAYERS];
 static bool:gHudSpeedoHidden[MAX_PLAYERS];
 static Float:gHudSpeedoX[MAX_PLAYERS];     // левый край спидометра (для полосок)
-static Float:gHudStatusX[MAX_PLAYERS];
 
 // Что уже нарисовано — чтобы не слать одно и то же каждый тик
-static gHudLastFood[MAX_PLAYERS] = { -1, ... };
-static gHudLastBank[MAX_PLAYERS] = { -1, ... };
-static gHudLastLevel[MAX_PLAYERS] = { -1, ... };
 static gHudLastSpeed[MAX_PLAYERS] = { -1, ... };
 static gHudLastFuel[MAX_PLAYERS] = { -1, ... };
 static gHudLastHp[MAX_PLAYERS] = { -1, ... };
@@ -184,21 +163,21 @@ static Hud_PctColour(pct)
 	return HUD_COL_GOOD;
 }
 
-// 1234567 -> "1 234 567"
-static Hud_FormatMoney(amount, dest[], size = sizeof (dest))
+// Клиент сам рисует панель HUD: телефон с "-bui" или ПК-плагин новой версии.
+// Старому ПК-плагину один раз говорим, что окна нужно обновить через лаунчер.
+stock bool:UI_HasHud(playerid)
 {
-	new raw[16], len, out = 0, neg = 0;
-	if (amount < 0) { neg = 1; amount = -amount; }
-	format(raw, sizeof raw, "%d", amount);
-	len = strlen(raw);
-	dest[0] = '\0';
-	if (neg && out < size - 1) dest[out++] = '-';
-	for (new i = 0; i < len && out < size - 1; i++)
+	if (!gUiSupported[playerid]) return false;
+	if (IsPlayerMobile[playerid] || gUiPcVersion[playerid] >= UI_PC_HUD_VERSION) return true;
+	new version[32];
+	GetPlayerVersion(playerid, version, sizeof version);
+	if (strfind(version, UI_CLIENT_TAG) != -1) return true;
+	if (!gUiPcOldWarned[playerid] && Player[playerid][pLogged])
 	{
-		if (i > 0 && (len - i) % 3 == 0 && out < size - 1) dest[out++] = ' ';
-		if (out < size - 1) dest[out++] = raw[i];
+		gUiPcOldWarned[playerid] = true;
+		SendClientMessage(playerid, 0xFF9900FF, "Окна Bastion у тебя старые, поэтому нет панели HUD. Выйди из игры и зайди через BastionLauncher.exe: он обновит их сам.");
 	}
-	dest[out] = '\0';
+	return false;
 }
 
 // ---------------------------------------------------------------------
@@ -262,70 +241,13 @@ static Hud_WebOff(playerid)
 // ---------------------------------------------------------------------
 static Hud_CreateStatus(playerid)
 {
-	if (gHudStatusOn[playerid]) return;
-	if (UI_Has(playerid)) { Hud_WebReset(playerid); return; }   // панель рисует клиент
-	new Float:bx, Float:by;
-	if (IsPlayerMobile[playerid]) { bx = 320.0 - HUD_STATUS_W / 2.0; by = 2.0; }
-	else { bx = 498.0; by = 124.0; }
-	gHudStatusX[playerid] = bx;
-
-	new Float:r = bx + HUD_STATUS_W;
-	gHudStatus[playerid][HS_BG]       = Hud_Box(playerid, bx, by, r, 3.9, HUD_COL_BG);
-	gHudStatus[playerid][HS_ACCENT]   = Hud_Box(playerid, bx, by, r, -0.25, HUD_COL_ACCENT);
-	gHudStatus[playerid][HS_LOGO]     = Hud_Text(playerid, bx + 4.0, by + 3.0, "BASTION ~y~RP", TEXT_DRAW_FONT_2, 0.19, 0.85, 0xFFFFFFFF);
-	new buf[16];
-	format(buf, sizeof buf, "ID %d", playerid);
-	gHudStatus[playerid][HS_ID]       = Hud_Text(playerid, r - 4.0, by + 3.5, buf, TEXT_DRAW_FONT_1, 0.18, 0.8, HUD_COL_LABEL, TEXT_DRAW_ALIGN_RIGHT);
-	gHudStatus[playerid][HS_FOOD_LBL] = Hud_Text(playerid, bx + 4.0, by + 14.0, "FOOD", TEXT_DRAW_FONT_2, 0.14, 0.7, HUD_COL_LABEL);
-	gHudStatus[playerid][HS_FOOD_BG]  = Hud_Box(playerid, r - 4.0 - HUD_BAR_W, by + 16.0, r - 4.0, 0.3, HUD_COL_BAR_BG);
-	gHudStatus[playerid][HS_FOOD_FILL]= Hud_Box(playerid, r - 4.0 - HUD_BAR_W, by + 16.0, r - 4.0, 0.3, HUD_COL_GOOD);
-	gHudStatus[playerid][HS_BANK]     = Hud_Text(playerid, bx + 4.0, by + 23.5, "_", TEXT_DRAW_FONT_1, 0.19, 0.85, 0xFFFFFFFF);
-	gHudStatus[playerid][HS_LEVEL]    = Hud_Text(playerid, r - 4.0, by + 23.5, "_", TEXT_DRAW_FONT_1, 0.19, 0.85, HUD_COL_ACCENT, TEXT_DRAW_ALIGN_RIGHT);
-
-	for (new i = 0; i < HS_COUNT; i++)
-	{
-		if (i != HS_FOOD_FILL) PlayerTextDrawShow(playerid, gHudStatus[playerid][i]);
-	}
-	gHudStatusOn[playerid] = true;
-	gHudLastFood[playerid] = -1;
-	gHudLastBank[playerid] = -1;
-	gHudLastLevel[playerid] = -1;
-	Hud_UpdateStatus(playerid);
+	gHudWant[playerid] = true;
+	if (UI_HasHud(playerid)) Hud_WebReset(playerid);   // панель рисует клиент
 }
 
 static Hud_DestroyStatus(playerid)
 {
-	if (!gHudStatusOn[playerid]) return;
-	for (new i = 0; i < HS_COUNT; i++) PlayerTextDrawDestroy(playerid, gHudStatus[playerid][i]);
-	gHudStatusOn[playerid] = false;
-}
-
-static Hud_UpdateStatus(playerid)
-{
-	if (!gHudStatusOn[playerid]) return;
-	new food = Needs_GetHunger(playerid);
-	if (food != gHudLastFood[playerid])
-	{
-		gHudLastFood[playerid] = food;
-		Hud_SetBar(playerid, gHudStatus[playerid][HS_FOOD_FILL], gHudStatusX[playerid] + HUD_STATUS_W - 4.0 - HUD_BAR_W, HUD_BAR_W, food, Hud_PctColour(food));
-	}
-	new bank = Player[playerid][pBank];
-	if (bank != gHudLastBank[playerid])
-	{
-		gHudLastBank[playerid] = bank;
-		new money[20], text[40];
-		Hud_FormatMoney(bank, money);
-		format(text, sizeof text, "~b~~h~BANK ~w~$%s", money);
-		PlayerTextDrawSetString(playerid, gHudStatus[playerid][HS_BANK], text);
-	}
-	new level = Player[playerid][pLevel];
-	if (level != gHudLastLevel[playerid])
-	{
-		gHudLastLevel[playerid] = level;
-		new text[16];
-		format(text, sizeof text, "LVL %d", level);
-		PlayerTextDrawSetString(playerid, gHudStatus[playerid][HS_LEVEL], text);
-	}
+	gHudWant[playerid] = false;
 }
 
 // ---------------------------------------------------------------------
@@ -450,7 +372,7 @@ stock Hud_OnSpawn(playerid)
 // Из OnPlayerDisconnect: текстдравы удаляет сервер, только сбросить флаги
 stock Hud_OnDisconnect(playerid)
 {
-	gHudStatusOn[playerid] = false;
+	gHudWant[playerid] = false;
 	gHudSpeedoOn[playerid] = false;
 	gHudStatusHidden[playerid] = false;
 	gHudSpeedoHidden[playerid] = false;
@@ -469,9 +391,8 @@ public Hud_OnTick()
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!IsPlayerConnected(i) || !Player[i][pLogged]) continue;
-		if (gHudStatusOn[i] && UI_Has(i)) { Hud_DestroyStatus(i); Hud_WebReset(i); }  // клиент включил окна после спавна
+		if (gHudWant[i] && !gHudWebOn[i] && !gHudStatusHidden[i] && UI_HasHud(i)) Hud_WebReset(i);  // клиент включил окна после спавна
 		Hud_WebUpdate(i);
-		if (slow) Hud_UpdateStatus(i);
 		if (gHudSpeedoHidden[i] || GetPlayerState(i) != PLAYER_STATE_DRIVER) Hud_HideSpeedo(i);
 		else Hud_UpdateSpeedo(i, slow || !gHudSpeedoOn[i]);
 	}

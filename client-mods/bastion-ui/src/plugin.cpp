@@ -100,7 +100,8 @@ void __fastcall HookShow(void* self, void*, int id, int type, const char* captio
     }
     if (!g_helloSent) {
         g_helloSent = true;
-        samp::SendCommand("/__bui");  // сервер включит HTML-окна (ui.inc) и перешлёт окно входа
+        samp::SendCommand("/__bui 2");  // сервер включит HTML-окна (ui.inc) и перешлёт окно входа;
+                                          // 2 — версия: умеет скрытую панель "[hud]" (hud.inc, UI_HasHud)
     }
 
     std::string cap = text::Cp1251ToUtf8(caption);

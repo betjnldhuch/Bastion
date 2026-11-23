@@ -331,8 +331,8 @@ static Donate_OpenCase(playerid)
 		default:
 		{
 			new skin = gDonCaseSkins[random(sizeof (gDonCaseSkins))];
-			Outfit_Add(playerid, skin);
-			format(msg, sizeof msg, "Кейс: тебе выпал редкий скин %d! Он в сумке: /inv.", skin);
+			if (Outfit_GiveAndWear(playerid, skin) == 1) format(msg, sizeof msg, "Кейс: тебе выпал редкий скин %d! Он уже надет, прежняя одежда в сумке.", skin);
+			else format(msg, sizeof msg, "Кейс: тебе выпал редкий скин %d! Он в сумке: /inv.", skin);
 		}
 	}
 	Admin_Log(playerid, "donate_case", playerid, msg, a);
@@ -559,8 +559,8 @@ static Donate_Input(playerid, item, const input[])
 		if (v < 1 || v > 311 || v == 74) { Donate_Say(playerid, false, "Скин от 1 до 311."); return; }
 		if (Outfit_FreeSlots(playerid) <= 0) { Donate_Say(playerid, false, "В сумке нет места для одежды."); return; }
 		if (!Donate_Spend(playerid, DONATE_SKIN_PRICE, "скин")) return;
-		Outfit_Add(playerid, v);
-		format(msg, sizeof msg, "Скин %d в сумке. Надеть: /inv.", v);
+		if (Outfit_GiveAndWear(playerid, v) == 1) format(msg, sizeof msg, "Скин %d надет. Прежняя одежда в сумке (/inv).", v);
+		else format(msg, sizeof msg, "Скин %d в сумке (сейчас переодеться нельзя). Надеть: /inv.", v);
 		Donate_Say(playerid, true, msg);
 	}
 	else if (item == DON_NUMBER)
