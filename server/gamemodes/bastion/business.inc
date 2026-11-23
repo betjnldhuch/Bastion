@@ -366,7 +366,7 @@ stock Biz_ApplyInt(b, mode, interior, Float:x, Float:y, Float:z, Float:a)
 		strcat(name, Biz[b][bName], 22);
 		strcat(name, ", выход");
 		new Float:ix = Biz[b][bIX], Float:iy = Biz[b][bIY], Float:iz = Biz[b][bIZ];
-		Biz[b][bExitMk] = Marker_Create(MK_BIZ, BIZ_IN_REF + Biz[b][bDbId], name, DOOR_PICKUP_MODEL, ix, iy, iz,
+		Biz[b][bExitMk] = Marker_Create(MK_BIZ, BIZ_IN_REF + Biz[b][bDbId], name, DOOR_EXIT_MODEL, ix, iy, iz,
 			BIZ_WORLD_OFFSET + Biz[b][bDbId], Biz[b][bInt], GPS_NONE, Biz[b][bIA]);
 		Biz[b][bIX] = ix; Biz[b][bIY] = iy; Biz[b][bIZ] = iz;
 		Marker_SetLabel(Biz[b][bExitMk], "{FFFFFF}ALT Ч выйти", COLOR_WHITE, 10.0);

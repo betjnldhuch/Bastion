@@ -86,7 +86,7 @@ stock Atm_Create(dbid, Float:x, Float:y, Float:z, Float:a = -1.0)
 	Atm[n][aA] = a;
 	Atm[n][aObject] = INVALID_OBJECT_ID;
 	// Ѕез аппарата Ч значок $, с аппаратом Ч только надпись
-	new model = 1274;
+	new model = 1212;
 	if (a >= 0.0) model = 0;
 	Atm[n][aMarker] = Marker_Create(MK_ATM, dbid, "Ѕанкомат", model, Atm[n][aX], Atm[n][aY], Atm[n][aZ], 0, 0, GPS_ATM, (a >= 0.0) ? a : 0.0);
 	Marker_SetLabel(Atm[n][aMarker], "{33AA33}Ѕанкомат\n{FFFFFF}ALT Ч открыть счЄт");

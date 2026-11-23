@@ -176,7 +176,7 @@ static Fuel_AddStation(dbid, Float:x, Float:y, Float:z, price)
 		FuelStation[s][fsY] = y;
 		FuelStation[s][fsZ] = z;
 		FuelStation[s][fsPrice] = price;
-		FuelStation[s][fsMarker] = Marker_Create(MK_FUEL, dbid, "АЗС", 1650, FuelStation[s][fsX], FuelStation[s][fsY], FuelStation[s][fsZ], 0, 0, GPS_FUEL);    // канистра
+		FuelStation[s][fsMarker] = Marker_Create(MK_FUEL, dbid, "АЗС", 1210, FuelStation[s][fsX], FuelStation[s][fsY], FuelStation[s][fsZ], 0, 0, GPS_FUEL);    // канистра
 		Fuel_UpdateLabel(s);
 		return s;
 	}
