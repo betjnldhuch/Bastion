@@ -213,6 +213,38 @@ stock House_GetTax(h)
 	return tax;
 }
 
+// Вид жилья для значка в окнах: квартира (вход внутри здания или интерьер квартиры),
+// особняк (дорогой или особняк Мэдд Догга), иначе дом.
+#define HOUSE_MANSION_PRICE     250000
+stock House_Kind(h)
+{
+	if (House[h][hOutInt] != 0 || (House[h][hInterior] == 5 && floatabs(House[h][hIX] - 2233.8) < 40.0 && floatabs(House[h][hIY] + 1115.3) < 40.0))
+		return PROP_ICON_APARTMENT;
+	if (House[h][hPrice] >= HOUSE_MANSION_PRICE || (House[h][hInterior] == 5 && floatabs(House[h][hIX] - 1267.7) < 80.0 && floatabs(House[h][hIY] + 781.3) < 80.0))
+		return PROP_ICON_MANSION;
+	return PROP_ICON_HOUSE;
+}
+
+stock House_KindName(h)
+{
+	new s[16];
+	switch (House_Kind(h))
+	{
+		case PROP_ICON_APARTMENT: strcat(s, "Квартира");
+		case PROP_ICON_MANSION:   strcat(s, "Особняк");
+		default:                  strcat(s, "Дом");
+	}
+	return s;
+}
+
+// Заголовок окна дома со значком его вида
+stock House_Caption(h, const title[])
+{
+	new s[64], k = House_Kind(h);
+	format(s, sizeof s, "{10C0%d%d}{FFFFFF}%s", k / 10 % 10, k % 10, title);
+	return s;
+}
+
 // Пересоздать иконку и надпись над домом (после покупки/продажи)
 stock House_Refresh(h)
 {
@@ -773,7 +805,7 @@ stock bool:Cmd_House(playerid)
 	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
 	if (!House_IsInside(playerid, h)) return SendClientMessage(playerid, COLOR_GREY, "Меню дома открывается внутри твоего дома.");
 
-	ShowPlayerDialog(playerid, DIALOG_HOUSE_MENU, DIALOG_STYLE_LIST, "Дом",
+	ShowPlayerDialog(playerid, DIALOG_HOUSE_MENU, DIALOG_STYLE_LIST, House_Caption(h, House_KindName(h)),
 		"Шкаф: положить оружие из рук\nШкаф: взять оружие\nСейф: положить деньги (сейчас $%d)\nСейф: взять деньги\nСчёт дома: пополнить (сейчас $%d, налог $%d/час)\nСчёт дома: снять деньги\nАренда: изменить цену (сейчас $%d/час)\nЖильцы",
 		"Выбрать", "Закрыть", House[h][hSafe], House[h][hBalance], House_GetTax(h), House[h][hRent]);
 	return true;
@@ -905,7 +937,7 @@ static House_ShowGuns(playerid, h)
 		DB_SelectNextRow(r);
 	}
 	DB_FreeResultSet(r);
-	ShowPlayerDialog(playerid, DIALOG_HOUSE_TAKEGUN, DIALOG_STYLE_LIST, "Шкаф", "%s", "Взять", "Назад", list);
+	ShowPlayerDialog(playerid, DIALOG_HOUSE_TAKEGUN, DIALOG_STYLE_LIST, House_Caption(h, "Шкаф"), "%s", "Взять", "Назад", list);
 	return 1;
 }
 
@@ -944,11 +976,11 @@ stock Houses_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		{
 			case 0: { if (House_AtStore(playerid, h)) House_PutGun(playerid, h); else House_StoreFar(playerid); }
 			case 1: { if (House_AtStore(playerid, h)) House_ShowGuns(playerid, h); else House_StoreFar(playerid); }
-			case 2: if (!House_AtStore(playerid, h)) House_StoreFar(playerid); else ShowPlayerDialog(playerid, DIALOG_HOUSE_SAFE_IN, DIALOG_STYLE_INPUT, "Сейф", "{FFFFFF}Сколько положить в сейф?\nВ сейфе: $%d, у тебя: $%d", "Положить", "Назад", House[h][hSafe], GetMoney(playerid));
-			case 3: if (!House_AtStore(playerid, h)) House_StoreFar(playerid); else ShowPlayerDialog(playerid, DIALOG_HOUSE_SAFE_OUT, DIALOG_STYLE_INPUT, "Сейф", "{FFFFFF}Сколько взять из сейфа?\nВ сейфе: $%d", "Взять", "Назад", House[h][hSafe]);
-			case 4: ShowPlayerDialog(playerid, DIALOG_HOUSE_PAY, DIALOG_STYLE_INPUT, "Счёт дома", "{FFFFFF}С этого счёта платится налог $%d в час, сюда же приходит аренда.\nНа счёте: $%d\n\nСколько положить?", "Пополнить", "Назад", House_GetTax(h), House[h][hBalance]);
-			case 5: ShowPlayerDialog(playerid, DIALOG_HOUSE_WITHDRAW, DIALOG_STYLE_INPUT, "Счёт дома", "{FFFFFF}На счёте: $%d\n\nСколько снять?", "Снять", "Назад", House[h][hBalance]);
-			case 6: ShowPlayerDialog(playerid, DIALOG_HOUSE_RENT, DIALOG_STYLE_INPUT, "Аренда", "{FFFFFF}Цена комнаты в час (0 — не сдавать, максимум $%d).\nСейчас: $%d", "Готово", "Назад", HOUSE_RENT_MAX, House[h][hRent]);
+			case 2: if (!House_AtStore(playerid, h)) House_StoreFar(playerid); else ShowPlayerDialog(playerid, DIALOG_HOUSE_SAFE_IN, DIALOG_STYLE_INPUT, House_Caption(h, "Сейф"), "{FFFFFF}Сколько положить в сейф?\nВ сейфе: $%d, у тебя: $%d", "Положить", "Назад", House[h][hSafe], GetMoney(playerid));
+			case 3: if (!House_AtStore(playerid, h)) House_StoreFar(playerid); else ShowPlayerDialog(playerid, DIALOG_HOUSE_SAFE_OUT, DIALOG_STYLE_INPUT, House_Caption(h, "Сейф"), "{FFFFFF}Сколько взять из сейфа?\nВ сейфе: $%d", "Взять", "Назад", House[h][hSafe]);
+			case 4: ShowPlayerDialog(playerid, DIALOG_HOUSE_PAY, DIALOG_STYLE_INPUT, House_Caption(h, "Счёт дома"), "{FFFFFF}С этого счёта платится налог $%d в час, сюда же приходит аренда.\nНа счёте: $%d\n\nСколько положить?", "Пополнить", "Назад", House_GetTax(h), House[h][hBalance]);
+			case 5: ShowPlayerDialog(playerid, DIALOG_HOUSE_WITHDRAW, DIALOG_STYLE_INPUT, House_Caption(h, "Счёт дома"), "{FFFFFF}На счёте: $%d\n\nСколько снять?", "Снять", "Назад", House[h][hBalance]);
+			case 6: ShowPlayerDialog(playerid, DIALOG_HOUSE_RENT, DIALOG_STYLE_INPUT, House_Caption(h, "Аренда"), "{FFFFFF}Цена комнаты в час (0 — не сдавать, максимум $%d).\nСейчас: $%d", "Готово", "Назад", HOUSE_RENT_MAX, House[h][hRent]);
 			case 7: Cmd_Tenants(playerid);
 		}
 		return 1;

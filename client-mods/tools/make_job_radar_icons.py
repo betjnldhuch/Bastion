@@ -13,6 +13,7 @@ DARK = (20, 12, 6)
 FIELD = {
     'taxi': (215, 165, 10), 'trucker': (25, 55, 150), 'mechanic': (95, 98, 104), 'fisher': (10, 95, 165),
     'loader': (200, 90, 15), 'collector': (20, 105, 40), 'farmer': (110, 120, 20), 'garbage': (25, 90, 50),
+    'bus': (225, 105, 15), 'pizza': (170, 25, 20),
 }
 S = 256
 
@@ -71,6 +72,17 @@ def glyph(d, k, cx, cy):
         rr(d, (cx - 18, cy - 74, cx + 18, cy - 54), 4, f)
         d.polygon([(cx - 56, cy - 30), (cx + 56, cy - 30), (cx + 44, cy + 70), (cx - 44, cy + 70)], fill=f)
         for x in (cx - 24, cx, cx + 24): d.line([(x, cy - 16), (x, cy + 56)], fill=FIELD[k], width=9)
+    elif k == 'bus':  # автобус сбоку, тёмный на жёлтом
+        f = DARK
+        rr(d, (cx - 84, cy - 50, cx + 84, cy + 30), 14, f)
+        for x in range(-70, 60, 34): d.rectangle((cx + x, cy - 38, cx + x + 26, cy - 10), fill=FIELD[k])
+        d.rectangle((cx + 62, cy - 38, cx + 74, cy + 18), fill=FIELD[k])
+        for x in (cx - 50, cx + 46): wheel(d, x, cy + 32, 17, FIELD[k]); d.ellipse((x - 12, cy + 20, x + 12, cy + 44), fill=f)
+    elif k == 'pizza':  # кусок пиццы
+        d.polygon([(cx - 70, cy - 56), (cx + 70, cy - 56), (cx, cy + 82)], fill=f)
+        rr(d, (cx - 78, cy - 76, cx + 78, cy - 46), 14, f)
+        for x, y in ((cx - 26, cy - 22), (cx + 24, cy - 18), (cx - 2, cy + 22)):
+            d.ellipse((x - 13, y - 13, x + 13, y + 13), fill=FIELD[k])
 
 
 def main():

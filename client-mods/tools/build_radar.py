@@ -1,4 +1,4 @@
-# Собирает hud.txd с нашими значками фракций, бизнесов и работ на радаре и карте.
+# Собирает hud.txd с нашими значками фракций, бизнесов, работ и имущества на радаре и карте.
 # Берёт оригинальный models/hud.txd игрока и заменяет в нём иконки на ../radar/src/*.png.
 #   python build_radar.py <оригинальный hud.txd> <папка для результата>
 # Оригинальные файлы GTA в репозиторий не кладём.
@@ -22,6 +22,11 @@ MAP = [
     (12, 'radar_CATALINAPINK', 'job_taxi'), (11, 'radar_bulldozer', 'job_trucker'), (47, 'radar_ZERO', 'job_mechanic'),
     (38, 'radar_SWEET', 'job_fisher'), (46, 'radar_WOOZIE', 'job_loader'), (18, 'radar_emmetGun', 'job_collector'),
     (42, 'radar_TorenoRanch', 'job_farmer'), (28, 'radar_OGLOC', 'job_garbage'),
+    (44, 'radar_triadsCasino', 'job_bus'), (29, 'radar_pizza', 'job_pizza'),
+    # имущество (make_prop_radar_icons.py)
+    (31, 'radar_propertyG', 'prop_house'), (15, 'radar_CJ', 'prop_apartment'), (32, 'radar_propertyR', 'prop_mansion'),
+    (16, 'radar_CRASH1', 'prop_garage'), (43, 'radar_triads', 'prop_car'), (9, 'radar_boatyard', 'prop_boat'),
+    (21, 'radar_girlfriend', 'prop_heli'),
 ]
 def main():
     src, out_dir = sys.argv[1], sys.argv[2]

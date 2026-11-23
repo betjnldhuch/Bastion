@@ -49,12 +49,12 @@ stock Props_MaxVehicles(playerid)
 // ---------------------------------------------------------------------
 stock bool:Cmd_MyHouses(playerid)
 {
-	new list[700] = "Дом\tСчёт дома\tНалог в час\n";
-	new line[96], n = 0, mainHouse = House_GetMain(playerid);
+	new list[900] = "Жильё\tСчёт дома\tНалог в час\n";
+	new line[128], n = 0, mainHouse = House_GetMain(playerid);
 	for (new h = 0; h < gHouseCount && n < PROP_HOUSES_MAX; h++)
 	{
 		if (House[h][hOwner] != Player[playerid][pDbId] || Player[playerid][pDbId] == 0) continue;
-		format(line, sizeof line, "№%d%s\t%s$%d\t$%d\n", House[h][hDbId], (h == mainHouse) ? " {FFFF00}(главный)" : "",
+		format(line, sizeof line, "{10C0%02d}{FFFFFF}%s №%d%s\t%s$%d\t$%d\n", House_Kind(h), House_KindName(h), House[h][hDbId], (h == mainHouse) ? " {FFFF00}(главный)" : "",
 			(House[h][hBalance] < 0) ? "{FF6347}" : "{33AA33}", House[h][hBalance], House_GetTax(h));
 		strcat(list, line);
 		gMyHouses[playerid][n++] = h;
@@ -64,7 +64,7 @@ stock bool:Cmd_MyHouses(playerid)
 
 	new title[40];
 	format(title, sizeof title, "Мои дома (%d из %d)", n, Props_MaxHouses(playerid));
-	ShowPlayerDialog(playerid, DIALOG_MYHOUSES, DIALOG_STYLE_TABLIST_HEADERS, title, "%s", "Выбрать", "Закрыть", list);
+	ShowPlayerDialog(playerid, DIALOG_MYHOUSES, DIALOG_STYLE_TABLIST_HEADERS, Prop_IconCaption(PROP_ICON_HOUSE, title), "%s", "Выбрать", "Закрыть", list);
 	return true;
 }
 
@@ -76,9 +76,9 @@ stock Props_OnDialog(playerid, dialogid, response, listitem)
 		new h = gMyHouses[playerid][listitem];
 		if (House[h][hOwner] != Player[playerid][pDbId]) return 1;
 		gMyHousePick[playerid] = h;
-		new title[24];
-		format(title, sizeof title, "Дом №%d", House[h][hDbId]);
-		ShowPlayerDialog(playerid, DIALOG_MYHOUSE_ACT, DIALOG_STYLE_LIST, title,
+		new title[32];
+		format(title, sizeof title, "%s №%d", House_KindName(h), House[h][hDbId]);
+		ShowPlayerDialog(playerid, DIALOG_MYHOUSE_ACT, DIALOG_STYLE_LIST, House_Caption(h, title),
 			"Показать на карте (GPS)\nСделать главным: появляться у этого дома", "Выбрать", "Назад");
 		return 1;
 	}
