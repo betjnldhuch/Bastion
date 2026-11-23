@@ -12,7 +12,7 @@ MAP = [
     (62, 'radar_gangG', 'grove'), (59, 'radar_gangP', 'ballas'), (60, 'radar_gangY', 'vagos'),
     (58, 'radar_gangB', 'aztecas'), (30, 'radar_police', 'lspd'), (22, 'radar_hostpital', 'hospital'),
     (61, 'radar_gangN', 'fbi'), (40, 'radar_THETRUTH', 'army'), (8, 'radar_BIGSMOKE', 'cityhall'),
-    (23, 'radar_LOCO', 'news'),
+    (23, 'radar_LocoSyndicate', 'news'),
     # бизнесы (make_biz_radar_icons.py)
     (24, 'radar_MADDOG', 'biz_shop'), (13, 'radar_CESARVIAPANDO', 'biz_fuel'), (55, 'radar_impound', 'biz_dealer'),
     (49, 'radar_dateDrink', 'biz_bar'), (10, 'radar_burgerShot', 'biz_fastfood'), (6, 'radar_ammugun', 'biz_guns'),
