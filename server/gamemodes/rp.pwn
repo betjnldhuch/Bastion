@@ -82,6 +82,7 @@
 #include "bastion/phone.inc"
 #include "bastion/fbi.inc"        // ‘Ѕ–: маскировка, прослушка, слежка, досье
 #include "bastion/business.inc"
+#include "bastion/bizstat.inc"    // финансова€ выписка бизнеса, /showbiz, /checkbiz
 #include "bastion/bizplus.inc"    // новые виды бизнесов: склад, наценка, меню владельца
 #include "bastion/garage.inc"
 #include "bastion/dealers.inc"    // автосалоны и авиасалон, /cars Ч несколько машин у игрока

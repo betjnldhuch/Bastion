@@ -90,6 +90,7 @@ static gOfferPrice[MAX_PLAYERS];                // и цена
 enum
 {
 	BXA_INFO,
+	BXA_STATEMENT,
 	BXA_CASH,
 	BXA_STOCK,
 	BXA_MARKUP,
@@ -121,6 +122,12 @@ stock BizX_Price(b, base)
 	return (price < 1) ? 1 : price;
 }
 
+stock BizX_StockMax(b)
+{
+	new t = Biz[b][bType];
+	return (t > BIZ_NONE && t < BIZ_TYPES) ? gBizCfg[t][bcStockMax] : 0;
+}
+
 stock BizX_Save(b)
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE businesses SET till = %d, markup = %d, stock = %d, earned = %d WHERE id = %d",
@@ -133,6 +140,7 @@ static BizX_AddTill(b, amount)
 	if (Biz[b][bTill] > cellmax - amount) amount = cellmax - Biz[b][bTill];
 	Biz[b][bTill] += amount;
 	if (Biz[b][bEarned] <= cellmax - amount) Biz[b][bEarned] += amount;
+	BizS_Log(b, amount);         // доход по дням для выписки (bizstat.inc)
 }
 
 // Продажа в бизнесе b: paid — заплатил покупатель, base — базовая цена (по ней списывается склад)
@@ -190,6 +198,7 @@ stock BizX_Init()
 	DB_AddColumn("businesses", "stock", "INTEGER DEFAULT " #BIZ_START_STOCK);
 	DB_AddColumn("businesses", "earned", "INTEGER DEFAULT 0");
 	DB_AddColumn("accounts", "fstyle", "INTEGER DEFAULT 4");
+	BizS_Init();
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS bizx_meta (k TEXT PRIMARY KEY, v INTEGER)"));
 
 	// новые бизнесы добавляются один раз; удалённые админом заново не появятся
@@ -324,6 +333,7 @@ stock bool:Cmd_BizMenu(playerid)
 	new list[512], line[96], n = 0;
 	strcat(list, "Действие\tСейчас\n");
 	gMenuActs[playerid][n++] = BXA_INFO; strcat(list, "Информация\t \n");
+	gMenuActs[playerid][n++] = BXA_STATEMENT; strcat(list, "Финансовая выписка\tпоказать: /showbiz [id]\n");
 	format(line, sizeof line, "Забрать деньги из кассы\t{33AA33}$%d\n", Biz[b][bTill]);
 	gMenuActs[playerid][n++] = BXA_CASH; strcat(list, line);
 	if (BizX_UsesStock(b))
@@ -465,6 +475,7 @@ stock BizX_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			switch (gMenuActs[playerid][listitem])
 			{
 				case BXA_INFO: BizX_ShowInfo(playerid, b);
+				case BXA_STATEMENT: BizS_ShowOwn(playerid, b);
 				case BXA_CASH:
 				{
 					Cmd_BizCash(playerid);
