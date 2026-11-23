@@ -1070,7 +1070,7 @@ function vipImg(level, cls) {
   };
   addEventListener('keydown', function (e) { if (current && keyHandler) keyHandler(e); });
 
-  // --- HUD: ХП, броня, сытость, наличные, банк. Иконки — ui/hud/*.png (пока их нет — эмодзи) ---
+  // --- HUD: ХП, броня, сытость, наличные, банк. Иконки — ui/hud/*.png (если файла нет — эмодзи) ---
   var hud = document.getElementById('hud');
   var HUD_ICONS = { hp: '❤️', armor: '🛡️', food: '🍔', cash: '💵', bank: '🏦' };
   Array.prototype.forEach.call(hud.querySelectorAll('.ico'), function (el) {
