@@ -16,7 +16,7 @@
 :root {
   --bg: rgba(8, 9, 12, .55);
   /* Окна слегка просвечивают: за ними видно живую игру, так скрин (доход бизнеса, документы) труднее подделать. */
-  --panel: rgba(20, 22, 26, .86); --panel-hi: rgba(27, 30, 35, .78); --well: rgba(14, 16, 19, .72); --line: #2a2d33;
+  --panel: rgba(20, 22, 26, .82); --panel-hi: rgba(27, 30, 35, .78); --well: rgba(14, 16, 19, .72); --line: #2a2d33;
   --text: #ececec; --muted: #8c9098; --dim: #5a5f68;
   --accent: #ff7a1a; --accent-dark: #c2540a; --green: #4cd07d; --red: #e5484d; --gold: #ffc940;
 }
@@ -281,7 +281,7 @@ button { font: inherit; cursor: pointer; }
 .sk .rk { grid-column: 2 / 4; margin-top: -4px; font-size: 11px; color: var(--muted); }
 @media (max-height: 420px) { .sk { font-size: 12px; margin-bottom: 3px; } .sk .rk { display: none; } }
 /* Документы: паспорт, медкарта, лицензии (docs.inc) */
-.card.doc { width: min(520px, 100%); max-height: 100%; padding: 0; overflow: hidden; background: rgba(16, 18, 22, .86); display: flex; flex-direction: column; }
+.card.doc { width: min(520px, 100%); max-height: 100%; padding: 0; overflow: hidden; background: rgba(16, 18, 22, .82); display: flex; flex-direction: column; }
 .card.doc > * { flex: none; }
 .card.doc > .doc-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .doc-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 20px 12px;
@@ -298,6 +298,12 @@ button { font: inherit; cursor: pointer; }
 .doc-photo { width: 108px; height: 136px; flex: none; border-radius: 10px; border: 1px solid var(--line); position: relative; overflow: hidden;
   background: radial-gradient(circle at 50% 36%, #3a3f48 0 22%, transparent 23%), radial-gradient(ellipse at 50% 100%, #3a3f48 0 46%, transparent 47%), #1b1e23;
   display: flex; align-items: flex-end; justify-content: center; }
+.doc-chart { width: 108px; height: 136px; flex: none; border-radius: 10px; border: 1px solid var(--line); background: var(--well);
+  display: flex; flex-direction: column; overflow: hidden; }
+.doc-chart .bars { flex: 1; display: flex; align-items: flex-end; gap: 4px; padding: 10px 8px 6px; }
+.doc-chart .bars i { flex: 1; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, var(--accent), var(--accent-dark)); opacity: .55; }
+.doc-chart .bars i.now { opacity: 1; }
+.doc-chart span { font-size: 10px; color: var(--muted); background: rgba(0,0,0,.45); text-align: center; padding: 3px 0; }
 .doc-photo span { font-size: 10px; color: var(--muted); background: rgba(0,0,0,.45); width: 100%; text-align: center; padding: 3px 0; }
 .doc-fields { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 9px 14px; align-content: start; }
 .doc-fields .f { min-width: 0; }
@@ -322,7 +328,7 @@ button { font: inherit; cursor: pointer; }
 .doc .close { z-index: 2; }
 @media (max-height: 420px) { .doc-top { padding: 8px 16px; } .doc-top .t { font-size: 16px; } .doc-body { padding: 10px 16px 4px; gap: 12px; }
   .doc-top .seal { width: 36px; height: 36px; font-size: 10px; } .doc-top .s { font-size: 10px; }
-  .doc-photo { width: 78px; height: 98px; } .doc-fields { gap: 5px 12px; grid-template-columns: 1fr 1fr 1fr; } .doc-fields .v { font-size: 13px; } .doc-fields .v.big { font-size: 15px; }
+  .doc-photo, .doc-chart { width: 78px; height: 98px; } .doc-fields { gap: 5px 12px; grid-template-columns: 1fr 1fr 1fr; } .doc-fields .v { font-size: 13px; } .doc-fields .v.big { font-size: 15px; }
   .doc-mrz { display: none; } .doc-foot { padding: 8px 16px 10px; } .doc-foot .btn { height: 38px; } }
 @media (max-width: 440px) { .doc-body { flex-direction: column; align-items: center; } .doc-fields { width: 100%; } }
 /* --- HUD: панель справа сверху (BastionUI.hud, данные — hud.inc) --- */
@@ -497,11 +503,26 @@ function vipImg(level, cls) {
 
   // Документ (docs.inc): паспорт, медкарта, лицензии. own — свой или показали
   function docWindow(d, m) {
-    var K = { passport: ['ПАСПОРТ', 'Штат San Andreas · гражданин'], medcard: ['МЕДКАРТА', 'Больница Лос-Сантоса'], licenses: ['ЛИЦЕНЗИИ', 'Штат San Andreas · разрешения'] };
+    var K = { passport: ['ПАСПОРТ', 'Штат San Andreas · гражданин'], medcard: ['МЕДКАРТА', 'Больница Лос-Сантоса'], licenses: ['ЛИЦЕНЗИИ', 'Штат San Andreas · разрешения'], bizstat: ['ВЫПИСКА', 'Bastion Bank · доход бизнеса'] };
     var k = K[d.kind] || K.passport;
     function f(key, val, cls) { return '<div class="f' + (cls ? ' ' + cls : '') + '"><div class="k">' + key + '</div><div class="v">' + val + '</div></div>'; }
     var name = esc(plain(d.name)), fields = '';
-    if (d.kind === 'medcard') {
+    function usd(v) { return '$' + String(v | 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+    var photo = '<div class="doc-photo"><span>скин ' + (d.skin | 0) + '</span></div>';
+    if (d.kind === 'bizstat') {
+      // доход по дням: столбики, последний — сегодня
+      var dd = d.days || [], top = Math.max.apply(null, dd.concat([1]));
+      photo = '<div class="doc-chart"><div class="bars">' + dd.map(function (v, i) {
+        return '<i title="' + usd(v) + '" style="height:' + Math.max(3, Math.round(100 * v / top)) + '%"' + (i === dd.length - 1 ? ' class="now"' : '') + '></i>';
+      }).join('') + '</div><span>доход за ' + dd.length + ' дн.</span></div>';
+      fields = '<div class="f w"><div class="k">Бизнес</div><div class="v big">' + esc(plain(d.name)) + '</div></div>' +
+        f('Вид', esc(d.type)) + f('Номер', '№' + esc(d.num)) +
+        f('Владелец', esc(plain(d.owner)), 'w') +
+        f('В кассе', '<span style="color:var(--green)">' + usd(d.till) + '</span>') + f('За ' + dd.length + ' дн.', usd(d.week)) +
+        f('За всё время', usd(d.total)) + (d.stockMax ? f('Склад', usd(d.stock) + ' <span class="mut">из ' + usd(d.stockMax) + '</span>') : f('Склад', '<span class="mut">не нужен</span>')) +
+        f('Выдана', esc(d.issued)) + f('Код проверки', '<span style="color:var(--accent);letter-spacing:.12em">' + esc(d.code) + '</span>') +
+        (d.verified ? f('Проверка', '<span class="doc-stamp ok">ПОДЛИННАЯ</span>', 'w') : f('Проверить', '<span class="mut">/checkbiz ' + esc(d.code) + '</span>', 'w'));
+    } else if (d.kind === 'medcard') {
       fields = f('Пациент', name, 'w') +
         f('Номер', esc(d.num)) + f('Заключение', '<span class="doc-stamp ' + (d.valid ? 'ok">ГОДЕН' : 'bad">ПРОСРОЧЕНА') + '</span>') +
         f(d.valid ? 'Действует до' : 'Истекла', esc(d.until) + (d.valid ? ' <span class="mut">· ещё ' + (d.days | 0) + ' дн.</span>' : '')) +
@@ -523,14 +544,14 @@ function vipImg(level, cls) {
         f('Семейное положение', d.spouse ? (d.female ? 'замужем за ' : 'женат на ') + esc(plain(d.spouse)) : (d.female ? 'не замужем' : 'не женат'), 'w');
     }
     // машиночитаемая строка внизу, как в настоящем паспорте
-    var mrz = (k[0] === 'ПАСПОРТ' ? 'P<SAN' : k[0] === 'МЕДКАРТА' ? 'M<LSH' : 'L<SAN') +
-      plain(d.name).toUpperCase().replace(/[^A-Z ]/g, '').replace(/ /g, '<<') + '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<';
-    var tag = d.own ? '' : '<div class="s" style="color:var(--accent)">Тебе показывают документ</div>';
+    var mrz = (d.kind === 'bizstat' ? 'B<BNK' : k[0] === 'ПАСПОРТ' ? 'P<SAN' : k[0] === 'МЕДКАРТА' ? 'M<LSH' : 'L<SAN') +
+      plain(d.kind === 'bizstat' ? d.owner : d.name).toUpperCase().replace(/[^A-Z ]/g, '').replace(/ /g, '<<') + '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<';
+    var tag = d.verified ? '<div class="s" style="color:var(--green)">Данные из банка на момент выдачи</div>' : d.own ? '' : '<div class="s" style="color:var(--accent)">Тебе показывают документ</div>';
     root.innerHTML = '<div class="card doc">' + closeBtn() +
       '<div class="doc-top"><div><div class="brand">BASTION ONLINE</div><div class="t">' + k[0] + '</div><div class="s">' + k[1] + '</div>' + tag + '</div>' +
       '<div class="seal">BS</div></div>' +
-      '<div class="doc-body"><div class="doc-photo"><span>скин ' + (d.skin | 0) + '</span></div><div class="doc-fields">' + fields + '</div></div>' +
-      '<div class="doc-mrz">' + esc(mrz.slice(0, 44)) + '<br>' + esc((String(d.num || '').replace(/\s/g, '') + '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<').slice(0, 44)) + '</div>' +
+      '<div class="doc-body">' + photo + '<div class="doc-fields">' + fields + '</div></div>' +
+      '<div class="doc-mrz">' + esc(mrz.slice(0, 44)) + '<br>' + esc((String(d.kind === 'bizstat' ? 'BIZ' + d.num + '<' + d.code : d.num || '').replace(/\s/g, '') + '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<').slice(0, 44)) + '</div>' +
       '<div class="doc-foot"><div class="row"><button class="btn primary" id="b1">' + esc(m.button1 || 'Закрыть') + '</button></div></div></div>';
     document.getElementById('b1').onclick = document.getElementById('x').onclick = function () { respond(1, -1, ''); };
   }

@@ -401,6 +401,8 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/bizlist", true))     { Cmd_BizList(playerid); return 1; }
 	if (!strcmp(cmd, "/bizcash", true))     { Cmd_BizCash(playerid); return 1; }
 	if (!strcmp(cmd, "/bizmenu", true) || !strcmp(cmd, "/biz", true)) { Cmd_BizMenu(playerid); return 1; }
+	if (!strcmp(cmd, "/showbiz", true))     { Cmd_ShowBiz(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/checkbiz", true))    { Cmd_CheckBiz(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/biztypes", true))    { Cmd_BizTypes(playerid); return 1; }
 	if (!strcmp(cmd, "/createbiz", true))   { Cmd_CreateBiz(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/delbiz", true))      { Cmd_DelBiz(playerid); return 1; }
