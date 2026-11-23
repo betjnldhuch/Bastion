@@ -8,6 +8,8 @@
 //  RPC DialogResponse, мод получает его в OnDialogResponse.
 //
 //  Сервер узнаёт, что окна есть, по скрытой команде /__bui (ui.inc).
+//  Диалог "[hud]" — данные панели HUD (hud.inc): не показываем, передаём
+//  странице (BastionUI.hud), стандартные полоски ХП/брони и деньги прячем.
 //  Если CEF не запустился или версия SA-MP неизвестна — обычные диалоги.
 // =====================================================================
 #include <windows.h>
@@ -16,11 +18,13 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <string>
 
 #include "MinHook.h"
 #include "browser.h"
 #include "log.h"
+#include "gtahud.h"
 #include "overlay.h"
 #include "samp.h"
 #include "text.h"
@@ -56,6 +60,7 @@ bool g_cefTried = false;
 bool g_visible = false;  // окно открыто: перехватываем мышь и клавиатуру
 int g_dialogId = -1;
 bool g_helloSent = false;
+bool g_hudOn = false;    // сервер прислал свою панель HUD
 DWORD g_lastClick = 0;
 int g_lastClickX = 0, g_lastClickY = 0, g_clicks = 0;
 
@@ -80,6 +85,15 @@ void CloseWindowUi(bool tellPage) {
 // ---------------- диалоги ----------------
 void __fastcall HookShow(void* self, void*, int id, int type, const char* caption, const char* txt, const char* b1,
                          const char* b2, BOOL serverside) {
+    if (serverside && caption && strncmp(caption, "[hud]", 5) == 0) {
+        // панель HUD: окна нет, ответа нет; без страницы просто молчим
+        if (!browser::PageLoaded()) return;
+        std::string body = text::Cp1251ToUtf8(txt);
+        g_hudOn = body.find("\"off\"") == std::string::npos;
+        gtahud::SetReplaced(g_hudOn);
+        browser::ExecJs("window.BastionUI && BastionUI.hud && BastionUI.hud(" + text::JsonQuote(body) + ")");
+        return;
+    }
     if (!serverside || !browser::PageLoaded()) {
         g_origShow(self, id, type, caption, txt, b1, b2, serverside);
         return;
@@ -132,7 +146,7 @@ HRESULT __stdcall HookPresent(IDirect3DDevice9* dev, const RECT* a, const RECT* 
         if (!samp::SendDialogResponse(id, resp.button, resp.listItem, text::Utf8ToCp1251(resp.text)))
             Log("DialogResponse %d не отправлен", id);
     }
-    overlay::Present(dev, g_visible);
+    overlay::Present(dev, g_visible || (g_hudOn && gtahud::Drawn()));
     return g_origPresent(dev, a, b, w, r);
 }
 
@@ -255,6 +269,7 @@ DWORD WINAPI Start(LPVOID) {
     Hook(samp::Base() + samp::Get().dialogHide, reinterpret_cast<void*>(&HookHide), g_origHide, "CDialog::Hide");
     g_origWndProc = reinterpret_cast<WNDPROC>(
         SetWindowLongPtrA(g_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&HookWndProc)));
+    if (!gtahud::Install()) Log("стандартный HUD GTA не прячем");
     Log("hooks ready");
     return 0;
 }

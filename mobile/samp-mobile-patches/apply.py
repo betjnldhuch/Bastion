@@ -1002,4 +1002,31 @@ replace_exact(cpp / "net/netrpc.cpp", "	stringCompressor->DecodeString(szMessage
 	}
 """)
 
+# ---------------------------------------------------------------------------
+# 16. Own HUD panel (hud.inc -> assets/ui/index.html, BastionUI.hud). The server
+#     sends a hidden dialog "[hud]" with JSON (health, armour, hunger, cash, bank)
+#     only while no other dialog is open. Java passes it to the page without
+#     touching the open window; native code stops drawing the stock health/armour
+#     bars and money (cpp/bastion_hud.cpp). {"off":1} (/hud) brings them back.
+# ---------------------------------------------------------------------------
+hooks_cpp = cpp / "game/hooks.cpp"
+replace_exact(hooks_cpp, "void InstallHooks()\n", read(patch_dir / "bastion_hud.cpp") + "\nvoid InstallHooks()\n")
+replace_exact(hooks_cpp, """    CHook::InlineHook("_ZN4CHud14DrawCrossHairsEv", &DrawCrosshair_hook, &DrawCrosshair);
+""", """    CHook::InlineHook("_ZN4CHud14DrawCrossHairsEv", &DrawCrosshair_hook, &DrawCrosshair);
+    BastionInstallHudHooks();
+""")
+replace_exact(cpp / "net/netrpc.cpp", """	if (!strcmp(szTitle, "[bastion:rec]"))
+""", """	if (!strncmp(szTitle, "[hud]", 5))
+	{
+		extern volatile bool g_bastionHud;
+		g_bastionHud = strstr(szMessage, "\\"off\\"") == nullptr;   // the page draws health, armour and money
+	}
+	if (!strcmp(szTitle, "[bastion:rec]"))
+""")
+replace_exact(samp_java, """            if (BastionWebUi.wants(caption)) {""", """            if (BastionWebUi.isHud(caption)) {
+                this.mWebUi.hud(content);   // HUD data, not a window: the open dialog stays
+                return;
+            }
+            if (BastionWebUi.wants(caption)) {""")
+
 print("SAMP-Mobile prepared for Bastion: library module, Bastion storage, :game process, no Firebase.")

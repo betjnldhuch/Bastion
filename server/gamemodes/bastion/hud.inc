@@ -9,12 +9,18 @@
 //    значки двигателя, фар и замков.
 //    На ПК — справа внизу, на телефоне — сверху по центру под панелью.
 //
+//  Клиент Bastion (APK и ПК с bastion_ui.asi, UI_Has) рисует панель сам
+//  в стиле окон (ui/index.html, BastionUI.hud): ХП, броня, наличные, банк,
+//  сытость, уровень. Данные идут скрытым диалогом "[hud]" (HUD_DIALOG_ID)
+//  только когда у игрока нет открытого окна; клиент его не показывает,
+//  а стандартные полоски ХП/брони и деньги GTA прячет. Остальным — текстдравы.
+//
 //  Игрокам:
 //    /hud     — спрятать / показать панель статуса
 //    /speedo  — спрятать / показать спидометр (fuel.inc)
 //
-//  Радар и стандартный HUD GTA (здоровье, броня, деньги, оружие) не трогаем:
-//  сервер SA-MP их скрыть не может.
+//  Без клиента Bastion стандартный HUD GTA (здоровье, броня, деньги) остаётся:
+//  сервер SA-MP сам его скрыть не может.
 //  Надписи по-английски: стандартный шрифт текстдравов не знает кириллицу.
 // =====================================================================
 
@@ -85,6 +91,16 @@ static gHudLastHp[MAX_PLAYERS] = { -1, ... };
 static gHudLastFlags[MAX_PLAYERS] = { -1, ... };
 static gHudLastModel[MAX_PLAYERS] = { -1, ... };
 static gHudTick;
+
+// HTML-панель (UI_Has): что уже отправлено клиенту
+#define HUD_DIALOG_ID       32700
+static gHudWebCash[MAX_PLAYERS] = { cellmin, ... };
+static gHudWebHp[MAX_PLAYERS] = { -1, ... };
+static gHudWebArmour[MAX_PLAYERS] = { -1, ... };
+static gHudWebFood[MAX_PLAYERS] = { -1, ... };
+static gHudWebBank[MAX_PLAYERS] = { cellmin, ... };
+static gHudWebLevel[MAX_PLAYERS] = { -1, ... };
+static bool:gHudWebOn[MAX_PLAYERS];
 
 static const gHudVehNames[][] =
 {
@@ -186,11 +202,68 @@ static Hud_FormatMoney(amount, dest[], size = sizeof (dest))
 }
 
 // ---------------------------------------------------------------------
+//  HTML-панель клиента Bastion
+// ---------------------------------------------------------------------
+static Hud_WebReset(playerid)
+{
+	gHudWebOn[playerid] = true;
+	gHudWebCash[playerid] = cellmin;
+	gHudWebBank[playerid] = cellmin;
+	gHudWebHp[playerid] = -1;
+	gHudWebArmour[playerid] = -1;
+	gHudWebFood[playerid] = -1;
+	gHudWebLevel[playerid] = -1;
+}
+
+static Hud_WebSend(playerid, const json[])
+{
+	// Только когда окна нет: иначе сервер забудет id открытого окна и не примет ответ
+	new cur = GetPlayerDialogID(playerid);
+	if (cur != -1 && cur != HUD_DIALOG_ID) return 0;
+	ShowPlayerDialog(playerid, HUD_DIALOG_ID, DIALOG_STYLE_MSGBOX, "[hud]", "%s", "_", "", json);
+	return 1;
+}
+
+static Hud_WebUpdate(playerid)
+{
+	if (!gHudWebOn[playerid]) return;
+	new Float:health, Float:armour;
+	GetPlayerHealth(playerid, health);
+	GetPlayerArmour(playerid, armour);
+	new hp = floatround(health), arm = floatround(armour);
+	if (hp < 0) hp = 0;
+	if (arm < 0) arm = 0;
+	new cash = GetMoney(playerid), bank = Player[playerid][pBank];
+	new food = Needs_GetHunger(playerid), level = Player[playerid][pLevel];
+	if (hp == gHudWebHp[playerid] && arm == gHudWebArmour[playerid] && cash == gHudWebCash[playerid]
+		&& bank == gHudWebBank[playerid] && food == gHudWebFood[playerid] && level == gHudWebLevel[playerid]) return;
+
+	new json[144];
+	format(json, sizeof json, "{\"id\":%d,\"lvl\":%d,\"hp\":%d,\"arm\":%d,\"food\":%d,\"cash\":%d,\"bank\":%d}",
+		playerid, level, hp, arm, food, cash, bank);
+	if (!Hud_WebSend(playerid, json)) return;    // окно открыто — отправим, когда закроется
+	gHudWebHp[playerid] = hp;
+	gHudWebArmour[playerid] = arm;
+	gHudWebCash[playerid] = cash;
+	gHudWebBank[playerid] = bank;
+	gHudWebFood[playerid] = food;
+	gHudWebLevel[playerid] = level;
+}
+
+static Hud_WebOff(playerid)
+{
+	if (!gHudWebOn[playerid]) return;
+	gHudWebOn[playerid] = false;
+	Hud_WebSend(playerid, "{\"off\":1}");
+}
+
+// ---------------------------------------------------------------------
 //  Панель статуса
 // ---------------------------------------------------------------------
 static Hud_CreateStatus(playerid)
 {
 	if (gHudStatusOn[playerid]) return;
+	if (UI_Has(playerid)) { Hud_WebReset(playerid); return; }   // панель рисует клиент
 	new Float:bx, Float:by;
 	if (IsPlayerMobile[playerid]) { bx = 320.0 - HUD_STATUS_W / 2.0; by = 2.0; }
 	else { bx = 498.0; by = 124.0; }
@@ -381,6 +454,13 @@ stock Hud_OnDisconnect(playerid)
 	gHudSpeedoOn[playerid] = false;
 	gHudStatusHidden[playerid] = false;
 	gHudSpeedoHidden[playerid] = false;
+	gHudWebOn[playerid] = false;
+}
+
+// Из OnDialogResponse: ответ на скрытый диалог панели ничего не делает
+stock bool:Hud_IsDialog(dialogid)
+{
+	return dialogid == HUD_DIALOG_ID;
 }
 
 public Hud_OnTick()
@@ -389,6 +469,8 @@ public Hud_OnTick()
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!IsPlayerConnected(i) || !Player[i][pLogged]) continue;
+		if (gHudStatusOn[i] && UI_Has(i)) { Hud_DestroyStatus(i); Hud_WebReset(i); }  // клиент включил окна после спавна
+		Hud_WebUpdate(i);
 		if (slow) Hud_UpdateStatus(i);
 		if (gHudSpeedoHidden[i] || GetPlayerState(i) != PLAYER_STATE_DRIVER) Hud_HideSpeedo(i);
 		else Hud_UpdateSpeedo(i, slow || !gHudSpeedoOn[i]);
@@ -409,6 +491,7 @@ stock bool:Cmd_Hud(playerid)
 	if (gHudStatusHidden[playerid])
 	{
 		Hud_DestroyStatus(playerid);
+		Hud_WebOff(playerid);
 		SendClientMessage(playerid, COLOR_WHITE, "Панель статуса спрятана. Вернуть: /hud");
 	}
 	else

@@ -316,10 +316,45 @@ button { font: inherit; cursor: pointer; }
   .doc-photo { width: 78px; height: 98px; } .doc-fields { gap: 5px 12px; grid-template-columns: 1fr 1fr 1fr; } .doc-fields .v { font-size: 13px; } .doc-fields .v.big { font-size: 15px; }
   .doc-mrz { display: none; } .doc-foot { padding: 8px 16px 10px; } .doc-foot .btn { height: 38px; } }
 @media (max-width: 440px) { .doc-body { flex-direction: column; align-items: center; } .doc-fields { width: 100%; } }
+/* --- HUD: панель справа сверху (BastionUI.hud, данные — hud.inc) --- */
+#hud { position: fixed; top: 21vh; right: 1.6vw; width: 196px; display: none; pointer-events: none;
+  background: linear-gradient(180deg, rgba(27,30,35,.88), rgba(20,22,26,.86)); border: 1px solid var(--line);
+  border-radius: 12px; padding: 9px 11px 10px; box-shadow: 0 8px 24px rgba(0,0,0,.45); overflow: hidden; }
+#hud.on { display: block; animation: fade .25s ease-out; }
+#hud::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-dark)); }
+#hud .hd { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 7px; }
+#hud .brand { font-size: 11px; }
+#hud .who { font-size: 11px; color: var(--muted); }
+#hud .who b { color: var(--accent); font-weight: 600; }
+#hud .ln { display: flex; align-items: center; gap: 8px; height: 22px; }
+#hud .ico { width: 18px; height: 18px; flex: none; display: flex; align-items: center; justify-content: center; font-size: 13px; line-height: 1; }
+#hud .ico img { width: 18px; height: 18px; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
+#hud .bar { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
+#hud .bar i { display: block; height: 100%; width: 0; border-radius: 3px; transition: width .3s ease, background-color .3s; }
+#hud .v { width: 30px; text-align: right; font-family: "Russo One", sans-serif; font-size: 12px; color: var(--text); }
+#hud .money { flex: 1; font-family: "Russo One", sans-serif; font-size: 15px; letter-spacing: .02em; white-space: nowrap; }
+#hud .money.cash { color: var(--green); }
+#hud .money.neg { color: var(--red); }
+#hud .money small { font-family: system-ui, sans-serif; font-size: 10px; color: var(--muted); margin-right: 4px; letter-spacing: 0; }
+#hud .sep { height: 1px; background: var(--line); margin: 5px 0; }
+#hud .ln.arm.off { display: none; }
+#hud.warn .ln.food .ico { animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35 } }
+@media (max-height: 420px) { #hud { top: 24vh; width: 170px; padding: 7px 9px 8px; } #hud .ln { height: 19px; } #hud .money { font-size: 13px; } }
 </style>
 </head>
 <body>
 <div id="root"></div>
+<div id="hud">
+  <div class="hd"><span class="brand">BASTION RP</span><span class="who">ID <b id="h-id">0</b> · ур. <b id="h-lvl">1</b></span></div>
+  <div class="ln hp"><span class="ico" data-k="hp"></span><span class="bar"><i id="h-hp"></i></span><span class="v" id="h-hpv">0</span></div>
+  <div class="ln arm"><span class="ico" data-k="armor"></span><span class="bar"><i id="h-arm"></i></span><span class="v" id="h-armv">0</span></div>
+  <div class="ln food"><span class="ico" data-k="food"></span><span class="bar"><i id="h-food"></i></span><span class="v" id="h-foodv">0</span></div>
+  <div class="sep"></div>
+  <div class="ln"><span class="ico" data-k="cash"></span><span class="money cash" id="h-cash">$0</span></div>
+  <div class="ln"><span class="ico" data-k="bank"></span><span class="money" id="h-bank"><small>банк</small>$0</span></div>
+</div>
 <script>
 var VIP_IMG = ['bronze', 'silver', 'gold', 'platinum', 'diamond'], VIP_NAME = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond'];
 var VIP_COLOR = ['CD7F32', 'C8D0D8', 'FFD700', '7FE8FF', '5AA9FF'];   // как gVipHex в vip.inc
@@ -1027,6 +1062,42 @@ function vipImg(level, cls) {
   };
   addEventListener('keydown', function (e) { if (current && keyHandler) keyHandler(e); });
 
+  // --- HUD: ХП, броня, сытость, наличные, банк. Иконки — ui/hud/*.png (пока их нет — эмодзи) ---
+  var hud = document.getElementById('hud');
+  var HUD_ICONS = { hp: '❤️', armor: '🛡️', food: '🍔', cash: '💵', bank: '🏦' };
+  Array.prototype.forEach.call(hud.querySelectorAll('.ico'), function (el) {
+    var k = el.getAttribute('data-k'), img = new Image();
+    img.onload = function () { el.textContent = ''; el.appendChild(img); };
+    img.onerror = function () { el.textContent = HUD_ICONS[k]; };
+    img.alt = '';
+    img.src = 'hud/' + k + '.png';
+  });
+  function hudMoney(n) {
+    var s = String(Math.abs(Math.round(+n || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    return (n < 0 ? '-$' : '$') + s;
+  }
+  function hudBar(id, v, max, colour) {
+    var p = Math.max(0, Math.min(100, (+v || 0) * 100 / max));
+    var el = document.getElementById(id);
+    el.style.width = p + '%';
+    el.style.backgroundColor = colour || (p <= 20 ? 'var(--red)' : p <= 50 ? 'var(--gold)' : 'var(--green)');
+  }
+  function setText(id, t) { var el = document.getElementById(id); if (el.textContent !== t) el.textContent = t; }
+  window.BastionUI.hud = function (d) {
+    if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { return; } }
+    if (!d || d.off) { hud.classList.remove('on'); return; }
+    setText('h-id', String(d.id)); setText('h-lvl', String(d.lvl));
+    hudBar('h-hp', d.hp, 100, '#e5484d'); setText('h-hpv', String(d.hp));
+    hudBar('h-arm', d.arm, 100, '#6ea8ff'); setText('h-armv', String(d.arm));
+    hud.querySelector('.ln.arm').classList.toggle('off', !(d.arm > 0));
+    hudBar('h-food', d.food, 100); setText('h-foodv', d.food + '%');
+    hud.classList.toggle('warn', d.food <= 20);
+    var c = document.getElementById('h-cash');
+    setText('h-cash', hudMoney(d.cash)); c.classList.toggle('neg', d.cash < 0); c.classList.toggle('cash', d.cash >= 0);
+    document.getElementById('h-bank').innerHTML = '<small>банк</small>' + hudMoney(d.bank);
+    hud.classList.add('on');
+  };
+
   // ПК (bastion_ui.asi): крупнее на больших экранах, Esc закрывает окно
   if (window.BastionNative && BastionNative.platform === 'pc') {
     var fit = function () { document.body.style.zoom = Math.max(1, Math.min(2, innerHeight / 760)); };
@@ -1037,7 +1108,7 @@ function vipImg(level, cls) {
     });
   }
 
-  // Предпросмотр в браузере ПК: index.html#login / #register / #gender / #donate / #donate-vip / #inventory / #stats,
+  // Предпросмотр в браузере ПК: index.html#hud (панель HUD), #login / #register / #gender / #donate / #donate-vip / #inventory / #stats,
   // обычные диалоги: #samp0 … #samp5 (стиль диалога), #samp6-7 фракции, #samp8-9 бизнесы, #samp10-11 работы, #samp12-14 имущество
   var SAMPLE = {
     0: ['{FF7A1A}Информация', 'Добро пожаловать на {FF7A1A}Bastion{FFFFFF}!\nВаш баланс: {4CD07D}$15 000\n{A9C4E4}Удачной игры.'],
@@ -1064,7 +1135,10 @@ function vipImg(level, cls) {
     14: ['{10C003}{FFFFFF}Покупка особняка', '{FFFFFF}Особняк №25 продаётся.\nЦена: {FFFF00}$400000\n\n{FFFFFF}Купить?']
   };
   var mh = /^#samp([0-9]|1[0-4])$/.exec(location.hash);
-  if (!window.BastionNative && mh) {
+  if (!window.BastionNative && location.hash === '#hud') {
+    BastionUI.hud({ id: 12, lvl: 7, hp: 74, arm: 40, food: 18, cash: 15400, bank: 1250000 });
+    document.body.style.background = '#2b3440';
+  } else if (!window.BastionNative && mh) {
     BastionUI.open({ window: 'samp', button1: 'Выбрать', button2: +mh[1] ? 'Отмена' : '',
       data: { style: [0, 1, 2, 3, 4, 5, 4, 5, 5, 5, 0, 2, 5, 5, 0][mh[1]], caption: SAMPLE[mh[1]][0], text: SAMPLE[mh[1]][1] } });
     document.body.style.background = '#2b3440';

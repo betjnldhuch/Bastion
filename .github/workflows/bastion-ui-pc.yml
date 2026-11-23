@@ -88,6 +88,7 @@ jobs:
           Copy-Item mobile\launcher\app\src\main\assets\ui\biz "$ui\ui" -Recurse
           Copy-Item mobile\launcher\app\src\main\assets\ui\jobs "$ui\ui" -Recurse
           Copy-Item mobile\launcher\app\src\main\assets\ui\property "$ui\ui" -Recurse
+          Copy-Item mobile\launcher\app\src\main\assets\ui\hud "$ui\ui" -Recurse
           Copy-Item launcher\fonts\RussoOne-Regular.ttf "$ui\fonts"
           Copy-Item client-mods\bastion-ui\README.txt $root
           # ASI Loader (ThirteenAG, MIT) — грузит bastion_ui.asi в игру

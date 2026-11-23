@@ -55,7 +55,8 @@ add_library(bastion_ui SHARED
   src/samp.cpp
   src/browser.cpp
   src/overlay.cpp
-  src/text.cpp)
+  src/text.cpp
+  src/gtahud.cpp)
 SET_LIBRARY_TARGET_PROPERTIES(bastion_ui)
 target_compile_options(bastion_ui PRIVATE /WX- /utf-8)
 add_dependencies(bastion_ui libcef_dll_wrapper)
