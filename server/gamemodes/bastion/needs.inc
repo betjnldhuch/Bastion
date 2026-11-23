@@ -50,14 +50,19 @@ enum
 	INV_COCAINE,        // кокаин, граммы (drugs.inc)
 	INV_FISH,           // рыба: сдать на работе рыбака (worklife.inc)
 	INV_JACK,           // домкрат: поставить машину на колёса, поменять пробитые шины
+	INV_PASSPORT,       // документы (docs.inc): лежат в сумке сами, не выбрасываются и не передаются,
+	INV_MEDCARD,        //   «Передать» — показать игроку рядом
+	INV_LICENSES,
 	INV_TYPES
 }
 // Номера вещей (для /giveitem): 1 бургер, 2 хот-дог, 3 аптечка, 4 ремкомплект, 5 пицца, 6 вода,
 // 7 пиво, 8 сигареты, 9 бинт, 10 цветы, 11 кости, 12 маска, 13 материалы,
 // 14 семена конопли, 15 марихуана, 16 кокаин, 17 рыба, 18 домкрат
-static const gInvNames[INV_TYPES][] = { "", "Бургер", "Хот-дог", "Аптечка", "Ремкомплект", "Пицца", "Вода", "Пиво", "Сигареты", "Бинт", "Цветы", "Игральные кости", "Маска", "Материалы", "Семена конопли", "Марихуана", "Кокаин", "Рыба", "Домкрат" };
-static const gInvHints[INV_TYPES][] = { "", "+40% сытости", "+25% сытости", "+50 HP", "чинит машину рядом", "+60% сытости", "+10% сытости, +5 HP", "+5 HP, пьянит", "покурить", "+20 HP", "букет в руки", "бросить кости (RP)", "прячет ник", "сделать оружие", "посадить куст", "покурить (эффект, +HP)", "употребить (эффект, бронь)", "сдать рыбаку", "перевернуть машину, сменить колёса" };
-static const gInvMax[INV_TYPES] = { 0, 5, 5, 3, 3, 3, 5, 5, 20, 5, 3, 1, 1, 500, 10, 50, 20, 30, 1 };
+// 19 паспорт, 20 медкарта, 21 лицензии — документы, через /giveitem не выдаются
+#define INV_IS_DOC(%0)      ((%0) >= INV_PASSPORT && (%0) < INV_TYPES)
+static const gInvNames[INV_TYPES][] = { "", "Бургер", "Хот-дог", "Аптечка", "Ремкомплект", "Пицца", "Вода", "Пиво", "Сигареты", "Бинт", "Цветы", "Игральные кости", "Маска", "Материалы", "Семена конопли", "Марихуана", "Кокаин", "Рыба", "Домкрат", "Паспорт", "Медкарта", "Лицензии" };
+static const gInvHints[INV_TYPES][] = { "", "+40% сытости", "+25% сытости", "+50 HP", "чинит машину рядом", "+60% сытости", "+10% сытости, +5 HP", "+5 HP, пьянит", "покурить", "+20 HP", "букет в руки", "бросить кости (RP)", "прячет ник", "сделать оружие", "посадить куст", "покурить (эффект, +HP)", "употребить (эффект, бронь)", "сдать рыбаку", "перевернуть машину, сменить колёса", "документ: открыть или показать игроку", "документ: открыть или показать игроку", "документ: открыть или показать игроку" };
+static const gInvMax[INV_TYPES] = { 0, 5, 5, 3, 3, 3, 5, 5, 20, 5, 3, 1, 1, 500, 10, 50, 20, 30, 1, 1, 1, 1 };
 
 enum E_DROP
 {
@@ -132,7 +137,7 @@ stock Needs_LoadPlayer(playerid)
 		for (new i = 0; i < rows; i++)
 		{
 			new item = DB_GetFieldInt(r, 0);
-			if (item > INV_NONE && item < INV_TYPES) gInv[playerid][item] = DB_GetFieldInt(r, 1);
+			if (item > INV_NONE && item < INV_TYPES && !INV_IS_DOC(item)) gInv[playerid][item] = DB_GetFieldInt(r, 1);
 			DB_SelectNextRow(r);
 		}
 		DB_FreeResultSet(r);
@@ -147,7 +152,7 @@ static Needs_SaveHunger(playerid)
 
 static Inv_Save(playerid, item)
 {
-	if (Player[playerid][pDbId] == 0) return;
+	if (Player[playerid][pDbId] == 0 || INV_IS_DOC(item)) return;
 	if (gInv[playerid][item] <= 0)
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM inventory WHERE owner = %d AND item = %d", Player[playerid][pDbId], item));
 	else
@@ -241,7 +246,7 @@ stock Inv_GetMax(item)
 // Добавить вещь. Возвращает false, если места нет.
 stock bool:Inv_Add(playerid, item, amount = 1)
 {
-	if (item <= INV_NONE || item >= INV_TYPES) return false;
+	if (item <= INV_NONE || item >= INV_TYPES || INV_IS_DOC(item)) return false;
 	if (gInv[playerid][item] + amount > gInvMax[item]) return false;
 	gInv[playerid][item] += amount;
 	Inv_Save(playerid, item);
@@ -271,6 +276,12 @@ stock bool:Inv_TakeOne(playerid, item)
 	if (item <= INV_NONE || item >= INV_TYPES || gInv[playerid][item] <= 0) return false;
 	Inv_Take(playerid, item, 1);
 	return true;
+}
+
+// Документ в сумке есть или нет (Docs_Sync в docs.inc, в базу не пишется)
+stock Inv_SetDoc(playerid, item, bool:has)
+{
+	if (INV_IS_DOC(item)) gInv[playerid][item] = has ? 1 : 0;
 }
 
 // ---------------------------------------------------------------------
@@ -330,6 +341,7 @@ static Outfit_Wear(playerid, slot)
 // Сумка списком (на телефоне, /invlist)
 stock bool:Inv_ShowList(playerid)
 {
+	Docs_Sync(playerid);
 	new list[1200] = "Вещь\tКол-во\tЧто даёт\n", line[96], n = 0;
 	for (new item = 1; item < INV_TYPES; item++)
 	{
@@ -454,6 +466,7 @@ static Inv_Use(playerid, item)
 {
 	if (gInv[playerid][item] <= 0) return;
 	if (item >= INV_SEEDS && item <= INV_FISH) { Drugs_UseItem(playerid, item); return; }    // семена, наркотики, рыба (drugs.inc)
+	if (INV_IS_DOC(item)) { Docs_Use(playerid, item); return; }                              // документы (docs.inc)
 	new msg[128];
 	new bool:consume = true;
 	switch (item)
@@ -561,6 +574,13 @@ static Inv_Use(playerid, item)
 static Inv_Give(playerid, item, const input[])
 {
 	new pos = 0, amount = 1;
+	if (INV_IS_DOC(item))
+	{
+		// документ не передаётся, а показывается (docs.inc)
+		new why[96];
+		if (!Docs_ShowTo(playerid, item, NextPlayerParam(input, pos), why)) { Inv_Why(playerid, why); return 0; }
+		return 1;
+	}
 	new target = NextPlayerParam(input, pos);
 	NextIntParam(input, pos, amount);
 	if (target == INVALID_PLAYER_ID || target == playerid || !Player[target][pLogged])
@@ -593,6 +613,7 @@ static Inv_Give(playerid, item, const input[])
 
 static Inv_Drop(playerid, item, amount)
 {
+	if (INV_IS_DOC(item)) { Inv_Why(playerid, "Документы нельзя выбросить."); return 0; }
 	if (amount < 1 || amount > gInv[playerid][item])
 	{
 		{ new why[96]; format(why, sizeof why, "У тебя только %d шт.", gInv[playerid][item]); Inv_Why(playerid, why); }
@@ -820,6 +841,11 @@ static Inv_ShowActions(playerid, item)
 	new title[48];
 	format(title, sizeof title, "%s (%d шт.)", gInvNames[item], gInv[playerid][item]);
 	new use[24];
+	if (INV_IS_DOC(item))
+	{
+		ShowPlayerDialog(playerid, DIALOG_INV_ACTION, DIALOG_STYLE_LIST, gInvNames[item], "Посмотреть\nПоказать игроку", "Выбрать", "Назад");
+		return;
+	}
 	if (item == INV_MASK && gMasked[playerid]) strcat(use, "Снять маску");
 	else if (item == INV_MASK) strcat(use, "Надеть маску");
 	else if (item == INV_DICE) strcat(use, "Бросить кости");
@@ -871,10 +897,13 @@ stock Needs_OnDialog(playerid, dialogid, response, listitem, const inputtext[] =
 			switch (listitem)
 			{
 				case 0: Inv_Use(playerid, item);
-				case 1: ShowPlayerDialog(playerid, DIALOG_INV_GIVE, DIALOG_STYLE_INPUT, "Передать",
+				case 1: if (INV_IS_DOC(item)) ShowPlayerDialog(playerid, DIALOG_INV_GIVE, DIALOG_STYLE_INPUT, "Показать",
+					"{FFFFFF}Кому показать: %s?\nВведи id игрока рядом. Например: {FFFF00}5", "Показать", "Назад", gInvNames[item]);
+				else ShowPlayerDialog(playerid, DIALOG_INV_GIVE, DIALOG_STYLE_INPUT, "Передать",
 					"{FFFFFF}Кому передать: %s?\nВведи id игрока и, если нужно, количество (у тебя %d шт.).\nНапример: {FFFF00}5{FFFFFF} или {FFFF00}5 2", "Передать", "Назад", gInvNames[item], gInv[playerid][item]);
 				case 2:
 				{
+					if (INV_IS_DOC(item)) return 1;
 					if (gInv[playerid][item] == 1) Inv_Drop(playerid, item, 1);
 					else ShowPlayerDialog(playerid, DIALOG_INV_DROP, DIALOG_STYLE_INPUT, "Выбросить",
 						"{FFFFFF}Сколько выбросить: %s? (у тебя %d шт.)", "Выбросить", "Назад", gInvNames[item], gInv[playerid][item]);
@@ -911,6 +940,7 @@ static InvHtml_Fail(playerid, const fallback[])
 
 stock Inv_ShowHtml(playerid)
 {
+	Docs_Sync(playerid);
 	new json[2600], part[200], name[48], hint[64];
 	new Float:hp;
 	GetPlayerHealth(playerid, hp);
@@ -1060,7 +1090,12 @@ static InvHtml_OnResponse(playerid, const input[])
 		}
 		case 'g':
 		{
-			if (Inv_Give(playerid, key, input[pos])) { format(text, sizeof text, "Передано: %s x%d.", gInvNames[key], before - gInv[playerid][key]); InvHtml_Note(playerid, true, text); }
+			if (INV_IS_DOC(key))
+			{
+				if (Inv_Give(playerid, key, input[pos])) { format(text, sizeof text, "Показано: %s.", gInvNames[key]); InvHtml_Note(playerid, true, text); }
+				else InvHtml_Fail(playerid, "Не получилось показать.");
+			}
+			else if (Inv_Give(playerid, key, input[pos])) { format(text, sizeof text, "Передано: %s x%d.", gInvNames[key], before - gInv[playerid][key]); InvHtml_Note(playerid, true, text); }
 			else InvHtml_Fail(playerid, "Не получилось передать.");
 		}
 		case 'd':
@@ -1097,13 +1132,13 @@ stock bool:Cmd_GiveItem(playerid, const params[])
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, item, amount = 1;
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID || !Player[target][pLogged] || !NextIntParam(params, pos, item) || item <= INV_NONE || item >= INV_TYPES)
+	if (target == INVALID_PLAYER_ID || !Player[target][pLogged] || !NextIntParam(params, pos, item) || item <= INV_NONE || item >= INV_PASSPORT)
 	{
-		SendClientMessage(playerid, COLOR_GREY, "Использование: /giveitem [id] [вещь 1-%d] [кол-во]. Вещи:", INV_TYPES - 1);
+		SendClientMessage(playerid, COLOR_GREY, "Использование: /giveitem [id] [вещь 1-%d] [кол-во]. Вещи:", INV_PASSPORT - 1);
 		new line[144], part[40];
-		for (new it = 1; it < INV_TYPES; it++)
+		for (new it = 1; it < INV_PASSPORT; it++)
 		{
-			format(part, sizeof part, "%d %s (до %d)%s", it, gInvNames[it], gInvMax[it], (it < INV_TYPES - 1) ? (", ") : (""));
+			format(part, sizeof part, "%d %s (до %d)%s", it, gInvNames[it], gInvMax[it], (it < INV_PASSPORT - 1) ? (", ") : (""));
 			if (strlen(line) + strlen(part) >= sizeof line) { SendClientMessage(playerid, COLOR_WHITE, "%s", line); line[0] = '\0'; }
 			strcat(line, part);
 		}
@@ -1160,9 +1195,9 @@ stock bool:Cmd_GiveItem(playerid, const params[])
 #define INV_UI_COL_TRACK    0x0E1013FF
 
 // Модели вещей для окна (по INV_*)
-static const gInvModels[INV_TYPES] = { 0, 2703, 19346, 11738, 19921, 2702, 19570, 1544, 19896, 11747, 325, 1851, 19801, 1271, 1577, 1578, 1575, 19630, 18633 };
-static const gInvNamesEn[INV_TYPES][] = { "", "Burger", "Hot dog", "Medkit", "Repair kit", "Pizza", "Water", "Beer", "Cigarettes", "Bandage", "Flowers", "Dice", "Mask", "Materials", "Weed seeds", "Marijuana", "Cocaine", "Fish", "Car jack" };
-static const gInvHintsEn[INV_TYPES][] = { "", "+40% food", "+25% food", "+50 HP", "Repairs a car nearby", "+60% food", "+10% food, +5 HP", "+5 HP, makes you drunk", "Have a smoke", "+20 HP", "Bouquet in your hands", "Roll the dice (RP)", "Hides your nickname", "Craft a weapon", "Plant a bush", "Smoke: effect, +HP", "Use: effect, armour", "Sell at the fishing job", "Flip a car, change tyres" };
+static const gInvModels[INV_TYPES] = { 0, 2703, 19346, 11738, 19921, 2702, 19570, 1544, 19896, 11747, 325, 1851, 19801, 1271, 1577, 1578, 1575, 19630, 18633, 1581, 11736, 2894 };
+static const gInvNamesEn[INV_TYPES][] = { "", "Burger", "Hot dog", "Medkit", "Repair kit", "Pizza", "Water", "Beer", "Cigarettes", "Bandage", "Flowers", "Dice", "Mask", "Materials", "Weed seeds", "Marijuana", "Cocaine", "Fish", "Car jack", "Passport", "Medical card", "Licenses" };
+static const gInvHintsEn[INV_TYPES][] = { "", "+40% food", "+25% food", "+50 HP", "Repairs a car nearby", "+60% food", "+10% food, +5 HP", "+5 HP, makes you drunk", "Have a smoke", "+20 HP", "Bouquet in your hands", "Roll the dice (RP)", "Hides your nickname", "Craft a weapon", "Plant a bush", "Smoke: effect, +HP", "Use: effect, armour", "Sell at the fishing job", "Flip a car, change tyres", "Open it or show to a player", "Open it or show to a player", "Open it or show to a player" };
 
 // Постоянные текстдравы окна
 enum
@@ -1317,6 +1352,13 @@ static InvUi_ShowInfo(playerid)
 		format(buf, sizeof buf, "%d / %d", gInv[playerid][item], gInvMax[item]);
 		PlayerTextDrawSetString(playerid, gInvUiTD[playerid][IUI_COUNT], buf);
 		PlayerTextDrawSetString(playerid, gInvUiTD[playerid][IUI_HINT], gInvHintsEn[item]);
+		if (INV_IS_DOC(item))
+		{
+			InvUi_SetButton(playerid, IUI_BTN_USE, "OPEN", true);
+			InvUi_SetButton(playerid, IUI_BTN_GIVE, "SHOW", true);
+			InvUi_SetButton(playerid, IUI_BTN_DROP, "DROP", false);
+			return;
+		}
 		if (item == INV_MASK && gMasked[playerid]) InvUi_SetButton(playerid, IUI_BTN_USE, "TAKE OFF", true);
 		else if (item == INV_MASK) InvUi_SetButton(playerid, IUI_BTN_USE, "PUT ON", true);
 		else if (item == INV_DICE) InvUi_SetButton(playerid, IUI_BTN_USE, "ROLL", true);
@@ -1366,6 +1408,7 @@ static InvUi_Destroy(playerid)
 // Открыть окно. keepItem — после действия оставить выбранной ту же вещь
 stock Inv_ShowUI(playerid, keepItem = -1)
 {
+	Docs_Sync(playerid);
 	if (gInvUiOpen[playerid]) InvUi_Destroy(playerid);
 
 	new n = 0;
@@ -1546,6 +1589,16 @@ static InvUi_DoAction(playerid, action)
 	}
 	if (item <= INV_NONE || item >= INV_TYPES || gInv[playerid][item] <= 0) return;
 	gInvSelected[playerid] = item;
+	if (INV_IS_DOC(item))
+	{
+		// документ: открыть окно или показать игроку (docs.inc)
+		if (action == 2) return;
+		Inv_CloseUI(playerid);
+		if (action == 0) Inv_Use(playerid, item);
+		else ShowPlayerDialog(playerid, DIALOG_INV_GIVE, DIALOG_STYLE_INPUT, "Показать",
+			"{FFFFFF}Кому показать: %s?\nВведи id игрока рядом. Например: {FFFF00}5", "Показать", "Назад", gInvNames[item]);
+		return;
+	}
 	switch (action)
 	{
 		case 0: { Inv_Use(playerid, item); Inv_ShowUI(playerid, item); }

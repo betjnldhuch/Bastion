@@ -256,6 +256,66 @@ button { font: inherit; cursor: pointer; }
 .list .hd { position: sticky; top: 0; z-index: 1; background: var(--panel-hi); font-size: 12px; color: var(--muted);
   text-transform: uppercase; letter-spacing: .04em; padding: 8px 12px; min-height: 0; }
 .list .hd > div + div { color: var(--muted); }
+/* Навыки оружия в /stats: справа от строк, на узком экране — под ними */
+.card.wide.st.sk2 { width: min(820px, 100%); }
+.st-cols { flex: 1 1 auto !important; min-height: 0; overflow: auto; margin-bottom: 12px; }
+.st-cols .st-rows { overflow: visible; }
+@media (min-width: 640px) { .st-cols.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 0 26px; }
+  .st-cols.two .st-sk { border-left: 1px solid var(--line); padding-left: 22px; } }
+.st-sk { margin: 0 0 12px; }
+.st-sk h2 { font-family: "Russo One", sans-serif; font-weight: 400; font-size: 14px; color: var(--accent); margin: 0 0 8px; letter-spacing: .04em; }
+.sk { display: grid; grid-template-columns: 9.5em 1fr 4.2em; gap: 10px; align-items: center; font-size: 13px; margin-bottom: 6px; }
+.sk .bar { height: 8px; border-radius: 4px; background: #0e1013; overflow: hidden; border: 1px solid var(--line); }
+.sk .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent-dark), var(--accent)); }
+.sk .bar i.max { background: linear-gradient(90deg, #c99a1a, var(--gold)); }
+.sk b { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.sk .rk { grid-column: 2 / 4; margin-top: -4px; font-size: 11px; color: var(--muted); }
+@media (max-height: 420px) { .sk { font-size: 12px; margin-bottom: 3px; } .sk .rk { display: none; } }
+/* Документы: паспорт, медкарта, лицензии (docs.inc) */
+.card.doc { width: min(520px, 100%); max-height: 100%; padding: 0; overflow: hidden; background: #101216; display: flex; flex-direction: column; }
+.card.doc > * { flex: none; }
+.card.doc > .doc-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.doc-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 20px 12px;
+  background: linear-gradient(100deg, #1d2026, #15171b); border-bottom: 2px solid var(--accent); }
+.doc-top .t { font-family: "Russo One", sans-serif; font-size: 19px; letter-spacing: .05em; }
+.doc-top .s { font-size: 11px; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }
+.doc-top .seal { width: 46px; height: 46px; flex: none; border-radius: 50%; border: 2px solid rgba(255,122,26,.7); display: flex;
+  align-items: center; justify-content: center; font-family: "Russo One", sans-serif; color: var(--accent); font-size: 12px;
+  box-shadow: inset 0 0 0 3px rgba(255,122,26,.12); transform: rotate(-12deg); margin-right: 40px; }
+.doc-body { display: flex; gap: 18px; padding: 16px 20px 6px; position: relative;
+  background: repeating-linear-gradient(135deg, rgba(255,122,26,.025) 0 8px, transparent 8px 16px); }
+.doc-body::after { content: "BASTION"; position: absolute; right: 14px; bottom: 2px; font-family: "Russo One", sans-serif; font-size: 44px;
+  color: rgba(255,255,255,.025); letter-spacing: .1em; pointer-events: none; }
+.doc-photo { width: 108px; height: 136px; flex: none; border-radius: 10px; border: 1px solid var(--line); position: relative; overflow: hidden;
+  background: radial-gradient(circle at 50% 36%, #3a3f48 0 22%, transparent 23%), radial-gradient(ellipse at 50% 100%, #3a3f48 0 46%, transparent 47%), #1b1e23;
+  display: flex; align-items: flex-end; justify-content: center; }
+.doc-photo span { font-size: 10px; color: var(--muted); background: rgba(0,0,0,.45); width: 100%; text-align: center; padding: 3px 0; }
+.doc-fields { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 9px 14px; align-content: start; }
+.doc-fields .f { min-width: 0; }
+.doc-fields .f.w { grid-column: 1 / -1; }
+.doc-fields .k { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.doc-fields .v { font-size: 14.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-fields .v.big { font-family: "Russo One", sans-serif; font-weight: 400; font-size: 18px; white-space: normal; }
+.doc-mrz { margin: 10px 20px 0; padding: 7px 10px; border-radius: 8px; background: #0b0c0f; border: 1px solid var(--line);
+  font: 12px/1.35 ui-monospace, "Courier New", monospace; color: #9aa0aa; letter-spacing: .12em; overflow: hidden; white-space: nowrap; }
+.doc-stamp { display: inline-block; padding: 3px 10px; border-radius: 6px; font-family: "Russo One", sans-serif; font-size: 13px; letter-spacing: .06em;
+  border: 2px solid currentColor; transform: rotate(-3deg); }
+.doc-stamp.ok { color: var(--green); } .doc-stamp.bad { color: var(--red); }
+.doc-lic { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.doc-lic div { border: 1px solid var(--line); border-radius: 10px; padding: 9px 4px 7px; text-align: center; background: #15171b; font-size: 12px; }
+.doc-lic div b { display: block; font-size: 22px; line-height: 1.2; filter: grayscale(1); opacity: .35; }
+.doc-lic div.on { border-color: rgba(76,208,125,.5); background: rgba(76,208,125,.08); }
+.doc-lic div.on b { filter: none; opacity: 1; }
+.doc-lic div i { display: block; font-style: normal; font-size: 10.5px; color: var(--red); margin-top: 2px; }
+.doc-lic div.on i { color: var(--green); }
+.doc-foot { padding: 12px 20px 16px; }
+.doc-foot .row { margin-top: 0; }
+.doc .close { z-index: 2; }
+@media (max-height: 420px) { .doc-top { padding: 8px 16px; } .doc-top .t { font-size: 16px; } .doc-body { padding: 10px 16px 4px; gap: 12px; }
+  .doc-top .seal { width: 36px; height: 36px; font-size: 10px; } .doc-top .s { font-size: 10px; }
+  .doc-photo { width: 78px; height: 98px; } .doc-fields { gap: 5px 12px; grid-template-columns: 1fr 1fr 1fr; } .doc-fields .v { font-size: 13px; } .doc-fields .v.big { font-size: 15px; }
+  .doc-mrz { display: none; } .doc-foot { padding: 8px 16px 10px; } .doc-foot .btn { height: 38px; } }
+@media (max-width: 440px) { .doc-body { flex-direction: column; align-items: center; } .doc-fields { width: 100%; } }
 </style>
 </head>
 <body>
@@ -379,7 +439,60 @@ function vipImg(level, cls) {
     setTimeout(function () { pw.focus(); }, 50);
   }
 
+  // Навыки оружия (skills.inc): [["Пистолеты", 300], ...]
+  function skillRank(v, max) { return v >= max ? 'мастер' : v >= 700 ? 'профи' : v >= 400 ? 'опытный' : v >= 150 ? 'любитель' : 'новичок'; }
+  function skillsHtml(list, max) {
+    if (!list || !list.length) return '';
+    max = max || 999;
+    return '<div class="st-sk"><h2>НАВЫКИ ОРУЖИЯ</h2>' + list.map(function (s) {
+      var v = s[1] | 0, pct = Math.max(0, Math.min(100, Math.round(100 * v / max)));
+      return '<div class="sk"><span>' + esc(s[0]) + '</span><span class="bar"><i' + (v >= max ? ' class="max"' : '') + ' style="width:' + pct + '%"></i></span>' +
+        '<b>' + v + '</b></div>';
+    }).join('') + '<div class="sk"><span></span><span class="rk">Растут за попадания. На ' + max + ' пистолет, обрез и ПП берутся в обе руки.</span></div></div>';
+  }
+
+  // Документ (docs.inc): паспорт, медкарта, лицензии. own — свой или показали
+  function docWindow(d, m) {
+    var K = { passport: ['ПАСПОРТ', 'Штат San Andreas · гражданин'], medcard: ['МЕДКАРТА', 'Больница Лос-Сантоса'], licenses: ['ЛИЦЕНЗИИ', 'Штат San Andreas · разрешения'] };
+    var k = K[d.kind] || K.passport;
+    function f(key, val, cls) { return '<div class="f' + (cls ? ' ' + cls : '') + '"><div class="k">' + key + '</div><div class="v">' + val + '</div></div>'; }
+    var name = esc(plain(d.name)), fields = '';
+    if (d.kind === 'medcard') {
+      fields = f('Пациент', name, 'w') +
+        f('Номер', esc(d.num)) + f('Заключение', '<span class="doc-stamp ' + (d.valid ? 'ok">ГОДЕН' : 'bad">ПРОСРОЧЕНА') + '</span>') +
+        f(d.valid ? 'Действует до' : 'Истекла', esc(d.until) + (d.valid ? ' <span class="mut">· ещё ' + (d.days | 0) + ' дн.</span>' : '')) +
+        f('Страховка', d.insured ? 'до ' + esc(d.insUntil) : '<span class="mut">нет</span>') +
+        f('Зависимость', d.addict ? '<span style="color:var(--red)">есть</span>' : 'нет', 'w');
+    } else if (d.kind === 'licenses') {
+      var L = [['🚗', 'Авто'], ['🏍️', 'Мото'], ['🚤', 'Лодки'], ['🔫', 'Оружие']];
+      fields = f('Владелец', name, 'w') + f('Номер', esc(d.num), 'w') +
+        '<div class="doc-lic">' + L.map(function (l, i) {
+          var on = d.lic && d.lic[i];
+          return '<div' + (on ? ' class="on"' : '') + '><b>' + l[0] + '</b>' + l[1] + '<i>' + (on ? 'есть' : 'нет') + '</i></div>';
+        }).join('') + '</div>';
+    } else {
+      fields = '<div class="f w"><div class="k">Фамилия, имя</div><div class="v big">' + name + '</div></div>' +
+        f('Номер', esc(d.num)) + f('Пол', d.female ? 'женский' : 'мужской') +
+        f('Дата выдачи', esc(d.issued)) + f('Лет в штате', String(d.level | 0)) +
+        f('Работа', esc(plain(d.job)) || '—') + f('Телефон', esc(d.phone)) +
+        f('Фракция', d.faction && d.rank ? esc(plain(d.faction)) + ' <span class="mut">· ' + esc(plain(d.rank)) + '</span>' : '<span class="mut">нет</span>', 'w') +
+        f('Семейное положение', d.spouse ? (d.female ? 'замужем за ' : 'женат на ') + esc(plain(d.spouse)) : (d.female ? 'не замужем' : 'не женат'), 'w');
+    }
+    // машиночитаемая строка внизу, как в настоящем паспорте
+    var mrz = (k[0] === 'ПАСПОРТ' ? 'P<SAN' : k[0] === 'МЕДКАРТА' ? 'M<LSH' : 'L<SAN') +
+      plain(d.name).toUpperCase().replace(/[^A-Z ]/g, '').replace(/ /g, '<<') + '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<';
+    var tag = d.own ? '' : '<div class="s" style="color:var(--accent)">Тебе показывают документ</div>';
+    root.innerHTML = '<div class="card doc">' + closeBtn() +
+      '<div class="doc-top"><div><div class="brand">BASTION ONLINE</div><div class="t">' + k[0] + '</div><div class="s">' + k[1] + '</div>' + tag + '</div>' +
+      '<div class="seal">BS</div></div>' +
+      '<div class="doc-body"><div class="doc-photo"><span>скин ' + (d.skin | 0) + '</span></div><div class="doc-fields">' + fields + '</div></div>' +
+      '<div class="doc-mrz">' + esc(mrz.slice(0, 44)) + '<br>' + esc((String(d.num || '').replace(/\s/g, '') + '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<').slice(0, 44)) + '</div>' +
+      '<div class="doc-foot"><div class="row"><button class="btn primary" id="b1">' + esc(m.button1 || 'Закрыть') + '</button></div></div></div>';
+    document.getElementById('b1').onclick = document.getElementById('x').onclick = function () { respond(1, -1, ''); };
+  }
+
   var WINDOWS = {
+    document: docWindow,
     login: function (d, m) {
       passwordForm({ title: 'С возвращением', sub: 'Аккаунт <b>' + esc(d.name) + '</b>. Введи пароль, чтобы войти.',
         button1: m.button1, button2: m.button2, error: d.error });
@@ -434,11 +547,12 @@ function vipImg(level, cls) {
         ['Сытость', (d.hunger | 0) + '%'], ['Дом', esc(d.house)], ['Машина', esc(d.car)]
       ];
       if (d.admin > 0) rows.push(['Админка', String(d.admin | 0)]);
-      root.innerHTML = '<div class="card wide st">' + closeBtn() + '<div class="brand">BASTION ONLINE</div>' +
+      root.innerHTML = '<div class="card wide st' + (d.skills && d.skills.length ? ' sk2' : '') + '">' + closeBtn() + '<div class="brand">BASTION ONLINE</div>' +
         '<div class="st-head">' + (lv ? vipImg(lv, 'st-badge') : '') + '<div><h1>' + esc(d.name) + '</h1>' +
         (lv ? '<div class="st-vip" style="color:#' + vc + '">VIP ' + VIP_NAME[lv - 1] + (d.vip > 0 ? ' · ещё ' + (d.vip | 0) + ' дн.' : '') + '</div>'
             : '<div class="st-vip mut">Без VIP · /donate</div>') + '</div></div>' +
-        '<dl class="st-rows">' + rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl>' +
+        '<div class="st-cols' + (d.skills && d.skills.length ? ' two' : '') + '"><dl class="st-rows">' + rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl>' +
+        skillsHtml(d.skills, d.skillMax) + '</div>' +
         '<div class="row"><button class="btn primary" id="b1">' + esc(m.button1 || 'Закрыть') + '</button></div></div>';
       document.getElementById('b1').onclick = document.getElementById('x').onclick = function () { respond(1, -1, ''); };
     },
@@ -629,6 +743,7 @@ function vipImg(level, cls) {
       var ICO = { 1: ['burger', '🍔'], 2: ['hotdog', '🌭'], 3: ['medkit', '⛑️'], 4: ['repair_kit', '🔧'], 5: ['pizza', '🍕'], 6: ['water', '💧'],
         7: ['beer', '🍺'], 8: ['cigarettes', '🚬'], 9: ['bandage', '🩹'], 10: ['flowers', '💐'], 11: ['dice', '🎲'], 12: ['mask', '🎭'],
         13: ['materials', '🔩'], 14: ['seeds', '🌱'], 15: ['weed', '🌿'], 16: ['cocaine', '❄️'], 17: ['fish', '🐟'], 18: ['jack', '🛠️'],
+        19: ['passport', '🛂'], 20: ['medcard', '🩺'], 21: ['licenses', '🪪'],
         canister: ['canister', '⛽'], outfit: ['outfit', '👕'], none: ['', '📦'] };
       function pic(key) {
         var c = ICO[key] || ICO.none;
@@ -636,8 +751,8 @@ function vipImg(level, cls) {
       }
       var USE = { 1: 'Съесть', 2: 'Съесть', 5: 'Съесть', 6: 'Выпить', 7: 'Выпить', 3: 'Подлечиться', 9: 'Перевязаться',
         4: 'Починить машину', 8: 'Закурить', 10: 'Взять в руки', 11: 'Бросить кости', 13: 'Сделать оружие', 14: 'Посадить',
-        15: 'Покурить', 16: 'Употребить', 18: 'Поставить на колёса' };
-      var CAT = { 1: 'food', 2: 'food', 5: 'food', 6: 'food', 7: 'food' };
+        15: 'Покурить', 16: 'Употребить', 18: 'Поставить на колёса', 19: 'Открыть', 20: 'Открыть', 21: 'Открыть' };
+      var CAT = { 1: 'food', 2: 'food', 5: 'food', 6: 'food', 7: 'food', 19: 'docs', 20: 'docs', 21: 'docs' };
       var all = [];
       (d.items || []).forEach(function (it) {
         all.push({ k: it[0], n: it[1], max: it[2], t: plain(it[3]), s: plain(it[4]), ico: pic(it[0]), cat: CAT[it[0]] || 'misc' });
@@ -654,7 +769,7 @@ function vipImg(level, cls) {
       });
       // Что даёт: только у еды, питья и лечения, у остального — просто подсказка
       var GIVES = { 1: 1, 2: 1, 3: 1, 5: 1, 6: 1, 7: 1, 9: 1 };
-      var tabs = [['all', 'Всё'], ['food', 'Еда'], ['misc', 'Вещи'], ['wear', 'Одежда']];
+      var tabs = [['all', 'Всё'], ['food', 'Еда'], ['misc', 'Вещи'], ['wear', 'Одежда'], ['docs', 'Документы']];
       if ((d.ground || []).length) tabs.push(['ground', 'Рядом']);
       var tab = 'all', sel = null, sheet = '', tapped = false;
       all.forEach(function (it) { if (it.k === d.sel) sel = it; });
@@ -723,21 +838,22 @@ function vipImg(level, cls) {
         if (!sel) { det.innerHTML = '<div class="ph"><b>👆</b>Выбери вещь, чтобы использовать, передать или выбросить.</div>'; return; }
         var it = sel, use = useLabel(it);
         var html = '<div class="top"><div class="big">' + it.ico + '</div><div><h2>' + esc(it.t) + '</h2><div class="cnt">' +
-          (it.skin ? 'Скин <b>' + it.skin + '</b>' : it.fixed ? '<b>' + it.n + '</b> л' : it.cat === 'ground' ? '<b>' + it.n + '</b> шт. на земле' : '<b>' + it.n + '</b> из ' + it.max + ' шт.') + '</div></div></div>' +
+          (it.cat === 'docs' ? 'Документ' : it.skin ? 'Скин <b>' + it.skin + '</b>' : it.fixed ? '<b>' + it.n + '</b> л' : it.cat === 'ground' ? '<b>' + it.n + '</b> шт. на земле' : '<b>' + it.n + '</b> из ' + it.max + ' шт.') + '</div></div></div>' +
           '<div class="what' + (sheet ? ' fold' : '') + '">' + (GIVES[it.k] && it.cat !== 'ground' ? 'Даёт: <b>' + esc(it.s) + '</b>' : esc(it.s.charAt(0).toUpperCase() + it.s.slice(1))) + '</div>';
         if (sheet === 'g' || sheet === 'd') {
           html += '<form class="sheet" id="sf" autocomplete="off">' +
             (sheet === 'g' ? '<label for="pid">ID игрока рядом</label><input id="pid" type="tel" inputmode="numeric" maxlength="4" placeholder="Например, 5">' : '') +
-            (it.n > 1 ? '<label>Сколько</label><div class="stepper"><button type="button" id="mn">−</button><output id="am">1</output>' +
+            (it.n > 1 && it.cat !== 'docs' ? '<label>Сколько</label><div class="stepper"><button type="button" id="mn">−</button><output id="am">1</output>' +
               '<button type="button" id="pl">+</button><button type="button" class="all" id="al">все</button></div>' : '') +
             '<div class="error" id="err"></div>' +
             '<div class="row" style="margin:0"><button type="button" class="btn" id="cn">Отмена</button><button type="submit" class="btn primary">' +
-            (sheet === 'g' ? 'Передать' : 'Выбросить') + '</button></div></form>';
+            (sheet === 'g' ? (it.cat === 'docs' ? 'Показать' : 'Передать') : 'Выбросить') + '</button></div></form>';
         } else if (it.fixed || it.cat === 'ground') {
           html += '<div class="acts"><button type="button" class="btn primary" id="bu">' + use + '</button></div>';
         } else {
           html += '<div class="acts">' + (use ? '<button type="button" class="btn primary" id="bu">' + use + '</button>' : '') +
-            '<button type="button" class="btn" id="bg">Передать</button><button type="button" class="btn danger" id="bd">Выбросить</button></div>' +
+            '<button type="button" class="btn" id="bg">' + (it.cat === 'docs' ? 'Показать' : 'Передать') + '</button>' +
+            '<button type="button" class="btn danger" id="bd"' + (it.cat === 'docs' ? ' disabled' : '') + '>Выбросить</button></div>' +
             (use ? '<div class="tip">Повторный тап по вещи — использовать</div>' : '');
         }
         det.innerHTML = html;
@@ -762,7 +878,7 @@ function vipImg(level, cls) {
           if (sheet === 'd') { respond(1, it.k, 'd ' + it.k + ' ' + amount); return; }
           var v = pid.value.trim();
           if (!/^\d{1,4}$/.test(v)) { var err = document.getElementById('err'); err.textContent = 'Введи id игрока — число.'; err.classList.add('on'); pid.focus(); return; }
-          respond(1, it.k, 'g ' + it.k + ' ' + v + (it.cat === 'wear' ? '' : ' ' + amount));
+          respond(1, it.k, 'g ' + it.k + ' ' + v + (it.cat === 'wear' || it.cat === 'docs' ? '' : ' ' + amount));
         };
       }
 

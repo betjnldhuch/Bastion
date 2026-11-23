@@ -53,6 +53,8 @@ static Hospital_Save(playerid)
 
 stock bool:Hospital_IsInsured(playerid) { return gInsured[playerid] > gettime(); }
 stock bool:Hospital_HasMedcard(playerid) { return gMedcard[playerid] > gettime(); }
+stock Hospital_MedcardUntil(playerid) { return gMedcard[playerid]; }     // 0 Ч медкарты не было (docs.inc)
+stock Hospital_InsuredUntil(playerid) { return gInsured[playerid]; }
 
 static Hospital_DaysLeft(until)
 {

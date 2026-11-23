@@ -147,6 +147,7 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			Player[playerid][pDbId] = DB_LastInsertId();
 			Player[playerid][pMoney] = START_MONEY;
 			Player[playerid][pLevel] = 1;
+			Skills_OnRegister(playerid);   // новичок: навыки оружия с нуля (skills.inc)
 
 			Referral_Show(playerid);   // кто пригласил, потом выбор пола
 			return 1;
@@ -285,6 +286,8 @@ stock Account_FinishLogin(playerid)
 	Account_Save(playerid);
 
 	Vehicles_LoadForPlayer(playerid);   // личная машина, если есть (vehicles.inc)
+	Docs_LoadPlayer(playerid);          // паспорт: дата выдачи (docs.inc)
+	Skills_LoadPlayer(playerid);        // навыки оружия (skills.inc)
 	Admin_OnLogin(playerid);            // мут, варны, деморган (admin.inc)
 	Families_OnLogin(playerid);         // семья игрока (families.inc)
 	Debts_OnLogin(playerid);            // долги по налогам и штрафам (debts.inc)

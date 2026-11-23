@@ -30,7 +30,7 @@ stock bool:Cmd_Stats(playerid)
 	if (UI_Has(playerid))
 	{
 		// HTML-окно «stats» (index.html): значок VIP рядом с ником
-		new json[1400], e[6][64];
+		new json[1800], e[6][64], skills[400];
 		UI_JsonEscape(e[0], Job_GetName(Player[playerid][pJob]));
 		UI_JsonEscape(e[1], Faction_GetName(Player[playerid][pFaction]));
 		UI_JsonEscape(e[2], Faction_GetRankName(Player[playerid][pFaction], Player[playerid][pRank]));
@@ -42,6 +42,11 @@ stock bool:Cmd_Stats(playerid)
 			GetRPName(playerid), Player[playerid][pLevel], Player[playerid][pExp], Player[playerid][pLevel] * EXP_PER_LEVEL,
 			GetMoney(playerid), Player[playerid][pBank], phone, e[0], e[1], e[2], e[3], Player[playerid][pWanted], Debts_Total(playerid),
 			Needs_GetHunger(playerid), e[4], e[5], Player[playerid][pAdmin], vipLevel, Vip_DaysLeft(playerid));
+		// навыки оружия (skills.inc): дописываем перед закрывающей скобкой
+		Skills_Json(playerid, skills);
+		json[strlen(json) - 1] = '\0';
+		strcat(json, skills);
+		strcat(json, "}");
 		UI_Show(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "stats", json, "Закрыть");
 		return true;
 	}
@@ -49,13 +54,15 @@ stock bool:Cmd_Stats(playerid)
 	if (vipLevel > 0) format(vip, sizeof vip, "%s, ещё %d дн.", Vip_LevelName(vipLevel), Vip_DaysLeft(playerid));
 	else strcat(vip, "нет");
 
+	new skills[700];
+	Skills_Text(playerid, skills);
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Статистика",
-		"{FFFFFF}Имя: {33CCFF}%s\n{FFFFFF}Уровень: %d (опыт %d/%d)\nДеньги: $%d (в банке $%d)\nТелефон: %s\nРабота: %s\nФракция: %s (%s)\nСемья: %s\nРозыск: %d зв.\nДолг штату: $%d\nСытость: %d%%\nДом: %s\nМашина: %s\nVIP: %s\nАдминка: %d",
+		"{FFFFFF}Имя: {33CCFF}%s\n{FFFFFF}Уровень: %d (опыт %d/%d)\nДеньги: $%d (в банке $%d)\nТелефон: %s\nРабота: %s\nФракция: %s (%s)\nСемья: %s\nРозыск: %d зв.\nДолг штату: $%d\nСытость: %d%%\nДом: %s\nМашина: %s\nVIP: %s\nАдминка: %d\n\n{FF7A1A}Навыки оружия%s",
 		"Закрыть", "",
 		GetRPName(playerid), Player[playerid][pLevel], Player[playerid][pExp], Player[playerid][pLevel] * EXP_PER_LEVEL,
 		GetMoney(playerid), Player[playerid][pBank], phone, Job_GetName(Player[playerid][pJob]),
 		Faction_GetName(Player[playerid][pFaction]), Faction_GetRankName(Player[playerid][pFaction], Player[playerid][pRank]),
-		Family_GetPlayerText(playerid), Player[playerid][pWanted], Debts_Total(playerid), Needs_GetHunger(playerid), house, car, vip, Player[playerid][pAdmin]);
+		Family_GetPlayerText(playerid), Player[playerid][pWanted], Debts_Total(playerid), Needs_GetHunger(playerid), house, car, vip, Player[playerid][pAdmin], skills);
 	return true;
 }
 
@@ -193,6 +200,7 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/places", true))      { Cmd_Places(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/unplace", true))     { Cmd_Unplace(playerid); return 1; }
 	if (!strcmp(cmd, "/gotoplace", true))   { Cmd_GotoPlace(playerid, cmdtext[pos]); return 1; }
+	if (Docs_OnCommand(playerid, cmd, cmdtext[pos])) return 1;      // /passport, /showpass, /showmedcard, /showlic (docs.inc)
 	if (Drugs_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
 	if (WorkLife_OnCommand(playerid, cmd)) return 1;
 	if (Casino_OnCommand(playerid, cmd)) return 1;
@@ -200,6 +208,7 @@ stock Commands_Process(playerid, const input[])
 	if (Hospital_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
 	if (Marriage_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
 	if (Donate_OnCommand(playerid, cmd, cmdtext[pos])) return 1;
+	if (Skills_OnCommand(playerid, cmd, cmdtext[pos])) return 1;    // /skills, /setskill (skills.inc)
 
 	// --- работа (jobs.inc) ---
 	if (!strcmp(cmd, "/getjob", true))      { Cmd_GetJob(playerid); return 1; }

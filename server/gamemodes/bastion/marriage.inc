@@ -51,6 +51,12 @@ stock Marriage_LoadPlayer(playerid)
 }
 
 stock Marriage_GetSpouse(playerid) { return gSpouse[playerid]; }
+stock Marriage_GetSpouseName(playerid)
+{
+	new name[MAX_PLAYER_NAME];
+	strcat(name, gSpouseName[playerid]);
+	return name;
+}
 
 // Дом супруга (-1 — нет)
 stock Family_SpouseHouse(playerid)
