@@ -18,7 +18,8 @@
 // =====================================================================
 
 #define DOOR_RANGE          1.5
-#define DOOR_PICKUP_MODEL   1318    // белая стрелка
+#define DOOR_PICKUP_MODEL   1241    // enter (client-mods/markers)
+#define DOOR_EXIT_MODEL     1247    // exit
 // Маркер стоит на 1.4 м позади точки появления (у самой двери), чтобы не войти/выйти дважды
 #define Door_MarkerOffset   (1.4)
 
@@ -67,7 +68,7 @@ stock Doors_Init()
 		z = gDoors[d][dInZ];
 		Door_InnerMarker(d, x, y);
 		format(name, sizeof name, "%s, выход", gDoors[d][dName]);
-		gDoorMk[d][1] = Marker_Create(MK_DOOR, d * 2 + 1, name, DOOR_PICKUP_MODEL, x, y, z,
+		gDoorMk[d][1] = Marker_Create(MK_DOOR, d * 2 + 1, name, DOOR_EXIT_MODEL, x, y, z,
 			gDoors[d][dWorld], gDoors[d][dInterior], GPS_NONE, gDoors[d][dInA]);
 		Marker_SetLabel(gDoorMk[d][1], "{FFFFFF}ALT — выйти", COLOR_WHITE, 10.0);
 	}
@@ -189,7 +190,7 @@ static PDoor_Build(d)
 	x = gPDoor[d][pdIX]; y = gPDoor[d][pdIY]; z = gPDoor[d][pdIZ];
 	strcat(name, gPDoor[d][pdName], 22);
 	strcat(name, ", выход");
-	gPDoor[d][pdMkIn] = Marker_Create(MK_DOOR, PDOOR_REF + gPDoor[d][pdDbId] * 2 + 1, name, DOOR_PICKUP_MODEL, x, y, z,
+	gPDoor[d][pdMkIn] = Marker_Create(MK_DOOR, PDOOR_REF + gPDoor[d][pdDbId] * 2 + 1, name, DOOR_EXIT_MODEL, x, y, z,
 		PDoor_DecWorld(gPDoor[d][pdIWorld]), gPDoor[d][pdIInt], GPS_NONE, gPDoor[d][pdIA]);
 	Marker_SetLabel(gPDoor[d][pdMkIn], "{FFFFFF}ALT — выйти", COLOR_WHITE, 10.0);
 	Marker_SetFaction(gPDoor[d][pdMkIn], gPDoor[d][pdFaction]);

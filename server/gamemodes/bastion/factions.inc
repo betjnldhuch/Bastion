@@ -2640,7 +2640,7 @@ static FDoor_Build(f)
 	x = gFDoor[f][feIX]; y = gFDoor[f][feIY]; z = gFDoor[f][feIZ];
 	strcat(name, Faction_GetName(f), 22);
 	strcat(name, ", выход");
-	gFDoor[f][feMkIn] = Marker_Create(MK_DOOR, FDOOR_REF + f * 2 + 1, name, DOOR_PICKUP_MODEL, x, y, z,
+	gFDoor[f][feMkIn] = Marker_Create(MK_DOOR, FDOOR_REF + f * 2 + 1, name, DOOR_EXIT_MODEL, x, y, z,
 		gFDoor[f][feIWorld], gFDoor[f][feIInt], GPS_NONE, gFDoor[f][feIA]);
 	Marker_SetLabel(gFDoor[f][feMkIn], "{FFFFFF}ALT Ч выйти", COLOR_WHITE, 10.0);
 	Marker_SetFaction(gFDoor[f][feMkOut], Faction_MarkerOwner(f));
@@ -3302,7 +3302,7 @@ stock Factory_BuildPoint(i, p)
 	// «акрытый завод Ч просто интерьер: точек нет. —клад виден, пока с него не вывезли €щики.
 	if (Factory[i][fcClosed] && (p != FP_STORE || Factory[i][fcStock] < CRATE_MATS)) return;
 	new model = 1239, gps = GPS_NONE;
-	if (p == FP_OWNER) { model = 1247; gps = GPS_FACTIONS; }
+	if (p == FP_OWNER) { model = 1274; gps = GPS_FACTIONS; }
 	gFcMk[i][p] = Marker_Create(MK_FACTION, FACTORY_REF + Factory[i][fcDbId] * 4 + p, Factory[i][fcName], model,
 		gFcX[i][p], gFcY[i][p], gFcZ[i][p], gFcW[i][p], gFcI[i][p], gps);
 	Factory_Label(i, p);

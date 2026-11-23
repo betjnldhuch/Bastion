@@ -56,7 +56,7 @@ static const bool:gPlaceMarker[PL_KINDS] =
 	true, false, false, true, false, true, true, false,
 	false, false, false, false, true, true, true, true, false, false
 };
-static const gPlaceModel[PL_KINDS] = { 0, 0, 0, 1318, 0, 1318, 1274, 0, 0, 0, 0, 0, 1247, 1240, 1239, 1274, 0, 0 };
+static const gPlaceModel[PL_KINDS] = { 0, 0, 0, 1275, 0, 1275, 1274, 0, 0, 0, 0, 0, 1275, 1240, 1239, 1274, 0, 0 };
 
 // Поля конопли по умолчанию: ставятся, если в базе нет ни одного (глухие места за городом)
 static const Float:gWeedDefs[][3] =
