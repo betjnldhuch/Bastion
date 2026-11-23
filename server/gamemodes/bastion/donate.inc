@@ -200,7 +200,7 @@ stock bool:Cmd_Donate(playerid)
 	new list[900], line[144];
 	format(list, sizeof list, "Товар\tЦена\n");
 	format(line, sizeof line, "Игровые деньги\t1 монета = $%d\n", DONATE_MONEY_RATE); strcat(list, line);
-	format(line, sizeof line, "{FFD700}VIP: Bronze, Silver, Gold, Platinum, Diamond%s\tот %d монет\n", Donate_IsVip(playerid) ? " (продлить, улучшить)" : "", Vip_LevelPrice(1)); strcat(list, line);
+	format(line, sizeof line, "{FFD700}VIP: Bronze, Silver, Gold, Platinum, Diamond%s\tот %d монет\n", Donate_IsVip(playerid) ? ((Vip_GetLevel(playerid) >= VIP_MAX) ? " (продлить)" : " (продлить, улучшить)") : "", Vip_LevelPrice(1)); strcat(list, line);
 	format(line, sizeof line, "Любой скин (в сумку)\t%d монет\n", DONATE_SKIN_PRICE); strcat(list, line);
 	format(line, sizeof line, "+1 уровень\t%d монет\n", DONATE_LEVEL_PRICE); strcat(list, line);
 	format(line, sizeof line, "Снять все предупреждения\t%d монет\n", DONATE_UNWARN_PRICE); strcat(list, line);
@@ -466,13 +466,13 @@ stock bool:Cmd_AddPromo(playerid, const params[])
 	if (!Admin_Check(playerid, 6)) return true;
 	new pos = 0, code[32], coins, uses, level, days;
 	if (!NextParam(params, pos, code) || !NextIntParam(params, pos, coins) || !NextIntParam(params, pos, uses) || coins < 0 || coins > 100000 || uses < 1 || uses > 100000)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /addpromo [код] [монеты] [активаций] [уровень VIP 0-4] [дней VIP]");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /addpromo [код] [монеты] [активаций] [уровень VIP 0-5] [дней VIP]");
 	NextIntParam(params, pos, level);
 	NextIntParam(params, pos, days);
 	new len = strlen(code);
 	if (len < 3 || len > 24) return SendClientMessage(playerid, COLOR_GREY, "Код — от 3 до 24 символов, без пробелов.");
 	if (level < 0 || level > VIP_MAX || days < 0 || days > 365 || (level > 0 && days == 0) || (coins == 0 && level == 0))
-		return SendClientMessage(playerid, COLOR_GREY, "Промокод должен давать монеты или VIP: уровень 1-4 и дни 1-365.");
+		return SendClientMessage(playerid, COLOR_GREY, "Промокод должен давать монеты или VIP: уровень 1-5 и дни 1-365.");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO promo (code, coins, vip_level, vip_days, uses) VALUES ('%q', %d, %d, %d, %d)", code, coins, level, days, uses));
 	Admin_Log(playerid, "addpromo", playerid, code, coins);
 	SendClientMessage(playerid, COLOR_ADMIN, "Промокод %s: %d монет, VIP %s на %d дн., активаций: %d. Игроки вводят: /promo %s", code, coins, Vip_LevelName(level), days, uses, code);
