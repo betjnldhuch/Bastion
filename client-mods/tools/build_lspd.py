@@ -119,6 +119,14 @@ def cabnu(orig):
     o = orig.convert('RGB').resize((256, 256), Image.LANCZOS)
     o.paste(pk4('bpd4_metal_panel.png', (0, 0, 256, 512), (128, 256)), (0, 0)); return o
 orig_a = txdpatch.read(os.path.join(src_dir, 'genintintpolicea.txd'))
+# Пак 5: ступени лестницы и серые столы (столешница с бумагами со старой текстуры).
+stair = L('bpd5_stair_step.png').convert('RGB').crop((0, 59, 1024, 307)).resize((128, 128), Image.LANCZOS)  # одна ступень, кромка на той же высоте, что в оригинале
+deskside = L('bpd5_desk_top.png').convert('RGB').crop((160, 160, 864, 864)).resize((128, 128), Image.LANCZOS)
+def desktop(orig):
+    d = L('bpd5_desk_top.png').convert('RGB').crop((120, 300, 904, 692)).resize((512, 256), Image.LANCZOS)
+    old = orig.convert('RGB').resize((512, 256), Image.BICUBIC)
+    mask = old.convert('L').point(lambda v: 255 if v > 150 else 0).filter(ImageFilter.MaxFilter(3))
+    d.paste(old, (0, 0), mask); return d
 orig_b = txdpatch.read(os.path.join(src_dir, 'genintintpoliceb.txd'))
 def framed(orig, inner, b):
     o = orig.convert('RGB').resize((256, 256), Image.LANCZOS)
@@ -132,14 +140,15 @@ txdpatch.patch(os.path.join(src_dir, 'genintintpoliceb.txd'), os.path.join(out_d
                 'cop_cellwall': sq('bpd3_cell_tiles.png'), 'cop_cellwall_btm': sq('bpd_cell_wall_btm.png'),
                 'cop_cellfloor': sq('bpd3_cell_floor.png'),
                 'p_door1': door, 'lockers': sq('bpd3_lockers.png'), 'cop_bench': bench, 'pol_dor_surr2': surr,
-                'pol_flr164': sq('bpd4_terrazzo3.png'), 'p_floor3': sq('bpd4_carpet.png'), 'pol_flr2': sq('bpd4_floor_diamond.png'),
+                'pol_flr164': sq('bpd4_terrazzo3.png'), 'p_floor3': sq('bpd4_carpet.png'), 'pol_flr2': sq('bpd4_floor_diamond.png'), 'pol_stairs2': stair,
                 'mp_shop_window': framed(orig_b['mp_shop_window'], L('bpd4_wired_glass.png'), 10)})
 txdpatch.patch(os.path.join(src_dir, 'genintintpolicea.txd'), os.path.join(out_dir, 'genintintpolicea.txd'),
                {'copcell_bars': bars, 'cop_notice': board,
                 'copstuff': copstuff_atlas(orig_a['copstuff']), 'cops_chrome': sq('bpd4_brushed_steel.png', 128),
                 'la_kitch1': kitchen(orig_a['la_kitch1'], False), 'la_kitch2': kitchen(orig_a['la_kitch2'], True),
                 'la_kitch3': pk4('bpd4_kitchen_cabinet.png', (10, 40, 170, 460), (256, 256)),
-                'filing_cabnu': cabnu(orig_a['filing_cabnu'])})
+                'filing_cabnu': cabnu(orig_a['filing_cabnu']),
+                'poldesk': deskside, 'poldesktop': desktop(orig_a['poldesktop'])})
 
 # Лампы на потолке (int_policea03a.txd, текстура striplight1)
 lamp = L('bpd2_ceiling.png').convert('RGB').crop((295, 280, 765, 605)).resize((128, 128), Image.LANCZOS)
