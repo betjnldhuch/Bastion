@@ -57,7 +57,8 @@ static const gBizCfg[BIZ_TYPES][E_BIZ_CFG] =
 	{ 50000,  150, 20000 },     // 11 спортзал
 	{ 35000,  150, 20000 },     // 12 хозтовары
 	{ 45000,  150, 20000 },     // 13 электроника
-	{ 25000,  100, 10000 }      // 14 лотере€
+	{ 25000,  100, 10000 },     // 14 лотере€
+	{ 60000,  200, 0     }      // 15 тир (склад не нужен: продаЄт услуги)
 };
 
 // Ќовые бизнесы, которые по€вл€ютс€ один раз при обновлении (координаты примерные, двигаютс€ в /markers)
@@ -212,6 +213,22 @@ stock BizX_Init()
 				gBizXDefaults[i][xdX], gBizXDefaults[i][xdY], gBizXDefaults[i][xdZ], 0);
 		}
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO bizx_meta (k, v) VALUES ('seed1', 1)"));
+	}
+	// тир (вид 15) Ч один раз
+	r = DB_ExecuteQuery(gDB, "SELECT v FROM bizx_meta WHERE k = 'seed_range'");
+	seeded = false;
+	if (r != DBResult:0)
+	{
+		seeded = (DB_GetRowCount(r) > 0);
+		DB_FreeResultSet(r);
+	}
+	if (!seeded)
+	{
+		new price = BizX_DefaultPrice(BIZ_SHOOTRANGE);
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO businesses (name, type, price, x, y, z) VALUES ('%q', %d, %d, %f, %f, %f)",
+			"“ир Ammu-Nation Willowfield", BIZ_SHOOTRANGE, price, 2400.50, -1981.90, 13.55));
+		Biz_Add(DB_LastInsertId(), "“ир Ammu-Nation Willowfield", BIZ_SHOOTRANGE, 0, "", price, 2400.50, -1981.90, 13.55, 0);
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO bizx_meta (k, v) VALUES ('seed_range', 1)"));
 	}
 
 	r = DB_ExecuteQuery(gDB, "SELECT id, markup, stock, earned FROM businesses");

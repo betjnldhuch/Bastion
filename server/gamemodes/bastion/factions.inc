@@ -52,6 +52,7 @@
 #define FACTION_START_BANK      30000   // стартовый общак госструктур (только при первом запуске)
 #define FACTION_BANK_MAX        100000000
 #define FACTION_MAX_WARNS       3       // столько выговоров — и игрок уволен
+#define FACTION_FIRE_BAN_DAYS   7       // уволенного не берут ни в одну организацию столько дней (/fleave — без запрета)
 #define FACTION_MAX_SALARY      20000   // максимальная зарплата ранга, которую может поставить лидер
 // Общак полиции и больницы пополняет штат (FACTION_STATE_BUDGET), это не личные деньги лидера:
 #define FACTION_STATE_MAX_SALARY 3000   // потолок зарплаты ранга в госструктуре
@@ -517,6 +518,24 @@ stock Faction_SaveInfo(f)
 		Faction[f][fName], Faction[f][fColor], Faction[f][fStoreRank], f));
 }
 
+// Запрет на вступление в организации после увольнения (accounts.fban_until)
+stock Faction_BanUntil(dbid)
+{
+	new until = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT fban_until FROM accounts WHERE id = %d", dbid);
+	if (r != DBResult:0)
+	{
+		if (DB_GetRowCount(r) > 0) until = DB_GetFieldInt(r, 0);
+		DB_FreeResultSet(r);
+	}
+	return (until > gettime()) ? until : 0;
+}
+
+stock Faction_BanFired(dbid)
+{
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET fban_until = %d WHERE id = %d", gettime() + FACTION_FIRE_BAN_DAYS * 86400, dbid));
+}
+
 // Выговоры хранятся в accounts.fwarns
 stock Faction_GetWarns(dbid)
 {
@@ -979,6 +998,7 @@ stock Factions_CreateTables()
 	DB_AddColumn("factions", "mats", "INTEGER DEFAULT 2000");   // материалы на складе
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_doors (faction INTEGER PRIMARY KEY, has_out INTEGER DEFAULT 0, ox REAL DEFAULT 0, oy REAL DEFAULT 0, oz REAL DEFAULT 0, oa REAL DEFAULT 0, oint INTEGER DEFAULT 0, oworld INTEGER DEFAULT 0, has_in INTEGER DEFAULT 0, ix REAL DEFAULT 0, iy REAL DEFAULT 0, iz REAL DEFAULT 0, ia REAL DEFAULT 0, iint INTEGER DEFAULT 0, iworld INTEGER DEFAULT 0, closed INTEGER DEFAULT 0)"));
 	DB_AddColumn("accounts", "fwarns", "INTEGER DEFAULT 0");
+	DB_AddColumn("accounts", "fban_until", "INTEGER DEFAULT 0");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_ranks (faction INTEGER NOT NULL, rank INTEGER NOT NULL, name TEXT, skin INTEGER DEFAULT 0, salary INTEGER DEFAULT 0, PRIMARY KEY (faction, rank))"));
 
 	// Переход с 6 рангов на 10 (один раз, версия базы 2): лидер 6 -> 10, заместитель 5 -> 9.
@@ -1407,6 +1427,13 @@ stock bool:Cmd_Invite(playerid, const params[])
 	if (target == playerid || !Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Неверный игрок.");
 	if (Player[target][pFaction] != FACTION_NONE) return SendClientMessage(playerid, COLOR_GREY, "Игрок уже состоит во фракции.");
 	if (!IsPlayerNearPlayer(playerid, target, 5.0)) return SendClientMessage(playerid, COLOR_GREY, "Игрок слишком далеко.");
+	new banUntil = Faction_BanUntil(Player[target][pDbId]);
+	if (banUntil)
+	{
+		new date[16];
+		Docs_Date(date, sizeof date, banUntil);
+		return SendClientMessage(playerid, COLOR_GREY, "Его уволили из организации: принять можно с %s.", date);
+	}
 
 	Player[target][pOfferType] = OFFER_INVITE;
 	Player[target][pOfferFrom] = playerid;
@@ -1430,7 +1457,8 @@ stock bool:Cmd_Uninvite(playerid, const params[])
 	if (Player[target][pRank] >= Player[playerid][pRank]) return SendClientMessage(playerid, COLOR_GREY, "Нельзя уволить равного или старшего по рангу.");
 
 	Faction_SetMember(target, FACTION_NONE, 0);
-	SendClientMessage(target, COLOR_RED, "%s выгнал тебя из фракции «%s».", GetRPName(playerid), Faction_GetName(f));
+	Faction_BanFired(Player[target][pDbId]);
+	SendClientMessage(target, COLOR_RED, "%s выгнал тебя из фракции «%s». В организации не примут %d дн.", GetRPName(playerid), Faction_GetName(f), FACTION_FIRE_BAN_DAYS);
 	new msg[144];
 	format(msg, sizeof msg, "[Фракция] %s уволил %s.", GetRPName(playerid), GetRPName(target));
 	Faction_Message(f, Faction_GetColor(f), msg);
@@ -1493,7 +1521,7 @@ stock bool:Cmd_Accept(playerid)
 		case OFFER_INVITE:
 		{
 			new f = Player[playerid][pOfferValue];
-			if (Player[from][pFaction] != f || Player[playerid][pFaction] != FACTION_NONE)
+			if (Player[from][pFaction] != f || Player[playerid][pFaction] != FACTION_NONE || Faction_BanUntil(Player[playerid][pDbId]))
 				return SendClientMessage(playerid, COLOR_GREY, "Предложение больше не действует.");
 			Faction_SetMember(playerid, f, 1);
 			SendClientMessage(playerid, Faction_GetColor(f), "Добро пожаловать во фракцию «%s»! Команды: /fhelp", Faction_GetName(f));
@@ -1988,13 +2016,14 @@ stock Faction_Fire(playerid, dbid, const name[], const reason[])
 	if (target != INVALID_PLAYER_ID)
 	{
 		Faction_SetMember(target, FACTION_NONE, 0);
-		SendClientMessage(target, COLOR_RED, "%s уволил тебя из фракции «%s». Причина: %s", GetRPName(playerid), Faction_GetName(f), reason);
+		SendClientMessage(target, COLOR_RED, "%s уволил тебя из фракции «%s». Причина: %s. В организации не примут %d дн.", GetRPName(playerid), Faction_GetName(f), reason, FACTION_FIRE_BAN_DAYS);
 	}
 	else
 	{
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET faction = 0, frank = 0, fwarns = 0, fsquad = 0 WHERE id = %d", dbid));
 		FPerm_ClearOffline(dbid);
 	}
+	Faction_BanFired(dbid);
 	new msg[144];
 	format(msg, sizeof msg, "%s уволил %s. Причина: %s", GetRPName(playerid), name, reason);
 	Faction_Log(f, msg, FLOG_STAFF);

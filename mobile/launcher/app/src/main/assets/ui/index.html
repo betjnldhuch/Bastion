@@ -105,6 +105,9 @@ button { font: inherit; cursor: pointer; }
 .st-rows { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0 0 12px; font-size: 14px; overflow: auto; }
 .st-rows dt { color: var(--muted); }
 .st-rows dd { margin: 0; color: var(--text); }
+.bank-sum { transition: filter .15s; }
+.bank-sum.blur, #h-bank.blur { filter: blur(6px); }
+.eye-btn { background: none; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: 12px; padding: 0 6px; margin-left: 6px; cursor: pointer; vertical-align: 1px; }
 @media (max-height: 420px) { .st-badge { width: 44px; height: 44px; } .st-head { margin: 0 0 6px; } .st-rows { gap: 2px 14px; font-size: 12.5px; } }
 .vbadge { width: 22px; height: 22px; flex: none; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
 .tier .tbadge { display: block; width: 64px; height: 64px; margin: 0 auto 2px; object-fit: contain; filter: drop-shadow(0 3px 6px rgba(0,0,0,.45)); }
@@ -484,6 +487,15 @@ function vipImg(level, cls) {
     setTimeout(function () { pw.focus(); }, 50);
   }
 
+  // Скрыть сумку в банке (размытие): переключается в /stats, запоминается и действует на HUD
+  function bankHidden() { try { return localStorage.getItem('bastion.hideBank') === '1'; } catch (e) { return false; } }
+  function setBankHidden(on) { try { localStorage.setItem('bastion.hideBank', on ? '1' : '0'); } catch (e) {} applyBankBlur(); }
+  function applyBankBlur() {
+    var on = bankHidden();
+    Array.prototype.forEach.call(document.querySelectorAll('.bank-sum'), function (el) { el.classList.toggle('blur', on); });
+    var hb = document.getElementById('h-bank'); if (hb) hb.classList.toggle('blur', on);
+  }
+
   // Выписка из тира (skills.inc): [["Пистолеты", 30, "любитель"], ...], проценты 0..100
   function skillsHtml(list) {
     return '<div class="st-sk">' + (list || []).map(function (s) {
@@ -518,7 +530,7 @@ function vipImg(level, cls) {
     } else {
       fields = '<div class="f w"><div class="k">Фамилия, имя</div><div class="v big">' + name + '</div></div>' +
         f('Номер', esc(d.num)) + f('Пол', d.female ? 'женский' : 'мужской') +
-        f('Гражданин штата с', esc(d.issued), 'w') +
+        f('Гражданин штата с', esc(d.issued)) + f('Лет в штате', String(d.years | 0)) +
         f('Прописка', esc(plain(d.home)) || '—', 'w') +
         f('Семейное положение', esc(plain(d.marital)) || '—', 'w') +
         f('Место работы', esc(plain(d.work)) || '—', 'w');
@@ -585,20 +597,26 @@ function vipImg(level, cls) {
       function money(n) { return '$' + String(n | 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
       var rows = [
         ['Уровень', (d.level | 0) + ' <span class="mut">(опыт ' + (d.exp | 0) + '/' + (d.expMax | 0) + ')</span>'],
-        ['Деньги', money(d.money) + ' <span class="mut">в банке ' + money(d.bank) + '</span>'],
+        ['Наличные', money(d.money)],
+        ['Банк', '<span class="bank-sum">' + money(d.bank) + '</span> <button class="eye-btn" id="bk" title="Скрыть или показать сумму">👁</button>'],
         ['Долг штату', money(d.debt)], ['Телефон', esc(d.phone)], ['Работа', esc(d.job)],
         ['Фракция', esc(d.faction) + (d.rank ? ' <span class="mut">(' + esc(d.rank) + ')</span>' : '')],
-        ['Семья', esc(d.family)], ['Дом', esc(d.house)], ['Машина', esc(d.car)], ['Розыск', (d.wanted | 0) + ' зв.']
+        ['Семья', esc(d.family)], ['Дом', esc(d.house)], ['Розыск', (d.wanted | 0) + ' зв.'],
+        ['Варны', '<span' + ((d.warns | 0) > 0 ? ' style="color:var(--red)"' : '') + '>' + (d.warns | 0) + ' / ' + (d.warnMax | 0) + '</span>']
       ];
+      if ((d.fwarnMax | 0) > 0) rows.push(['Выговоры', (d.fwarns | 0) + ' / ' + (d.fwarnMax | 0) + ' <span class="mut">в организации</span>']);
+      if (d.fban) rows.push(['Запрет на орги', '<span style="color:var(--red)">до ' + esc(d.fban) + '</span> <span class="mut">после увольнения</span>']);
       if (d.admin > 0) rows.push(['Админка', String(d.admin | 0)]);
       root.innerHTML = '<div class="card wide st">' + closeBtn() + '<div class="brand">BASTION ONLINE</div>' +
         '<div class="st-head">' + (lv ? vipImg(lv, 'st-badge') : '') + '<div><h1>' + esc(d.name) + '</h1>' +
         (lv ? '<div class="st-vip" style="color:#' + vc + '">VIP ' + VIP_NAME[lv - 1] + (d.vip > 0 ? ' · ещё ' + (d.vip | 0) + ' дн.' : '') + '</div>'
             : '<div class="st-vip mut">Без VIP · /donate</div>') + '</div></div>' +
         '<div class="st-cols"><dl class="st-rows">' + rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl></div>' +
-        '<p class="sub" style="margin:0 0 10px">Навыки оружия: /skills · документы: /passport</p>' +
+        '<p class="sub" style="margin:0 0 10px">Выписка из тира: /skills · документы: /passport</p>' +
         '<div class="row"><button class="btn primary" id="b1">' + esc(m.button1 || 'Закрыть') + '</button></div></div>';
       document.getElementById('b1').onclick = document.getElementById('x').onclick = function () { respond(1, -1, ''); };
+      document.getElementById('bk').onclick = function () { setBankHidden(!bankHidden()); };
+      applyBankBlur();
     },
     referral: function (d, m) {
       root.innerHTML = '<form class="card" id="f" autocomplete="off"><div class="brand">BASTION ONLINE</div><h1>Кто тебя пригласил?</h1>' +
@@ -787,7 +805,7 @@ function vipImg(level, cls) {
       var ICO = { 1: ['burger', '🍔'], 2: ['hotdog', '🌭'], 3: ['medkit', '⛑️'], 4: ['repair_kit', '🔧'], 5: ['pizza', '🍕'], 6: ['water', '💧'],
         7: ['beer', '🍺'], 8: ['cigarettes', '🚬'], 9: ['bandage', '🩹'], 10: ['flowers', '💐'], 11: ['dice', '🎲'], 12: ['mask', '🎭'],
         13: ['materials', '🔩'], 14: ['seeds', '🌱'], 15: ['weed', '🌿'], 16: ['cocaine', '❄️'], 17: ['fish', '🐟'], 18: ['jack', '🛠️'],
-        19: ['passport', '🛂'], 20: ['medcard', '🩺'], 21: ['licenses', '🪪'],
+        19: ['passport', '🛂'], 20: ['medcard', '🩺'], 21: ['licenses', '🪪'], 22: ['shooting', '🎯'],
         canister: ['canister', '⛽'], outfit: ['outfit', '👕'], none: ['', '📦'] };
       function pic(key) {
         var c = ICO[key] || ICO.none;
@@ -795,8 +813,8 @@ function vipImg(level, cls) {
       }
       var USE = { 1: 'Съесть', 2: 'Съесть', 5: 'Съесть', 6: 'Выпить', 7: 'Выпить', 3: 'Подлечиться', 9: 'Перевязаться',
         4: 'Починить машину', 8: 'Закурить', 10: 'Взять в руки', 11: 'Бросить кости', 13: 'Сделать оружие', 14: 'Посадить',
-        15: 'Покурить', 16: 'Употребить', 18: 'Поставить на колёса', 19: 'Открыть', 20: 'Открыть', 21: 'Открыть' };
-      var CAT = { 1: 'food', 2: 'food', 5: 'food', 6: 'food', 7: 'food', 19: 'docs', 20: 'docs', 21: 'docs' };
+        15: 'Покурить', 16: 'Употребить', 18: 'Поставить на колёса', 19: 'Открыть', 20: 'Открыть', 21: 'Открыть', 22: 'Открыть' };
+      var CAT = { 1: 'food', 2: 'food', 5: 'food', 6: 'food', 7: 'food', 19: 'docs', 20: 'docs', 21: 'docs', 22: 'docs' };
       var all = [];
       (d.items || []).forEach(function (it) {
         all.push({ k: it[0], n: it[1], max: it[2], t: plain(it[3]), s: plain(it[4]), ico: pic(it[0]), cat: CAT[it[0]] || 'misc' });
@@ -1104,6 +1122,7 @@ function vipImg(level, cls) {
     var c = document.getElementById('h-cash');
     setText('h-cash', hudMoney(d.cash)); c.classList.toggle('neg', d.cash < 0); c.classList.toggle('cash', d.cash >= 0);
     document.getElementById('h-bank').innerHTML = '<small>банк</small>' + hudMoney(d.bank);
+    applyBankBlur();
     hud.classList.add('on');
   };
 

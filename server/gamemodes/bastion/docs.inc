@@ -58,6 +58,7 @@ stock Docs_Has(playerid, item)
 		case INV_PASSPORT: return Player[playerid][pDbId] != 0;
 		case INV_MEDCARD: return Hospital_MedcardUntil(playerid) > 0;
 		case INV_LICENSES: return Docs_HasAnyLicense(playerid);
+		case INV_SHOOTING: return Skills_RecordDate(playerid) > 0;
 	}
 	return 0;
 }
@@ -68,6 +69,7 @@ stock Docs_Sync(playerid)
 	Inv_SetDoc(playerid, INV_PASSPORT, Player[playerid][pDbId] != 0);
 	Inv_SetDoc(playerid, INV_MEDCARD, Hospital_MedcardUntil(playerid) > 0);
 	Inv_SetDoc(playerid, INV_LICENSES, Docs_HasAnyLicense(playerid));
+	Inv_SetDoc(playerid, INV_SHOOTING, Skills_RecordDate(playerid) > 0);
 }
 
 static bool:Docs_IsFemale(skin)
@@ -77,7 +79,7 @@ static bool:Docs_IsFemale(skin)
 }
 
 // Дата из gettime(): "22.11.2026"
-static Docs_Date(dest[], size, stamp)
+stock Docs_Date(dest[], size, stamp)
 {
 	if (stamp <= 0) { format(dest, size, "—"); return; }
 	// дни с 1970-01-01 в год/месяц/день (алгоритм civil_from_days)
@@ -140,15 +142,15 @@ static Docs_ShowPassport(owner, viewer)
 		UI_JsonEscape(e[2], home);
 		UI_JsonEscape(e[3], marital);
 		format(json, sizeof json,
-			"{\"kind\":\"passport\",\"own\":%d,\"name\":\"%s\",\"num\":\"%s\",\"female\":%d,\"issued\":\"%s\",\"work\":\"%s\",\"home\":\"%s\",\"marital\":\"%s\",\"skin\":%d}",
-			owner == viewer, e[0], num, female, issued, e[1], e[2], e[3], Player[owner][pSkin]);
+			"{\"kind\":\"passport\",\"own\":%d,\"name\":\"%s\",\"num\":\"%s\",\"female\":%d,\"issued\":\"%s\",\"years\":%d,\"work\":\"%s\",\"home\":\"%s\",\"marital\":\"%s\",\"skin\":%d}",
+			owner == viewer, e[0], num, female, issued, Player[owner][pLevel], e[1], e[2], e[3], Player[owner][pSkin]);
 		UI_Show(viewer, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "document", json, "Закрыть");
 		return;
 	}
 	ShowPlayerDialog(viewer, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "{FF7A1A}BASTION {FFFFFF}· Паспорт",
-		"{8C9098}ШТАТ SAN ANDREAS · ПАСПОРТ ГРАЖДАНИНА\n\n{8C9098}Номер: {FFFFFF}%s\n{8C9098}Фамилия, имя: {FFFFFF}%s\n{8C9098}Пол: {FFFFFF}%s\n{8C9098}Гражданин штата с: {FFFFFF}%s\n{8C9098}Прописка: {FFFFFF}%s\n{8C9098}Семейное положение: {FFFFFF}%s\n{8C9098}Место работы: {FFFFFF}%s",
+		"{8C9098}ШТАТ SAN ANDREAS · ПАСПОРТ ГРАЖДАНИНА\n\n{8C9098}Номер: {FFFFFF}%s\n{8C9098}Фамилия, имя: {FFFFFF}%s\n{8C9098}Пол: {FFFFFF}%s\n{8C9098}Гражданин штата с: {FFFFFF}%s\n{8C9098}Лет в штате: {FFFFFF}%d\n{8C9098}Прописка: {FFFFFF}%s\n{8C9098}Семейное положение: {FFFFFF}%s\n{8C9098}Место работы: {FFFFFF}%s",
 		"Закрыть", "",
-		num, GetRPName(owner), female ? "женский" : "мужской", issued, home, marital, work);
+		num, GetRPName(owner), female ? "женский" : "мужской", issued, Player[owner][pLevel], home, marital, work);
 }
 
 static Docs_ShowMedcard(owner, viewer)
@@ -207,7 +209,7 @@ stock Docs_ShowShooting(owner, viewer)
 {
 	new num[16], today[16];
 	Docs_Number(owner, num, sizeof num);
-	Docs_Date(today, sizeof today, gettime());
+	Docs_Date(today, sizeof today, Skills_RecordDate(owner));
 	if (UI_Has(viewer))
 	{
 		new json[700], name[64], list[400];
@@ -232,6 +234,7 @@ static Docs_ShowItem(owner, viewer, item)
 		case INV_PASSPORT: Docs_ShowPassport(owner, viewer);
 		case INV_MEDCARD: Docs_ShowMedcard(owner, viewer);
 		case INV_LICENSES: Docs_ShowLicenses(owner, viewer);
+		case INV_SHOOTING: Docs_ShowShooting(owner, viewer);
 	}
 }
 
@@ -241,6 +244,7 @@ static Docs_Title(item, dest[], size)
 	{
 		case INV_PASSPORT: format(dest, size, "паспорт");
 		case INV_MEDCARD: format(dest, size, "медкарту");
+		case INV_SHOOTING: format(dest, size, "выписку из тира");
 		default: format(dest, size, "лицензии");
 	}
 }
@@ -254,6 +258,7 @@ stock Docs_Use(playerid, item)
 	format(msg, sizeof msg, "%s достаёт %s и смотрит в него.", GetRPName(playerid), what);
 	if (item == INV_LICENSES) format(msg, sizeof msg, "%s достаёт лицензии и смотрит в них.", GetRPName(playerid));
 	else if (item == INV_MEDCARD) format(msg, sizeof msg, "%s достаёт медкарту и смотрит в неё.", GetRPName(playerid));
+	else if (item == INV_SHOOTING) format(msg, sizeof msg, "%s достаёт выписку из тира и смотрит в неё.", GetRPName(playerid));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 }
 

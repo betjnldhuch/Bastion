@@ -10,7 +10,9 @@
 //  Хранится в accounts.wskills: "a,b,c,d,e,f,g".
 //
 //  Игроку навык показывается в процентах (0..999 -> 0..100%).
-//  /skills — выписка из тира (docs.inc), /skills [id] — показать игроку рядом.
+//  Выписка из тира: покупается в тире (бизнес вид 15, business.inc), фиксирует навыки на дату
+//  выдачи и лежит в сумке как документ. Там же тренировки: +5% за деньги, до SKILL_TRAIN_CAP.
+//  /skills — открыть свою выписку, /skills [id] — показать игроку рядом.
 //  Админы 4+: /setskill [id] [группа 1-7|all] [0-100%].
 // =====================================================================
 
@@ -20,16 +22,21 @@
 #define SKILL_HIT_PLAYER    3
 #define SKILL_HIT_OTHER     1
 #define SKILL_MINUTE_CAP    40
+#define SKILL_TRAIN_CAP     699     // тренировкой в тире — до «опытного» (70%), дальше только практика
 
 static const gSkillNames[SKILL_GROUPS][] = { "Пистолеты", "Desert Eagle", "Дробовики", "Обрез", "Пистолеты-пулемёты", "Автоматы", "Винтовки" };
 static gSkill[MAX_PLAYERS][SKILL_GROUPS];
 static gSkillGain[MAX_PLAYERS][SKILL_GROUPS];   // сколько набрано в эту минуту
 static bool:gSkillDirty[MAX_PLAYERS];
 static bool:gSkillLoaded[MAX_PLAYERS];
+static gShootDate[MAX_PLAYERS];                 // выписка из тира: когда выдана (0 — нет)
+static gShootSk[MAX_PLAYERS][SKILL_GROUPS];     // навыки на дату выписки
 
 stock Skills_Init()
 {
 	DB_AddColumn("accounts", "wskills", "TEXT DEFAULT ''");
+	DB_AddColumn("accounts", "shoot_date", "INTEGER DEFAULT 0");
+	DB_AddColumn("accounts", "shoot_sk", "TEXT DEFAULT ''");
 }
 
 // Сразу после создания аккаунта (accounts.inc): новичок начинает с нуля
@@ -82,6 +89,33 @@ stock Skills_LoadPlayer(playerid)
 		}
 	}
 	else gSkillDirty[playerid] = true;      // старый аккаунт: записать стартовые навыки
+
+	// выписка из тира
+	gShootDate[playerid] = 0;
+	for (new g = 0; g < SKILL_GROUPS; g++) gShootSk[playerid][g] = 0;
+	text[0] = '\0';
+	r = DB_ExecuteQuery(gDB, "SELECT shoot_date, shoot_sk FROM accounts WHERE id = %d", Player[playerid][pDbId]);
+	if (r != DBResult:0)
+	{
+		if (DB_GetRowCount(r) > 0)
+		{
+			gShootDate[playerid] = DB_GetFieldInt(r, 0);
+			DB_GetFieldString(r, 1, text, sizeof text);
+		}
+		DB_FreeResultSet(r);
+	}
+	if (gShootDate[playerid] > 0 && text[0])
+	{
+		new pos = 0;
+		for (new g = 0; g < SKILL_GROUPS; g++)
+		{
+			new v = strval(text[pos]);
+			gShootSk[playerid][g] = (v < 0) ? 0 : (v > SKILL_MAX ? SKILL_MAX : v);
+			new c = strfind(text, ",", false, pos);
+			if (c == -1) break;
+			pos = c + 1;
+		}
+	}
 	gSkillLoaded[playerid] = true;
 	Skills_Apply(playerid);
 }
@@ -162,7 +196,7 @@ static Skills_Add(playerid, g, amount)
 	Skills_Rank(gSkill[playerid][g], r2, sizeof r2);
 	if (strcmp(r1, r2) != 0)
 	{
-		SendClientMessage(playerid, 0xFF7A1AFF, "Навык «%s» вырос: %s (%d/%d).", gSkillNames[g], r2, gSkill[playerid][g], SKILL_MAX);
+		SendClientMessage(playerid, 0xFF7A1AFF, "Навык «%s» вырос: %s (%d%%).", gSkillNames[g], r2, Skills_Pct(gSkill[playerid][g]));
 		if (gSkill[playerid][g] >= SKILL_MAX && (g == 0 || g == 3 || g == 4))
 			SendClientMessage(playerid, COLOR_WHITE, "Теперь это оружие можно держать в обеих руках.");
 	}
@@ -200,7 +234,48 @@ stock Skills_Pct(value)
 	return p >= 100 ? 99 : p;
 }
 
-// Для выписки из тира: ,"skills":[["Пистолеты",30,"любитель"],...]
+// ---------------------------------------------------------------------
+//  Выписка из тира и тренировки (тир — бизнес BIZ_SHOOTRANGE, business.inc)
+// ---------------------------------------------------------------------
+stock Skills_RecordDate(playerid) { return gShootDate[playerid]; }
+
+// Новая выписка: навыки на сегодня
+stock Skills_IssueRecord(playerid)
+{
+	gShootDate[playerid] = gettime();
+	for (new g = 0; g < SKILL_GROUPS; g++) gShootSk[playerid][g] = gSkill[playerid][g];
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET shoot_date = %d, shoot_sk = '%d,%d,%d,%d,%d,%d,%d' WHERE id = %d",
+		gShootDate[playerid], gShootSk[playerid][0], gShootSk[playerid][1], gShootSk[playerid][2], gShootSk[playerid][3],
+		gShootSk[playerid][4], gShootSk[playerid][5], gShootSk[playerid][6], Player[playerid][pDbId]));
+	SendClientMessage(playerid, COLOR_WHITE, "Выписка из тира в сумке. Открыть: /skills или /inv, показать: /skills [id].");
+}
+
+stock bool:Skills_CanTrain(playerid, g, why[], size)
+{
+	if (!gSkillLoaded[playerid] || g < 0 || g >= SKILL_GROUPS) { format(why, size, "Тренировка сейчас недоступна."); return false; }
+	if (gSkill[playerid][g] >= SKILL_TRAIN_CAP)
+	{
+		format(why, size, "«%s» уже %d%%. Тренер учит до 70%%, дальше только практика.", gSkillNames[g], Skills_Pct(gSkill[playerid][g]));
+		return false;
+	}
+	return true;
+}
+
+stock Skills_Train(playerid, g, amount)
+{
+	if (g < 0 || g >= SKILL_GROUPS) return;
+	new v = gSkill[playerid][g] + amount;
+	if (v > SKILL_TRAIN_CAP) v = SKILL_TRAIN_CAP;
+	gSkill[playerid][g] = v;
+	gSkillDirty[playerid] = true;
+	Skills_Apply(playerid);
+	Skills_Save(playerid);
+	new rank[16];
+	Skills_Rank(v, rank, sizeof rank);
+	SendClientMessage(playerid, 0xFF7A1AFF, "Тренировка: «%s» теперь %d%% (%s). Новую выписку можно взять здесь же.", gSkillNames[g], Skills_Pct(v), rank);
+}
+
+// Для выписки из тира (навыки на дату выдачи): ,"skills":[["Пистолеты",30,"любитель"],...]
 stock Skills_Json(playerid, dest[], size = sizeof dest)
 {
 	dest[0] = '\0';
@@ -208,8 +283,8 @@ stock Skills_Json(playerid, dest[], size = sizeof dest)
 	new part[80], rank[16];
 	for (new g = 0; g < SKILL_GROUPS; g++)
 	{
-		Skills_Rank(gSkill[playerid][g], rank, sizeof rank);
-		format(part, sizeof part, "%s[\"%s\",%d,\"%s\"]", g ? "," : "", gSkillNames[g], Skills_Pct(gSkill[playerid][g]), rank);
+		Skills_Rank(gShootSk[playerid][g], rank, sizeof rank);
+		format(part, sizeof part, "%s[\"%s\",%d,\"%s\"]", g ? "," : "", gSkillNames[g], Skills_Pct(gShootSk[playerid][g]), rank);
 		strcat(dest, part, size);
 	}
 	strcat(dest, "]", size);
@@ -222,14 +297,19 @@ stock Skills_Text(playerid, dest[], size = sizeof dest)
 	new line[80], rank[16];
 	for (new g = 0; g < SKILL_GROUPS; g++)
 	{
-		Skills_Rank(gSkill[playerid][g], rank, sizeof rank);
-		format(line, sizeof line, "\n{8C9098}%s: {FFFFFF}%d%% {8C9098}(%s)", gSkillNames[g], Skills_Pct(gSkill[playerid][g]), rank);
+		Skills_Rank(gShootSk[playerid][g], rank, sizeof rank);
+		format(line, sizeof line, "\n{8C9098}%s: {FFFFFF}%d%% {8C9098}(%s)", gSkillNames[g], Skills_Pct(gShootSk[playerid][g]), rank);
 		strcat(dest, line, size);
 	}
 }
 
 stock bool:Cmd_Skills(playerid, const params[])
 {
+	if (gShootDate[playerid] <= 0)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "У тебя нет выписки из тира. Её дают в тире (/gps, «Магазины»): там же тренировки стрельбы.");
+		return true;
+	}
 	if (!params[0])
 	{
 		Docs_ShowShooting(playerid, playerid);

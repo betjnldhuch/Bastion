@@ -16,32 +16,36 @@ stock bool:Cmd_Help(playerid)
 
 stock bool:Cmd_Stats(playerid)
 {
-	new house[32], car[32], phone[16];
+	new house[40], phone[16];
 	if (Player[playerid][pPhone] == 0) strcat(phone, "нет");
 	else format(phone, sizeof phone, "%d", Player[playerid][pPhone]);
 	new h = House_GetOwned(playerid);
 	if (h != -1) format(house, sizeof house, "№%d", House[h][hDbId]);
 	else if (House_GetRented(playerid) != -1) format(house, sizeof house, "снимает комнату в №%d", House[House_GetRented(playerid)][hDbId]);
 	else strcat(house, "нет");
-	if (gPlayerVeh[playerid] == INVALID_VEHICLE_ID) strcat(car, "нет");
-	else format(car, sizeof car, "модель %d", GetVehicleModel(gPlayerVeh[playerid]));
+
+	// нарушения: варны админов, выговоры в организации, запрет на вступление после увольнения
+	new f = Player[playerid][pFaction];
+	new warns = Admin_GetWarns(playerid);
+	new fwarns = f ? Faction_GetWarns(Player[playerid][pDbId]) : 0, fwarnMax = f ? Org_WarnLimit(f) : 0;
+	new fbanUntil = Faction_BanUntil(Player[playerid][pDbId]), fban[16];
+	if (fbanUntil) Docs_Date(fban, sizeof fban, fbanUntil);
 
 	new vipLevel = Vip_GetLevel(playerid);
 	if (UI_Has(playerid))
 	{
 		// HTML-окно «stats» (index.html): значок VIP рядом с ником
-		new json[1200], e[6][64];
+		new json[1200], e[5][64];
 		UI_JsonEscape(e[0], Job_GetName(Player[playerid][pJob]));
-		UI_JsonEscape(e[1], Faction_GetName(Player[playerid][pFaction]));
-		UI_JsonEscape(e[2], Faction_GetRankName(Player[playerid][pFaction], Player[playerid][pRank]));
+		UI_JsonEscape(e[1], Faction_GetName(f));
+		UI_JsonEscape(e[2], Faction_GetRankName(f, Player[playerid][pRank]));
 		UI_JsonEscape(e[3], Family_GetPlayerText(playerid));
 		UI_JsonEscape(e[4], house);
-		UI_JsonEscape(e[5], car);
 		format(json, sizeof json,
-			"{\"name\":\"%s\",\"level\":%d,\"exp\":%d,\"expMax\":%d,\"money\":%d,\"bank\":%d,\"phone\":\"%s\",\"job\":\"%s\",\"faction\":\"%s\",\"rank\":\"%s\",\"family\":\"%s\",\"wanted\":%d,\"debt\":%d,\"house\":\"%s\",\"car\":\"%s\",\"admin\":%d,\"vipLevel\":%d,\"vip\":%d}",
+			"{\"name\":\"%s\",\"level\":%d,\"exp\":%d,\"expMax\":%d,\"money\":%d,\"bank\":%d,\"phone\":\"%s\",\"job\":\"%s\",\"faction\":\"%s\",\"rank\":\"%s\",\"family\":\"%s\",\"wanted\":%d,\"debt\":%d,\"house\":\"%s\",\"admin\":%d,\"vipLevel\":%d,\"vip\":%d,\"warns\":%d,\"warnMax\":%d,\"fwarns\":%d,\"fwarnMax\":%d,\"fban\":\"%s\"}",
 			GetRPName(playerid), Player[playerid][pLevel], Player[playerid][pExp], Player[playerid][pLevel] * EXP_PER_LEVEL,
 			GetMoney(playerid), Player[playerid][pBank], phone, e[0], e[1], e[2], e[3], Player[playerid][pWanted], Debts_Total(playerid),
-			e[4], e[5], Player[playerid][pAdmin], vipLevel, Vip_DaysLeft(playerid));
+			e[4], Player[playerid][pAdmin], vipLevel, Vip_DaysLeft(playerid), warns, ADMIN_WARNS_FOR_BAN, fwarns, fwarnMax, fban);
 		UI_Show(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "stats", json, "Закрыть");
 		return true;
 	}
@@ -49,15 +53,18 @@ stock bool:Cmd_Stats(playerid)
 	if (vipLevel > 0) format(vip, sizeof vip, "%s, ещё %d дн.", Vip_LevelName(vipLevel), Vip_DaysLeft(playerid));
 	else strcat(vip, "нет");
 
-	new adm[24];
-	if (Player[playerid][pAdmin] > 0) format(adm, sizeof adm, "\nАдминка: %d", Player[playerid][pAdmin]);
+	new extra[160];
+	format(extra, sizeof extra, "\nВарны: %d/%d", warns, ADMIN_WARNS_FOR_BAN);
+	if (f) format(extra, sizeof extra, "%s\nВыговоры в организации: %d/%d", extra, fwarns, fwarnMax);
+	if (fbanUntil) format(extra, sizeof extra, "%s\n{E5484D}Запрет на вступление в организации до %s{FFFFFF}", extra, fban);
+	if (Player[playerid][pAdmin] > 0) format(extra, sizeof extra, "%s\nАдминка: %d", extra, Player[playerid][pAdmin]);
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Статистика",
-		"{FFFFFF}Имя: {33CCFF}%s\n{FFFFFF}Уровень: %d (опыт %d/%d)\nДеньги: $%d (в банке $%d)\nДолг штату: $%d\nVIP: %s\nТелефон: %s\nРабота: %s\nФракция: %s (%s)\nСемья: %s\nДом: %s\nМашина: %s\nРозыск: %d зв.%s\n\n{8C9098}Навыки оружия: /skills · документы: /passport",
+		"{FFFFFF}Имя: {33CCFF}%s\n{FFFFFF}Уровень: %d (опыт %d/%d)\nДеньги: $%d (в банке $%d)\nДолг штату: $%d\nVIP: %s\nТелефон: %s\nРабота: %s\nФракция: %s (%s)\nСемья: %s\nДом: %s\nРозыск: %d зв.%s\n\n{8C9098}Выписка из тира: /skills · документы: /passport",
 		"Закрыть", "",
 		GetRPName(playerid), Player[playerid][pLevel], Player[playerid][pExp], Player[playerid][pLevel] * EXP_PER_LEVEL,
 		GetMoney(playerid), Player[playerid][pBank], Debts_Total(playerid), vip, phone, Job_GetName(Player[playerid][pJob]),
-		Faction_GetName(Player[playerid][pFaction]), Faction_GetRankName(Player[playerid][pFaction], Player[playerid][pRank]),
-		Family_GetPlayerText(playerid), house, car, Player[playerid][pWanted], adm);
+		Faction_GetName(f), Faction_GetRankName(f, Player[playerid][pRank]),
+		Family_GetPlayerText(playerid), house, Player[playerid][pWanted], extra);
 	return true;
 }
 
