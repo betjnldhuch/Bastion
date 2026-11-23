@@ -43,7 +43,8 @@ static gWoundLeft[MAX_PLAYERS];             // секунд до больницы
 static Float:gWoundPos[MAX_PLAYERS][4];
 static gWoundInt[MAX_PLAYERS];
 static gWoundWorld[MAX_PLAYERS];
-static gWoundList[MAX_PLAYERS][MAX_PLAYERS]; // строка окна /wounds -> id
+#define WOUND_LIST_MAX 64                    // строк в окне /wounds (больше в 1024 символа не влезет)
+static gWoundList[MAX_PLAYERS][WOUND_LIST_MAX]; // строка окна /wounds -> id
 
 
 stock Wound_Init()
@@ -294,6 +295,7 @@ stock bool:Cmd_Wounds(playerid)
 		if (strlen(list) + strlen(line) >= sizeof list) break;
 		strcat(list, line);
 		gWoundList[playerid][n++] = i;
+		if (n >= WOUND_LIST_MAX) break;
 	}
 	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "Раненых сейчас нет.");
 	ShowPlayerDialog(playerid, DIALOG_WOUNDS, DIALOG_STYLE_TABLIST_HEADERS, "Раненые", "%s", "GPS", "Закрыть", list);
@@ -304,7 +306,7 @@ stock bool:Cmd_Wounds(playerid)
 stock Wound_OnDialog(playerid, dialogid, response, listitem)
 {
 	if (dialogid != DIALOG_WOUNDS) return 0;
-	if (!response || listitem < 0 || listitem >= MAX_PLAYERS) return 1;
+	if (!response || listitem < 0 || listitem >= WOUND_LIST_MAX) return 1;
 	new target = gWoundList[playerid][listitem];
 	if (!IsPlayerConnected(target) || !gWounded[target])
 	{

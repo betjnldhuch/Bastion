@@ -38,7 +38,7 @@
 
    ```json
    "name": "Bastion Online | Peace",
-   "max_players": 100,
+   "max_players": 1000,
    "pawn": {
        "legacy_plugins": [],
        "main_scripts": ["rp 1"],
@@ -51,7 +51,7 @@
    },
    ```
 
-   Главное: в `main_scripts` должно быть `"rp 1"` (это значит «запусти gamemodes/rp.amx»), а `password` в блоке `rcon` не должен оставаться `changeme`, иначе сервер не запустится. `max_players` не больше 100 (так задано в начале `rp.pwn`).
+   Главное: в `main_scripts` должно быть `"rp 1"` (это значит «запусти gamemodes/rp.amx»), а `password` в блоке `rcon` не должен оставаться `changeme`, иначе сервер не запустится. `max_players` не больше 1000 (так задано в начале `rp.pwn`).
 
 ## 3. Компиляция (превращаем код в `rp.amx`)
 

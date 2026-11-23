@@ -92,7 +92,8 @@ static PLAYER_STATE:gSpecTState[MAX_PLAYERS];
 static PlayerText:gSpecTd[MAX_PLAYERS] = {INVALID_PLAYER_TEXT_DRAW, ...};
 
 // Панель /amenu
-static gAMenuIds[MAX_PLAYERS][MAX_PLAYERS];   // строка списка -> id игрока
+#define AMENU_LIST_MAX 200                     // строк в /amenu (больше в 4000 символов не влезет)
+static gAMenuIds[MAX_PLAYERS][AMENU_LIST_MAX];   // строка списка -> id игрока
 static gAMenuTarget[MAX_PLAYERS];
 static gAMenuTargetDb[MAX_PLAYERS];
 static gAMenuAction[MAX_PLAYERS];
@@ -1475,6 +1476,7 @@ stock bool:Cmd_AMenu(playerid)
 		if (strlen(text) + strlen(line) >= sizeof (text) - 1) break;
 		strcat(text, line);
 		gAMenuIds[playerid][n++] = i;
+		if (n >= AMENU_LIST_MAX) break;
 	}
 	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "Нет игроков.");
 	ShowPlayerDialog(playerid, DIALOG_AMENU, DIALOG_STYLE_LIST, "Игроки онлайн", "%s", "Выбрать", "Закрыть", text);
@@ -1588,7 +1590,7 @@ stock Admin_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		case DIALOG_AMENU:
 		{
 			if (!response || Player[playerid][pAdmin] < 1) return 1;
-			if (listitem < 0 || listitem >= MAX_PLAYERS) return 1;
+			if (listitem < 0 || listitem >= AMENU_LIST_MAX) return 1;
 			new t = gAMenuIds[playerid][listitem];
 			if (!IsPlayerConnected(t)) { SendClientMessage(playerid, COLOR_GREY, "Игрок уже вышел."); Cmd_AMenu(playerid); return 1; }
 			gAMenuTarget[playerid] = t;
