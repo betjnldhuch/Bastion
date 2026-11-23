@@ -87,7 +87,7 @@ bpd4_subway_tile, bpd4_concrete, bpd4_sign_cells, bpd4_sign_interrogation, bpd4_
 | 61 | radar_gangN | ФБР |
 | 40 | radar_THETRUTH | Армия |
 | 8 | radar_BIGSMOKE | Мэрия |
-| 23 | radar_LOCO | СМИ |
+| 23 | radar_LocoSyndicate | СМИ |
 
 Бизнесы (`src/biz_*.png`, рисует `tools/make_biz_radar_icons.py` из `ui/biz`):
 
