@@ -428,7 +428,7 @@ stock bool:Cmd_SetVip(playerid, const params[])
 	new pos = 0, level, days;
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID || !NextIntParam(params, pos, level) || level < 0 || level > VIP_MAX)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setvip [id] [уровень: 0 снять, 1 Bronze, 2 Silver, 3 Gold, 4 Platinum] [дней]");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setvip [id] [уровень: 0 снять, 1 Bronze, 2 Silver, 3 Gold, 4 Platinum, 5 Diamond] [дней]");
 	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл в аккаунт.");
 	if (level == 0)
 	{
@@ -526,7 +526,7 @@ stock Vip_ShowMenu(playerid)
 	if (level > 0) format(title, sizeof title, "{%s}VIP %s{FFFFFF}: ещё %d дн.", gVipHex[level], gVipName[level], Vip_DaysLeft(playerid));
 	else strcat(title, "VIP: не активен");
 	strcat(list, "Привилегии уровней\n");
-	strcat(list, (level > 0) ? "Продлить или улучшить VIP\n" : "Купить VIP\n");
+	strcat(list, (level >= VIP_MAX) ? "Продлить VIP\n" : (level > 0) ? "Продлить или улучшить VIP\n" : "Купить VIP\n");
 	if (level > 0)
 	{
 		new left = gVipCd[playerid][VCD_DAILY] - gettime();
