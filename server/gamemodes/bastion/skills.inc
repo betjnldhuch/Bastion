@@ -9,7 +9,9 @@
 //  Новые аккаунты начинают с 0, старые (до этого обновления) — с SKILL_OLD_START.
 //  Хранится в accounts.wskills: "a,b,c,d,e,f,g".
 //
-//  /skills — мои навыки (и в /stats). Админы 4+: /setskill [id] [группа 1-7|all] [0-999].
+//  Игроку навык показывается в процентах (0..999 -> 0..100%).
+//  /skills — выписка из тира (docs.inc), /skills [id] — показать игроку рядом.
+//  Админы 4+: /setskill [id] [группа 1-7|all] [0-100%].
 // =====================================================================
 
 #define SKILL_GROUPS        7
@@ -189,23 +191,31 @@ stock Skills_Get(playerid, g)
 	return gSkill[playerid][g];
 }
 
-// Для окна /stats: ,"skills":[["Пистолеты",300],...]
+// Проценты для игрока: 999 -> 100
+stock Skills_Pct(value)
+{
+	if (value >= SKILL_MAX) return 100;
+	if (value <= 0) return 0;
+	new p = (value * 100 + SKILL_MAX / 2) / SKILL_MAX;
+	return p >= 100 ? 99 : p;
+}
+
+// Для выписки из тира: ,"skills":[["Пистолеты",30,"любитель"],...]
 stock Skills_Json(playerid, dest[], size = sizeof dest)
 {
 	dest[0] = '\0';
-	strcat(dest, ",\"skillMax\":", size);
-	new part[64];
-	format(part, sizeof part, "%d,\"skills\":[", SKILL_MAX);
-	strcat(dest, part, size);
+	strcat(dest, ",\"skills\":[", size);
+	new part[80], rank[16];
 	for (new g = 0; g < SKILL_GROUPS; g++)
 	{
-		format(part, sizeof part, "%s[\"%s\",%d]", g ? "," : "", gSkillNames[g], gSkill[playerid][g]);
+		Skills_Rank(gSkill[playerid][g], rank, sizeof rank);
+		format(part, sizeof part, "%s[\"%s\",%d,\"%s\"]", g ? "," : "", gSkillNames[g], Skills_Pct(gSkill[playerid][g]), rank);
 		strcat(dest, part, size);
 	}
 	strcat(dest, "]", size);
 }
 
-// Для диалога /stats
+// Для диалога выписки
 stock Skills_Text(playerid, dest[], size = sizeof dest)
 {
 	dest[0] = '\0';
@@ -213,29 +223,45 @@ stock Skills_Text(playerid, dest[], size = sizeof dest)
 	for (new g = 0; g < SKILL_GROUPS; g++)
 	{
 		Skills_Rank(gSkill[playerid][g], rank, sizeof rank);
-		format(line, sizeof line, "\n{8C9098}%s: {FFFFFF}%d/%d {8C9098}(%s)", gSkillNames[g], gSkill[playerid][g], SKILL_MAX, rank);
+		format(line, sizeof line, "\n{8C9098}%s: {FFFFFF}%d%% {8C9098}(%s)", gSkillNames[g], Skills_Pct(gSkill[playerid][g]), rank);
 		strcat(dest, line, size);
 	}
 }
 
-stock bool:Cmd_Skills(playerid)
+stock bool:Cmd_Skills(playerid, const params[])
 {
-	new text[700];
-	Skills_Text(playerid, text);
-	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "{FF7A1A}BASTION {FFFFFF}· Навыки оружия",
-		"{FFFFFF}Навык растёт, когда попадаешь: по игроку +%d, по машине или объекту +%d (до %d в минуту).%s",
-		"Закрыть", "", SKILL_HIT_PLAYER, SKILL_HIT_OTHER, SKILL_MINUTE_CAP, text);
+	if (!params[0])
+	{
+		Docs_ShowShooting(playerid, playerid);
+		return true;
+	}
+	new pos = 0, target = NextPlayerParam(params, pos);
+	if (target == INVALID_PLAYER_ID || target == playerid || !Player[target][pLogged])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Использование: /skills — выписка из тира, /skills [id] — показать игроку рядом.");
+		return true;
+	}
+	if (!IsPlayerNearPlayer(playerid, target, 3.0))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Подойди ближе к игроку.");
+		return true;
+	}
+	Docs_ShowShooting(playerid, target);
+	new msg[128];
+	format(msg, sizeof msg, "%s показывает выписку из тира %s.", GetRPName(playerid), GetRPName(target));
+	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	return true;
 }
 
 stock bool:Cmd_SetSkill(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 4)) return true;
-	new pos = 0, group[8], value;
+	new pos = 0, group[8], pct;
 	new target = NextPlayerParam(params, pos);
-	if (target == INVALID_PLAYER_ID || !Player[target][pLogged] || !NextParam(params, pos, group) || !NextIntParam(params, pos, value)
-		|| value < 0 || value > SKILL_MAX)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setskill [id] [группа 1-%d или all] [0-%d]. 1 пистолеты, 2 deagle, 3 дробовики, 4 обрез, 5 ПП, 6 автоматы, 7 винтовки", SKILL_GROUPS, SKILL_MAX);
+	if (target == INVALID_PLAYER_ID || !Player[target][pLogged] || !NextParam(params, pos, group) || !NextIntParam(params, pos, pct)
+		|| pct < 0 || pct > 100)
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setskill [id] [группа 1-%d или all] [0-100%%]. 1 пистолеты, 2 deagle, 3 дробовики, 4 обрез, 5 ПП, 6 автоматы, 7 винтовки", SKILL_GROUPS);
+	new value = (pct * SKILL_MAX + 50) / 100;
 	if (!gSkillLoaded[target]) return SendClientMessage(playerid, COLOR_GREY, "Игрок ещё не вошёл.");
 	new from = 0, to = SKILL_GROUPS - 1;
 	if (strcmp(group, "all", true) != 0)
@@ -249,14 +275,14 @@ stock bool:Cmd_SetSkill(playerid, const params[])
 	Skills_Apply(target);
 	Skills_Save(target);
 	Admin_Log(playerid, "setskill", target, group, value);
-	SendClientMessage(playerid, COLOR_ADMIN, "Навыки %s (%s) = %d.", GetRPName(target), group, value);
+	SendClientMessage(playerid, COLOR_ADMIN, "Навыки %s (%s) = %d%%.", GetRPName(target), group, pct);
 	SendClientMessage(target, COLOR_ADMIN, "Администратор изменил твои навыки оружия: /skills.");
 	return true;
 }
 
 stock bool:Skills_OnCommand(playerid, const cmd[], const params[])
 {
-	if (!strcmp(cmd, "/skills", true) || !strcmp(cmd, "/skill", true)) { Cmd_Skills(playerid); return true; }
+	if (!strcmp(cmd, "/skills", true) || !strcmp(cmd, "/skill", true)) { Cmd_Skills(playerid, params); return true; }
 	if (!strcmp(cmd, "/setskill", true)) { Cmd_SetSkill(playerid, params); return true; }
 	return false;
 }

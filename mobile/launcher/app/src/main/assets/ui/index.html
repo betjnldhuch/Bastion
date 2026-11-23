@@ -264,8 +264,7 @@ button { font: inherit; cursor: pointer; }
 .list .hd { position: sticky; top: 0; z-index: 1; background: var(--panel-hi); font-size: 12px; color: var(--muted);
   text-transform: uppercase; letter-spacing: .04em; padding: 8px 12px; min-height: 0; }
 .list .hd > div + div { color: var(--muted); }
-/* Навыки оружия в /stats: справа от строк, на узком экране — под ними */
-.card.wide.st.sk2 { width: min(820px, 100%); }
+/* Строки /stats и шкалы выписки из тира */
 .st-cols { flex: 1 1 auto !important; min-height: 0; overflow: auto; margin-bottom: 12px; }
 .st-cols .st-rows { overflow: visible; }
 @media (min-width: 640px) { .st-cols.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 0 26px; }
@@ -277,8 +276,11 @@ button { font: inherit; cursor: pointer; }
 .sk .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent-dark), var(--accent)); }
 .sk .bar i.max { background: linear-gradient(90deg, #c99a1a, var(--gold)); }
 .sk b { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
-.sk .rk { grid-column: 2 / 4; margin-top: -4px; font-size: 11px; color: var(--muted); }
-@media (max-height: 420px) { .sk { font-size: 12px; margin-bottom: 3px; } .sk .rk { display: none; } }
+.sk .rk { font-size: 11px; color: var(--muted); }
+.sk-note { margin-top: 4px; font-size: 11px; color: var(--muted); }
+.card.doc.wide { width: min(620px, 100%); }
+.doc-fields .st-sk .sk { grid-template-columns: 8.5em 1fr 3em 5.2em; }
+@media (max-height: 420px) { .sk { font-size: 12px; margin-bottom: 3px; } .sk-note { display: none; } }
 /* Документы: паспорт, медкарта, лицензии (docs.inc) */
 .card.doc { width: min(520px, 100%); max-height: 100%; padding: 0; overflow: hidden; background: #101216; display: flex; flex-direction: column; }
 .card.doc > * { flex: none; }
@@ -482,21 +484,18 @@ function vipImg(level, cls) {
     setTimeout(function () { pw.focus(); }, 50);
   }
 
-  // Навыки оружия (skills.inc): [["Пистолеты", 300], ...]
-  function skillRank(v, max) { return v >= max ? 'мастер' : v >= 700 ? 'профи' : v >= 400 ? 'опытный' : v >= 150 ? 'любитель' : 'новичок'; }
-  function skillsHtml(list, max) {
-    if (!list || !list.length) return '';
-    max = max || 999;
-    return '<div class="st-sk"><h2>НАВЫКИ ОРУЖИЯ</h2>' + list.map(function (s) {
-      var v = s[1] | 0, pct = Math.max(0, Math.min(100, Math.round(100 * v / max)));
-      return '<div class="sk"><span>' + esc(s[0]) + '</span><span class="bar"><i' + (v >= max ? ' class="max"' : '') + ' style="width:' + pct + '%"></i></span>' +
-        '<b>' + v + '</b></div>';
-    }).join('') + '<div class="sk"><span></span><span class="rk">Растут за попадания. На ' + max + ' пистолет, обрез и ПП берутся в обе руки.</span></div></div>';
+  // Выписка из тира (skills.inc): [["Пистолеты", 30, "любитель"], ...], проценты 0..100
+  function skillsHtml(list) {
+    return '<div class="st-sk">' + (list || []).map(function (s) {
+      var p = Math.max(0, Math.min(100, s[1] | 0));
+      return '<div class="sk"><span>' + esc(s[0]) + '</span><span class="bar"><i' + (p >= 100 ? ' class="max"' : '') + ' style="width:' + p + '%"></i></span>' +
+        '<b>' + p + '%</b><span class="rk">' + esc(s[2] || '') + '</span></div>';
+    }).join('') + '<div class="sk-note">Растут за попадания. На 100% пистолет, обрез и ПП берутся в обе руки.</div></div>';
   }
 
   // Документ (docs.inc): паспорт, медкарта, лицензии. own — свой или показали
   function docWindow(d, m) {
-    var K = { passport: ['ПАСПОРТ', 'Штат San Andreas · гражданин'], medcard: ['МЕДКАРТА', 'Больница Лос-Сантоса'], licenses: ['ЛИЦЕНЗИИ', 'Штат San Andreas · разрешения'] };
+    var K = { passport: ['ПАСПОРТ', 'Штат San Andreas · гражданин'], medcard: ['МЕДКАРТА', 'Больница Лос-Сантоса'], licenses: ['ЛИЦЕНЗИИ', 'Штат San Andreas · разрешения'], shooting: ['ВЫПИСКА ИЗ ТИРА', 'Ammu-Nation · стрелковая подготовка'] };
     var k = K[d.kind] || K.passport;
     function f(key, val, cls) { return '<div class="f' + (cls ? ' ' + cls : '') + '"><div class="k">' + key + '</div><div class="v">' + val + '</div></div>'; }
     var name = esc(plain(d.name)), fields = '';
@@ -513,19 +512,22 @@ function vipImg(level, cls) {
           var on = d.lic && d.lic[i];
           return '<div' + (on ? ' class="on"' : '') + '><b>' + l[0] + '</b>' + l[1] + '<i>' + (on ? 'есть' : 'нет') + '</i></div>';
         }).join('') + '</div>';
+    } else if (d.kind === 'shooting') {
+      fields = f('Стрелок', name, 'w') + f('Номер', esc(d.num)) + f('Дата выписки', esc(d.date)) +
+        '<div class="f w">' + skillsHtml(d.skills) + '</div>';
     } else {
       fields = '<div class="f w"><div class="k">Фамилия, имя</div><div class="v big">' + name + '</div></div>' +
         f('Номер', esc(d.num)) + f('Пол', d.female ? 'женский' : 'мужской') +
-        f('Дата выдачи', esc(d.issued)) + f('Лет в штате', String(d.level | 0)) +
-        f('Работа', esc(plain(d.job)) || '—') + f('Телефон', esc(d.phone)) +
-        f('Фракция', d.faction && d.rank ? esc(plain(d.faction)) + ' <span class="mut">· ' + esc(plain(d.rank)) + '</span>' : '<span class="mut">нет</span>', 'w') +
-        f('Семейное положение', d.spouse ? (d.female ? 'замужем за ' : 'женат на ') + esc(plain(d.spouse)) : (d.female ? 'не замужем' : 'не женат'), 'w');
+        f('Гражданин штата с', esc(d.issued), 'w') +
+        f('Прописка', esc(plain(d.home)) || '—', 'w') +
+        f('Семейное положение', esc(plain(d.marital)) || '—', 'w') +
+        f('Место работы', esc(plain(d.work)) || '—', 'w');
     }
     // машиночитаемая строка внизу, как в настоящем паспорте
-    var mrz = (k[0] === 'ПАСПОРТ' ? 'P<SAN' : k[0] === 'МЕДКАРТА' ? 'M<LSH' : 'L<SAN') +
+    var mrz = ({ passport: 'P<SAN', medcard: 'M<LSH', licenses: 'L<SAN', shooting: 'S<AMN' }[d.kind] || 'P<SAN') +
       plain(d.name).toUpperCase().replace(/[^A-Z ]/g, '').replace(/ /g, '<<') + '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<';
     var tag = d.own ? '' : '<div class="s" style="color:var(--accent)">Тебе показывают документ</div>';
-    root.innerHTML = '<div class="card doc">' + closeBtn() +
+    root.innerHTML = '<div class="card doc' + (d.kind === 'shooting' ? ' wide' : '') + '">' + closeBtn() +
       '<div class="doc-top"><div><div class="brand">BASTION ONLINE</div><div class="t">' + k[0] + '</div><div class="s">' + k[1] + '</div>' + tag + '</div>' +
       '<div class="seal">BS</div></div>' +
       '<div class="doc-body"><div class="doc-photo"><span>скин ' + (d.skin | 0) + '</span></div><div class="doc-fields">' + fields + '</div></div>' +
@@ -584,18 +586,17 @@ function vipImg(level, cls) {
       var rows = [
         ['Уровень', (d.level | 0) + ' <span class="mut">(опыт ' + (d.exp | 0) + '/' + (d.expMax | 0) + ')</span>'],
         ['Деньги', money(d.money) + ' <span class="mut">в банке ' + money(d.bank) + '</span>'],
-        ['Телефон', esc(d.phone)], ['Работа', esc(d.job)],
+        ['Долг штату', money(d.debt)], ['Телефон', esc(d.phone)], ['Работа', esc(d.job)],
         ['Фракция', esc(d.faction) + (d.rank ? ' <span class="mut">(' + esc(d.rank) + ')</span>' : '')],
-        ['Семья', esc(d.family)], ['Розыск', (d.wanted | 0) + ' зв.'], ['Долг штату', money(d.debt)],
-        ['Сытость', (d.hunger | 0) + '%'], ['Дом', esc(d.house)], ['Машина', esc(d.car)]
+        ['Семья', esc(d.family)], ['Дом', esc(d.house)], ['Машина', esc(d.car)], ['Розыск', (d.wanted | 0) + ' зв.']
       ];
       if (d.admin > 0) rows.push(['Админка', String(d.admin | 0)]);
-      root.innerHTML = '<div class="card wide st' + (d.skills && d.skills.length ? ' sk2' : '') + '">' + closeBtn() + '<div class="brand">BASTION ONLINE</div>' +
+      root.innerHTML = '<div class="card wide st">' + closeBtn() + '<div class="brand">BASTION ONLINE</div>' +
         '<div class="st-head">' + (lv ? vipImg(lv, 'st-badge') : '') + '<div><h1>' + esc(d.name) + '</h1>' +
         (lv ? '<div class="st-vip" style="color:#' + vc + '">VIP ' + VIP_NAME[lv - 1] + (d.vip > 0 ? ' · ещё ' + (d.vip | 0) + ' дн.' : '') + '</div>'
             : '<div class="st-vip mut">Без VIP · /donate</div>') + '</div></div>' +
-        '<div class="st-cols' + (d.skills && d.skills.length ? ' two' : '') + '"><dl class="st-rows">' + rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl>' +
-        skillsHtml(d.skills, d.skillMax) + '</div>' +
+        '<div class="st-cols"><dl class="st-rows">' + rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl></div>' +
+        '<p class="sub" style="margin:0 0 10px">Навыки оружия: /skills · документы: /passport</p>' +
         '<div class="row"><button class="btn primary" id="b1">' + esc(m.button1 || 'Закрыть') + '</button></div></div>';
       document.getElementById('b1').onclick = document.getElementById('x').onclick = function () { respond(1, -1, ''); };
     },

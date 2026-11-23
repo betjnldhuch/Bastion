@@ -111,11 +111,9 @@ static Docs_DaysLeft(until)
 // ---------------------------------------------------------------------
 static Docs_ShowPassport(owner, viewer)
 {
-	new num[16], issued[16], phone[16], e[6][64];
+	new num[16], issued[16], e[5][64];
 	Docs_Number(owner, num, sizeof num);
 	Docs_Date(issued, sizeof issued, gDocRegDate[owner]);
-	if (Player[owner][pPhone] == 0) strcat(phone, "нет");
-	else format(phone, sizeof phone, "%d", Player[owner][pPhone]);
 	new spouse[MAX_PLAYER_NAME];
 	spouse = Marriage_GetSpouseName(owner);
 	for (new i = 0; spouse[i]; i++) if (spouse[i] == '_') spouse[i] = ' ';
@@ -123,30 +121,34 @@ static Docs_ShowPassport(owner, viewer)
 	new marital[MAX_PLAYER_NAME + 16];
 	if (spouse[0]) format(marital, sizeof marital, "%s %s", female ? ("замужем за") : ("женат на"), spouse);
 	else strcat(marital, female ? ("не замужем") : ("не женат"));
+	// прописка: свой дом, иначе снимаемая комната
+	new home[40], h = House_GetOwned(owner);
+	if (h != -1) format(home, sizeof home, "Лос-Сантос, дом №%d", House[h][hDbId]);
+	else if ((h = House_GetRented(owner)) != -1) format(home, sizeof home, "Лос-Сантос, дом №%d (аренда)", House[h][hDbId]);
+	else strcat(home, "без регистрации");
+	// место работы: фракция с должностью, иначе работа
+	new work[80];
+	if (Player[owner][pFaction]) format(work, sizeof work, "%s, %s", Faction_GetName(Player[owner][pFaction]), Faction_GetRankName(Player[owner][pFaction], Player[owner][pRank]));
+	else if (Player[owner][pJob]) format(work, sizeof work, "%s", Job_GetName(Player[owner][pJob]));
+	else strcat(work, "не трудоустроен");
 
 	if (UI_Has(viewer))
 	{
 		new json[900];
 		UI_JsonEscape(e[0], GetRPName(owner));
-		UI_JsonEscape(e[1], Job_GetName(Player[owner][pJob]));
-		UI_JsonEscape(e[2], Faction_GetName(Player[owner][pFaction]));
-		if (Player[owner][pFaction]) UI_JsonEscape(e[3], Faction_GetRankName(Player[owner][pFaction], Player[owner][pRank]));
-		UI_JsonEscape(e[4], spouse);
+		UI_JsonEscape(e[1], work);
+		UI_JsonEscape(e[2], home);
+		UI_JsonEscape(e[3], marital);
 		format(json, sizeof json,
-			"{\"kind\":\"passport\",\"own\":%d,\"name\":\"%s\",\"num\":\"%s\",\"female\":%d,\"issued\":\"%s\",\"level\":%d,\"job\":\"%s\",\"faction\":\"%s\",\"rank\":\"%s\",\"spouse\":\"%s\",\"phone\":\"%s\",\"skin\":%d}",
-			owner == viewer, e[0], num, female, issued, Player[owner][pLevel], e[1], e[2],
-			e[3], e[4], phone, Player[owner][pSkin]);
+			"{\"kind\":\"passport\",\"own\":%d,\"name\":\"%s\",\"num\":\"%s\",\"female\":%d,\"issued\":\"%s\",\"work\":\"%s\",\"home\":\"%s\",\"marital\":\"%s\",\"skin\":%d}",
+			owner == viewer, e[0], num, female, issued, e[1], e[2], e[3], Player[owner][pSkin]);
 		UI_Show(viewer, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "document", json, "Закрыть");
 		return;
 	}
-	new faction[80];
-	if (Player[owner][pFaction]) format(faction, sizeof faction, "%s (%s)", Faction_GetName(Player[owner][pFaction]), Faction_GetRankName(Player[owner][pFaction], Player[owner][pRank]));
-	else strcat(faction, "нет");
 	ShowPlayerDialog(viewer, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "{FF7A1A}BASTION {FFFFFF}· Паспорт",
-		"{8C9098}ШТАТ SAN ANDREAS · ПАСПОРТ ГРАЖДАНИНА\n\n{8C9098}Номер: {FFFFFF}%s\n{8C9098}Имя: {FFFFFF}%s\n{8C9098}Пол: {FFFFFF}%s\n{8C9098}Выдан: {FFFFFF}%s, мэрия Лос-Сантоса\n{8C9098}Лет в штате (уровень): {FFFFFF}%d\n{8C9098}Работа: {FFFFFF}%s\n{8C9098}Фракция: {FFFFFF}%s\n{8C9098}Семейное положение: {FFFFFF}%s\n{8C9098}Телефон: {FFFFFF}%s",
+		"{8C9098}ШТАТ SAN ANDREAS · ПАСПОРТ ГРАЖДАНИНА\n\n{8C9098}Номер: {FFFFFF}%s\n{8C9098}Фамилия, имя: {FFFFFF}%s\n{8C9098}Пол: {FFFFFF}%s\n{8C9098}Гражданин штата с: {FFFFFF}%s\n{8C9098}Прописка: {FFFFFF}%s\n{8C9098}Семейное положение: {FFFFFF}%s\n{8C9098}Место работы: {FFFFFF}%s",
 		"Закрыть", "",
-		num, GetRPName(owner), female ? "женский" : "мужской", issued, Player[owner][pLevel],
-		Job_GetName(Player[owner][pJob]), faction, marital, phone);
+		num, GetRPName(owner), female ? "женский" : "мужской", issued, home, marital, work);
 }
 
 static Docs_ShowMedcard(owner, viewer)
@@ -198,6 +200,29 @@ static Docs_ShowLicenses(owner, viewer)
 		"Закрыть", "", num, GetRPName(owner),
 		Licenses_Has(owner, LIC_CAR) ? yes : no, Licenses_Has(owner, LIC_MOTO) ? yes : no,
 		Licenses_Has(owner, LIC_BOAT) ? yes : no, Licenses_Has(owner, LIC_GUN) ? yes : no);
+}
+
+// Выписка из тира Ammu-Nation (/skills, skills.inc): навыки оружия в процентах
+stock Docs_ShowShooting(owner, viewer)
+{
+	new num[16], today[16];
+	Docs_Number(owner, num, sizeof num);
+	Docs_Date(today, sizeof today, gettime());
+	if (UI_Has(viewer))
+	{
+		new json[700], name[64], list[400];
+		UI_JsonEscape(name, GetRPName(owner));
+		Skills_Json(owner, list);
+		format(json, sizeof json, "{\"kind\":\"shooting\",\"own\":%d,\"name\":\"%s\",\"num\":\"%s\",\"date\":\"%s\",\"skin\":%d%s}",
+			owner == viewer, name, num, today, Player[owner][pSkin], list);
+		UI_Show(viewer, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "document", json, "Закрыть");
+		return;
+	}
+	new text[700];
+	Skills_Text(owner, text);
+	ShowPlayerDialog(viewer, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "{FF7A1A}BASTION {FFFFFF}· Выписка из тира",
+		"{8C9098}AMMU-NATION · ВЫПИСКА ИЗ ТИРА\n\n{8C9098}Номер: {FFFFFF}%s\n{8C9098}Стрелок: {FFFFFF}%s\n{8C9098}Дата: {FFFFFF}%s\n%s",
+		"Закрыть", "", num, GetRPName(owner), today, text);
 }
 
 static Docs_ShowItem(owner, viewer, item)
