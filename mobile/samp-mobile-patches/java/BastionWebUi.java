@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.graphics.Color;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
@@ -25,6 +26,10 @@ import org.json.JSONObject;
  * and send the player's choice back as the normal dialog response, so the
  * gamemode handles it in OnDialogResponse like any other dialog.
  * Every other dialog is drawn by the same page in the same style (window "samp").
+ *
+ * A dialog with caption "[hud]" is not a window: its JSON goes to BastionUI.hud
+ * (health, armour, hunger, cash, bank panel). While only the panel is shown the
+ * page lets every touch through to the game.
  */
 public class BastionWebUi {
     private static final String TAG = "BastionWebUi";
@@ -37,6 +42,8 @@ public class BastionWebUi {
     private String pendingJs;
     private int dialogId = -1;
     private boolean shown;
+    private boolean hudOn;
+    private boolean paused;
 
     public BastionWebUi(Activity activity, DialogManager dialogs) {
         this.activity = activity;
@@ -46,6 +53,29 @@ public class BastionWebUi {
     /** True when the caption asks for an HTML window. */
     public static boolean wants(String caption) {
         return caption != null && caption.startsWith(PREFIX) && caption.indexOf(']') > PREFIX.length();
+    }
+
+    /** True for the hidden HUD data dialog from hud.inc. */
+    public static boolean isHud(String caption) {
+        return caption != null && caption.startsWith("[hud]");
+    }
+
+    /** Called on the UI thread. HUD panel data; {"off":1} hides the panel. */
+    public void hud(String json) {
+        ensureView();
+        String data = json == null || json.isEmpty() ? "{}" : json;
+        hudOn = !data.contains("\"off\"");
+        String js = "window.BastionUI && BastionUI.hud && BastionUI.hud(" + JSONObject.quote(data) + ")";
+        if (pageReady) web.evaluateJavascript(js, null);
+        else pendingHud = js;
+        updateVisibility();
+    }
+
+    private String pendingHud;
+
+    private void updateVisibility() {
+        if (web == null) return;
+        web.setVisibility(!paused && (shown || hudOn) ? View.VISIBLE : View.GONE);
     }
 
     /** Called on the UI thread. A "[ui:NAME]" window with JSON data from ui.inc. */
@@ -86,7 +116,9 @@ public class BastionWebUi {
             Log.e(TAG, "bad window " + name, e);
             return;
         }
-        web.setVisibility(View.VISIBLE);
+        web.setFocusable(true);
+        web.setFocusableInTouchMode(true);
+        updateVisibility();
         web.requestFocus();
         if (pageReady) web.evaluateJavascript(js, null);
         else pendingJs = js;
@@ -95,24 +127,33 @@ public class BastionWebUi {
     public void hide() {
         shown = false;
         if (web == null) return;
-        web.setVisibility(View.GONE);
+        web.clearFocus();
+        web.setFocusable(false);
+        web.setFocusableInTouchMode(false);
+        updateVisibility();
         InputMethodManager imm = (InputMethodManager) activity.getSystemService(Activity.INPUT_METHOD_SERVICE);
         if (imm != null) imm.hideSoftInputFromWindow(web.getWindowToken(), 0);
     }
 
     /** Pause menu hides windows; they come back on resume. */
     public void setPaused(boolean paused) {
-        if (web == null || !shown) return;
-        web.setVisibility(paused ? View.GONE : View.VISIBLE);
+        this.paused = paused;
+        updateVisibility();
     }
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     private void ensureView() {
         if (web != null) return;
-        web = new WebView(activity);
+        // Without an open window (HUD panel only) touches go to the game below
+        web = new WebView(activity) {
+            @Override
+            public boolean dispatchTouchEvent(MotionEvent ev) {
+                return shown && super.dispatchTouchEvent(ev);
+            }
+        };
         web.setBackgroundColor(Color.TRANSPARENT);
-        web.setFocusable(true);
-        web.setFocusableInTouchMode(true);
+        web.setFocusable(false);
+        web.setFocusableInTouchMode(false);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -123,6 +164,10 @@ public class BastionWebUi {
             @Override
             public void onPageFinished(WebView view, String url) {
                 pageReady = true;
+                if (pendingHud != null) {
+                    view.evaluateJavascript(pendingHud, null);
+                    pendingHud = null;
+                }
                 if (pendingJs != null) {
                     view.evaluateJavascript(pendingJs, null);
                     pendingJs = null;

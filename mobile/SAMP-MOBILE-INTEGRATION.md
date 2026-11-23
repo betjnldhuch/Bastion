@@ -45,6 +45,10 @@
 9. **3D-тексты.** Upstream принимал `Create3DTextLabel`, но не рисовал: теперь тексты
    над маркерами, дверями и домами выводятся вместе с никами, цвета `{RRGGBB}` сохраняются.
 
+10. **HUD.** Скрытый диалог `[hud]` (hud.inc) с JSON не открывает окно, а обновляет панель
+   справа (ХП, броня, сытость, наличные, банк) в `assets/ui/index.html`; стандартные полоски
+   ХП/брони и деньги GTA не рисуются (`cpp/bastion_hud.cpp`). Касания проходят в игру.
+
 ## Сборка
 
 Workflow **Build single Bastion Android APK** (`.github/workflows/bastion-single-apk.yml`),
