@@ -125,7 +125,7 @@ static bool:Commands_IsAction(const cmd[])
 		"/tune", "/unimpound", "/bank", "/atm", "/pay", "/fbank", "/fstorage",
 		"/buybiz", "/sellbiz", "/bizcash", "/bizmenu", "/biz", "/sell", "/inv", "/i", "/invlist", "/pickup",
 		"/aid", "/carry", "/fish", "/robvan", "/pwork", "/escape", "/marry", "/divorce",
-		"/sbank", "/selldrugs"
+		"/sbank", "/selldrugs", "/tie", "/lead", "/gcar", "/hold", "/hideout", "/handsup"
 	};
 	for (new i = 0; i < sizeof (list); i++)
 	{
@@ -398,6 +398,19 @@ stock Commands_Process(playerid, const input[])
 	// --- бизнесы (business.inc) ---
 	if (!strcmp(cmd, "/buy", true))         { Cmd_Buy(playerid); return 1; }
 	if (!strcmp(cmd, "/rob", true))         { Cmd_Rob(playerid); return 1; }
+	// --- похищения (kidnap.inc) ---
+	if (!strcmp(cmd, "/tie", true))         { Cmd_Tie(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/untie", true))       { Cmd_Untie(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/lead", true))        { Cmd_Lead(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/gcar", true))        { Cmd_GCar(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/hold", true))        { Cmd_Hold(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/hideout", true))     { Cmd_Hideout(playerid); return 1; }
+	if (!strcmp(cmd, "/sethideout", true))  { Cmd_SetHideout(playerid); return 1; }
+	if (!strcmp(cmd, "/ransom", true))      { Cmd_Ransom(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/payransom", true))   { Cmd_PayRansom(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/release", true))     { Cmd_Release(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/hostages", true))    { Cmd_Hostages(playerid); return 1; }
+	if (!strcmp(cmd, "/handsup", true) || !strcmp(cmd, "/hu", true)) { Cmd_HandsUp(playerid); return 1; }
 	if (!strcmp(cmd, "/buybiz", true))      { Cmd_BuyBiz(playerid); return 1; }
 	if (!strcmp(cmd, "/sellbiz", true))     { Cmd_SellBiz(playerid); return 1; }
 	if (!strcmp(cmd, "/bizinfo", true))     { Cmd_BizInfo(playerid); return 1; }
