@@ -95,6 +95,7 @@
 #include "bastion/orgs.inc"       // /orgs Ч панель владельца по всем организаци€м, спец-выговоры
 #include "bastion/wounded.inc"    // ранение вместо смерти, /revive, /aid
 #include "bastion/admin_give.inc" // админ: /givegun /aheal /setarmour /disarm /healall /takemoney
+#include "bastion/kidnap.inc"     // подвал банды: /tie, /hold, выкуп
 #include "bastion/robbery.inc"    // /rob Ч ограбление магазинов
 #include "bastion/drugs.inc"      // наркотики: кусты, торговец, эффекты, ломка
 #include "bastion/worklife.inc"   // работы: рыбак, фермер, инкассатор, мусорщик
@@ -170,6 +171,7 @@ public OnGameModeInit()
 	Fuel_Init();          // после всех машин: им выдаЄтс€ бензин
 	Wound_Init();
 	Robbery_Init();
+	Kidnap_Init();        // подвалы банд (после Factions_Init)
 	Places_Init();        // точки новых систем (places.inc)
 	Drugs_Init();
 	WorkLife_Init();      // после Places_Init: машины работ сто€т в точках
@@ -263,6 +265,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Wound_Reset(playerid);
 	Fbi_OnDisconnect(playerid);         // ‘Ѕ–: маскировка, прослушка, слежка
 	Rob_OnDisconnect(playerid);
+	Kidnap_OnDisconnect(playerid);
 	Rental_OnDisconnect(playerid);
 	Player[playerid][pLogged] = false;
 	return 1;
@@ -359,6 +362,7 @@ public OnPlayerSpawn(playerid)
 	Hud_OnSpawn(playerid);              // панель статуса (hud.inc)
 	BizX_OnSpawn(playerid);             // стиль бо€ из спортзала (bizplus.inc)
 	Skills_OnSpawn(playerid);           // навыки оружи€ (skills.inc)
+	Kidnap_OnSpawn(playerid);           // последним: заложник возвращаетс€ в подвал
 	return 1;
 }
 

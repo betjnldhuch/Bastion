@@ -32,7 +32,8 @@ enum
 	MK_DEALER,
 	MK_SCHOOL,
 	MK_LIFE,        // точки новых систем (places.inc): ref = PLACE_REF + номер, базы новых работ
-	MK_RENTAL,      // прокат мопедов: ref = id точки в базе (rental.inc)
+	MK_RENTAL,
+	MK_HIDEOUT,     // подвал банды (kidnap.inc): ref = банда * 2, выход внутри — банда * 2 + 1      // прокат мопедов: ref = id точки в базе (rental.inc)
 	MK_TYPES
 }
 
@@ -84,7 +85,7 @@ new gMarker[MAX_MARKERS][E_MARKER];
 
 // Маркеры «только для своих»: значок (пикап) виден всем, поэтому его нет;
 // надпись создаётся отдельно каждому участнику фракции и главному админу.
-#define MK_PRIV_MAX     40
+#define MK_PRIV_MAX     80
 #define MARKER_SEE_ALL  7       // с какого уровня админ видит чужие фракционные точки (главный админ)
 static gMkPrivM[MK_PRIV_MAX] = { -1, ... };                 // какой маркер в слоте
 static PlayerText3D:gMkPLabel[MAX_PLAYERS][MK_PRIV_MAX];
