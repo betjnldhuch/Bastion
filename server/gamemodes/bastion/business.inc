@@ -201,7 +201,12 @@ enum E_BIZ
 	bOWorld,                    // и мир (как в базе: дом хранится как BIZ_HOUSE_W + номер дома)
 	bMarkup,                    // цены владельца, % от базовых (bizplus.inc)
 	bStock,                     // товар на складе, $ по закупочной цене (bizplus.inc)
-	bEarned                     // сколько бизнес принёс в кассу за всё время
+	bEarned,                    // сколько бизнес принёс в кассу за всё время
+	bTaxDebt,                   // долг по налогу, $ (bizwork.inc)
+	bTaxPD,                     // сколько PayDay подряд долг не погашен
+	bUpg,                       // купленные улучшения, биты UPG_* (bizwork.inc)
+	bSellMin,                   // мин. цена у продавцов, % от базовой
+	bComm                       // процент продавцу с продажи
 }
 new Biz[MAX_BUSINESSES][E_BIZ];
 new gBizCount = 0;
@@ -606,28 +611,9 @@ stock Business_PayDay()
 	}
 }
 
-// Окно покупки (из OnDialogResponse)
-stock Business_OnDialog(playerid, dialogid, response, listitem)
+// Можно ли игроку купить товар item в бизнесе b (сумка, лицензия, уровень). Сообщение пишет само.
+stock bool:Biz_CanBuy(playerid, b, item)
 {
-	if (dialogid != DIALOG_BIZ_BUY) return 0;
-	if (!response || listitem < 0 || listitem >= sizeof (gBuyList[])) return 1;
-
-	new b = gBuyBiz[playerid];
-	if (b < 0 || b >= gBizCount || Biz_GetNearby(playerid) != b)
-	{
-		SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от магазина.");
-		return 1;
-	}
-	new item = gBuyList[playerid][listitem];
-	if (item < 0 || item >= sizeof (gBizItems) || gBizItems[item][biType] != Biz[b][bType]) return 1;
-
-	new price = BizX_Price(b, gBizItems[item][biPrice]);    // с наценкой владельца
-	if (GetMoney(playerid) < price)
-	{
-		SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", price);
-		return 1;
-	}
-
 	switch (gBizItems[item][biKind])
 	{
 		case ITEM_PHONE:
@@ -635,7 +621,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 			if (Player[playerid][pPhone] != 0)
 			{
 				SendClientMessage(playerid, COLOR_GREY, "У тебя уже есть телефон (номер %d).", Player[playerid][pPhone]);
-				return 1;
+				return false;
 			}
 		}
 		case ITEM_SKIN:
@@ -643,7 +629,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 			if (Outfit_FreeSlots(playerid) == 0)
 			{
 				SendClientMessage(playerid, COLOR_GREY, "В сумке нет места для одежды. Выброси или передай старую (/inv).");
-				return 1;
+				return false;
 			}
 		}
 		case ITEM_INV:
@@ -651,7 +637,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 			if (Inv_Count(playerid, gBizItems[item][biValue]) + gBizItems[item][biValue2] > Inv_GetMax(gBizItems[item][biValue]))
 			{
 				SendClientMessage(playerid, COLOR_GREY, "В сумке нет места: больше %d штук не унести (/inv).", Inv_GetMax(gBizItems[item][biValue]));
-				return 1;
+				return false;
 			}
 		}
 		case ITEM_FSTYLE:
@@ -659,7 +645,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 			if (BizX_GetStyle(playerid) == gBizItems[item][biValue])
 			{
 				SendClientMessage(playerid, COLOR_GREY, "Ты уже дерёшься в этом стиле.");
-				return 1;
+				return false;
 			}
 		}
 		case ITEM_WEAPON, ITEM_ARMOUR:
@@ -667,17 +653,22 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 			if (Biz[b][bType] == BIZ_GUNS && gBizItems[item][biKind] == ITEM_WEAPON && !Licenses_Has(playerid, LIC_GUN))
 			{
 				SendClientMessage(playerid, COLOR_GREY, "Оружие продают только с лицензией. Сдать на неё можно в автошколе у мэрии.");
-				return 1;
+				return false;
 			}
 			if (Biz[b][bType] == BIZ_GUNS && Player[playerid][pLevel] < GUNS_MIN_LEVEL)
 			{
 				SendClientMessage(playerid, COLOR_GREY, "Оружие продают с %d уровня.", GUNS_MIN_LEVEL);
-				return 1;
+				return false;
 			}
 		}
 	}
 
-	GiveMoney(playerid, -price);
+	return true;
+}
+
+// Выдать купленный товар (деньги уже сняты)
+stock Biz_GiveItem(playerid, item, price)
+{
 	switch (gBizItems[item][biKind])
 	{
 		case ITEM_PHONE:
@@ -720,6 +711,45 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 		}
 	}
 
+}
+
+stock Biz_ItemCount() { return sizeof (gBizItems); }
+stock Biz_ItemBase(item) { return gBizItems[item][biPrice]; }
+stock Biz_ItemName(item)
+{
+	new name[24];
+	format(name, sizeof name, "%s", gBizItems[item][biName]);
+	return name;
+}
+
+// Окно покупки (из OnDialogResponse)
+stock Business_OnDialog(playerid, dialogid, response, listitem)
+{
+	if (dialogid != DIALOG_BIZ_BUY) return 0;
+	if (!response || listitem < 0 || listitem >= sizeof (gBuyList[])) return 1;
+
+	new b = gBuyBiz[playerid];
+	if (b < 0 || b >= gBizCount || Biz_GetNearby(playerid) != b)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от магазина.");
+		return 1;
+	}
+	new item = gBuyList[playerid][listitem];
+	if (item < 0 || item >= sizeof (gBizItems) || gBizItems[item][biType] != Biz[b][bType]) return 1;
+
+	if (BizW_Closed(b)) { SendClientMessage(playerid, COLOR_GREY, "Бизнес закрыт за неуплату налогов."); return 1; }
+	new price = BizX_Price(b, gBizItems[item][biPrice]);    // с наценкой владельца
+	if (GetMoney(playerid) < price)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", price);
+		return 1;
+	}
+
+	if (!Biz_CanBuy(playerid, b, item)) return 1;
+
+	GiveMoney(playerid, -price);
+	Biz_GiveItem(playerid, item, price);
+
 	BizX_Sale(b, price, gBizItems[item][biPrice]);    // касса и склад (bizplus.inc)
 	Account_Save(playerid);
 	SendClientMessage(playerid, COLOR_GREEN, "Ты купил: %s за $%d.", gBizItems[item][biName], price);
@@ -734,6 +764,7 @@ stock bool:Cmd_Buy(playerid)
 	new b = Biz_GetNearby(playerid);
 	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "Подойди к значку магазина (буква i).");
 	if (Biz[b][bInt] != 0 && !Biz_IsInside(playerid, b)) return SendClientMessage(playerid, COLOR_GREY, "Торгуют внутри. Войти: ALT или /enter у значка.");
+	if (BizW_Closed(b)) return SendClientMessage(playerid, COLOR_GREY, "«%s» закрыт: владелец не платит налоги.", Biz[b][bName]);
 	if (Biz[b][bType] == BIZ_CASINO) return Casino_Show(playerid, b);     // игры (casino.inc)
 
 	new list[1024] = "Товар\tЦена\n", line[64], n = 0;
@@ -778,6 +809,11 @@ stock bool:Cmd_SellBiz(playerid)
 	if (Biz_GetNearby(playerid) != b) return SendClientMessage(playerid, COLOR_GREY, "Подойди к своему бизнесу.");
 
 	new refund = Biz[b][bPrice] / 2 + Biz[b][bTill];
+	new debt = Biz[b][bTaxDebt];
+	if (debt > refund) debt = refund;
+	refund -= debt;
+	Econ_ToTreasury(debt);
+	BizW_Reset(b);
 	GiveMoney(playerid, refund, "продажа бизнеса");
 	Biz[b][bOwner] = 0;
 	Biz[b][bOwnerName][0] = '\0';
@@ -785,7 +821,8 @@ stock bool:Cmd_SellBiz(playerid)
 	Biz_Save(b);
 	Biz_Refresh(b);
 	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_GREEN, "Ты продал бизнес государству. Получено $%d (половина цены + касса).", refund);
+	if (debt > 0) SendClientMessage(playerid, COLOR_GREEN, "Ты продал бизнес государству. Получено $%d (половина цены + касса минус долг по налогу $%d).", refund, debt);
+	else SendClientMessage(playerid, COLOR_GREEN, "Ты продал бизнес государству. Получено $%d (половина цены + касса).", refund);
 	return true;
 }
 

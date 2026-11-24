@@ -120,7 +120,7 @@ static bool:Commands_IsAction(const cmd[])
 		"/work", "/getjob", "/taxi", "/exam", "/duty", "/capture", "/rob",
 		"/buy", "/buycar", "/sellcar", "/park", "/engine", "/fill", "/canister",
 		"/tune", "/unimpound", "/bank", "/atm", "/pay", "/fbank", "/fstorage",
-		"/buybiz", "/sellbiz", "/bizcash", "/bizmenu", "/biz", "/inv", "/i", "/invlist", "/pickup",
+		"/buybiz", "/sellbiz", "/bizcash", "/bizmenu", "/biz", "/sell", "/inv", "/i", "/invlist", "/pickup",
 		"/aid", "/carry", "/fish", "/robvan", "/pwork", "/escape", "/marry", "/divorce",
 		"/sbank", "/selldrugs"
 	};
@@ -402,6 +402,9 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/bizcash", true))     { Cmd_BizCash(playerid); return 1; }
 	if (!strcmp(cmd, "/bizmenu", true) || !strcmp(cmd, "/biz", true)) { Cmd_BizMenu(playerid); return 1; }
 	if (!strcmp(cmd, "/showbiz", true))     { Cmd_ShowBiz(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/sell", true))        { Cmd_BizSell(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/bizquit", true))     { Cmd_BizQuit(playerid); return 1; }
+	if (!strcmp(cmd, "/topbiz", true))      { Cmd_TopBiz(playerid); return 1; }
 	if (!strcmp(cmd, "/checkbiz", true))    { Cmd_CheckBiz(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/biztypes", true))    { Cmd_BizTypes(playerid); return 1; }
 	if (!strcmp(cmd, "/createbiz", true))   { Cmd_CreateBiz(playerid, cmdtext[pos]); return 1; }
