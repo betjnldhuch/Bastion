@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "product": "Bastion PC client pack",
   "files": [
     {
@@ -610,6 +610,1014 @@
       "url": "pack/models/hud.txd",
       "size": 3057684,
       "sha256": "5039033422fcec4f871a5838aab2a800b61d8983b3177f39f3277b298bda6ae3"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar00.txd",
+      "url": "pack/models/gta3.img/radar00.txd",
+      "size": 88728,
+      "sha256": "061d96a7b27d318964623fda7669deb51909246579e224be856186c8e9394e7a"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar01.txd",
+      "url": "pack/models/gta3.img/radar01.txd",
+      "size": 88728,
+      "sha256": "12b8f8c38aab0a8f819c5a46cb6cde8279b6334ce2e812094096ff2880a7e8f8"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar02.txd",
+      "url": "pack/models/gta3.img/radar02.txd",
+      "size": 88728,
+      "sha256": "f26ec2984ca2f5b1202a3912320e3819bd215a1bb7882354be25ad98063b6d71"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar03.txd",
+      "url": "pack/models/gta3.img/radar03.txd",
+      "size": 88728,
+      "sha256": "5a67b5497f59c021a564de97621fad62ac77baf31fc2b9506df01ea66cadf45e"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar04.txd",
+      "url": "pack/models/gta3.img/radar04.txd",
+      "size": 88728,
+      "sha256": "0bbb826f848a16dd057f1b2861cdc30ff3f3b1770ccfaac06d280913c08462e9"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar05.txd",
+      "url": "pack/models/gta3.img/radar05.txd",
+      "size": 88728,
+      "sha256": "a52d252c98bd77393b8d03702dc25bfbf0062c14dce41833cc85d9c3d73c8167"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar06.txd",
+      "url": "pack/models/gta3.img/radar06.txd",
+      "size": 88728,
+      "sha256": "e778fbaa16b9ea1807e514e3d44e4814569218d7b1866956077a157fff5d85af"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar07.txd",
+      "url": "pack/models/gta3.img/radar07.txd",
+      "size": 88728,
+      "sha256": "434a85b007182bc602a26ae4ea3bfb9a5299b3fe7ab20cb24ff27c40e3adc253"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar08.txd",
+      "url": "pack/models/gta3.img/radar08.txd",
+      "size": 88728,
+      "sha256": "725e62c12a13a5f5bd4708dad4a1f4cc8f9f06d94204a1c41dfc209446788eb3"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar09.txd",
+      "url": "pack/models/gta3.img/radar09.txd",
+      "size": 88728,
+      "sha256": "9471f396ba16e77ead0d7542c9d70355d893ce6686acbe18d09de7c80da5b35f"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar10.txd",
+      "url": "pack/models/gta3.img/radar10.txd",
+      "size": 88728,
+      "sha256": "82bc55d24c034b2070eb10bdfdcd3483ae414eda0f780b8fbd5f08b9edc6659d"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar11.txd",
+      "url": "pack/models/gta3.img/radar11.txd",
+      "size": 88728,
+      "sha256": "44fc817b49459dc963582288f0b7feda77ca6edb691b455630fc041d04922a81"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar12.txd",
+      "url": "pack/models/gta3.img/radar12.txd",
+      "size": 88728,
+      "sha256": "6a615eb757f8bf85b48262ee44f04bd292e8588b0eb4b7a1f3e6cf6b67971c99"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar13.txd",
+      "url": "pack/models/gta3.img/radar13.txd",
+      "size": 88728,
+      "sha256": "7ca1d12fa8fe78206a01f8ed29f8390422b482fe9735145f061985a4feb49844"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar14.txd",
+      "url": "pack/models/gta3.img/radar14.txd",
+      "size": 88728,
+      "sha256": "af53e76c7fbcdfcb0d1da84c7d6e2668c943bde574aeebaa609ee5c7f2c49689"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar15.txd",
+      "url": "pack/models/gta3.img/radar15.txd",
+      "size": 88728,
+      "sha256": "976d83a9fd6cf5a449c6c5735d11ee9813d12970facfad29993aa09aee7986ef"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar16.txd",
+      "url": "pack/models/gta3.img/radar16.txd",
+      "size": 88728,
+      "sha256": "f2247670c4026abf9532b46fb3a7ef6f82c6991c30553ad85352cb3b3db93ca9"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar17.txd",
+      "url": "pack/models/gta3.img/radar17.txd",
+      "size": 88728,
+      "sha256": "af2d47d847a8c842643c58414613e184b2864ae7e1046abc0b906f0fbac8dd83"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar18.txd",
+      "url": "pack/models/gta3.img/radar18.txd",
+      "size": 88728,
+      "sha256": "57613ce0c595215065c7c047bcf8186754b78d1b94bde30c42f66ffa88ab3368"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar19.txd",
+      "url": "pack/models/gta3.img/radar19.txd",
+      "size": 88728,
+      "sha256": "5f8b6d970c02f520f4b17c21eedfdddee90c5c9d6c3e621128d7d9dcac64638e"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar20.txd",
+      "url": "pack/models/gta3.img/radar20.txd",
+      "size": 88728,
+      "sha256": "c7df8aeb82bf5935c8327467ef2cd647dc5196126c6f644437bc6402431ba9eb"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar21.txd",
+      "url": "pack/models/gta3.img/radar21.txd",
+      "size": 88728,
+      "sha256": "a3adc4172ad53bc870393ade047ff23d532a61ebf6098252d1f83d4dade0bde4"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar22.txd",
+      "url": "pack/models/gta3.img/radar22.txd",
+      "size": 88728,
+      "sha256": "a6bcee761000a0cad4b5cb4491fb19914be53d5fd794a2225ca48a3781f0e789"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar23.txd",
+      "url": "pack/models/gta3.img/radar23.txd",
+      "size": 88728,
+      "sha256": "eca2470aba5690b1861618f6885e160551572da271b4cdc324c1c07b48426fbe"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar24.txd",
+      "url": "pack/models/gta3.img/radar24.txd",
+      "size": 88728,
+      "sha256": "acd664c147b6705a41266626cc927c1f1fe92b53f63e33449e40cd441b5f73b5"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar25.txd",
+      "url": "pack/models/gta3.img/radar25.txd",
+      "size": 88728,
+      "sha256": "83b2a8771168095aee4833ebcbfc607ff2e42fbd57a8f8657b5fa8887362e8cf"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar26.txd",
+      "url": "pack/models/gta3.img/radar26.txd",
+      "size": 88728,
+      "sha256": "89cdc0f91b09a605eb07b518a8c95ff71849552fe3ea252ff48c419dbbcb4826"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar27.txd",
+      "url": "pack/models/gta3.img/radar27.txd",
+      "size": 88728,
+      "sha256": "03086afc32c9e36a1e6c1c869b4e481d8e1191cc0dbeca1ecec273a06b81378b"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar28.txd",
+      "url": "pack/models/gta3.img/radar28.txd",
+      "size": 88728,
+      "sha256": "379f39ac512ae3ee1e89bb571404d7540b6184476ff3d48deb7c9ae29626f8d7"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar29.txd",
+      "url": "pack/models/gta3.img/radar29.txd",
+      "size": 88728,
+      "sha256": "f413c1ab242b40868de80edc7129b9c112d72aaeb5f5d1533ba05a72846f36eb"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar30.txd",
+      "url": "pack/models/gta3.img/radar30.txd",
+      "size": 88728,
+      "sha256": "3f6db67417dc35d6f144a4096a55296fe97bc2065ae096c57303e6e8b11ecf7c"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar31.txd",
+      "url": "pack/models/gta3.img/radar31.txd",
+      "size": 88728,
+      "sha256": "eac13228d2088a917c3fd7ca6f1e3dfaffd8d68594ec2b14d828a03092a0d6ad"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar32.txd",
+      "url": "pack/models/gta3.img/radar32.txd",
+      "size": 88728,
+      "sha256": "847774469b7e62ac96291f4d001f4af64029babb479c293f5ac4f84cb380f6f4"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar33.txd",
+      "url": "pack/models/gta3.img/radar33.txd",
+      "size": 88728,
+      "sha256": "3ece0cec205465f7a90a6388dc2b1d9cf61aefd4f1ca0c1b25f3f731b9749ce7"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar34.txd",
+      "url": "pack/models/gta3.img/radar34.txd",
+      "size": 88728,
+      "sha256": "cd238ecd614764d877c2c7c893515464b759c612e83e418225fe941a9a2b4f5c"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar35.txd",
+      "url": "pack/models/gta3.img/radar35.txd",
+      "size": 88728,
+      "sha256": "6c0bc04c89e761a73b1926390782d7376309f9229e31f94fd2172e3ae506b1a9"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar36.txd",
+      "url": "pack/models/gta3.img/radar36.txd",
+      "size": 88728,
+      "sha256": "f37c10220b03ea861dc75f7687138efb761040d0c94970a8e6789a91d490078c"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar37.txd",
+      "url": "pack/models/gta3.img/radar37.txd",
+      "size": 88728,
+      "sha256": "f263ce72b786c3b48c43ba36de91653487f04f6efdb1b742957138beb0d3e587"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar38.txd",
+      "url": "pack/models/gta3.img/radar38.txd",
+      "size": 88728,
+      "sha256": "5d7da408006c5fbeff5508cb5c513601fff2431a92a951eacf261d78fb37e7d2"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar39.txd",
+      "url": "pack/models/gta3.img/radar39.txd",
+      "size": 88728,
+      "sha256": "1f951ec51cd2f3dd896884cd6efc1bdee50dc627f6ba0fccfa392eb046fa87b6"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar40.txd",
+      "url": "pack/models/gta3.img/radar40.txd",
+      "size": 88728,
+      "sha256": "ff3e5a02aa5f6bbf78f89b991dd3fcb9b633b407d85f755bd8769d49bc492ec2"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar41.txd",
+      "url": "pack/models/gta3.img/radar41.txd",
+      "size": 88728,
+      "sha256": "2a69317f343e06dc6a2c4310c37f9bca24a2bae4d1f7a53b2b40ab8ea23b896d"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar42.txd",
+      "url": "pack/models/gta3.img/radar42.txd",
+      "size": 88728,
+      "sha256": "105da89130040994df3c90c1176b9d8237d9d2908bd3f0547cfb85d037689b65"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar43.txd",
+      "url": "pack/models/gta3.img/radar43.txd",
+      "size": 88728,
+      "sha256": "1dd74e9e76c2b0609e3bd14dadf38780367e7de66c329173bd481cccee6c614f"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar44.txd",
+      "url": "pack/models/gta3.img/radar44.txd",
+      "size": 88728,
+      "sha256": "eb81596f0f0a051c7fba059ac5642e434a6bce1601ad22c9bec6b5085b137cb1"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar45.txd",
+      "url": "pack/models/gta3.img/radar45.txd",
+      "size": 88728,
+      "sha256": "23317c1bbd03127872ca1b803f2d69b89414cee195f827769e119edb4a487f2f"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar46.txd",
+      "url": "pack/models/gta3.img/radar46.txd",
+      "size": 88728,
+      "sha256": "ff6c839a4969fcb83dc62260012839d9109c600279064f2e59d296ff48727013"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar47.txd",
+      "url": "pack/models/gta3.img/radar47.txd",
+      "size": 88728,
+      "sha256": "7ba62d8fd1f7f4de10311e84bf7b666e287187990da9c52e7a88a05f515f26cb"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar48.txd",
+      "url": "pack/models/gta3.img/radar48.txd",
+      "size": 88728,
+      "sha256": "efd1921af8e434da29a2aad0dac918134c824b8c7adc4ed52865bba8913f5d10"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar49.txd",
+      "url": "pack/models/gta3.img/radar49.txd",
+      "size": 88728,
+      "sha256": "29fb6a75eb36dce1d98677c009234325977eb4dbd3d0ce12243bd831d5d066d3"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar50.txd",
+      "url": "pack/models/gta3.img/radar50.txd",
+      "size": 88728,
+      "sha256": "cbe4af0ed894a932d0ec5b302cfc643078af44e1359c4335eaee5ec07871a1ce"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar51.txd",
+      "url": "pack/models/gta3.img/radar51.txd",
+      "size": 88728,
+      "sha256": "d9382714226fbb23c86310f0200db388fef601904362333b1bb13a59cbecddb4"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar52.txd",
+      "url": "pack/models/gta3.img/radar52.txd",
+      "size": 88728,
+      "sha256": "d4b42ad58b2fb504236a28777277c1c5720bcc03df172c7dacb89d9b8aa80a4c"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar53.txd",
+      "url": "pack/models/gta3.img/radar53.txd",
+      "size": 88728,
+      "sha256": "977f3489cbba8306bd935b59c73b444b16e630a79e42fac58dde3cb2f720186f"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar54.txd",
+      "url": "pack/models/gta3.img/radar54.txd",
+      "size": 88728,
+      "sha256": "e7cdb7f04e6c713c9deee02a68b36edc0c6a7311c7ccf05a7daf53ded689c14a"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar55.txd",
+      "url": "pack/models/gta3.img/radar55.txd",
+      "size": 88728,
+      "sha256": "6e4180c7a4c0d39a011960849076326511020d57354f36dd03d2f4e8720387de"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar56.txd",
+      "url": "pack/models/gta3.img/radar56.txd",
+      "size": 88728,
+      "sha256": "db441c25ff881ac3b5f4bdaeb963f1c4857d5664c7f7f43c96ffde0b10f9f768"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar57.txd",
+      "url": "pack/models/gta3.img/radar57.txd",
+      "size": 88728,
+      "sha256": "976fd3ad8939f4e34e55af13327b0c2b8ccc7bf14d04c9cdd67b2aea53bd9ad2"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar58.txd",
+      "url": "pack/models/gta3.img/radar58.txd",
+      "size": 88728,
+      "sha256": "b5945bb78990d56a068cca53e8c7f5c0ae25d2593b4c2dd88099be78df0018f9"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar59.txd",
+      "url": "pack/models/gta3.img/radar59.txd",
+      "size": 88728,
+      "sha256": "dc55c86dea1e9c4b8c64d1f9ffc6870a3307463ea1c561466429ff656e424cbb"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar60.txd",
+      "url": "pack/models/gta3.img/radar60.txd",
+      "size": 88728,
+      "sha256": "67542d445144563990bcc99f0595b9662d1509323cd0072f5ce744db64f5e268"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar61.txd",
+      "url": "pack/models/gta3.img/radar61.txd",
+      "size": 88728,
+      "sha256": "03787affad38352b161ea184ac703fabc597c2f620649a3b04c0e45b43264a1e"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar62.txd",
+      "url": "pack/models/gta3.img/radar62.txd",
+      "size": 88728,
+      "sha256": "9a10d5d10e1204c793394d4885f8e2a1852b387ccc348270a36b7214bffdc8f3"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar63.txd",
+      "url": "pack/models/gta3.img/radar63.txd",
+      "size": 88728,
+      "sha256": "47511d12b2e39e5c43efcd64b9a57904cef2801ab8a6a1a9cca0563dc3ae2e83"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar64.txd",
+      "url": "pack/models/gta3.img/radar64.txd",
+      "size": 88728,
+      "sha256": "1c903d89b6fe3aa0de309649b187f78b4622beed2df1b9d71a5b8e59c170e992"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar65.txd",
+      "url": "pack/models/gta3.img/radar65.txd",
+      "size": 88728,
+      "sha256": "ab56a23ff017a331ca3414666637ef42fd801e8e2596f3bea74249266193e457"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar66.txd",
+      "url": "pack/models/gta3.img/radar66.txd",
+      "size": 88728,
+      "sha256": "a01a6ce08fdc8ae5d35aad1fc8b4017a200440ff3f347e9b1a48386b7b36415d"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar67.txd",
+      "url": "pack/models/gta3.img/radar67.txd",
+      "size": 88728,
+      "sha256": "ffafd9ee47f37b81b85060154e49bbec35d8aed9e4e0e31b6d8b34b19139ffb7"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar68.txd",
+      "url": "pack/models/gta3.img/radar68.txd",
+      "size": 88728,
+      "sha256": "eb3e2c855f00442624ddbe09bffd695abe1beb0c41498bdbff1b690a00240070"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar69.txd",
+      "url": "pack/models/gta3.img/radar69.txd",
+      "size": 88728,
+      "sha256": "cd50cbb5b12462574bcf3cebb0d4107e0dc7808f963eb5304b246d584e5edeb3"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar70.txd",
+      "url": "pack/models/gta3.img/radar70.txd",
+      "size": 88728,
+      "sha256": "569802d8518149bae600cd68244d044f238458b00f0fd0ae9495c59ee5512014"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar71.txd",
+      "url": "pack/models/gta3.img/radar71.txd",
+      "size": 88728,
+      "sha256": "b8b5c6f4477fa18259434c0e9bf68ecdd7eaab7101c9d3ebb696e0e9c42b2371"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar72.txd",
+      "url": "pack/models/gta3.img/radar72.txd",
+      "size": 88728,
+      "sha256": "73d36ec6e16bd5051c263b15c1af8d8b7984eea4782b6ffce0d1159191549714"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar73.txd",
+      "url": "pack/models/gta3.img/radar73.txd",
+      "size": 88728,
+      "sha256": "0631fe988fc3b2defa2453b7f123b5c3e26507709dcdedb707e37f17bab64780"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar74.txd",
+      "url": "pack/models/gta3.img/radar74.txd",
+      "size": 88728,
+      "sha256": "3d4a781fd72a2c12dcbd2e7f870a564394e22b8919b0ccaa2c4778984894c8ed"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar75.txd",
+      "url": "pack/models/gta3.img/radar75.txd",
+      "size": 88728,
+      "sha256": "f1ffeefbb358e97ff11e23159648d459faa6853a33fe177972e5fd1ed08fc8b8"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar76.txd",
+      "url": "pack/models/gta3.img/radar76.txd",
+      "size": 88728,
+      "sha256": "cfec04bbec550e52bd9104954d1423d3ae0c0bb0121fcaa49111b01ba83763b1"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar77.txd",
+      "url": "pack/models/gta3.img/radar77.txd",
+      "size": 88728,
+      "sha256": "03399ac600bcefb29a9568e925a3be9d2a5e4669ecb0ba2775908edda43a303d"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar78.txd",
+      "url": "pack/models/gta3.img/radar78.txd",
+      "size": 88728,
+      "sha256": "1af99bd1bc28cccd15bd280f3b55dc4994ac85282b7737eecf63bdf5e2fcf8e2"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar79.txd",
+      "url": "pack/models/gta3.img/radar79.txd",
+      "size": 88728,
+      "sha256": "1c961a0b6165d26ad8f8b5675124255e6e018f107e31aa7f601783ff776b890c"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar80.txd",
+      "url": "pack/models/gta3.img/radar80.txd",
+      "size": 88728,
+      "sha256": "dd93bbb751dfa345bfebcb2dea018a3c1179db63da4205ba7b250528b390c577"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar81.txd",
+      "url": "pack/models/gta3.img/radar81.txd",
+      "size": 88728,
+      "sha256": "db0cf83711478cb67d2054fa841d96279450784d5dc49b79a4fb8baf957298a3"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar82.txd",
+      "url": "pack/models/gta3.img/radar82.txd",
+      "size": 88728,
+      "sha256": "589ddd2e2b0e562cdb10c32e5a7e5ce687fb3e1d513ca300da8ba1daaa6fd56b"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar83.txd",
+      "url": "pack/models/gta3.img/radar83.txd",
+      "size": 88728,
+      "sha256": "103b2bcde95854a244896cccb8b0e4f14df6ab59369772f3c492ff9a99685230"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar84.txd",
+      "url": "pack/models/gta3.img/radar84.txd",
+      "size": 88728,
+      "sha256": "83716bf5e322da05a2975f00f2a7d1f3261c30d540b7bc3135889376c5457ecb"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar85.txd",
+      "url": "pack/models/gta3.img/radar85.txd",
+      "size": 88728,
+      "sha256": "ab7bdbb148ce62b5bde6d6f666715a1c8fa8b767ae3f18d318c9fdffe9a4416b"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar86.txd",
+      "url": "pack/models/gta3.img/radar86.txd",
+      "size": 88728,
+      "sha256": "4192b82ee1ce948737ad96c68fb03dd2bb772e050049d5f1ac2076c484e44c88"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar87.txd",
+      "url": "pack/models/gta3.img/radar87.txd",
+      "size": 88728,
+      "sha256": "e2a83d111785ebc9c192f0293e9c04886d884a957ee1ec3cca33e25e1fbc81de"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar88.txd",
+      "url": "pack/models/gta3.img/radar88.txd",
+      "size": 88728,
+      "sha256": "3c35f2a89590d49bc4b014db26198e9dd87186943ebf7a3afa91779d224d17d4"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar89.txd",
+      "url": "pack/models/gta3.img/radar89.txd",
+      "size": 88728,
+      "sha256": "ea0dfba917c3b4cb0769e465aad18f24783d9769f8642ae3b53fd8c92839ce3e"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar90.txd",
+      "url": "pack/models/gta3.img/radar90.txd",
+      "size": 88728,
+      "sha256": "454a2bb322fba5c73ed3dfc72216ee5534a0dd85c608dcba539412cd5a7b71ff"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar91.txd",
+      "url": "pack/models/gta3.img/radar91.txd",
+      "size": 88728,
+      "sha256": "8b7b73afcff0f3f2cc4b7ffbb771137a474e870864e3b1b5e2ac15bcaa25c911"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar92.txd",
+      "url": "pack/models/gta3.img/radar92.txd",
+      "size": 88728,
+      "sha256": "56df3d46c971190cba5ed2e57b9732bb3a447f376a58e178cde0035eab8c6a3a"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar93.txd",
+      "url": "pack/models/gta3.img/radar93.txd",
+      "size": 88728,
+      "sha256": "3f7f8ab2706fe32935c132b36b6d77bae920d6cd0ea1d5ea04010da18c9dc759"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar94.txd",
+      "url": "pack/models/gta3.img/radar94.txd",
+      "size": 88728,
+      "sha256": "a5d1a441ad0dc369636f9748a60688e06c434658c774d07a70fd171104a7e004"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar95.txd",
+      "url": "pack/models/gta3.img/radar95.txd",
+      "size": 88728,
+      "sha256": "07f92dcf7430e43c1d5c728e8ec90f5884a0698d38379afe0bbf8947600e9c62"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar96.txd",
+      "url": "pack/models/gta3.img/radar96.txd",
+      "size": 88728,
+      "sha256": "0027f9ba647c74518632e682d42e6c79bd7e4f95f120b06a2d446b99c26bcf4c"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar97.txd",
+      "url": "pack/models/gta3.img/radar97.txd",
+      "size": 88728,
+      "sha256": "3f53b9d22aee55db44532b5aa956a571d6d123a0d341b74042ce37a17a1411f3"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar98.txd",
+      "url": "pack/models/gta3.img/radar98.txd",
+      "size": 88728,
+      "sha256": "b1016520ee61dc893374fae788dc7993b5ff619884e21f00c2d509216dec4799"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar99.txd",
+      "url": "pack/models/gta3.img/radar99.txd",
+      "size": 88728,
+      "sha256": "943ab366d492e156967cb5a20e65f0f3c18c290c85e42ddfccd22775f802e96b"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar100.txd",
+      "url": "pack/models/gta3.img/radar100.txd",
+      "size": 88728,
+      "sha256": "bef22bec9e3a611a12a9628095f7e929a54b0903f051800a8fc368b077effd6b"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar101.txd",
+      "url": "pack/models/gta3.img/radar101.txd",
+      "size": 88728,
+      "sha256": "cdcdcc0786c56bb64f4eb25114d85a9097080dd28387411d76bd40089364cf16"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar102.txd",
+      "url": "pack/models/gta3.img/radar102.txd",
+      "size": 88728,
+      "sha256": "3f066352406ecbeca21b1fc45ae83f9fc036287de2ea69767c7eb6b18bce5d98"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar103.txd",
+      "url": "pack/models/gta3.img/radar103.txd",
+      "size": 88728,
+      "sha256": "edba1cfc18d0d24c37fb92e194d4ef017de5158bf01579497d4d77b056fa3290"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar104.txd",
+      "url": "pack/models/gta3.img/radar104.txd",
+      "size": 88728,
+      "sha256": "5d06559ad5da617245df4f8e37a8c5190427604f4713109e793e8b7cc0b10660"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar105.txd",
+      "url": "pack/models/gta3.img/radar105.txd",
+      "size": 88728,
+      "sha256": "5317892bc75547faf3a287e94c4540d9d1dca860ae7ec330465b0c87bada520a"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar106.txd",
+      "url": "pack/models/gta3.img/radar106.txd",
+      "size": 88728,
+      "sha256": "19220b89f0267fbbcc9d06d238e4353db29423f6fc39534ffcb67b8a0c8dd2a7"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar107.txd",
+      "url": "pack/models/gta3.img/radar107.txd",
+      "size": 88728,
+      "sha256": "07b2bc527583793c4ae3ff69de54fa5c5cea36cfe93b54a3f2ffba29f6f420a0"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar108.txd",
+      "url": "pack/models/gta3.img/radar108.txd",
+      "size": 88728,
+      "sha256": "251a3eaef33c0a4f008c5e35996ad30f48da5d63bf0e77d879a2aa98daafdecb"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar109.txd",
+      "url": "pack/models/gta3.img/radar109.txd",
+      "size": 88728,
+      "sha256": "587ff4d32a9042f9a542009ecd7bcae76b3174b945e6f4efdd556778bb3a9ebf"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar110.txd",
+      "url": "pack/models/gta3.img/radar110.txd",
+      "size": 88728,
+      "sha256": "67950bbc2e5eaf6151a735ef8d1b16f2435e421e368caf21a2fce5f63a25be65"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar111.txd",
+      "url": "pack/models/gta3.img/radar111.txd",
+      "size": 88728,
+      "sha256": "6621d57ca8c20afa81f42c3b0e2c8e23761dcbfc299e3f69a54413f22b8aaf2e"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar112.txd",
+      "url": "pack/models/gta3.img/radar112.txd",
+      "size": 88728,
+      "sha256": "136c264aba92777996cb2fd21ad41f554fd3c48144b1279ab74f5b55c35db9a2"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar113.txd",
+      "url": "pack/models/gta3.img/radar113.txd",
+      "size": 88728,
+      "sha256": "5bb314babc1685d25c14c9fd284f418a9b3957d660dfebcca7c35a6fafb4fd07"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar114.txd",
+      "url": "pack/models/gta3.img/radar114.txd",
+      "size": 88728,
+      "sha256": "19ebbf8467a465fca4b80a2f23538a972aa8c9ef8e569b2887b1661c0847b437"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar115.txd",
+      "url": "pack/models/gta3.img/radar115.txd",
+      "size": 88728,
+      "sha256": "5ec6674b73aa6997401d1854ab8da2aa0ef681eedfd81ecf6bc46624a9277bc4"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar116.txd",
+      "url": "pack/models/gta3.img/radar116.txd",
+      "size": 88728,
+      "sha256": "4f0ee41aa9e06c53a3a415485d82183495fcfcea3d2a4395508637fa0dd08edd"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar117.txd",
+      "url": "pack/models/gta3.img/radar117.txd",
+      "size": 88728,
+      "sha256": "63d93ae444e52fc625d4951e526b3a2c6235cf95bca5253abef337c7c7a1a33d"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar118.txd",
+      "url": "pack/models/gta3.img/radar118.txd",
+      "size": 88728,
+      "sha256": "af2ae5e3a4b1933c7cd92fbf6177206067bdfec468a93782c0624fb9d5cf7210"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar119.txd",
+      "url": "pack/models/gta3.img/radar119.txd",
+      "size": 88728,
+      "sha256": "38c1c5a8f9e77d1ccdb85df0616213ad1cc22c41b3b6f0c0503751d36787889e"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar120.txd",
+      "url": "pack/models/gta3.img/radar120.txd",
+      "size": 88728,
+      "sha256": "9fce664e14d73535e259e6dabb9373f47cd5d263299946004af50a939f5fafb4"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar121.txd",
+      "url": "pack/models/gta3.img/radar121.txd",
+      "size": 88728,
+      "sha256": "2c9c395918230cd0ee53adb62e8863c08f08ee0dd1f193d68112f990b4ff5e80"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar122.txd",
+      "url": "pack/models/gta3.img/radar122.txd",
+      "size": 88728,
+      "sha256": "183621d544bbecbd42fc49cbc9d95eb5296dd7e0943ed6b870650c8702a0a695"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar123.txd",
+      "url": "pack/models/gta3.img/radar123.txd",
+      "size": 88728,
+      "sha256": "35a001082fda1057df872a6f05fde20b67244c14f449834bd3a80bd70bc03baa"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar124.txd",
+      "url": "pack/models/gta3.img/radar124.txd",
+      "size": 88728,
+      "sha256": "fa41c6a059a8c962e30950c4079ca12c71d8d837977cbb1ad7b1dc62ca8a367a"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar125.txd",
+      "url": "pack/models/gta3.img/radar125.txd",
+      "size": 88728,
+      "sha256": "ab2278d3b3f9a069eb4776739935969d71c8f08b21349f7cd610ced88a92ad64"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar126.txd",
+      "url": "pack/models/gta3.img/radar126.txd",
+      "size": 88728,
+      "sha256": "7686b363e181ae2ff4349ffda7e6da17f15f787b23b2f0b094aef0b1cdd0ddf7"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar127.txd",
+      "url": "pack/models/gta3.img/radar127.txd",
+      "size": 88728,
+      "sha256": "0f2e84a10a8ac40fab06cece7f555516e2587cf28096fbab0b54ad801b986c45"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar128.txd",
+      "url": "pack/models/gta3.img/radar128.txd",
+      "size": 88728,
+      "sha256": "a6d487cb3f5f9120d98658b6259d868b85b4e93148cf5bae80073280fbf095e8"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar129.txd",
+      "url": "pack/models/gta3.img/radar129.txd",
+      "size": 88728,
+      "sha256": "20bad82b57d9a19b62edda3620778c4d77046c66d6447c1310b612dfa3843e9c"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar130.txd",
+      "url": "pack/models/gta3.img/radar130.txd",
+      "size": 88728,
+      "sha256": "ab72a227cb3edbb44e30a3a9e1fa644006af29aea6a116fd9df9511ad38a1bb1"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar131.txd",
+      "url": "pack/models/gta3.img/radar131.txd",
+      "size": 88728,
+      "sha256": "e9e71d09f56c73de84a50112e7b4f66221dcc490b406e68579f8978358c76eb2"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar132.txd",
+      "url": "pack/models/gta3.img/radar132.txd",
+      "size": 88728,
+      "sha256": "7023f789cb7d99dff292e6ef102e2d633260f12dfe0a840995391ca615631b67"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar133.txd",
+      "url": "pack/models/gta3.img/radar133.txd",
+      "size": 88728,
+      "sha256": "3010964f0d161030f85921ea527eed3a9a92945d29c6aa76c56b98a8fd631b07"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar134.txd",
+      "url": "pack/models/gta3.img/radar134.txd",
+      "size": 88728,
+      "sha256": "a4a80d562d34f60d43a0bec2664a303a2b736031bd0f25656cc4d20a0fb6c694"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar135.txd",
+      "url": "pack/models/gta3.img/radar135.txd",
+      "size": 88728,
+      "sha256": "85e741e192b23baeb5db6e74ec4974107a0283818b14e7e0d0c3bc00e215630f"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar136.txd",
+      "url": "pack/models/gta3.img/radar136.txd",
+      "size": 88728,
+      "sha256": "3a6c803070f45e9af4c22f485f48b6f1bc4db80e9f9497b43c454f963e12fbf8"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar137.txd",
+      "url": "pack/models/gta3.img/radar137.txd",
+      "size": 88728,
+      "sha256": "fe1e586f7d65485122619343980e8aac0ca60bc211273b6ac0c5303f05db06c5"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar138.txd",
+      "url": "pack/models/gta3.img/radar138.txd",
+      "size": 88728,
+      "sha256": "ea51996ba1380ff3272a113d5e5e1e98dd1cdc2fa3a046a1c3ff9deb8b389ba7"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar139.txd",
+      "url": "pack/models/gta3.img/radar139.txd",
+      "size": 88728,
+      "sha256": "9a6cb60cc4d5ca5ed080f79ebde341891995fdfe18fc88ce5a462c64a4810891"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar140.txd",
+      "url": "pack/models/gta3.img/radar140.txd",
+      "size": 88728,
+      "sha256": "313bcf69bd94d9afe04224aae5edb956d693d577872fcb7fdf04c6c1b1e6a91c"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar141.txd",
+      "url": "pack/models/gta3.img/radar141.txd",
+      "size": 88728,
+      "sha256": "f4d424c3cb35a330462440f9a07544c5ab17139ec6dd23c9ee8009bda3497f4c"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar142.txd",
+      "url": "pack/models/gta3.img/radar142.txd",
+      "size": 88728,
+      "sha256": "6e0698bc0e59204f46332ddccc433ef32646cf7c2109f848052d231139c31c75"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "radar143.txd",
+      "url": "pack/models/gta3.img/radar143.txd",
+      "size": 88728,
+      "sha256": "9eb182a292c6674f3567cc9383285999d1fbef6fc624694a8d596951a2bb25f7"
     }
   ]
 }
