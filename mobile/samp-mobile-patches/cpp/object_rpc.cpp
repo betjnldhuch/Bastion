@@ -1,3 +1,23 @@
+// Bastion: one material of SetObjectMaterial / CreateObject (type 1 = texture).
+// Returns false when the rest of the stream can not be read (text material: its
+// text is the last field, so nothing follows that we could still use).
+static bool BastionReadObjectMaterial(RakNet::BitStream& bs, CObject* pObject)
+{
+	uint8_t byteType = 0, byteIndex = 0, byteLen = 0;
+	uint16_t wModel = 0;
+	uint32_t dwColor = 0;
+	char txd[256], tex[256];
+	if (!bs.Read(byteType) || byteType != 1) return false;
+	bs.Read(byteIndex);
+	bs.Read(wModel);
+	bs.Read(byteLen); bs.Read(txd, byteLen); txd[byteLen] = '\0';
+	bs.Read(byteLen); bs.Read(tex, byteLen); tex[byteLen] = '\0';
+	if (!bs.Read(dwColor)) return false;
+	if (pObject && byteIndex < 16 && strlen(tex) < 32)
+		pObject->SetMaterial(wModel, byteIndex, txd, tex, dwColor);
+	return true;
+}
+
 // Bastion: object RPCs (upstream GTA-2.11 left them empty / commented out).
 void ScrCreateObject(RPCParameters* rpcParams)
 {
@@ -19,14 +39,32 @@ void ScrCreateObject(RPCParameters* rpcParams)
 	bsData.Read(vecRot.y);
 	bsData.Read(vecRot.z);
 	bsData.Read(fDrawDistance);
-	// Then: no-camera-col, attached vehicle/object, materials. Attachments and
-	// materials are not supported by this client yet: the object keeps its own textures.
+	// Then: no-camera-col, attached vehicle/object, materials. Attachments are not
+	// supported by this client yet; material textures/colours are (text is skipped).
+	uint8_t byteNoCameraCol = 0;
+	uint16_t wAttached1 = 0xFFFF, wAttached2 = 0xFFFF;
+	bsData.Read(byteNoCameraCol);
+	bsData.Read(wAttached1);
+	bsData.Read(wAttached2);
+	if (wAttached1 != 0xFFFF || wAttached2 != 0xFFFF)
+	{
+		float fAttach[6];
+		uint8_t byteSyncRot;
+		for (int i = 0; i < 6; i++) bsData.Read(fAttach[i]);
+		bsData.Read(byteSyncRot);
+	}
+	uint8_t byteMaterials = 0;
+	bsData.Read(byteMaterials);
 
 	if (ObjectID >= MAX_OBJECTS) return;
 	CObjectPool* pObjectPool = pNetGame->GetObjectPool();
 	if (!pObjectPool) return;
 	pObjectPool->New(ObjectID, iModel, vecPos, vecRot, fDrawDistance);
 	iTotalObjects++;
+
+	CObject* pObject = pObjectPool->GetAt(ObjectID);
+	for (int i = 0; i < byteMaterials; i++)
+		if (!BastionReadObjectMaterial(bsData, pObject)) break;
 }
 
 void ScrSetObjectPos(RPCParameters* rpcParams)
@@ -124,4 +162,16 @@ void ScrStopObject(RPCParameters* rpcParams)
 	if (pObject) {
 		pObject->StopMoving();
 	}
+}
+
+void ScrSetObjectMaterial(RPCParameters* rpcParams)
+{
+	unsigned char* Data = reinterpret_cast<unsigned char*>(rpcParams->input);
+	int iBitLength = rpcParams->numberOfBitsOfData;
+	RakNet::BitStream bsData(Data, (iBitLength / 8) + 1, false);
+	OBJECTID ObjectID;
+	bsData.Read(ObjectID);
+	CObjectPool* pObjectPool = pNetGame ? pNetGame->GetObjectPool() : nullptr;
+	if (!pObjectPool || ObjectID >= MAX_OBJECTS) return;
+	BastionReadObjectMaterial(bsData, pObjectPool->GetAt(ObjectID));
 }

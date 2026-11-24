@@ -8,6 +8,7 @@ import math, os, struct, sys
 from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 from txdpatch import hdr, native
+import mapping_textures
 SRC = os.path.join(HERE, '..', 'markers', 'src')
 VER = 0x1803FFFF            # RW 3.6.0.3 (GTA SA PC)
 TEX = 128                   # размер текстуры
@@ -93,6 +94,7 @@ def main():
         open(os.path.join(out, dname + '.dff'), 'wb').write(dff(dname, texname))
         txds.setdefault(tname, {})[texname] = key
     for tname, texs in txds.items():
-        open(os.path.join(out, tname + '.txd'), 'wb').write(txd([(n, texture_image(k)) for n, k in texs.items()]))
+        extra = mapping_textures.textures() if tname == mapping_textures.TXD else []   # текстуры для /mt
+        open(os.path.join(out, tname + '.txd'), 'wb').write(txd([(n, texture_image(k)) for n, k in texs.items()] + extra))
     print('готово:', len(MODELS), 'dff,', len(txds), 'txd ->', out)
 if __name__ == '__main__': main()

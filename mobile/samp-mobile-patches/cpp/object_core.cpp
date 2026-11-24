@@ -1,6 +1,11 @@
+#include <unordered_map>
 // Bastion: SA-MP objects (CreateObject / mapping). Upstream GTA-2.11 left the
 // constructor, destructor and Process empty and the RPC handlers commented out,
 // so no server object was ever shown on the phone.
+// Objects that have SetObjectMaterial textures/colours, by their game entity
+// (the render hook in hooks.cpp looks them up here instead of scanning the pool).
+std::unordered_map<void*, CObject*> g_BastionMaterialObjects;
+
 CObject::CObject(int iModel, CVector vecPos, CVector vecRot, float fDrawDistance, uint8_t bAttached)
 {
 	m_AttachedVehicleID = INVALID_VEHICLE_ID;
@@ -67,6 +72,7 @@ CObject::CObject(int iModel, CVector vecPos, CVector vecRot, float fDrawDistance
 
 CObject::~CObject()
 {
+	if (m_pEntity) g_BastionMaterialObjects.erase(m_pEntity);
 	if (m_pEntity && GamePool_Object_GetAt(m_dwGTAId))
 		ScriptCommand(&destroy_object, m_dwGTAId);
 	m_pEntity = nullptr;

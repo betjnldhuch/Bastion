@@ -3,8 +3,8 @@
 //
 //  Объект из /mo можно обтянуть любой текстурой GTA, залить цветом или
 //  сделать на нём надпись (вывески, таблички, номера домов). Это работает
-//  у всех: ПК-клиент 0.3.7 и телефон, ничего скачивать не надо — текстуры
-//  берутся из самой игры. Всё хранится в таблице map_materials и
+//  у всех: ПК-клиент 0.3.7 и телефон (с APK, где включён SetObjectMaterial).
+//  Текстуры GTA берутся из игры, наши (bst_*) приходят с лаунчером/APK. Всё хранится в таблице map_materials и
 //  восстанавливается после рестарта, попадает в /mo export.
 //
 //    /mt               — окно перекраски объекта, который двигаешь (или ближайшего)
@@ -24,7 +24,7 @@
 // =====================================================================
 
 #define TEX_SLOTS               16
-#define TEX_LIST_MAX            40
+#define TEX_LIST_MAX            60
 
 #define TEX_KIND_TEXTURE        (0)
 #define TEX_KIND_TEXT           (1)
@@ -48,6 +48,44 @@ static const gTexSeed[][E_TEX_SEED] =
 	{ "Стекло",               18065, "ab_sfammumain",    "shelf_glas" },
 	{ "Золото",               8463,  "vgseland",         "tiadbuddhagold" },
 	{ "Доски",                14650, "ab_trukstpc",      "sa_wood08_128" }
+};
+
+// Наши текстуры Bastion (client-mods/tools/mapping_textures.py), модель 1240, txd icons5.
+// Видны у игроков с обновлённым лаунчером/APK. Добавляются в список при каждом запуске, если их там нет.
+enum E_TEX_OWN { toName[32], toTex[32] }
+static const gTexOwn[][E_TEX_OWN] =
+{
+	{ "Больница: стена", "bst_hosp_wall" },
+	{ "Банк: дверь хранилища", "bst_vault_door" },
+	{ "Банк: стойка кассы", "bst_bank_counter" },
+	{ "Банк: мрамор светлый", "bst_marble_beige" },
+	{ "Банк: мрамор тёмный", "bst_marble_dark" },
+	{ "24/7: стеллаж", "bst_shop_shelves" },
+	{ "24/7: холодильник", "bst_shop_fridge" },
+	{ "24/7: плитка пола", "bst_shop_floor" },
+	{ "24/7: вывеска", "bst_shop_sign" },
+	{ "Бар: полки с бутылками", "bst_bar_shelves" },
+	{ "Бар: стойка", "bst_bar_counter" },
+	{ "Вывеска автосалона", "bst_dealer_sign" },
+	{ "Граффити Ballas", "bst_ballas_tag" },
+	{ "Флаг Grove", "bst_grove_flag" },
+	{ "Кирпич жёлтый облезлый", "bst_yellow_brick" },
+	{ "Асфальт", "bst_asphalt" },
+	{ "Кирпич красный (наш)", "bst_brick_red" },
+	{ "Ковролин синий", "bst_carpet_blue" },
+	{ "Бетонная плитка", "bst_concrete" },
+	{ "Профлист", "bst_corrugated" },
+	{ "Пол гаража", "bst_garage_floor" },
+	{ "Паркет (наш)", "bst_parquet" },
+	{ "Штукатурка бежевая", "bst_plaster" },
+	{ "Кожа чёрная", "bst_leather" },
+	{ "Ткань синяя", "bst_fabric_blue" },
+	{ "Доски (наши)", "bst_planks" },
+	{ "Полиция: ростомер", "bst_height_chart" },
+	{ "Табличка «Камеры»", "bst_sign_cells" },
+	{ "Табличка «Допросная»", "bst_sign_interrog" },
+	{ "Табличка «Раздевалка»", "bst_sign_lockers" },
+	{ "Табличка «Оружейная»", "bst_sign_armory" }
 };
 
 enum E_TEX_COLOR { tcName[24], tcColor }
@@ -91,6 +129,12 @@ stock Tex_Init()
 			DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO texture_presets (name, model, txd, tex, author) VALUES ('%q', %d, '%q', '%q', 'server')",
 				gTexSeed[i][tsName], gTexSeed[i][tsModel], gTexSeed[i][tsTxd], gTexSeed[i][tsTex]));
 		}
+	}
+
+	for (new i = 0; i < sizeof gTexOwn; i++)
+	{
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO texture_presets (name, model, txd, tex, author) SELECT '%q', 1240, 'icons5', '%q', 'bastion' WHERE NOT EXISTS (SELECT 1 FROM texture_presets WHERE tex = '%q')",
+			gTexOwn[i][toName], gTexOwn[i][toTex], gTexOwn[i][toTex]));
 	}
 
 	new applied = 0;
@@ -358,7 +402,7 @@ static Tex_ShowSlots(playerid)
 
 static Tex_ShowPick(playerid)
 {
-	new text[2400], line[96], n = 0;
+	new text[4000], line[96], n = 0;
 	strcat(text, "{FF6666}Убрать перекраску слота\n{66FF66}Залить цветом...\n{FFFF66}Надпись...\n");
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, name, model, tex FROM texture_presets ORDER BY id LIMIT %d", TEX_LIST_MAX);
 	if (r != DBResult:0)
