@@ -82,13 +82,8 @@ jobs:
           Copy-Item "$cef\Release\*.dll", "$cef\Release\*.bin", "$cef\Release\*.json" $ui -ErrorAction SilentlyContinue
           Copy-Item "$cef\Resources\*.pak", "$cef\Resources\icudtl.dat" $ui
           Copy-Item "$cef\Resources\locales\ru.pak", "$cef\Resources\locales\en-US.pak" "$ui\locales"
-          Copy-Item mobile\launcher\app\src\main\assets\ui\index.html "$ui\ui"
-          Copy-Item mobile\launcher\app\src\main\assets\ui\items "$ui\ui" -Recurse
-          Copy-Item mobile\launcher\app\src\main\assets\ui\emblems "$ui\ui" -Recurse
-          Copy-Item mobile\launcher\app\src\main\assets\ui\biz "$ui\ui" -Recurse
-          Copy-Item mobile\launcher\app\src\main\assets\ui\jobs "$ui\ui" -Recurse
-          Copy-Item mobile\launcher\app\src\main\assets\ui\property "$ui\ui" -Recurse
-          Copy-Item mobile\launcher\app\src\main\assets\ui\hud "$ui\ui" -Recurse
+          # вся папка окон: index.html и картинки (items, doc, donate, phone, vip, quest и т.д.)
+          Copy-Item mobile\launcher\app\src\main\assets\ui\* "$ui\ui" -Recurse -Force
           Copy-Item launcher\fonts\RussoOne-Regular.ttf "$ui\fonts"
           Copy-Item client-mods\bastion-ui\README.txt $root
           # ASI Loader (ThirteenAG, MIT) — грузит bastion_ui.asi в игру
