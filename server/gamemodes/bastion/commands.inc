@@ -294,9 +294,9 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/duty", true))        { Cmd_Duty(playerid, cmdtext[pos] != '\0' && !strcmp(cmdtext[pos], "civ", true)); return 1; }
 	if (!strcmp(cmd, "/invite", true))      { Cmd_Invite(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/uninvite", true))    { Cmd_Uninvite(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/bl", true))          { Cmd_Bl(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/unbl", true))        { Cmd_UnBl(playerid, cmdtext[pos]); return 1; }
-	if (!strcmp(cmd, "/blist", true))       { Cmd_BList(playerid); return 1; }
+	if (!strcmp(cmd, "/black", true))       { Cmd_Bl(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/unblack", true))     { Cmd_UnBl(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/blacklist", true))   { Cmd_BList(playerid); return 1; }
 	if (!strcmp(cmd, "/giverank", true))    { Cmd_GiveRank(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fleave", true))      { Cmd_FLeave(playerid); return 1; }
 	if (!strcmp(cmd, "/accept", true))      { Cmd_Accept(playerid); return 1; }

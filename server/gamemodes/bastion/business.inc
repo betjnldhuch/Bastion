@@ -90,7 +90,8 @@ enum
 	ITEM_FSTYLE,    // стиль боя в спортзале (value = FIGHT_STYLE_*), bizplus.inc
 	ITEM_LOTTERY,   // лотерейный билет (value = во сколько раз главный приз больше цены), bizplus.inc
 	ITEM_TRAIN,     // тренировка в тире (value = группа оружия skills.inc, value2 = очков 0..999)
-	ITEM_SHOOTDOC   // выписка из тира в сумку (skills.inc)
+	ITEM_SHOOTDOC,  // выписка из тира в сумку (skills.inc)
+	ITEM_RANGE      // подход на стрельбище: мишени на RANGE_SESSION_MIN минут (skills.inc)
 }
 
 enum E_BIZ_ITEM
@@ -180,6 +181,7 @@ static const gBizItems[][E_BIZ_ITEM] =
 	{ BIZ_LOTTERY, "Билет «Удача»",     250,  ITEM_LOTTERY, 40, 0 },
 	{ BIZ_LOTTERY, "Билет «Джекпот»",   1000, ITEM_LOTTERY, 100, 0 },
 	{ BIZ_SHOOTRANGE, "Выписка из тира",   150,  ITEM_SHOOTDOC, 0, 0 },
+	{ BIZ_SHOOTRANGE, "Мишени (5 минут)",  500,  ITEM_RANGE, 0, 0 },
 	{ BIZ_SHOOTRANGE, "Курс: пистолеты +5%",    300, ITEM_TRAIN, 0, 50 },
 	{ BIZ_SHOOTRANGE, "Курс: Desert Eagle +5%", 400, ITEM_TRAIN, 1, 50 },
 	{ BIZ_SHOOTRANGE, "Курс: дробовики +5%",    400, ITEM_TRAIN, 2, 50 },
@@ -720,6 +722,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 		case ITEM_LOTTERY: BizX_Lottery(playerid, price, gBizItems[item][biValue]);
 		case ITEM_TRAIN: Skills_Train(playerid, gBizItems[item][biValue], gBizItems[item][biValue2]);
 		case ITEM_SHOOTDOC: Skills_IssueRecord(playerid);
+		case ITEM_RANGE: Skills_StartRange(playerid);
 		case ITEM_ARMOUR: SetPlayerArmour(playerid, float(gBizItems[item][biValue]));
 		case ITEM_INV:
 		{

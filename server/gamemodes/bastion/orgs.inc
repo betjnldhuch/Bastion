@@ -219,7 +219,6 @@ stock bool:Cmd_SWarn(playerid, const params[])
 	if (cnt >= lim)
 	{
 		Faction_SetMember(target, FACTION_NONE, 0);
-		Faction_BlAdd(tf, tdb, FACTION_FIRE_BAN_DAYS, GetRPName(playerid), "спец-выговоры");      // ЧС организации (factions.inc)
 		SendClientMessage(target, COLOR_RED, "%s (%s) выдал тебе спец-выговор: %d/%d — ты уволен из «%s». Причина: %s",
 			GetRPName(playerid), Faction_GetName(f), cnt, lim, Faction_GetName(tf), reason);
 		format(msg, sizeof msg, "[Фракция] %s уволен: %d/%d спец-выговоров (от %s).", GetRPName(target), cnt, lim, Faction_GetName(f));

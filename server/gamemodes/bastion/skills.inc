@@ -12,6 +12,8 @@
 //  Игроку навык показывается в процентах (0..999 -> 0..100%).
 //  Выписка из тира: покупается в тире (бизнес вид 15, business.inc), фиксирует навыки на дату
 //  выдачи и лежит в сумке как документ. Там же тренировки: +5% за деньги, до SKILL_TRAIN_CAP.
+//  Мишени: подход на стрельбище в тире (RANGE_SESSION_MIN минут) — перед игроком встают мишени,
+//  попадание в них считается как по игроку, так навык можно дострелять до 100%.
 //  /skills — открыть свою выписку, /skills [id] — показать игроку рядом.
 //  Админы 4+: /setskill [id] [группа 1-7|all] [0-100%].
 // =====================================================================
@@ -22,6 +24,9 @@
 #define SKILL_HIT_PLAYER    3
 #define SKILL_HIT_OTHER     1
 #define SKILL_MINUTE_CAP    40
+#define RANGE_SESSION_MIN   5       // подход на стрельбище, минут
+#define RANGE_TARGETS       3       // мишеней за подход
+#define RANGE_TARGET_MODEL  1585    // мишень тира GTA
 #define SKILL_TRAIN_CAP     699     // тренировкой в тире — до «опытного» (70%), дальше только практика
 
 static const gSkillNames[SKILL_GROUPS][] = { "Пистолеты", "Desert Eagle", "Дробовики", "Обрез", "Пистолеты-пулемёты", "Автоматы", "Винтовки" };
@@ -29,6 +34,8 @@ static gSkill[MAX_PLAYERS][SKILL_GROUPS];
 static gSkillGain[MAX_PLAYERS][SKILL_GROUPS];   // сколько набрано в эту минуту
 static bool:gSkillDirty[MAX_PLAYERS];
 static bool:gSkillLoaded[MAX_PLAYERS];
+static gRangeUntil[MAX_PLAYERS];                // подход на стрельбище до (gettime), 0 — нет
+static gRangeObj[MAX_PLAYERS][RANGE_TARGETS];   // мишени (объекты игрока)
 static gShootDate[MAX_PLAYERS];                 // выписка из тира: когда выдана (0 — нет)
 static gShootSk[MAX_PLAYERS][SKILL_GROUPS];     // навыки на дату выписки
 
@@ -67,6 +74,7 @@ stock Skills_LoadPlayer(playerid)
 	new text[64];
 	gSkillLoaded[playerid] = false;
 	gSkillDirty[playerid] = false;
+	gRangeUntil[playerid] = 0;
 	for (new g = 0; g < SKILL_GROUPS; g++) { gSkill[playerid][g] = SKILL_OLD_START; gSkillGain[playerid][g] = 0; }
 	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT wskills FROM accounts WHERE id = %d", Player[playerid][pDbId]);
 	if (r != DBResult:0)
@@ -129,8 +137,48 @@ stock Skills_Save(playerid)
 		gSkill[playerid][4], gSkill[playerid][5], gSkill[playerid][6], Player[playerid][pDbId]));
 }
 
+// ---------------------------------------------------------------------
+//  Стрельбище в тире: мишени перед игроком (объекты только для него)
+// ---------------------------------------------------------------------
+static Skills_StopRange(playerid, bool:notify)
+{
+	if (gRangeUntil[playerid] == 0) return;
+	gRangeUntil[playerid] = 0;
+	for (new i = 0; i < RANGE_TARGETS; i++)
+	{
+		if (gRangeObj[playerid][i] != INVALID_OBJECT_ID && IsPlayerConnected(playerid)) DestroyPlayerObject(playerid, gRangeObj[playerid][i]);
+		gRangeObj[playerid][i] = INVALID_OBJECT_ID;
+	}
+	if (notify) SendClientMessage(playerid, COLOR_WHITE, "Подход на стрельбище закончился. Выписку с новыми навыками можно взять здесь же (/buy).");
+}
+
+stock Skills_StartRange(playerid)
+{
+	Skills_StopRange(playerid, false);
+	new Float:x, Float:y, Float:z, Float:a;
+	GetPlayerPos(playerid, x, y, z);
+	GetPlayerFacingAngle(playerid, a);
+	for (new i = 0; i < RANGE_TARGETS; i++)
+	{
+		new Float:dist = 7.0 + 4.0 * float(i), Float:side = (i % 2) ? 1.2 : -1.2;
+		new Float:tx = x + dist * floatsin(-a, degrees) + side * floatcos(-a, degrees);
+		new Float:ty = y + dist * floatcos(-a, degrees) - side * floatsin(-a, degrees);
+		gRangeObj[playerid][i] = CreatePlayerObject(playerid, RANGE_TARGET_MODEL, tx, ty, z - 0.2, 0.0, 0.0, a);
+	}
+	gRangeUntil[playerid] = gettime() + RANGE_SESSION_MIN * 60;
+	SendClientMessage(playerid, 0xFF7A1AFF, "Стрельбище: %d мин. Мишени перед тобой, попадание растит навык того оружия, из которого стреляешь (до 100%%).", RANGE_SESSION_MIN);
+}
+
+static bool:Skills_IsTarget(playerid, objectid)
+{
+	if (gRangeUntil[playerid] == 0) return false;
+	for (new i = 0; i < RANGE_TARGETS; i++) if (gRangeObj[playerid][i] == objectid) return true;
+	return false;
+}
+
 stock Skills_OnDisconnect(playerid)
 {
+	Skills_StopRange(playerid, false);
 	Skills_Save(playerid);
 	gSkillLoaded[playerid] = false;
 }
@@ -148,6 +196,7 @@ stock Skills_OnMinute()
 	{
 		if (!gSkillLoaded[i]) continue;
 		for (new g = 0; g < SKILL_GROUPS; g++) gSkillGain[i][g] = 0;
+		if (gRangeUntil[i] != 0 && gettime() >= gRangeUntil[i]) Skills_StopRange(i, true);
 		Skills_Save(i);
 	}
 }
@@ -215,7 +264,12 @@ stock Skills_OnShot(playerid, WEAPON:weaponid, BULLET_HIT_TYPE:hittype, hitid)
 			if (hitid == playerid || !IsPlayerConnected(hitid)) return;
 			Skills_Add(playerid, g, SKILL_HIT_PLAYER);
 		}
-		case BULLET_HIT_TYPE_VEHICLE, BULLET_HIT_TYPE_OBJECT, BULLET_HIT_TYPE_PLAYER_OBJECT: Skills_Add(playerid, g, SKILL_HIT_OTHER);
+		case BULLET_HIT_TYPE_PLAYER_OBJECT:
+		{
+			// мишень на стрельбище — как попадание по игроку
+			Skills_Add(playerid, g, Skills_IsTarget(playerid, hitid) ? SKILL_HIT_PLAYER : SKILL_HIT_OTHER);
+		}
+		case BULLET_HIT_TYPE_VEHICLE, BULLET_HIT_TYPE_OBJECT: Skills_Add(playerid, g, SKILL_HIT_OTHER);
 	}
 }
 

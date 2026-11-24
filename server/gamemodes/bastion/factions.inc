@@ -52,8 +52,7 @@
 #define FACTION_START_BANK      30000   // стартовый общак госструктур (только при первом запуске)
 #define FACTION_BANK_MAX        100000000
 #define FACTION_MAX_WARNS       3       // столько выговоров — и игрок уволен
-#define FACTION_FIRE_BAN_DAYS   7       // уволенный попадает в чёрный список своей организации на столько дней (/fleave — без ЧС)
-#define FACTION_BL_SHOW         8       // сколько записей ЧС показывать в /blist
+#define FACTION_BL_SHOW         8       // сколько записей ЧС показывать в /blacklist
 #define FACTION_MAX_SALARY      20000   // максимальная зарплата ранга, которую может поставить лидер
 // Общак полиции и больницы пополняет штат (FACTION_STATE_BUDGET), это не личные деньги лидера:
 #define FACTION_STATE_MAX_SALARY 3000   // потолок зарплаты ранга в госструктуре
@@ -522,8 +521,8 @@ stock Faction_SaveInfo(f)
 
 // ---------------------------------------------------------------------
 //  Чёрный список организации (таблица faction_blacklist).
-//  until = 0 — навсегда. Уволенный попадает в ЧС своей организации на
-//  FACTION_FIRE_BAN_DAYS дней. Лидер (право «увольнять»): /bl, /unbl, /blist.
+//  until = 0 — навсегда. Увольнение в ЧС не вносит: это отдельное решение.
+//  Лидер (право «увольнять»): /black, /unblack, /blacklist.
 //  Из ЧС одной организации можно вступить в другую.
 // ---------------------------------------------------------------------
 // -1 — не в ЧС, 0 — навсегда, иначе дата окончания
@@ -601,13 +600,13 @@ stock bool:Cmd_Bl(playerid, const params[])
 	if (!FPerm_Need(playerid, FP_FIRE)) return true;
 	new f = Player[playerid][pFaction], pos = 0, who[MAX_PLAYER_NAME], name[MAX_PLAYER_NAME], days, reason[64];
 	if (!NextParam(params, pos, who) || !NextIntParam(params, pos, days) || days < 0 || days > 365 || !RestParam(params, pos, reason))
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /bl [id или Имя_Фамилия] [дней, 0 — навсегда] [причина]. Список: /blist, убрать: /unbl");
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /black [id или Имя_Фамилия] [дней, 0 — навсегда] [причина]. Список: /blacklist, убрать: /unblack");
 	if (!Faction_IsGoodName(reason, 2, 60)) return SendClientMessage(playerid, COLOR_GREY, "Причина: от 2 до 60 символов, без фигурных скобок и знака процента.");
 	new dbid = Faction_BlTarget(who, name, sizeof name);
 	if (!dbid) return SendClientMessage(playerid, COLOR_GREY, "Игрок не найден.");
 	if (dbid == Player[playerid][pDbId]) return SendClientMessage(playerid, COLOR_GREY, "Себя в ЧС не внести.");
 	new t = Faction_FindOnline(dbid);
-	if (t != INVALID_PLAYER_ID && Player[t][pFaction] == f) return SendClientMessage(playerid, COLOR_GREY, "Он в твоей организации: сначала уволь (/uninvite).");
+	if (t != INVALID_PLAYER_ID && Player[t][pFaction] == f) return SendClientMessage(playerid, COLOR_GREY, "Он в твоей организации: сначала уволь (/uninvite), потом /black.");
 	Faction_BlAdd(f, dbid, days, GetRPName(playerid), reason);
 	for (new i = 0; name[i]; i++) if (name[i] == '_') name[i] = ' ';
 	new tt[24], msg[144];
@@ -623,7 +622,7 @@ stock bool:Cmd_UnBl(playerid, const params[])
 {
 	if (!FPerm_Need(playerid, FP_FIRE)) return true;
 	new f = Player[playerid][pFaction], pos = 0, who[MAX_PLAYER_NAME], name[MAX_PLAYER_NAME];
-	if (!NextParam(params, pos, who)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /unbl [id или Имя_Фамилия]");
+	if (!NextParam(params, pos, who)) return SendClientMessage(playerid, COLOR_GREY, "Использование: /unblack [id или Имя_Фамилия]");
 	new dbid = Faction_BlTarget(who, name, sizeof name);
 	if (!dbid || Faction_BlUntil(f, dbid) == -1) return SendClientMessage(playerid, COLOR_GREY, "Его нет в чёрном списке твоей организации.");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM faction_blacklist WHERE account = %d AND faction = %d", dbid, f));
@@ -1560,7 +1559,7 @@ stock bool:Cmd_Invite(playerid, const params[])
 	{
 		new tt[24];
 		Faction_BlText(bl, tt, sizeof tt);
-		return SendClientMessage(playerid, COLOR_GREY, "Он в чёрном списке вашей организации (%s). Убрать: /unbl", tt);
+		return SendClientMessage(playerid, COLOR_GREY, "Он в чёрном списке вашей организации (%s). Убрать: /unblack", tt);
 	}
 
 	Player[target][pOfferType] = OFFER_INVITE;
@@ -1585,8 +1584,7 @@ stock bool:Cmd_Uninvite(playerid, const params[])
 	if (Player[target][pRank] >= Player[playerid][pRank]) return SendClientMessage(playerid, COLOR_GREY, "Нельзя уволить равного или старшего по рангу.");
 
 	Faction_SetMember(target, FACTION_NONE, 0);
-	Faction_BlAdd(f, Player[target][pDbId], FACTION_FIRE_BAN_DAYS, GetRPName(playerid), "уволен");
-	SendClientMessage(target, COLOR_RED, "%s выгнал тебя из фракции «%s». Ты в её чёрном списке на %d дн.", GetRPName(playerid), Faction_GetName(f), FACTION_FIRE_BAN_DAYS);
+	SendClientMessage(target, COLOR_RED, "%s выгнал тебя из фракции «%s».", GetRPName(playerid), Faction_GetName(f));
 	new msg[144];
 	format(msg, sizeof msg, "[Фракция] %s уволил %s.", GetRPName(playerid), GetRPName(target));
 	Faction_Message(f, Faction_GetColor(f), msg);
@@ -2144,14 +2142,13 @@ stock Faction_Fire(playerid, dbid, const name[], const reason[])
 	if (target != INVALID_PLAYER_ID)
 	{
 		Faction_SetMember(target, FACTION_NONE, 0);
-		SendClientMessage(target, COLOR_RED, "%s уволил тебя из фракции «%s». Причина: %s. Ты в её чёрном списке на %d дн.", GetRPName(playerid), Faction_GetName(f), reason, FACTION_FIRE_BAN_DAYS);
+		SendClientMessage(target, COLOR_RED, "%s уволил тебя из фракции «%s». Причина: %s", GetRPName(playerid), Faction_GetName(f), reason);
 	}
 	else
 	{
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET faction = 0, frank = 0, fwarns = 0, fsquad = 0 WHERE id = %d", dbid));
 		FPerm_ClearOffline(dbid);
 	}
-	Faction_BlAdd(f, dbid, FACTION_FIRE_BAN_DAYS, GetRPName(playerid), reason);
 	new msg[144];
 	format(msg, sizeof msg, "%s уволил %s. Причина: %s", GetRPName(playerid), name, reason);
 	Faction_Log(f, msg, FLOG_STAFF);
