@@ -88,6 +88,10 @@ jobs:
           cp dl/Bastion-Launcher-SAMP-Mobile-debug/Bastion-Launcher-SAMP-Mobile-debug.apk "rel/Bastion-Launcher-${SHORT}-debug.apk"
           cp dl/Bastion-gamemodes/Bastion-gamemodes.zip "rel/Bastion-gamemodes-${SHORT}.zip"
           (cd dl/BastionLauncher-PC && zip -qr "../../rel/BastionLauncher-PC-${SHORT}.zip" BastionLauncher)
+          # Постоянные ссылки на последнюю версию (без входа в GitHub):
+          #   .../releases/latest/download/BastionSetup.exe  и  .../releases/latest/download/Bastion.apk
+          cp dl/BastionLauncher-PC/BastionSetup.exe rel/BastionSetup.exe
+          cp "rel/Bastion-Launcher-${SHORT}-debug.apk" rel/Bastion.apk
           (cd dl/Bastion-native-symbols && zip -qr "../../rel/Bastion-native-symbols-${SHORT}.zip" .)
           (cd rel && sha256sum * > SHA256SUMS.txt)
           gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/heads/release/${DATE}-${SHORT}" -f sha="$GITHUB_SHA" >/dev/null
@@ -96,6 +100,8 @@ jobs:
             --title "Bastion ${DATE} (${SHORT})" \
             --notes "Сборка ветки main, коммит ${GITHUB_SHA}.
 
+          - BastionSetup.exe: установщик для Windows, всё ставит сам. Ссылка на последнюю версию: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/latest/download/BastionSetup.exe
+          - Bastion.apk: то же для телефона. Ссылка на последнюю версию: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/latest/download/Bastion.apk
           - Bastion-Launcher-*.apk: мобильный лаунчер со встроенным клиентом (debug-подпись).
           - BastionLauncher-PC-*.zip: лаунчер для Windows. Распаковать и запустить BastionLauncher.exe.
           - Bastion-gamemodes-*.zip: папка gamemodes (rp.pwn, bastion/*.inc) и готовый rp.amx. Распаковать в папку сервера open.mp.

@@ -10,6 +10,15 @@ BASTION ONLINE — ЛАУНЧЕР
    и предлагает убрать их в папку _off (ничего не удаляет, можно вернуть обратно);
  • кнопка «ИГРАТЬ» (или двойной клик по серверу) запускает SA-MP и сразу подключает к серверу.
 
+УСТАНОВКА ДЛЯ ИГРОКА (ОДИН ФАЙЛ)
+ • ПК: https://github.com/betjnldhuch/bastion/releases/latest/download/BastionSetup.exe
+   Ставит лаунчер в %LocalAppData%\Bastion Online\Launcher, ярлык на рабочем столе, сразу запускает.
+   При первом запуске лаунчер сам предлагает поставить игру в %LocalAppData%\Bastion Online\Game.
+ • Телефон: https://github.com/betjnldhuch/bastion/releases/latest/download/Bastion.apk
+ • Лаунчер, запущенный из любого другого места (Загрузки, рабочий стол, Program Files, прямо из zip),
+   сам переезжает в %LocalAppData%\Bastion Online\Launcher и делает ярлык. Шрифт и пакет FPS вшиты в exe.
+   Не переезжать (своя сборка): portable = true в launcher.ini рядом с exe.
+
 КАК ЗАПУСТИТЬ
 1. Распакуй папку BastionLauncher куда угодно (например, на Рабочий стол).
 2. Запусти BastionLauncher.exe.
