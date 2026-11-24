@@ -3,17 +3,27 @@
   "product": "Bastion PC client pack",
   "files": [
     {
-      "path": "models/hud.txd",
-      "url": "pack/models/hud.txd",
-      "size": 2959304,
-      "sha256": "4dc17b75d77861b3718aae28c4164143bc48b4e5ce6784b89d971497182b8b0f"
-    },
-    {
       "path": "models/gta3.img",
       "name": "adrenaline.dff",
       "url": "pack/models/gta3.img/adrenaline.dff",
       "size": 5082,
       "sha256": "dc818ed7638fe1d345663a2c6fb4cb41da415783267a0e2e09d76fa81bc5395d"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "ak47.txd",
+      "texture": "ak47icon",
+      "url": "pack/models/gta3.img/ak47.txd/ak47icon.tex",
+      "size": 87536,
+      "sha256": "4a61690a305ae8d1b706b806c0a9a0951f67b7e00d7cca5657603734175f9b84"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "bat.txd",
+      "texture": "baticon",
+      "url": "pack/models/gta3.img/bat.txd/baticon.tex",
+      "size": 87536,
+      "sha256": "f328e64612122571a2eb91f41816a41ce2a0229500a3ad4cb2f64033efe53c2b"
     },
     {
       "path": "models/gta3.img",
@@ -28,6 +38,22 @@
       "url": "pack/models/gta3.img/bodyarmour.dff",
       "size": 5086,
       "sha256": "d7de0fd2fd9ca445e70632c00f66426ce33cd265aa05446ac9c616df2dbade07"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "bomb.txd",
+      "texture": "bombicon",
+      "url": "pack/models/gta3.img/bomb.txd/bombicon.tex",
+      "size": 87536,
+      "sha256": "5209791146387c9ca67814033093798b000da97877a2a845555bf15e8c8fadca"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "brassknuckle.txd",
+      "texture": "brassknuckleicon",
+      "url": "pack/models/gta3.img/brassknuckle.txd/brassknuckleicon.tex",
+      "size": 87536,
+      "sha256": "e2449cd3d901ec7906a100fe3f1dc4ae983abb06a6b78677afb856c99b1309cd"
     },
     {
       "path": "models/gta3.img",
@@ -52,10 +78,34 @@
     },
     {
       "path": "models/gta3.img",
+      "name": "camera.txd",
+      "texture": "cameraicon",
+      "url": "pack/models/gta3.img/camera.txd/cameraicon.tex",
+      "size": 87536,
+      "sha256": "d3525a2365bce9a5bc373dc9724e36eea8f969e9bbb02aae30bcdcd7564a187e"
+    },
+    {
+      "path": "models/gta3.img",
       "name": "camerapickup.dff",
       "url": "pack/models/gta3.img/camerapickup.dff",
       "size": 5084,
       "sha256": "b8fe99a7deb6bb54c1bd8d78513e469a01c1561222bcfd0cb79847d03665e50e"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "chnsaw.txd",
+      "texture": "chnsawicon",
+      "url": "pack/models/gta3.img/chnsaw.txd/chnsawicon.tex",
+      "size": 87536,
+      "sha256": "1a981f13f2ca109a7478f12371deb09a79fb7e787e1464d02321b39438702b5e"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "chromegun.txd",
+      "texture": "chromegunicon",
+      "url": "pack/models/gta3.img/chromegun.txd/chromegunicon.tex",
+      "size": 87536,
+      "sha256": "5f82d3f1710ed39587ddbcc911f3561a5a88e3e6d08efa0349d94ee8ce4194fd"
     },
     {
       "path": "models/gta3.img",
@@ -66,6 +116,30 @@
     },
     {
       "path": "models/gta3.img",
+      "name": "colt45.txd",
+      "texture": "colt45icon",
+      "url": "pack/models/gta3.img/colt45.txd/colt45icon.tex",
+      "size": 87536,
+      "sha256": "abb47a65570f7757447780eac5a60f3639a90100ba24a41158a764cbe3e73e8c"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "cuntgun.txd",
+      "texture": "cuntgunicon",
+      "url": "pack/models/gta3.img/cuntgun.txd/cuntgunicon.tex",
+      "size": 87536,
+      "sha256": "6a0067a6f72a06f804aecd335e0816e2dfcc0c4bb1bfdf773233e8d3ee405ab7"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "desert_eagle.txd",
+      "texture": "desert_eagleicon",
+      "url": "pack/models/gta3.img/desert_eagle.txd/desert_eagleicon.tex",
+      "size": 87536,
+      "sha256": "3b7c218744237ebeff86fa47e6ccc49048689e536e41bdcb8531090b94e27ac6"
+    },
+    {
+      "path": "models/gta3.img",
       "name": "dyn_cash.txd",
       "url": "pack/models/gta3.img/dyn_cash.txd",
       "size": 87576,
@@ -73,10 +147,106 @@
     },
     {
       "path": "models/gta3.img",
+      "name": "fire_ex.txd",
+      "texture": "fire_exicon",
+      "url": "pack/models/gta3.img/fire_ex.txd/fire_exicon.tex",
+      "size": 87536,
+      "sha256": "9919dba6099acf38a29074a01f27e5dee31d0359888189318bfc1a2876430c2f"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "flame.txd",
+      "texture": "flameicon",
+      "url": "pack/models/gta3.img/flame.txd/flameicon.tex",
+      "size": 87536,
+      "sha256": "71a6a3f369825599af4c4e6d47f482c2bc2db56bbaba4f7357174f8b10c43ea4"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "flowera.txd",
+      "texture": "floweraicon",
+      "url": "pack/models/gta3.img/flowera.txd/floweraicon.tex",
+      "size": 87536,
+      "sha256": "8334bb8b26c880a8b80e07f96434033a63311035a007077a0cc1ca9a499db0bc"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "golfclub.txd",
+      "texture": "golfclubicon",
+      "url": "pack/models/gta3.img/golfclub.txd/golfclubicon.tex",
+      "size": 87536,
+      "sha256": "522512b9c889a77a2b1d90f3d99b1431781465ca4ec794e82124e3dc32edde92"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "grenade.txd",
+      "texture": "grenadeicon",
+      "url": "pack/models/gta3.img/grenade.txd/grenadeicon.tex",
+      "size": 87536,
+      "sha256": "d6bd42f64d666ecc0f7b4466395a327fbb6b1d1a44e217d1dbabc656b3b1885f"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "gun_cane.txd",
+      "texture": "gun_caneicon",
+      "url": "pack/models/gta3.img/gun_cane.txd/gun_caneicon.tex",
+      "size": 87536,
+      "sha256": "e9847d94532dcce835b18f938e943035313b58276f4a81e471e825bf021b74d9"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "gun_dildo1.txd",
+      "texture": "gun_dildo1icon",
+      "url": "pack/models/gta3.img/gun_dildo1.txd/gun_dildo1icon.tex",
+      "size": 87536,
+      "sha256": "a71b190998d60479a277925c74d6afa8712a2cb1a7242f56eeb17187bf9fa133"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "gun_dildo2.txd",
+      "texture": "gun_dildo2icon",
+      "url": "pack/models/gta3.img/gun_dildo2.txd/gun_dildo2icon.tex",
+      "size": 87536,
+      "sha256": "969150c47d0f5daefa24322eade5761a47666ceff592dc451bc264f1f25be0ed"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "gun_para.txd",
+      "texture": "gun_paraicon",
+      "url": "pack/models/gta3.img/gun_para.txd/gun_paraicon.tex",
+      "size": 87536,
+      "sha256": "15d40500c0a1e795d5fed019c137d8fb385cbfaa704d77e40624ad6e4ef769b8"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "gun_vibe1.txd",
+      "texture": "gun_vibe1icon",
+      "url": "pack/models/gta3.img/gun_vibe1.txd/gun_vibe1icon.tex",
+      "size": 87536,
+      "sha256": "d347610a88451df8d726657074daf7f2deb85c4a106551250829ee5d10ec8392"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "gun_vibe2.txd",
+      "texture": "gun_vibe2icon",
+      "url": "pack/models/gta3.img/gun_vibe2.txd/gun_vibe2icon.tex",
+      "size": 87536,
+      "sha256": "4fd3b531c8c6ba3558e564dd6364a9728438c9265623b52e032293f9e098a32d"
+    },
+    {
+      "path": "models/gta3.img",
       "name": "health.dff",
       "url": "pack/models/gta3.img/health.dff",
       "size": 5082,
       "sha256": "02f28a7350afd592de63176fc773aabc8e3d34d20c1ac962f507a5a5e770e752"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "heatseek.txd",
+      "texture": "heatseekicon",
+      "url": "pack/models/gta3.img/heatseek.txd/heatseekicon.tex",
+      "size": 87536,
+      "sha256": "dfac7626ed2ded3cfe8fefa4c3c46c0f2273f11620b0d83f715bbac79dad288e"
     },
     {
       "path": "models/gta3.img",
@@ -157,6 +327,22 @@
     },
     {
       "path": "models/gta3.img",
+      "name": "irgoggles.txd",
+      "texture": "irgogglesicon",
+      "url": "pack/models/gta3.img/irgoggles.txd/irgogglesicon.tex",
+      "size": 87536,
+      "sha256": "b9ef725bc39e1026aa63714e1c272bf04ce9bb8f1c958e92764bf660fa27e373"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "katana.txd",
+      "texture": "katanaicon",
+      "url": "pack/models/gta3.img/katana.txd/katanaicon.tex",
+      "size": 87536,
+      "sha256": "80ded2c03e156d315b2673f79cf3e12160cf3a429af8faecad8ebc87cfd3377b"
+    },
+    {
+      "path": "models/gta3.img",
       "name": "killfrenzy.dff",
       "url": "pack/models/gta3.img/killfrenzy.dff",
       "size": 5082,
@@ -171,6 +357,46 @@
     },
     {
       "path": "models/gta3.img",
+      "name": "knifecur.txd",
+      "texture": "knifecuricon",
+      "url": "pack/models/gta3.img/knifecur.txd/knifecuricon.tex",
+      "size": 87536,
+      "sha256": "88d6fe94a6184b447a7ec4bf4bf4a2f9a8f7cf0743f2a1bf290357ca116adac4"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "m4.txd",
+      "texture": "m4icon",
+      "url": "pack/models/gta3.img/m4.txd/m4icon.tex",
+      "size": 87536,
+      "sha256": "a774abc9e7b630ff8b5c269555923da93b6bcb7581b91f999879a47f7b0ee7b9"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "micro_uzi.txd",
+      "texture": "micro_uziicon",
+      "url": "pack/models/gta3.img/micro_uzi.txd/micro_uziicon.tex",
+      "size": 87536,
+      "sha256": "3ef271064bc79efa5c8b43e6212b0e9e2f77a778084e4562650c521b95e0f413"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "minigun.txd",
+      "texture": "minigunicon",
+      "url": "pack/models/gta3.img/minigun.txd/minigunicon.tex",
+      "size": 87536,
+      "sha256": "827733b5d3343b02872fad01d803d8bda84747c4e617c9a96b69713a818140b7"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "molotov.txd",
+      "texture": "molotovicon",
+      "url": "pack/models/gta3.img/molotov.txd/molotovicon.tex",
+      "size": 87536,
+      "sha256": "0042070bebb38d765aefe9efc3acfd6cf887eb572ddac8714c6685c544535445"
+    },
+    {
+      "path": "models/gta3.img",
       "name": "money.dff",
       "url": "pack/models/gta3.img/money.dff",
       "size": 5073,
@@ -178,10 +404,42 @@
     },
     {
       "path": "models/gta3.img",
+      "name": "mp5lng.txd",
+      "texture": "mp5lngicon",
+      "url": "pack/models/gta3.img/mp5lng.txd/mp5lngicon.tex",
+      "size": 87536,
+      "sha256": "606e8ef3a4b8a56a94c14a8284b32ca7b4f8a6c3e37efcec07f835e4e4d529a3"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "nitestick.txd",
+      "texture": "nitestickicon",
+      "url": "pack/models/gta3.img/nitestick.txd/nitestickicon.tex",
+      "size": 87536,
+      "sha256": "f0f2a05a248abf40888dd8c7c55082989b26b53f5eb05eca3e02c210c4dfc071"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "nvgoggles.txd",
+      "texture": "nvgogglesicon",
+      "url": "pack/models/gta3.img/nvgoggles.txd/nvgogglesicon.tex",
+      "size": 87536,
+      "sha256": "83693b4e11638716e4afda8b7a33a435a086516add013fcd7b3653f062c219ba"
+    },
+    {
+      "path": "models/gta3.img",
       "name": "pickupsave.dff",
       "url": "pack/models/gta3.img/pickupsave.dff",
       "size": 5086,
       "sha256": "ce88ac7461bcf5d2a0c996c5cc2f17fcbe07c3ca9ee251e27360c5baada9d3d1"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "poolcue.txd",
+      "texture": "poolcueicon",
+      "url": "pack/models/gta3.img/poolcue.txd/poolcueicon.tex",
+      "size": 87536,
+      "sha256": "4e2d117cfdfbab13ec3ac9617ed5e9eac315c13b4e94fb9489b8c317273de48a"
     },
     {
       "path": "models/gta3.img",
@@ -196,6 +454,86 @@
       "url": "pack/models/gta3.img/property_locked.dff",
       "size": 5091,
       "sha256": "e82a342ba1e8427b0f751ca36092e6659af02f50db70237c320376c3489d7922"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "rocketla.txd",
+      "texture": "rocketlaicon",
+      "url": "pack/models/gta3.img/rocketla.txd/rocketlaicon.tex",
+      "size": 87536,
+      "sha256": "1c5cd0aebe51ebe37a9498dca5c7129f38afe6c7729037a52457c4b524f11c32"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "satchel.txd",
+      "texture": "satchelicon",
+      "url": "pack/models/gta3.img/satchel.txd/satchelicon.tex",
+      "size": 87536,
+      "sha256": "c5b001e6226d752684be827524449bc8900ce82d17bb0b30c8b70a36b8c35987"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "sawnoff.txd",
+      "texture": "sawnofficon",
+      "url": "pack/models/gta3.img/sawnoff.txd/sawnofficon.tex",
+      "size": 87536,
+      "sha256": "d54957f69057dcc860047947afd1e0727bd7e3c50389468770c1f56b902d9ee8"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "shotgspa.txd",
+      "texture": "shotgspaicon",
+      "url": "pack/models/gta3.img/shotgspa.txd/shotgspaicon.tex",
+      "size": 87536,
+      "sha256": "9bcbafab1ecab857c3cc52db92fb15216cd5fd69e28ecd61e0a2d610d571b814"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "shovel.txd",
+      "texture": "shovelicon",
+      "url": "pack/models/gta3.img/shovel.txd/shovelicon.tex",
+      "size": 87536,
+      "sha256": "36867d125deb08031a4927c2a6abcd2b28474e0359d1601983d2ae00343dd562"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "silenced.txd",
+      "texture": "silencedicon",
+      "url": "pack/models/gta3.img/silenced.txd/silencedicon.tex",
+      "size": 87536,
+      "sha256": "504567049346dbba5ff14d0655dfdde9fd110344ea6f693c56aec657dbfa8a0e"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "sniper.txd",
+      "texture": "snipericon",
+      "url": "pack/models/gta3.img/sniper.txd/snipericon.tex",
+      "size": 87536,
+      "sha256": "398264fbcaaeae97de148350fa5d8a96f482c371e6e73f29e4ffedf149856164"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "spraycan.txd",
+      "texture": "spraycanicon",
+      "url": "pack/models/gta3.img/spraycan.txd/spraycanicon.tex",
+      "size": 87536,
+      "sha256": "b31cc1291ba5729e5c50889bc8e0ec41647971c3e8cb68be814306964c7b241a"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "teargas.txd",
+      "texture": "teargasicon",
+      "url": "pack/models/gta3.img/teargas.txd/teargasicon.tex",
+      "size": 87536,
+      "sha256": "e8ec5c9c14259243e351f2d61176c99941d7121bb5e2c188ad33436ceb3eaecc"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "tec9.txd",
+      "texture": "tec9icon",
+      "url": "pack/models/gta3.img/tec9.txd/tec9icon.tex",
+      "size": 87536,
+      "sha256": "b5cb6720697bace8dc23d3516e934772fd5abaef762161a2deaec5615f6763f9"
     },
     {
       "path": "models/gta3.img",
@@ -266,6 +604,12 @@
       "url": "pack/models/gta_int.img/papaerchaseoffice.txd",
       "size": 3817428,
       "sha256": "f2bce5dd19ff19ac3a59dff7ff17bafa6e91ce6b09fa0f76d0dbe3a3d392c108"
+    },
+    {
+      "path": "models/hud.txd",
+      "url": "pack/models/hud.txd",
+      "size": 3057684,
+      "sha256": "5039033422fcec4f871a5838aab2a800b61d8983b3177f39f3277b298bda6ae3"
     }
   ]
 }

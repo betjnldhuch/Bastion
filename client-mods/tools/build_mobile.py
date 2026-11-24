@@ -2,7 +2,7 @@
 #   python build_mobile.py            (из любой папки)
 # Берёт launcher/client-pack/pack/models (то, что ставит ПК-лаунчер) и пишет
 # mobile/launcher/app/src/main/assets/bastion-mods/:
-#   tex/<имя>.btx  — наши текстуры: 'BTX1', ширина, высота, размер, zlib(RGBA)
+#   tex/<имя>.btx  — наши текстуры (и значки оружия из ../weapons/src): 'BTX1', ширина, высота, размер, zlib(RGBA)
 #   img/gta3/*.dff — модели маркеров (лаунчер телефона дописывает их в gta3.img)
 #   version.txt    — хэш содержимого: по нему лаунчер понимает, что пора обновить файлы
 # На телефоне текстуры GTA лежат в texdb, а не в txd, поэтому клиент подменяет их по имени
@@ -10,7 +10,9 @@
 import hashlib, os, shutil, struct, sys, zlib
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 import rw, txdpatch
-from build_radar import MAP as RADAR_MAP
+from PIL import Image
+from build_radar import MAP as RADAR_MAP, HUD_ART
+from build_weapons import WEAPONS, SRC as WEAPON_SRC
 
 ROOT = os.path.normpath(os.path.join(HERE, '..', '..'))
 PACK = os.path.join(ROOT, 'launcher', 'client-pack', 'pack', 'models')
@@ -37,7 +39,7 @@ def btx(im):
 def main():
     shutil.rmtree(OUT, ignore_errors=True)
     os.makedirs(os.path.join(OUT, 'tex')); os.makedirs(os.path.join(OUT, 'img', 'gta3'))
-    radar = {tex.lower() for _, tex, _ in RADAR_MAP}
+    radar = {tex.lower() for _, tex, _ in RADAR_MAP} | {tex.lower() for tex, _ in HUD_ART}
     textures = {}
     for dirpath, _, files in os.walk(PACK):
         for f in sorted(files):
@@ -52,6 +54,9 @@ def main():
                 key = n.lower()
                 if key in textures: continue          # одна и та же картинка в двух txd (24/7)
                 textures[key] = imgs[n]
+    # значки оружия: на ПК лаунчер вписывает их в txd оружия (build_weapons.py), здесь — по имени текстуры
+    for model in WEAPONS:
+        textures.setdefault((model + 'icon').lower(), Image.open(os.path.join(WEAPON_SRC, model + '.png')).convert('RGBA'))
     h = hashlib.sha256()
     for key in sorted(textures):
         data = btx(textures[key])

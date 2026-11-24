@@ -2,6 +2,7 @@
 #   1. Сложи файлы в папку pack\ так же, как они лежат в папке GTA:
 #        pack\models\hud.txd
 #        pack\models\gta3.img\radar00.txd   (папка с именем .img = записи внутри архива)
+#        pack\models\gta3.img\colt45.txd\colt45icon.tex   (папка .txd = заплатка одной текстуры в этой записи)
 #   2. Запусти:  powershell -ExecutionPolicy Bypass -File make-client-pack.ps1 -Version 1
 #   3. Залей client-pack.json и папку pack\ в папку launcher/ на сервере раздачи.
 param([int]$Version = 1, [string]$Pack = "pack", [string]$Out = "client-pack.json")
@@ -11,7 +12,12 @@ Get-ChildItem $root -Recurse -File | Sort-Object FullName | ForEach-Object {
     $rel = $_.FullName.Substring($root.Length).Replace('\', '/')
     $entry = [ordered]@{}
     $dir = Split-Path $rel -Parent
-    if ($dir -and $dir.ToLower().EndsWith('.img')) {
+    $up = if ($dir) { Split-Path $dir -Parent } else { '' }
+    if ($dir -and $dir.ToLower().EndsWith('.txd') -and $up -and $up.ToLower().EndsWith('.img')) {
+        $entry.path = $up.Replace('\', '/')
+        $entry.name = Split-Path $dir -Leaf
+        $entry.texture = [IO.Path]::GetFileNameWithoutExtension($_.Name)
+    } elseif ($dir -and $dir.ToLower().EndsWith('.img')) {
         $entry.path = $dir.Replace('\', '/')
         $entry.name = $_.Name
     } else {

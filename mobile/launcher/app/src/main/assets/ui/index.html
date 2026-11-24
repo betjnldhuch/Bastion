@@ -277,15 +277,17 @@ button { font: inherit; cursor: pointer; }
   .st-cols.two .st-sk { border-left: 1px solid var(--line); padding-left: 22px; } }
 .st-sk { margin: 0 0 12px; }
 .st-sk h2 { font-family: "Russo One", sans-serif; font-weight: 400; font-size: 14px; color: var(--accent); margin: 0 0 8px; letter-spacing: .04em; }
-.sk { display: grid; grid-template-columns: 9.5em 1fr 4.2em; gap: 10px; align-items: center; font-size: 13px; margin-bottom: 6px; }
+.sk { display: grid; grid-template-columns: 12.5em 1fr 4.2em; gap: 10px; align-items: center; font-size: 13px; margin-bottom: 6px; }
 .sk .bar { height: 8px; border-radius: 4px; background: var(--well); overflow: hidden; border: 1px solid var(--line); }
 .sk .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent-dark), var(--accent)); }
 .sk .bar i.max { background: linear-gradient(90deg, #c99a1a, var(--gold)); }
+.sk > span:first-child { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; }
+.sk .wi { width: 30px; height: 30px; margin: -8px 0; flex: none; object-fit: contain; filter: drop-shadow(0 1px 1px rgba(0,0,0,.5)); }
 .sk b { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 .sk .rk { font-size: 11px; color: var(--muted); }
 .sk-note { margin-top: 4px; font-size: 11px; color: var(--muted); }
 .card.doc.wide { width: min(620px, 100%); }
-.doc-fields .st-sk .sk { grid-template-columns: 8.5em 1fr 3em 5.2em; }
+.doc-fields .st-sk .sk { grid-template-columns: 12.5em 1fr 3em 5.2em; }
 @media (max-height: 420px) { .sk { font-size: 12px; margin-bottom: 3px; } .sk-note { display: none; } }
 /* Документы: паспорт, медкарта, лицензии (docs.inc) */
 .card.doc { width: min(520px, 100%); max-height: 100%; padding: 0; overflow: hidden; background: rgba(16, 18, 22, .82); display: flex; flex-direction: column; }
@@ -311,6 +313,9 @@ button { font: inherit; cursor: pointer; }
 .doc-chart .bars i { flex: 1; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, var(--accent), var(--accent-dark)); opacity: .55; }
 .doc-chart .bars i.now { opacity: 1; }
 .doc-chart span { font-size: 10px; color: var(--muted); background: rgba(0,0,0,.45); text-align: center; padding: 3px 0; }
+.doc-photo.shoot { background: #efe2c6 url(doc/shoot_target.png) center / cover no-repeat; }
+.doc-photo.shoot span { color: #e8ecf2; }
+.doc-top .seal.img { border: 0; box-shadow: none; background: url(doc/shoot_stamp.png) center / contain no-repeat; color: transparent; }
 .doc-photo span { font-size: 10px; color: var(--muted); background: rgba(0,0,0,.45); width: 100%; text-align: center; padding: 3px 0; }
 .doc-fields { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 9px 14px; align-content: start; }
 .doc-fields .f { min-width: 0; }
@@ -368,7 +373,7 @@ button { font: inherit; cursor: pointer; }
 #hud .ln.breath.low .v { color: var(--red); }
 @keyframes pulse { 50% { opacity: .35 } }
 @media (max-height: 420px) { #hud { top: 24vh; width: 170px; padding: 7px 9px 8px; } #hud .ln { height: 19px; } #hud .money { font-size: 13px; } }
-/* ---- Телефон (/phone, phoneapp.inc). Графика: ui/phone/*.png (frame, app_*, wall_*), нет файла — CSS и эмодзи ---- */
+/* ---- Телефон (/phone, phoneapp.inc). Графика: ui/phone/ (frame.png, app_*.png, wall_*.jpg), нет файла — CSS и эмодзи ---- */
 #root.phone-mode { background: radial-gradient(ellipse at 80% 60%, rgba(8,9,12,.25), rgba(8,9,12,.05)); justify-content: flex-end; padding: 12px 6vw 12px 12px; }
 @media (max-aspect-ratio: 1/1) { #root.phone-mode { justify-content: center; padding: 12px; } }
 /* телефон в альбомной ориентации: экран низкий — телефон во всю высоту и крупнее текст */
@@ -377,7 +382,9 @@ button { font: inherit; cursor: pointer; }
   border-radius: calc(var(--h) * .075); background: #111317; padding: calc(var(--h) * .022);
   box-shadow: 0 0 0 2px #3a3e46, 0 0 0 4px #15171b, 0 24px 70px rgba(0,0,0,.6); animation: rise .22s ease-out; font-size: calc(var(--h) * .022); }
 .ph.again { animation: none; }
-.ph.img { background: none; box-shadow: none; }
+.ph.img { background: none; box-shadow: none; width: calc(var(--h) * .5177) !important;
+  padding: calc(var(--h) * .0253) calc(var(--h) * .0273) calc(var(--h) * .0353); } /* экран = зелёная область frame.png */
+.ph.img .sb .notch { background: none; }
 .ph > .frame { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
 .ph .scr { position: relative; height: 100%; border-radius: calc(var(--h) * .055); overflow: hidden; z-index: 1;
   background: #0d0f13 linear-gradient(160deg, #2b1a3d 0%, #b4492b 55%, #f0a04b 100%); background-size: cover; background-position: center;
@@ -626,10 +633,13 @@ function vipImg(level, cls) {
   }
 
   // Выписка из тира (skills.inc): [["Пистолеты", 30, "любитель"], ...], проценты 0..100
+  var SK_ICON = { 'Пистолеты': 'colt45', 'Desert Eagle': 'desert_eagle', 'Дробовики': 'chromegun', 'Обрез': 'sawnoff',
+    'Пистолеты-пулемёты': 'mp5lng', 'Автоматы': 'ak47', 'Винтовки': 'cuntgun' };
   function skillsHtml(list) {
     return '<div class="st-sk">' + (list || []).map(function (s) {
       var p = Math.max(0, Math.min(100, s[1] | 0));
-      return '<div class="sk"><span>' + esc(s[0]) + '</span><span class="bar"><i' + (p >= 100 ? ' class="max"' : '') + ' style="width:' + p + '%"></i></span>' +
+      var w = SK_ICON[s[0]];
+      return '<div class="sk"><span>' + (w ? '<img class="wi" src="weapons/' + w + '.png" alt="" onerror="this.remove()">' : '') + esc(s[0]) + '</span><span class="bar"><i' + (p >= 100 ? ' class="max"' : '') + ' style="width:' + p + '%"></i></span>' +
         '<b>' + p + '%</b><span class="rk">' + esc(s[2] || '') + '</span></div>';
     }).join('') + '<div class="sk-note">Растут за попадания. На 100% пистолет, обрез и ПП берутся в обе руки.</div></div>';
   }
@@ -669,6 +679,7 @@ function vipImg(level, cls) {
           return '<div' + (on ? ' class="on"' : '') + '><b>' + l[0] + '</b>' + l[1] + '<i>' + (on ? 'есть' : 'нет') + '</i></div>';
         }).join('') + '</div>';
     } else if (d.kind === 'shooting') {
+      photo = '<div class="doc-photo shoot"><span>мишень</span></div>';
       fields = f('Стрелок', name, 'w') + f('Номер', esc(d.num)) + f('Дата выписки', esc(d.date)) +
         '<div class="f w">' + skillsHtml(d.skills) + '</div>';
     } else {
@@ -685,7 +696,7 @@ function vipImg(level, cls) {
     var tag = d.verified ? '<div class="s" style="color:var(--green)">Данные из банка на момент выдачи</div>' : d.own ? '' : '<div class="s" style="color:var(--accent)">Тебе показывают документ</div>';
     root.innerHTML = '<div class="card doc' + (d.kind === 'shooting' ? ' wide' : '') + '">' + closeBtn() +
       '<div class="doc-top"><div><div class="brand">BASTION ONLINE</div><div class="t">' + k[0] + '</div><div class="s">' + k[1] + '</div>' + tag + '</div>' +
-      '<div class="seal">BS</div></div>' +
+      '<div class="seal' + (d.kind === 'shooting' ? ' img' : '') + '">BS</div></div>' +
       '<div class="doc-body">' + photo + '<div class="doc-fields">' + fields + '</div></div>' +
       '<div class="doc-mrz">' + esc(mrz.slice(0, 44)) + '<br>' + esc((String(d.kind === 'bizstat' ? 'BIZ' + d.num + '<' + d.code : d.num || '').replace(/\s/g, '') + '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<').slice(0, 44)) + '</div>' +
       '<div class="doc-foot"><div class="row"><button class="btn primary" id="b1">' + esc(m.button1 || 'Закрыть') + '</button></div></div></div>';
@@ -839,7 +850,7 @@ function vipImg(level, cls) {
     } else if (app === 'settings') {
       body = page('Настройки', '', '<div class="cnt"><div class="kv"><span>Мой номер</span><b>' + esc(d.num) + '</b></div><h4>Обои</h4><div class="walls">' +
         PH_WALLS.map(function (w, i) {
-          return '<button data-wall="' + i + '" class="' + (wall === w ? 'on' : '') + '" style="background-image:' + (w ? 'url(phone/' + w + '.png),' : '') +
+          return '<button data-wall="' + i + '" class="' + (wall === w ? 'on' : '') + '" style="background-image:' + (w ? 'url(phone/' + w + '.jpg),' : '') +
             'linear-gradient(160deg,#2b1a3d,#b4492b 55%,#f0a04b)"></button>';
         }).join('') + '</div></div>');
     }
@@ -847,7 +858,7 @@ function vipImg(level, cls) {
     root.innerHTML = '<div class="ph' + (again ? ' again' : '') + '" id="ph"><div class="scr" id="scr"><div class="sb"><span>' + esc(d.time || '') + '</span><span class="notch"></span><span>' +
       (d.cs > 0 ? '📞 ' : '') + (d.gps ? '📍 ' : '') + '▮▮▮</span></div><div class="body">' + body + '</div><div class="nav"><button data-go="home" aria-label="Домой"></button></div></div></div>';
     var ph = document.getElementById('ph'), scr = document.getElementById('scr');
-    if (wall) scr.style.backgroundImage = 'url(phone/' + wall + '.png), linear-gradient(160deg, #2b1a3d 0%, #b4492b 55%, #f0a04b 100%)';
+    if (wall) scr.style.backgroundImage = 'url(phone/' + wall + '.jpg), linear-gradient(160deg, #2b1a3d 0%, #b4492b 55%, #f0a04b 100%)';
     frame.onload = function () { ph.classList.add('img'); var f = new Image(); f.className = 'frame'; f.src = frame.src; f.alt = ''; ph.appendChild(f); };
     var msgsEl = document.getElementById('msgs'); if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
     function val(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
