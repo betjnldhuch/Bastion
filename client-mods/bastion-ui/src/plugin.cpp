@@ -10,6 +10,8 @@
 //  Сервер узнаёт, что окна есть, по скрытой команде /__bui (ui.inc).
 //  Диалог "[hud]" — данные панели HUD (hud.inc): не показываем, передаём
 //  странице (BastionUI.hud), стандартные полоски ХП/брони и деньги прячем.
+//  Диалог "[bastion:rec]" — команда /rec (accounts.inc): после кика сервером
+//  переводим SA-MP в «ждёт подключения», и он сам заходит заново.
 //  Если CEF не запустился или версия SA-MP неизвестна — обычные диалоги.
 // =====================================================================
 #include <windows.h>
@@ -61,6 +63,8 @@ bool g_visible = false;  // окно открыто: перехватываем 
 int g_dialogId = -1;
 bool g_helloSent = false;
 bool g_hudOn = false;    // сервер прислал свою панель HUD
+bool g_recArmed = false; // /rec: ждём кика, чтобы подключиться заново
+DWORD g_recSince = 0;
 DWORD g_lastClick = 0;
 int g_lastClickX = 0, g_lastClickY = 0, g_clicks = 0;
 
@@ -85,6 +89,18 @@ void CloseWindowUi(bool tellPage) {
 // ---------------- диалоги ----------------
 void __fastcall HookShow(void* self, void*, int id, int type, const char* caption, const char* txt, const char* b1,
                          const char* b2, BOOL serverside) {
+    if (serverside && caption && strcmp(caption, "[bastion:rec]") == 0) {
+        // Проверяем смещение: сейчас игрок точно в игре. Иначе /rec не трогаем.
+        int st = samp::GetGameState();
+        if (st == samp::kStateConnected) {
+            g_recArmed = true;
+            g_recSince = GetTickCount();
+            Log("rec: ждём кика");
+        } else {
+            Log("rec: неожиданное состояние %d, переподключение выключено", st);
+        }
+        return;
+    }
     if (serverside && caption && strncmp(caption, "[hud]", 5) == 0) {
         // панель HUD: окна нет, ответа нет; без страницы просто молчим
         if (!browser::PageLoaded()) return;
@@ -100,8 +116,8 @@ void __fastcall HookShow(void* self, void*, int id, int type, const char* captio
     }
     if (!g_helloSent) {
         g_helloSent = true;
-        samp::SendCommand("/__bui 2");  // сервер включит HTML-окна (ui.inc) и перешлёт окно входа;
-                                          // 2 — версия: умеет скрытую панель "[hud]" (hud.inc, UI_HasHud)
+        samp::SendCommand("/__bui 3");  // сервер включит HTML-окна (ui.inc) и перешлёт окно входа;
+                                          // версия: 2 — скрытая панель "[hud]" (hud.inc), 3 — /rec
     }
 
     std::string cap = text::Cp1251ToUtf8(caption);
@@ -146,6 +162,21 @@ HRESULT __stdcall HookPresent(IDirect3DDevice9* dev, const RECT* a, const RECT* 
         CloseWindowUi(false);
         if (!samp::SendDialogResponse(id, resp.button, resp.listItem, text::Utf8ToCp1251(resp.text)))
             Log("DialogResponse %d не отправлен", id);
+    }
+    if (g_recArmed) {
+        int st = samp::GetGameState();
+        if (st != samp::kStateConnected && st != samp::kStateWaitConnect && st != samp::kStateConnecting &&
+            st != samp::kStateAwaitJoin && st != -1) {
+            g_recArmed = false;
+            g_hudOn = false;
+            gtahud::SetReplaced(false);
+            CloseWindowUi(true);
+            samp::SetGameState(samp::kStateWaitConnect);  // SA-MP сам подключится заново через ~3 с
+            Log("rec: связь закрыта (состояние %d), подключаемся заново", st);
+        } else if (GetTickCount() - g_recSince > 30000) {
+            g_recArmed = false;
+            Log("rec: кика не было, отбой");
+        }
     }
     overlay::Present(dev, g_visible || (g_hudOn && gtahud::Drawn()));
     return g_origPresent(dev, a, b, w, r);

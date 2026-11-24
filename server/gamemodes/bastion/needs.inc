@@ -307,25 +307,6 @@ stock bool:Outfit_Add(playerid, skin)
 	return false;
 }
 
-//  упленный скин (донат, кейс): сразу надеть, стара€ одежда ложитс€ в сумку.
-// Ќельз€ переодетьс€ сейчас (форма, машина) Ч кладЄм в сумку.
-// 1 Ч надет, 2 Ч в сумке, 0 Ч в сумке нет места
-stock Outfit_GiveAndWear(playerid, skin)
-{
-	if (Outfit_FreeSlots(playerid) <= 0) return 0;
-	if (Player[playerid][pDuty] || IsPlayerInAnyVehicle(playerid) || Player[playerid][pSkin] == skin)
-	{
-		Outfit_Add(playerid, skin);
-		return 2;
-	}
-	Outfit_Add(playerid, Player[playerid][pSkin]);
-	Player[playerid][pSkin] = skin;
-	SetPlayerSkin(playerid, skin);
-	Account_Save(playerid);
-	Account_SetNormalSpawn(playerid);
-	return 1;
-}
-
 static Outfit_Remove(playerid, slot)
 {
 	new skin = gOutfit[playerid][slot];
