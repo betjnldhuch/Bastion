@@ -7,7 +7,7 @@
 //          ≈сли р€дом ничего нет, но перед тобой игрок Ч меню взаимодействи€.
 //          ≈сли держишь игрока на прицеле (права€ кнопка мыши) Ч меню дл€ него.
 //    Y   Ч прин€ть предложение / ответить на звонок
-//    N   Ч отказатьс€ / сбросить звонок
+//    N   Ч отказатьс€ / сбросить звонок, иначе достать телефон
 //  ¬ машине (за рулЄм):
 //    2   Ч двигатель
 //    H   Ч на ј«— заправка, на —“ќ меню —“ќ, иначе шлагбаум или ворота своей фракции
@@ -363,6 +363,7 @@ stock Keys_OnKeyStateChange(playerid, newkeys, oldkeys)
 	{
 		if (Player[playerid][pCallState] != CALL_NONE) Cmd_HangUp(playerid);
 		else if (Player[playerid][pOfferType] != OFFER_NONE) Cmd_Deny(playerid);
+		else if (Player[playerid][pPhone] != 0 && UI_Has(playerid) && !Wound_IsWounded(playerid)) Cmd_Phone(playerid);   // N Ч телефон (phoneapp.inc)
 		return 1;
 	}
 	return 0;
