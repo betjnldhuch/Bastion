@@ -106,9 +106,13 @@ jobs:
           test -x "$C/Resources/wine/bin/wineserver"
           ls "$C/Resources/wine/lib/wine" | head
           # wine-mono той версии, которую ждёт этот Wine (написано в appwiz.cpl)
-          MSI=$(find "$C/Resources/wine/lib" -name appwiz.cpl -exec grep -aohE 'wine-mono-[0-9.]+-x86[.]msi' {} + | sort -u | head -1)
-          echo "wine-mono: $MSI"; test -n "$MSI"
-          MV=$(echo "$MSI" | sed -E 's/wine-mono-([0-9.]+)-x86.msi/\1/')
+          AW=$(find "$C/Resources/wine/lib" -path '*i386-windows/appwiz.cpl' | head -1)
+          MV=$( { strings -a "$AW"; strings -a -el "$AW"; } | grep -E '^(9|[1-9][0-9])[.][0-9]+[.][0-9]+$' | sort -V | tail -1)
+          if [ -z "$MV" ]; then
+            MV=$(curl -fsL https://dl.winehq.org/wine/wine-mono/ | grep -oE 'href="[0-9]+[.][0-9]+[.][0-9]+/"' | grep -oE '[0-9.]+[0-9]' | sort -V | tail -1)
+            echo "::warning::версия wine-mono не найдена в appwiz.cpl, беру последнюю $MV"
+          fi
+          MSI="wine-mono-$MV-x86.msi"; echo "wine-mono: $MV"
           curl -fL --retry 4 -o "$C/Resources/wine-mono.msi" "https://dl.winehq.org/wine/wine-mono/$MV/$MSI"
 
           mkdir -p "$C/Resources/BastionLauncher"
