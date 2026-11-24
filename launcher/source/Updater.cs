@@ -12,7 +12,11 @@
 //  но можно переименовать: старый становится .old и удаляется при
 //  следующем запуске.
 //
-//  version.ini:
+//  По умолчанию version-pc.ini берётся из релиза «builds» на GitHub: CI
+//  (pc-launcher.yml) выкладывает туда каждую сборку main, сам проставляя номер
+//  версии по времени коммита. Свой адрес — update_url в launcher.ini.
+//
+//  version-pc.ini / version.ini:
 //    pc_version = 2.1.0.0
 //    pc_url     = BastionLauncher.zip      (имя в той же папке или полная https-ссылка)
 //    pc_sha256  = ...                      (необязательно; certutil -hashfile файл SHA256)
@@ -94,6 +98,8 @@ namespace BastionLauncher
         const long MaxArchive = 209715200L;     // 200 МБ
         const long MaxExtracted = 524288000L;   // 500 МБ
         const string ExeName = "BastionLauncher.exe";
+        public const string DefaultVersionUrl =
+            "https://github.com/betjnldhuch/bastion/releases/download/builds/version-pc.ini";
 
         public static Version Current
         {
