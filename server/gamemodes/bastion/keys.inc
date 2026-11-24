@@ -293,6 +293,11 @@ stock Keys_Interact(playerid)
 		Cmd_BuyCar(playerid);
 		return;
 	}
+	if (Docs_IsNearPassDesk(playerid))
+	{
+		Docs_PassDesk(playerid);     // паспортный стол в мэрии (docs.inc)
+		return;
+	}
 	if (Licenses_IsNearSchool(playerid))
 	{
 		Cmd_Exam(playerid);
