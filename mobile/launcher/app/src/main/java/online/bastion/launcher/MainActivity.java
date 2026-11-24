@@ -561,6 +561,75 @@ public class MainActivity extends Activity {
                 .show();
     }
 
+    /** «Проверить файлы»: сверка с эталоном установки, при проблемах — восстановление. */
+    private void verifyGameFiles() {
+        if (!ClientInstaller.isGameInstalled(this)) {
+            notice("Игра не установлена", "Сначала установи игру.", "Установить", new Runnable() {
+                @Override public void run() { installClientAssets(); }
+            });
+            return;
+        }
+        final ProgressDialog progress = new ProgressDialog(this);
+        progress.setTitle("Проверка файлов игры");
+        progress.setMessage("Подготовка…");
+        progress.setIndeterminate(true);
+        progress.setCancelable(false);
+        progress.show();
+        new ClientInstaller(this).verifyGame(new ClientInstaller.VerifyCallback() {
+            @Override public void onProgress(String message) { if (progress.isShowing()) progress.setMessage(message); }
+
+            @Override public void onResult(List<String> bad, int checked) {
+                if (progress.isShowing()) progress.dismiss();
+                Runnable repair = new Runnable() { @Override public void run() { startRepair(); } };
+                if (checked < 0) {
+                    notice("Нужна полная сверка",
+                            "Игра поставлена старой версией лаунчера, эталона файлов нет. Лаунчер скачает архив игры, сверит с ним каждый файл и заменит только повреждённые. Ник и настройки сохранятся.",
+                            "Сверить", repair);
+                } else if (bad.isEmpty()) {
+                    notice("Файлы в порядке", "Проверено файлов: " + checked + ". Повреждённых и отсутствующих нет.\n\n"
+                            + "Если игра всё равно вылетает — нажми «Переустановить».", null, null);
+                } else {
+                    StringBuilder list = new StringBuilder();
+                    for (int i = 0; i < bad.size() && i < 12; i++) list.append("• ").append(bad.get(i)).append('\n');
+                    if (bad.size() > 12) list.append("…и ещё ").append(bad.size() - 12).append('\n');
+                    notice("Найдены проблемы: " + bad.size(),
+                            list + "\nЛаунчер скачает архив игры и заменит только эти файлы. Ник и настройки сохранятся.",
+                            "Восстановить", repair);
+                }
+            }
+
+            @Override public void onError(String message) {
+                if (progress.isShowing()) progress.dismiss();
+                notice("Проверка не удалась", message, null, null);
+            }
+        });
+    }
+
+    private void startRepair() {
+        final ProgressDialog progress = new ProgressDialog(this);
+        progress.setTitle("Восстановление файлов игры");
+        progress.setMessage("Подготовка загрузки…");
+        progress.setIndeterminate(true);
+        progress.setCancelable(false);
+        progress.show();
+        new ClientInstaller(this).repairGame(ClientInstaller.GAME_ARCHIVE_URL, ClientInstaller.GAME_ARCHIVE_MD5,
+                new ClientInstaller.Callback() {
+            @Override public void onProgress(String message) { if (progress.isShowing()) progress.setMessage(message); }
+
+            @Override public void onComplete(int count, java.io.File directory) {
+                if (progress.isShowing()) progress.dismiss();
+                updatePlayButton();
+                notice("Готово", count == 0 ? "Все файлы совпали с архивом, заменять ничего не пришлось."
+                        : "Заменено файлов: " + count + ". Можно играть.", null, null);
+            }
+
+            @Override public void onError(String message) {
+                if (progress.isShowing()) progress.dismiss();
+                notice("Восстановление не удалось", message + "\n\nМожно нажать «Переустановить» — игра скачается начисто.", null, null);
+            }
+        });
+    }
+
     private static final int PICK_ARCHIVE = 4711;
 
     /** Выбор ZIP-архива игры из памяти телефона (Загрузки, Google Drive и т. д.). */
@@ -760,14 +829,27 @@ public class MainActivity extends Activity {
         });
         leftPanel.addView(diagnostics, new LinearLayout.LayoutParams(WRAP, Ui.dp(34)));
 
-        TextView install = Ui.primaryButton(this, "УСТАНОВИТЬ / ОБНОВИТЬ ИГРУ");
+        LinearLayout gameRow = new LinearLayout(this);
+        gameRow.setOrientation(LinearLayout.HORIZONTAL);
+        TextView verify = Ui.ghostButton(this, "ПРОВЕРИТЬ ФАЙЛЫ");
+        verify.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        verify.setGravity(Gravity.CENTER);
+        verify.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { verifyGameFiles(); }
+        });
+        LinearLayout.LayoutParams verifyLp = new LinearLayout.LayoutParams(0, Ui.dp(40), 1f);
+        verifyLp.rightMargin = Ui.dp(8);
+        gameRow.addView(verify, verifyLp);
+        TextView install = Ui.primaryButton(this,
+                ClientInstaller.isGameInstalled(this) ? "ПЕРЕУСТАНОВИТЬ" : "УСТАНОВИТЬ ИГРУ");
         install.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
         install.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { installClientAssets(); }
         });
+        gameRow.addView(install, new LinearLayout.LayoutParams(0, Ui.dp(40), 1f));
         LinearLayout.LayoutParams installLp = new LinearLayout.LayoutParams(MATCH, Ui.dp(40));
         installLp.topMargin = Ui.dp(9);
-        leftPanel.addView(install, installLp);
+        leftPanel.addView(gameRow, installLp);
 
         LinearLayout.LayoutParams leftLp = new LinearLayout.LayoutParams(0, WRAP, 1.08f);
         leftLp.rightMargin = Ui.dp(16);

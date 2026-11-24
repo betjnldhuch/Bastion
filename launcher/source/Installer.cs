@@ -5,6 +5,7 @@
 //  Корень игры в архиве — самая верхняя папка, где лежит gta_sa.exe.
 // =====================================================================
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
@@ -123,9 +124,6 @@ namespace BastionLauncher
         // следующему и докачивает с того же места.
         public static void Install(string url, string md5, string dest, Action<string> progress)
         {
-            string[][] sources = ParseSources(url);
-            int partCount = sources[0].Length;
-            md5 = md5 == null ? "" : md5.Trim().ToLowerInvariant();
             dest = Path.GetFullPath(dest);
             if (Directory.Exists(dest) && Directory.GetFileSystemEntries(dest).Length > 0)
                 throw new Exception("Папка " + dest + " не пустая. Выбери пустую папку для игры.");
@@ -134,42 +132,21 @@ namespace BastionLauncher
             string archive = ArchivePath(dest);
             string staging = dest + ".tmp"; // короче — меньше шансов упереться в 260 знаков
 
-            // Недокачанное от другого архива (сменился MD5, а без MD5 — ссылка) — начинаем
-            // заново. Новые зеркала с тем же MD5 скачанное не сбрасывают.
-            string info = md5.Length > 0 ? "md5=" + md5 + "\r\nparts=" + partCount + "\r\n"
-                                         : "url=" + url.Trim() + "\r\nmd5=\r\n";
-            string infoFile = InfoPath(archive);
-            string old = null;
-            try { if (File.Exists(infoFile)) old = File.ReadAllText(infoFile); } catch (Exception) { }
-            if (old != info)
-            {
-                DeletePartial(archive);
-                File.WriteAllText(infoFile, info);
-            }
-
             bool done = false;
             try
             {
-                DownloadParts(sources, archive, progress);
-                if (md5.Length > 0)
-                {
-                    progress("Проверка архива (MD5)…");
-                    if (Md5(archive, progress) != md5)
-                    {
-                        DeletePartial(archive); // битый архив докачивать бессмысленно
-                        throw new Exception("MD5 не совпадает: архив повреждён или это другая версия. " +
-                                            "Скачанное удалено, нажми УСТАНОВИТЬ ещё раз.");
-                    }
-                }
+                Fetch(url, md5, archive, progress);
                 DeleteTree(staging);
                 try { DeleteTree(dest + ".installing"); } catch (Exception) { } // от версий до 2.4.1
                 Directory.CreateDirectory(staging);
-                try { Extract(archive, staging, progress); }
+                List<string> manifest = new List<string>();
+                try { Extract(archive, staging, progress, manifest); }
                 catch (InvalidDataException)
                 {
                     DeletePartial(archive);
                     throw new Exception("Архив повреждён (не открывается как ZIP). Скачанное удалено, нажми УСТАНОВИТЬ ещё раз.");
                 }
+                SaveManifest(staging, manifest);
 
                 progress("Проверка установки…");
                 if (!File.Exists(Path.Combine(staging, "gta_sa.exe")))
@@ -187,6 +164,187 @@ namespace BastionLauncher
                 if (done) DeletePartial(archive);
                 try { DeleteTree(staging); } catch (Exception) { }
             }
+        }
+
+        // Скачать архив в archive (с докачкой) и сверить MD5.
+        static void Fetch(string url, string md5, string archive, Action<string> progress)
+        {
+            string[][] sources = ParseSources(url);
+            int partCount = sources[0].Length;
+            md5 = md5 == null ? "" : md5.Trim().ToLowerInvariant();
+            // Недокачанное от другого архива (сменился MD5, а без MD5 — ссылка) — начинаем
+            // заново. Новые зеркала с тем же MD5 скачанное не сбрасывают.
+            string info = md5.Length > 0 ? "md5=" + md5 + "\r\nparts=" + partCount + "\r\n"
+                                         : "url=" + url.Trim() + "\r\nmd5=\r\n";
+            string infoFile = InfoPath(archive);
+            string old = null;
+            try { if (File.Exists(infoFile)) old = File.ReadAllText(infoFile); } catch (Exception) { }
+            if (old != info)
+            {
+                DeletePartial(archive);
+                File.WriteAllText(infoFile, info);
+            }
+
+            DownloadParts(sources, archive, progress);
+            if (md5.Length > 0)
+            {
+                progress("Проверка архива (MD5)…");
+                if (Md5(archive, progress) != md5)
+                {
+                    DeletePartial(archive); // битый архив докачивать бессмысленно
+                    throw new Exception("MD5 не совпадает: архив повреждён или это другая версия. " +
+                                        "Скачанное удалено, нажми ещё раз.");
+                }
+            }
+        }
+
+        // ---------------- проверка и восстановление файлов игры ----------------
+        // Эталон установки: «путь|размер|CRC32» каждого файла из архива игры.
+        // Пишется при установке и после восстановления.
+        const string ManifestRel = @"_bastion_backup\game-files.txt";
+
+        static void SaveManifest(string gta, List<string> lines)
+        {
+            string p = Path.Combine(gta, ManifestRel);
+            Directory.CreateDirectory(Path.GetDirectoryName(p));
+            File.WriteAllLines(p, lines.ToArray(), Encoding.UTF8);
+        }
+
+        // Файлы, которые меняет сам лаунчер (пакет Bastion в .img, фикс Skimmer, экраны загрузки,
+        // FPS-пакет, настройки): у них проверяется только наличие.
+        public static bool PresenceOnly(string rel, ICollection<string> packPaths)
+        {
+            string l = rel.Replace('\\', '/').ToLowerInvariant();
+            if (packPaths != null && packPaths.Contains(l)) return true;
+            if (l.EndsWith(".img") || l.EndsWith(".ini") || l.EndsWith(".cfg") || l.EndsWith(".set") ||
+                l.EndsWith(".log") || l.EndsWith(".txt")) return true;
+            if (l == "data/vehicles.ide" || l == "models/txd/loadscs.txd") return true;
+            if (l.StartsWith("bastion_ui/") || l.StartsWith("_bastion_backup/")) return true;
+            if (l.IndexOf('/') < 0 && FpsPack.Owns(l)) return true;
+            return false;
+        }
+
+        // Быстрая проверка по эталону. null — эталона нет (игра поставлена старым лаунчером).
+        public static List<string> Verify(string gta, ICollection<string> packPaths, Action<string> progress)
+        {
+            string p = Path.Combine(gta, ManifestRel);
+            if (!File.Exists(p)) return null;
+            string[] lines = File.ReadAllLines(p, Encoding.UTF8);
+            List<string> bad = new List<string>();
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string[] f = lines[i].Split('|');
+                if (f.Length < 3) continue;
+                if (i % 20 == 0) progress("Проверка файлов игры: " + (i + 1) + " из " + lines.Length);
+                string full = Path.Combine(gta, f[0].Replace('/', '\\'));
+                if (!File.Exists(L(full)))
+                {
+                    // моды, убранные проверкой модов в _off, — не поломка
+                    if (!File.Exists(L(Path.Combine(Path.Combine(gta, "_off"), f[0].Replace('/', '\\')))))
+                        bad.Add(f[0] + " — нет файла");
+                    continue;
+                }
+                if (PresenceOnly(f[0], packPaths)) continue;
+                long size; uint crc;
+                if (!long.TryParse(f[1], out size) || !uint.TryParse(f[2], out crc)) continue;
+                if (new FileInfo(L(full)).Length != size || Crc32File(full) != crc) bad.Add(f[0] + " — повреждён");
+            }
+            return bad;
+        }
+
+        // Восстановление: скачать архив игры, сверить с ним каждый файл установки и заменить
+        // только отсутствующие и повреждённые. Возвращает число заменённых файлов.
+        public static int Repair(string url, string md5, string gta, ICollection<string> packPaths, Action<string> progress)
+        {
+            gta = Path.GetFullPath(gta.TrimEnd('\\', '/'));
+            string archive = ArchivePath(gta);
+            Fetch(url, md5, archive, progress);
+            string root = gta + Path.DirectorySeparatorChar;
+            List<string> manifest = new List<string>();
+            int fixedCount = 0, seen = 0;
+            try
+            {
+                using (ZipArchive zip = ZipFile.OpenRead(archive))
+                {
+                    string prefix = FindRoot(zip);
+                    int count = zip.Entries.Count;
+                    foreach (ZipArchiveEntry e in zip.Entries)
+                    {
+                        string name = e.FullName.Replace('\\', '/');
+                        if (!name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+                        string rel = name.Substring(prefix.Length);
+                        if (rel.Length == 0 || rel.EndsWith("/")) continue;
+                        string path = Path.GetFullPath(Path.Combine(gta, rel.Replace('/', Path.DirectorySeparatorChar)));
+                        if (!path.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                            throw new Exception("Небезопасный путь в архиве: " + e.FullName);
+                        seen++;
+                        if (seen % 20 == 0) progress("Сверка с архивом: " + (seen * 100 / Math.Max(1, count)) + "%, заменено " + fixedCount);
+                        uint want = Crc32Entry(e);
+                        manifest.Add(rel + "|" + e.Length + "|" + want);
+                        bool have = File.Exists(L(path));
+                        if (have && PresenceOnly(rel, packPaths)) continue;
+                        if (!have && File.Exists(L(Path.Combine(Path.Combine(gta, "_off"), rel.Replace('/', '\\'))))) continue;
+                        if (have && new FileInfo(L(path)).Length == e.Length && Crc32File(path) == want) continue;
+                        progress("Замена: " + rel);
+                        Directory.CreateDirectory(L(Path.GetDirectoryName(path)));
+                        string tmp = path + ".bastion_tmp";
+                        e.ExtractToFile(L(tmp), true);
+                        try
+                        {
+                            if (File.Exists(L(path))) { File.SetAttributes(L(path), FileAttributes.Normal); File.Delete(L(path)); }
+                        }
+                        catch (Exception)
+                        {
+                            try { File.Delete(L(tmp)); } catch (Exception) { }
+                            throw new Exception("Не получилось заменить " + rel + ": закрой игру. Если игра в Program Files — запусти лаунчер от имени администратора.");
+                        }
+                        File.Move(L(tmp), L(path));
+                        fixedCount++;
+                    }
+                }
+            }
+            catch (InvalidDataException)
+            {
+                DeletePartial(archive);
+                throw new Exception("Архив повреждён (не открывается как ZIP). Скачанное удалено, нажми ещё раз.");
+            }
+            if (seen == 0) throw new Exception("В архиве нет файлов игры.");
+            SaveManifest(gta, manifest);
+            DeletePartial(archive);
+            return fixedCount;
+        }
+
+        static uint[] crcTable;
+
+        static uint Crc32(Stream s)
+        {
+            if (crcTable == null)
+            {
+                uint[] t = new uint[256];
+                for (uint i = 0; i < 256; i++)
+                {
+                    uint c = i;
+                    for (int k = 0; k < 8; k++) c = (c & 1) != 0 ? 0xEDB88320u ^ (c >> 1) : c >> 1;
+                    t[i] = c;
+                }
+                crcTable = t;
+            }
+            uint crc = 0xFFFFFFFFu;
+            byte[] buf = new byte[1 << 16];
+            int n;
+            while ((n = s.Read(buf, 0, buf.Length)) > 0)
+                for (int i = 0; i < n; i++) crc = crcTable[(crc ^ buf[i]) & 0xFF] ^ (crc >> 8);
+            return ~crc;
+        }
+
+        static uint Crc32File(string path)
+        {
+            using (FileStream fs = new FileStream(L(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 1 << 16)) return Crc32(fs);
+        }
+
+        static uint Crc32Entry(ZipArchiveEntry e)
+        {
+            using (Stream s = e.Open()) return Crc32(s);
         }
 
         // Обновление уже установленной игры целиком, как на телефоне: новый архив ставится
@@ -620,7 +778,7 @@ namespace BastionLauncher
             return best;
         }
 
-        static void Extract(string archive, string staging, Action<string> progress)
+        static void Extract(string archive, string staging, Action<string> progress, List<string> manifest)
         {
             progress("Распаковка…");
             string root = Path.GetFullPath(staging) + Path.DirectorySeparatorChar;
@@ -644,6 +802,7 @@ namespace BastionLauncher
                     if (size > MaxExtracted) throw new Exception("Распакованная игра больше 32 ГБ.");
                     Directory.CreateDirectory(L(Path.GetDirectoryName(path)));
                     e.ExtractToFile(L(path), true);
+                    if (manifest != null) manifest.Add(rel + "|" + e.Length + "|" + Crc32File(path));
                     int pct = (int)((long)done * 100 / count);
                     if (pct != last) { last = pct; progress("Распаковка: " + pct + "%"); }
                 }

@@ -541,6 +541,15 @@ namespace BastionLauncher
             return copied;
         }
 
+        // Есть ли в пакете FPS файл с таким именем (лаунчер копирует его в папку игры)
+        public static bool Owns(string fileName)
+        {
+            if (files == null) Load();
+            foreach (string f in files)
+                if (string.Equals(Path.GetFileName(f), fileName, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
         // Установлен ли пакет в игре (все .asi/.dll на месте и совпадают)
         public static bool Installed(string gta)
         {

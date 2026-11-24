@@ -1024,25 +1024,37 @@ namespace BastionLauncher
             settings.Controls.Add(tClose);
 
             FlatBtn mods = new FlatBtn(); mods.Text = "ПРОВЕРИТЬ МОДЫ";
-            mods.Bounds = new Rectangle(22, 388, 170, 36);
+            mods.Bounds = new Rectangle(22, 388, 110, 36);
+            mods.Font = Theme.F(8f, FontStyle.Bold);
             mods.Click += delegate { CheckMods(true); };
             settings.Controls.Add(mods);
 
             FlatBtn verify = new FlatBtn(); verify.Text = "ПРОВЕРИТЬ ФАЙЛЫ";
-            verify.Bounds = new Rectangle(200, 388, 130, 36);
+            verify.Bounds = new Rectangle(138, 388, 110, 36);
             verify.Font = Theme.F(8f, FontStyle.Bold);
             verify.Click += delegate
             {
                 if (!GameFound()) { Warn("Сначала укажи папку игры."); return; }
                 ToggleSettings();
-                if (cfg.EffectiveClientPackUrl.Length == 0) { OfferReinstall(false); return; }
-                SyncPack(gtaPath.Text.Trim(), true, false);
+                VerifyGame(gtaPath.Text.Trim());
             };
             settings.Controls.Add(verify);
 
+            FlatBtn reinstall = new FlatBtn(); reinstall.Text = "ПЕРЕУСТАНОВИТЬ";
+            reinstall.Bounds = new Rectangle(254, 388, 110, 36);
+            reinstall.Font = Theme.F(8f, FontStyle.Bold);
+            reinstall.Click += delegate
+            {
+                if (!GameFound()) { Warn("Сначала укажи папку игры."); return; }
+                if (installing) return;
+                ToggleSettings();
+                OfferReinstall(false);
+            };
+            settings.Controls.Add(reinstall);
+
             FlatBtn done = new FlatBtn(); done.Text = "СОХРАНИТЬ"; done.Primary = true;
             done.Font = Theme.Hv(11f);
-            done.Bounds = new Rectangle(340, 388, 140, 36);
+            done.Bounds = new Rectangle(370, 388, 110, 36);
             done.Click += delegate { SaveSettings(true); ToggleSettings(); };
             settings.Controls.Add(done);
 
@@ -1483,6 +1495,124 @@ namespace BastionLauncher
                             Warn((reinstall ? "Не получилось обновить игру: " : "Не получилось установить игру: ") + error);
                         }
                         UpdatePlayLabel();
+                    }));
+                }
+                catch (Exception) { }
+            });
+            th.IsBackground = true;
+            th.Start();
+        }
+
+        // ---------------- проверка и восстановление файлов игры ----------------
+        // «Проверить файлы»: файлы из архива игры сверяются с эталоном (размер + CRC32),
+        // повреждённые и пропавшие можно заменить из архива, затем полная проверка пакета Bastion.
+        void VerifyGame(string gta)
+        {
+            if (installing) return;
+            installing = true;
+            string label = play.Text;
+            play.Text = "ПРОВЕРКА…"; play.Enabled = false; play.Invalidate();
+            string packUrl = cfg.EffectiveClientPackUrl;
+            Thread th = new Thread(delegate ()
+            {
+                HashSet<string> packPaths = new HashSet<string>();
+                List<string> bad = null;
+                string error = null;
+                try
+                {
+                    if (packUrl.Length > 0)
+                    {
+                        try { foreach (PackFile f in ClientPack.Fetch(packUrl).Files) packPaths.Add(f.Path.ToLowerInvariant()); }
+                        catch (Exception) { }
+                    }
+                    bad = GameInstaller.Verify(gta, packPaths, delegate (string msg)
+                    {
+                        try { BeginInvoke(new MethodInvoker(delegate { SetStatus(msg); })); } catch (Exception) { }
+                    });
+                }
+                catch (Exception ex) { error = ex.Message; }
+                try
+                {
+                    BeginInvoke(new MethodInvoker(delegate
+                    {
+                        installing = false;
+                        play.Enabled = true;
+                        play.Text = label; play.Invalidate();
+                        UpdatePlayLabel();
+                        if (error != null) { SetStatus("Проверка не удалась."); Warn("Не получилось проверить файлы: " + error); return; }
+                        bool haveArchive = cfg.EffectiveGameUrl.Length > 0;
+                        if (bad != null && bad.Count == 0)
+                        {
+                            if (packUrl.Length > 0) SyncPack(gta, true, false);
+                            else SetStatus("Файлы игры в порядке.");
+                            return;
+                        }
+                        if (!haveArchive)
+                        {
+                            if (bad != null) Warn("Повреждены файлы игры:\r\n" + BadList(bad) + "\r\nВ лаунчере нет архива игры, восстановить их нечем.");
+                            if (packUrl.Length > 0) SyncPack(gta, true, false);
+                            return;
+                        }
+                        string q = bad == null
+                            ? "Игра поставлена старой версией лаунчера, эталона файлов нет.\r\n\r\n" +
+                              "Скачать архив игры, сверить с ним каждый файл и заменить повреждённые?"
+                            : "Найдены проблемы (" + bad.Count + "):\r\n" + BadList(bad) +
+                              "\r\nСкачать архив игры и заменить только эти файлы?";
+                        q += "\r\n\r\nМоды, ник и настройки не тронутся.";
+                        if (MessageBox.Show(this, q, cfg.Title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                            StartRepair(gta, packPaths);
+                        else if (packUrl.Length > 0) SyncPack(gta, true, false);
+                    }));
+                }
+                catch (Exception) { }
+            });
+            th.IsBackground = true;
+            th.Start();
+        }
+
+        static string BadList(List<string> bad)
+        {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < bad.Count && i < 12; i++) sb.Append("• ").Append(bad[i]).Append("\r\n");
+            if (bad.Count > 12) sb.Append("…и ещё ").Append(bad.Count - 12).Append("\r\n");
+            return sb.ToString();
+        }
+
+        void StartRepair(string gta, HashSet<string> packPaths)
+        {
+            if (installing) return;
+            installing = true;
+            play.Text = "ВОССТАНОВЛЕНИЕ…"; play.Enabled = false; play.Invalidate();
+            string url = cfg.EffectiveGameUrl, md5 = cfg.EffectiveGameMd5;
+            Thread th = new Thread(delegate ()
+            {
+                string error = null;
+                int n = 0;
+                try
+                {
+                    n = GameInstaller.Repair(url, md5, gta, packPaths, delegate (string msg)
+                    {
+                        try { BeginInvoke(new MethodInvoker(delegate { SetStatus(msg); })); } catch (Exception) { }
+                    });
+                }
+                catch (Exception ex) { error = ex.Message; }
+                try
+                {
+                    BeginInvoke(new MethodInvoker(delegate
+                    {
+                        installing = false;
+                        play.Enabled = true;
+                        UpdatePlayLabel();
+                        if (error != null)
+                        {
+                            SetStatus("Восстановление не удалось.");
+                            Warn("Не получилось восстановить файлы: " + error +
+                                 "\r\n\r\nМожно нажать «Настройки» → «Переустановить» — игра скачается начисто.");
+                            return;
+                        }
+                        packChecked = false;
+                        SetStatus(n == 0 ? "Файлы совпали с архивом, заменять ничего не пришлось." : "Заменено файлов: " + n + ".");
+                        if (cfg.EffectiveClientPackUrl.Length > 0) SyncPack(gta, true, false);
                     }));
                 }
                 catch (Exception) { }

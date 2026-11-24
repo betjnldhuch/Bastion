@@ -450,7 +450,7 @@ namespace BastionServer
         // состояние сервера
         Process proc;
         StreamWriter stdin;
-        bool stopping, restartAfterStop, closingApp;
+        bool stopping, restartAfterStop, closingApp, toTray;
         DateTime startedAt;
         int crashes;
 
@@ -528,7 +528,11 @@ namespace BastionServer
             tray = new NotifyIcon();
             tray.Icon = Icon ?? SystemIcons.Application;
             tray.Text = "Bastion Server";
-            tray.DoubleClick += delegate { Show(); WindowState = FormWindowState.Normal; Activate(); tray.Visible = false; };
+            tray.DoubleClick += delegate { ShowFromTray(); };
+            tray.MouseClick += delegate(object o, MouseEventArgs me) { if (me.Button == MouseButtons.Left) ShowFromTray(); };
+            ContextMenu tm = new ContextMenu();
+            tm.MenuItems.Add("Открыть стартер", delegate { ShowFromTray(); });
+            tray.ContextMenu = tm;
 
             tick = new System.Windows.Forms.Timer();
             tick.Interval = 300;
@@ -537,6 +541,9 @@ namespace BastionServer
 
             Shown += delegate
             {
+                // окно всегда открывается нормально (даже если ярлык/автозапуск просит «свёрнутым»)
+                if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+                Activate();
                 AttachExisting();
                 ShowLogTail();
                 LoadConfigFields();
@@ -1588,6 +1595,9 @@ namespace BastionServer
             chkAutoStart = Check("Запускать сервер сразу при открытии стартера", s, ref y);
             chkAutoStart.Checked = Cfg.On("autostart", false);
             chkAutoStart.CheckedChanged += delegate { Cfg.Set("autostart", chkAutoStart.Checked ? "1" : "0"); };
+            CheckBox chkTray = Check("Сворачивать стартер в трей (а не на панель задач)", s, ref y);
+            chkTray.Checked = Cfg.On("minimize_to_tray", false);
+            chkTray.CheckedChanged += delegate { Cfg.Set("minimize_to_tray", chkTray.Checked ? "1" : "0"); };
             CheckBox chkWin = Check("Открывать стартер при входе в Windows", s, ref y);
             chkWin.Checked = AutorunOn();
             chkWin.CheckedChanged += delegate { SetAutorun(chkWin.Checked); };
@@ -1700,12 +1710,22 @@ namespace BastionServer
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            if (WindowState == FormWindowState.Minimized && Running)
+            if (WindowState == FormWindowState.Minimized && Running && (toTray || Cfg.On("minimize_to_tray", false)))
             {
+                toTray = false;
                 Hide();
                 tray.Visible = true;
                 tray.ShowBalloonTip(2000, "Bastion Server", "Сервер работает. Стартер свёрнут сюда.", ToolTipIcon.Info);
             }
+        }
+
+        public void ShowFromTray()
+        {
+            tray.Visible = false;
+            Show();
+            if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+            Activate();
+            TopMost = true; TopMost = false; // вытащить поверх остальных окон
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -1717,7 +1737,7 @@ namespace BastionServer
                     "Bastion Server", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
                 e.Cancel = true;
                 if (r == DialogResult.Yes) { closingApp = true; StopServer(false); }
-                else if (r == DialogResult.No) WindowState = FormWindowState.Minimized;
+                else if (r == DialogResult.No) { toTray = true; WindowState = FormWindowState.Minimized; }
                 return;
             }
             if (Running) { e.Cancel = true; return; } // ждём остановки, OnExited закроет окно
@@ -1736,15 +1756,28 @@ namespace BastionServer
             bool created;
             using (Mutex m = new Mutex(true, "BastionServerStarter_" + ExeDir.ToLowerInvariant().GetHashCode().ToString("x"), out created))
             {
+                string showName = "BastionServerStarterShow_" + ExeDir.ToLowerInvariant().GetHashCode().ToString("x");
                 if (!created)
                 {
-                    MessageBox.Show("Стартер для этой папки уже открыт (проверь значок в трее).", "Bastion Server");
+                    // стартер уже открыт: просто показываем его окно, а не шлём в трей
+                    try { using (EventWaitHandle h = EventWaitHandle.OpenExisting(showName)) h.Set(); return; }
+                    catch (Exception) { }
+                    MessageBox.Show("Стартер для этой папки уже открыт.", "Bastion Server");
                     return;
                 }
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 Cfg.Load();
-                Application.Run(new MainForm());
+                MainForm f = new MainForm();
+                EventWaitHandle show = new EventWaitHandle(false, EventResetMode.AutoReset, showName);
+                Thread t = new Thread(delegate ()
+                {
+                    while (show.WaitOne())
+                        try { f.BeginInvoke((MethodInvoker)delegate { f.ShowFromTray(); }); } catch (Exception) { }
+                });
+                t.IsBackground = true;
+                t.Start();
+                Application.Run(f);
             }
         }
     }
