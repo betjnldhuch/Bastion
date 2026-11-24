@@ -8,7 +8,7 @@
 //
 //  “ипы: 1 Ч магазин 24/7, 2 Ч бар, 3 Ч одежда, 4 Ч оружейный, 5 Ч казино (casino.inc),
 //  6 Ч ј«—, 7 Ч автомастерска€, 8 Ч закусочна€, 9 Ч аптека, 10 Ч ночной клуб, 11 Ч спортзал,
-//  12 Ч хозтовары, 13 Ч электроника, 14 Ч лотере€. —клад, наценка, меню владельца: bizplus.inc.
+//  12 Ч хозтовары, 13 Ч электроника, 14 Ч лотере€, 15 Ч тир (тренировки и выписка, skills.inc). —клад, наценка, меню владельца: bizplus.inc.
 //  јдмины (4+): /createbiz [тип] [цена] [название], /delbiz
 //
 //  »нтерьер: у каждого бизнеса стандартный интерьер GTA по его типу (временное решение).
@@ -21,6 +21,7 @@
 // =====================================================================
 
 #define BIZ_RANGE           2.5
+forward bool:Skills_CanTrain(playerid, g, why[], size);   // тир (skills.inc)
 #define BIZ_WORLD_OFFSET    5000        // вирт. мир интерьера = 5000 + номер бизнеса в базе
 #define BIZ_EXIT_RANGE      1.5         // как близко к стрелке внутри срабатывает выход
 #define BIZ_IN_REF          1000000     // ref маркера выхода внутри: BIZ_IN_REF + номер бизнеса в базе
@@ -46,15 +47,16 @@ enum
 	BIZ_GYM,        // 11 Ч спортзал: стили бо€
 	BIZ_HARDWARE,   // 12 Ч хозтовары
 	BIZ_ELECTRO,    // 13 Ч электроника
-	BIZ_LOTTERY     // 14 Ч лотере€
+	BIZ_LOTTERY,    // 14 Ч лотере€
+	BIZ_SHOOTRANGE  // 15 Ч тир: тренировки стрельбы и выписка (skills.inc)
 }
-#define BIZ_TYPES           15
+#define BIZ_TYPES           16
 
 static const gBizTypeNames[BIZ_TYPES][24] = { "-", "ћагазин 24/7", "Ѕар", "ћагазин одежды", "ќружейный магазин", " азино",
-	"ј«—", "јвтомастерска€", "«акусочна€", "јптека", "Ќочной клуб", "—портзал", "’озтовары", "Ёлектроника", "Ћотере€" };
+	"ј«—", "јвтомастерска€", "«акусочна€", "јптека", "Ќочной клуб", "—портзал", "’озтовары", "Ёлектроника", "Ћотере€", "“ир" };
 
 // —тандартные интерьеры по типу бизнеса: номер интерьера и точка у двери (x, y, z, угол). 0 Ч без интерьера, торговл€ у значка
-static const gBizIntId[BIZ_TYPES] = { 0, 17, 11, 15, 1, 10, 0, 0, 10, 6, 17, 5, 0, 0, 0 };
+static const gBizIntId[BIZ_TYPES] = { 0, 17, 11, 15, 1, 10, 0, 0, 10, 6, 17, 5, 0, 0, 0, 1 };
 static const Float:gBizIntPos[BIZ_TYPES][4] =
 {
 	{ 0.0, 0.0, 0.0, 0.0 },
@@ -71,7 +73,8 @@ static const Float:gBizIntPos[BIZ_TYPES][4] =
 	{ 772.11, -3.90, 1000.73, 0.0 },        // спортзал Ganton
 	{ 0.0, 0.0, 0.0, 0.0 },                 // хозтовары: у значка
 	{ 0.0, 0.0, 0.0, 0.0 },                 // электроника: у значка
-	{ 0.0, 0.0, 0.0, 0.0 }                  // лотере€: у значка
+	{ 0.0, 0.0, 0.0, 0.0 },                 // лотере€: у значка
+	{ 286.15, -40.64, 1001.52, 0.0 }        // тир: зал Ammu-Nation со стрельбищем
 };
 
 // „то можно купить
@@ -85,7 +88,10 @@ enum
 	ITEM_FOOD,      // еда в баре сразу (value = +HP, value2 = +% сытости)
 	ITEM_INV,       // вещь в инвентарь (value = INV_* из needs.inc, value2 = штук)
 	ITEM_FSTYLE,    // стиль бо€ в спортзале (value = FIGHT_STYLE_*), bizplus.inc
-	ITEM_LOTTERY    // лотерейный билет (value = во сколько раз главный приз больше цены), bizplus.inc
+	ITEM_LOTTERY,   // лотерейный билет (value = во сколько раз главный приз больше цены), bizplus.inc
+	ITEM_TRAIN,     // тренировка в тире (value = группа оружи€ skills.inc, value2 = очков 0..999)
+	ITEM_SHOOTDOC,  // выписка из тира в сумку (skills.inc)
+	ITEM_RANGE      // подход на стрельбище: мишени на RANGE_SESSION_MIN минут (skills.inc)
 }
 
 enum E_BIZ_ITEM
@@ -173,7 +179,16 @@ static const gBizItems[][E_BIZ_ITEM] =
 	{ BIZ_ELECTRO, "»гральные кости",   25,   ITEM_INV,    INV_DICE, 1 },
 	{ BIZ_LOTTERY, "Ѕилет Ђћелочьї",    50,   ITEM_LOTTERY, 20, 0 },
 	{ BIZ_LOTTERY, "Ѕилет Ђ”дачаї",     250,  ITEM_LOTTERY, 40, 0 },
-	{ BIZ_LOTTERY, "Ѕилет Ђƒжекпотї",   1000, ITEM_LOTTERY, 100, 0 }
+	{ BIZ_LOTTERY, "Ѕилет Ђƒжекпотї",   1000, ITEM_LOTTERY, 100, 0 },
+	{ BIZ_SHOOTRANGE, "¬ыписка из тира",   150,  ITEM_SHOOTDOC, 0, 0 },
+	{ BIZ_SHOOTRANGE, "ћишени (5 минут)",  500,  ITEM_RANGE, 0, 0 },
+	{ BIZ_SHOOTRANGE, " урс: пистолеты +5%",    300, ITEM_TRAIN, 0, 50 },
+	{ BIZ_SHOOTRANGE, " урс: Desert Eagle +5%", 400, ITEM_TRAIN, 1, 50 },
+	{ BIZ_SHOOTRANGE, " урс: дробовики +5%",    400, ITEM_TRAIN, 2, 50 },
+	{ BIZ_SHOOTRANGE, " урс: обрез +5%",        400, ITEM_TRAIN, 3, 50 },
+	{ BIZ_SHOOTRANGE, " урс: ѕѕ +5%",           500, ITEM_TRAIN, 4, 50 },
+	{ BIZ_SHOOTRANGE, " урс: автоматы +5%",     600, ITEM_TRAIN, 5, 50 },
+	{ BIZ_SHOOTRANGE, " урс: винтовки +5%",     600, ITEM_TRAIN, 6, 50 }
 };
 
 stock Biz_ItemType(item)  { return gBizItems[item][biType]; }
@@ -648,6 +663,15 @@ stock bool:Biz_CanBuy(playerid, b, item)
 				return false;
 			}
 		}
+		case ITEM_TRAIN:
+		{
+			new why[96];
+			if (!Skills_CanTrain(playerid, gBizItems[item][biValue], why, sizeof why))
+			{
+				SendClientMessage(playerid, COLOR_GREY, "%s", why);
+				return 1;
+			}
+		}
 		case ITEM_WEAPON, ITEM_ARMOUR:
 		{
 			if (Biz[b][bType] == BIZ_GUNS && gBizItems[item][biKind] == ITEM_WEAPON && !Licenses_Has(playerid, LIC_GUN))
@@ -687,6 +711,9 @@ stock Biz_GiveItem(playerid, item, price)
 		case ITEM_WEAPON: GivePlayerWeapon(playerid, WEAPON:gBizItems[item][biValue], gBizItems[item][biValue2]);
 		case ITEM_FSTYLE: BizX_SetStyle(playerid, gBizItems[item][biValue]);
 		case ITEM_LOTTERY: BizX_Lottery(playerid, price, gBizItems[item][biValue]);
+		case ITEM_TRAIN: Skills_Train(playerid, gBizItems[item][biValue], gBizItems[item][biValue2]);
+		case ITEM_SHOOTDOC: Skills_IssueRecord(playerid);
+		case ITEM_RANGE: Skills_StartRange(playerid);
 		case ITEM_ARMOUR: SetPlayerArmour(playerid, float(gBizItems[item][biValue]));
 		case ITEM_INV:
 		{
