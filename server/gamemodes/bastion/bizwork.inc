@@ -23,10 +23,6 @@
 //    большой склад Ч склад вдвое больше.
 // =====================================================================
 
-forward bool:BizW_HasUpg(b, bit);
-forward bool:BizW_Closed(b);
-forward bool:BizX_UsesStock(b);
-
 #define BW_SELLER           1
 #define BW_DEPUTY           2
 #define BIZW_MAX_SELLERS    6
