@@ -15,10 +15,10 @@ const Offsets* g_off = nullptr;
 // Точка входа samp.dll (AddressOfEntryPoint) однозначно задаёт версию
 struct Known { uint32_t entry; Offsets off; };
 const Known kKnown[] = {
-    {0x31DF13, {"0.3.7-R1", 0x6B9C0, 0x6B210, 0x21A0B8, 0x21A0F8, 0x1A40, 0, 0x21A10C, 0x9BD30}},
-    {0xCC4D0,  {"0.3.7-R3", 0x6F8C0, 0x6F110, 0x26E898, 0x26E8DC, 0x1A40, 0, 0x26E8F4, 0x9FFE0}},
-    {0xCBC90,  {"0.3.7-R5", 0x6FFB0, 0x6F860, 0x26EB50, 0x26EB94, 0xBBC0, 0, 0x26EBAC, 0xA06F0}},
-    {0xFDB60,  {"0.3.DL",   0x6FA50, 0x6F2A0, 0x2AC9E0, 0x2ACA24, 0, 0x3C9, 0x2ACA3C, 0xA0530}},
+    {0x31DF13, {"0.3.7-R1", 0x6B9C0, 0x6B210, 0x21A0B8, 0x21A0F8, 0x1A40, 0, 0x21A10C, 0x9BD30, 0x3BD}},
+    {0xCC4D0,  {"0.3.7-R3", 0x6F8C0, 0x6F110, 0x26E898, 0x26E8DC, 0x1A40, 0, 0x26E8F4, 0x9FFE0, 0x3CD}},
+    {0xCBC90,  {"0.3.7-R5", 0x6FFB0, 0x6F860, 0x26EB50, 0x26EB94, 0xBBC0, 0, 0x26EBAC, 0xA06F0, 0x3CD}},
+    {0xFDB60,  {"0.3.DL",   0x6FA50, 0x6F2A0, 0x2AC9E0, 0x2ACA24, 0, 0x3C9, 0x2ACA3C, 0xA0530, 0x3BD}},
 };
 
 enum { RPC_ServerCommand = 50, RPC_DialogResponse = 62 };
@@ -75,6 +75,19 @@ bool SendDialogResponse(int dialogId, int button, int listItem, const std::strin
     bs.Write(static_cast<uint8_t>(t.size()));
     bs.Write(t.data(), static_cast<int>(t.size()));
     return SendRpc(RPC_DialogResponse, bs);
+}
+
+int GetGameState() {
+    if (!g_off) return -1;
+    uintptr_t netGame = *reinterpret_cast<uintptr_t*>(g_base + g_off->refNetGame);
+    if (!netGame) return -1;
+    return *reinterpret_cast<int*>(netGame + g_off->gameStateField);
+}
+
+void SetGameState(int state) {
+    if (!g_off) return;
+    uintptr_t netGame = *reinterpret_cast<uintptr_t*>(g_base + g_off->refNetGame);
+    if (netGame) *reinterpret_cast<int*>(netGame + g_off->gameStateField) = state;
 }
 
 bool SendCommand(const std::string& cmd) {

@@ -15,6 +15,7 @@ struct Offsets {
     uintptr_t rakClientField; // смещение CNetGame::m_pRakClient
     uintptr_t refGame;        // CGame* singleton
     uintptr_t setCursorMode;  // CGame::SetCursorMode
+    uintptr_t gameStateField; // смещение CNetGame::m_nGameState
 };
 
 // Ждёт samp.dll и определяет версию. false — версия не поддерживается.
@@ -26,5 +27,11 @@ uint32_t EntryPoint();
 void SetCursor(bool visible);
 bool SendDialogResponse(int dialogId, int button, int listItem, const std::string& cp1251Text);
 bool SendCommand(const std::string& cp1251Command);
+
+// Состояние подключения CNetGame (0.3.7: 9 — ждёт подключения, 13 — подключается,
+// 14 — в игре, 15 — ждёт входа). -1 — нет CNetGame.
+enum { kStateWaitConnect = 9, kStateConnecting = 13, kStateConnected = 14, kStateAwaitJoin = 15 };
+int GetGameState();
+void SetGameState(int state);
 
 }  // namespace samp

@@ -61,11 +61,32 @@ namespace BastionLauncher
                 progress("Окна Bastion: проверка архива…");
                 if (ClientPack.Sha256File(zip) != want) throw new Exception("архив окон скачался с ошибкой, попробуй ещё раз.");
                 progress("Окна Bastion: установка…");
+                StopStaleCef(gta);
                 Extract(zip, gta);
                 File.WriteAllText(mark, want, Encoding.ASCII);
             }
             finally { try { File.Delete(zip); } catch (Exception) { } }
             return "Окна Bastion установлены: в игре они будут как на телефоне.";
+        }
+
+        // После вылета игры bastion_cef.exe иногда остаётся висеть и держит файлы окон:
+        // тогда новая версия не ставится и в игре остаются старые окна. Закрываем только
+        // процессы из папки этой игры.
+        static void StopStaleCef(string gta)
+        {
+            string dir = Path.GetFullPath(Path.Combine(gta, "bastion_ui")).TrimEnd('\\') + "\\";
+            foreach (System.Diagnostics.Process p in System.Diagnostics.Process.GetProcessesByName("bastion_cef"))
+            {
+                try
+                {
+                    string exe = p.MainModule.FileName;
+                    if (!exe.StartsWith(dir, StringComparison.OrdinalIgnoreCase)) continue;
+                    p.Kill();
+                    p.WaitForExit(3000);
+                }
+                catch (Exception) { }
+                finally { p.Dispose(); }
+            }
         }
 
         static void Extract(string zip, string gta)

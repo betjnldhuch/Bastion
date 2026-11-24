@@ -304,13 +304,15 @@ stock Account_FinishLogin(playerid)
 // /rec — перезайти на сервер, не закрывая игру.
 // open.mp не умеет «уронить» связь одному игроку: BlockIpAddress сразу кикает, и обычный
 // клиент останавливается на «Server closed the connection». Поэтому приложение Bastion
-// (версия с «-bui2» и новее) получает скрытое окно «[bastion:rec]», запоминает его и после
+// (версия с «-bui2» и новее) и ПК-плагин bastion_ui.asi v3 (client-mods/bastion-ui) получают скрытое окно «[bastion:rec]», запоминает его и после
 // кика само подключается заново (mobile/samp-mobile-patches/apply.py, раздел 15).
 #define REC_CLIENT_TAG      "-bui"
 #define REC_MIN_UI_VERSION  2
+#define REC_MIN_PC_VERSION  3       // ПК-плагин bastion_ui.asi: /__bui 3
 
 static bool:Rec_ClientSupports(playerid)
 {
+	if (gUiPcVersion[playerid] >= REC_MIN_PC_VERSION) return true;   // ПК: bastion_ui.asi v3+ (ui.inc)
 	new version[32];
 	GetPlayerVersion(playerid, version, sizeof version);
 	new p = strfind(version, REC_CLIENT_TAG);
@@ -324,7 +326,7 @@ stock bool:Cmd_Rec(playerid)
 	if (Player[playerid][pCuffed] || Wound_IsWounded(playerid))
 		return SendClientMessage(playerid, COLOR_GREY, "Сейчас перезайти нельзя.");
 	if (!Rec_ClientSupports(playerid))
-		return SendClientMessage(playerid, COLOR_GREY, "/rec работает в приложении Bastion на телефоне (обнови его до новой версии). На ПК перезайди через лаунчер.");
+		return SendClientMessage(playerid, COLOR_GREY, "/rec работает в приложении Bastion и на ПК с окнами Bastion. Обнови: перезайди через BastionLauncher.exe.");
 	Account_Save(playerid);
 	SendClientMessage(playerid, COLOR_YELLOW, "Перезаход: через пару секунд игра подключится заново сама. Ничего не нажимай.");
 	ShowPlayerDialog(playerid, DIALOG_NONE, DIALOG_STYLE_MSGBOX, "[bastion:rec]", " ", "OK", "");
