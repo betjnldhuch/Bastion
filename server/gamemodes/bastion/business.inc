@@ -22,6 +22,11 @@
 
 #define BIZ_RANGE           2.5
 forward bool:Skills_CanTrain(playerid, g, why[], size);   // тир (skills.inc)
+// bool-функции из bizwork/bizplus: объ€влены до первого вызова (без warning 208)
+forward bool:BizW_HasUpg(b, bit);
+forward bool:BizW_Closed(b);
+forward bool:BizX_UsesStock(b);
+forward bool:Cmd_BizMenu(playerid);
 #define BIZ_WORLD_OFFSET    5000        // вирт. мир интерьера = 5000 + номер бизнеса в базе
 #define BIZ_EXIT_RANGE      1.5         // как близко к стрелке внутри срабатывает выход
 #define BIZ_IN_REF          1000000     // ref маркера выхода внутри: BIZ_IN_REF + номер бизнеса в базе
@@ -669,7 +674,7 @@ stock bool:Biz_CanBuy(playerid, b, item)
 			if (!Skills_CanTrain(playerid, gBizItems[item][biValue], why, sizeof why))
 			{
 				SendClientMessage(playerid, COLOR_GREY, "%s", why);
-				return 1;
+				return false;
 			}
 		}
 		case ITEM_WEAPON, ITEM_ARMOUR:
