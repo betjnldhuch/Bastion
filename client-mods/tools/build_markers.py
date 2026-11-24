@@ -30,6 +30,8 @@ MODELS = [
     (1212, 'money',           'dyn_cash',  'atm'),
     (1210, 'briefcase',       'breifcase', 'fuel'),
     (1240, 'health',          'icons5',    'hospital'),
+    (1248, 'bonus',           'bonus',     'impound'),       # штрафстоянка
+    (1279, 'craigpackage',    'craigpackage', 'repair'),     # СТО
     (1254, 'killfrenzy',      'icons',     'school'),
     (1253, 'camerapickup',    'icons',     'school'),        # делит icons
     (1313, 'killfrenzy2plyr', 'icons',     'school'),

@@ -106,13 +106,13 @@ static Garage_CreateMarker(g)
 {
 	if (Garage[g][gaType] == GARAGE_IMPOUND)
 	{
-		Garage[g][gaMarker] = Marker_Create(MK_GARAGE, Garage[g][gaDbId], "Штрафстоянка", 1239,
+		Garage[g][gaMarker] = Marker_Create(MK_GARAGE, Garage[g][gaDbId], "Штрафстоянка", 1248,   // эвакуатор (client-mods/markers)
 			Garage[g][gaX], Garage[g][gaY], Garage[g][gaZ], 0, 0, GPS_TRANSPORT);
 		Marker_SetLabel(Garage[g][gaMarker], "{FF9900}Штрафстоянка\n{FFFFFF}ALT — забрать машину", COLOR_WHITE, 20.0);
 	}
 	else
 	{
-		Garage[g][gaMarker] = Marker_Create(MK_GARAGE, Garage[g][gaDbId], "СТО", 1239,
+		Garage[g][gaMarker] = Marker_Create(MK_GARAGE, Garage[g][gaDbId], "СТО", 1279,   // ключ и отвёртка (client-mods/markers)
 			Garage[g][gaX], Garage[g][gaY], Garage[g][gaZ], 0, 0, GPS_TRANSPORT);
 		Marker_SetLabel(Garage[g][gaMarker], "{33CCFF}СТО\n{FFFFFF}Ремонт, покраска, тюнинг\nЗаедь за рулём и нажми H", COLOR_WHITE, 20.0);
 	}
