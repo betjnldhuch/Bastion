@@ -47,6 +47,11 @@
 #define INT_COL_PODIUM      0xFF8E1B1B
 #define INT_COL_SIGN        0xFF15161A
 
+// Наши текстуры (client-mods/tools/mapping_textures.py): лежат в txd пикапа «больница».
+// Видны после обновления лаунчера/APK; без него объект остаётся со своей текстурой.
+#define BST_MODEL           1240
+#define BST_TXD             "icons5"
+
 // Места машин: x, y от центра зала, угол. Слева смотрят вправо, справа — влево (носом в проход).
 static const Float:gSalonSlot[SALON_SLOTS][3] =
 {
@@ -117,7 +122,7 @@ static Salon_Build()
 
 	// Вывеска на дальней стене
 	o = Salon_Obj(INT_PANEL_SMALL, 0.0, 14.30, 3.9, 0.0, 0.0, 90.0);
-	SetObjectMaterialText(o, "BASTION\nMOTORS", 0, OBJECT_MATERIAL_SIZE_256x256, "Arial", 56, true, 0xFFFFFFFF, INT_COL_SIGN, OBJECT_MATERIAL_TEXT_ALIGN_CENTER);
+	SetObjectMaterial(o, 0, BST_MODEL, BST_TXD, "bst_dealer_sign", 0);
 
 	// Стойка менеджера у дальней стены
 	Salon_Obj(2008, -2.0, 11.6, 0.0, 0.0, 0.0, 180.0);
@@ -190,7 +195,8 @@ static const Float:gOrgInt[][E_ORG_INT] =
 };
 
 // Текстуры стен, пола и потолка. color у SetObjectMaterial подкрашивает текстуру (0 — как есть).
-enum { TX_PAINT, TX_MARBLE, TX_PARQUET, TX_WALLPAPER, TX_BRICK, TX_PAVE, TX_PLASTER, TX_PLANKS, TX_GYM, TX_PLYWOOD, TX_CAMO }
+enum { TX_PAINT, TX_MARBLE, TX_PARQUET, TX_WALLPAPER, TX_BRICK, TX_PAVE, TX_PLASTER, TX_PLANKS, TX_GYM, TX_PLYWOOD, TX_CAMO,
+	TX_HOSP_WALL, TX_GROVE_FLAG, TX_BALLAS_TAG }
 enum E_INT_TEX { itModel, itTxd[24], itTex[24] }
 static const gIntTex[][E_INT_TEX] =
 {
@@ -204,7 +210,10 @@ static const gIntTex[][E_INT_TEX] =
 	{ 14650, "ab_trukstpc",     "sa_wood08_128" },
 	{ 14789, "ab_sfgymmain",    "gym_floor6" },
 	{ 18065, "ab_sfammumain",   "plywood_gym" },
-	{ 3095,  "a51jdrx",         "sam_camo" }
+	{ 3095,  "a51jdrx",         "sam_camo" },
+	{ BST_MODEL, BST_TXD,       "bst_hosp_wall" },
+	{ BST_MODEL, BST_TXD,       "bst_grove_flag" },
+	{ BST_MODEL, BST_TXD,       "bst_ballas_tag" }
 };
 
 static Float:gIntOX, Float:gIntOY, Float:gIntOZ;    // начало координат зала, который сейчас строится
@@ -280,7 +289,7 @@ static Int_Sign(Float:x, Float:y, Float:z, const text[], fontsize, color, back, 
 // --- Больница: приёмная у входа, дальше коридор и по три палаты с каждой стороны ---
 static Hospital_Build()
 {
-	Int_Shell(0, 2, 3, 3.5, TX_PAINT, 0xFFF2F4F5, TX_MARBLE, 0, TX_PAINT, 0xFFFFFFFF);
+	Int_Shell(0, 2, 3, 3.5, TX_HOSP_WALL, 0, TX_MARBLE, 0, TX_PAINT, 0xFFFFFFFF);
 	for (new side = -1; side <= 1; side += 2)
 	{
 		for (new w = 0; w < 3; w++)
@@ -409,7 +418,7 @@ static Grove_Build()
 	IO(18649, 9.4, 0.0, 3.3, 0.0, 0.0, 0.0);
 	for (new i = 0; i < 2; i++) IO(1893, (i == 0) ? -5.0 : 5.0, 0.5, 3.55);
 	Int_Sign(0.0, 9.50, 1.9, "GROVE\nSTREET\n4 LIFE", 46, 0xFF2EC83C, 0);
-	Int_Sign(-9.5, 3.5, 1.9, "GSF", 110, 0xFF1E9A2A, 0, 0.0);
+	ISkin(IO(INT_PANEL_SMALL, -9.5, 3.5, 1.9, 0.0, 0.0, 0.0), TX_GROVE_FLAG, 0);      // флаг Grove на боковой стене
 }
 
 // --- Ballas: клуб. Фиолетовые обои, тёмный пол, барная стойка, покер, розовый неон ---
@@ -444,7 +453,7 @@ static Ballas_Build()
 	IO(18651, 9.4, 4.0, 4.0);
 	IO(18651, 0.0, 9.4, 4.0, 0.0, 0.0, 90.0);
 	Int_Sign(0.0, 9.50, 2.3, "BALLAS", 70, 0xFFC860FF, 0);
-	Int_Sign(9.5, -4.5, 1.9, "BALLAS\nCLUB", 50, 0xFFFF78E6, 0, 0.0);
+	ISkin(IO(INT_PANEL_SMALL, 9.5, -4.5, 1.9, 0.0, 0.0, 0.0), TX_BALLAS_TAG, 0);      // граффити Ballas
 }
 
 // --- Aztecas: мастерская лоурайдеров. Штукатурка цвета бирюзы, плитка, инструменты, колёса ---
