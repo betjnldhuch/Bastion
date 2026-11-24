@@ -474,7 +474,7 @@ static Inv_Use(playerid, item)
 	{
 		case INV_BURGER, INV_HOTDOG, INV_PIZZA:
 		{
-			if (gHunger[playerid] >= 100) { Inv_Why(playerid, "Ты не голоден."); return; }
+			if (gHunger[playerid] >= 100 && !Quest_WantsFood(playerid)) { Inv_Why(playerid, "Ты не голоден."); return; }   // квест: можно и сытым
 			new feed = 25;
 			if (item == INV_BURGER) feed = 40;
 			else if (item == INV_PIZZA) feed = 60;
