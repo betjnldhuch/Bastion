@@ -28,24 +28,25 @@ stock bool:Cmd_Stats(playerid)
 	new f = Player[playerid][pFaction];
 	new warns = Admin_GetWarns(playerid);
 	new fwarns = f ? Faction_GetWarns(Player[playerid][pDbId]) : 0, fwarnMax = f ? Org_WarnLimit(f) : 0;
-	new fbanUntil = Faction_BanUntil(Player[playerid][pDbId]), fban[16];
-	if (fbanUntil) Docs_Date(fban, sizeof fban, fbanUntil);
+	new bl[160];
+	Faction_BlForPlayer(Player[playerid][pDbId], bl, sizeof bl);     // чёрные списки организаций
 
 	new vipLevel = Vip_GetLevel(playerid);
 	if (UI_Has(playerid))
 	{
 		// HTML-окно «stats» (index.html): значок VIP рядом с ником
-		new json[1200], e[5][64];
+		new json[1400], e[5][64], blj[200];
+		UI_JsonEscape(blj, bl);
 		UI_JsonEscape(e[0], Job_GetName(Player[playerid][pJob]));
 		UI_JsonEscape(e[1], Faction_GetName(f));
 		UI_JsonEscape(e[2], Faction_GetRankName(f, Player[playerid][pRank]));
 		UI_JsonEscape(e[3], Family_GetPlayerText(playerid));
 		UI_JsonEscape(e[4], house);
 		format(json, sizeof json,
-			"{\"name\":\"%s\",\"level\":%d,\"exp\":%d,\"expMax\":%d,\"money\":%d,\"bank\":%d,\"phone\":\"%s\",\"job\":\"%s\",\"faction\":\"%s\",\"rank\":\"%s\",\"family\":\"%s\",\"wanted\":%d,\"debt\":%d,\"house\":\"%s\",\"admin\":%d,\"vipLevel\":%d,\"vip\":%d,\"warns\":%d,\"warnMax\":%d,\"fwarns\":%d,\"fwarnMax\":%d,\"fban\":\"%s\"}",
+			"{\"name\":\"%s\",\"level\":%d,\"exp\":%d,\"expMax\":%d,\"money\":%d,\"bank\":%d,\"phone\":\"%s\",\"job\":\"%s\",\"faction\":\"%s\",\"rank\":\"%s\",\"family\":\"%s\",\"wanted\":%d,\"debt\":%d,\"house\":\"%s\",\"admin\":%d,\"vipLevel\":%d,\"vip\":%d,\"warns\":%d,\"warnMax\":%d,\"fwarns\":%d,\"fwarnMax\":%d,\"bl\":\"%s\"}",
 			GetRPName(playerid), Player[playerid][pLevel], Player[playerid][pExp], Player[playerid][pLevel] * EXP_PER_LEVEL,
 			GetMoney(playerid), Player[playerid][pBank], phone, e[0], e[1], e[2], e[3], Player[playerid][pWanted], Debts_Total(playerid),
-			e[4], Player[playerid][pAdmin], vipLevel, Vip_DaysLeft(playerid), warns, ADMIN_WARNS_FOR_BAN, fwarns, fwarnMax, fban);
+			e[4], Player[playerid][pAdmin], vipLevel, Vip_DaysLeft(playerid), warns, ADMIN_WARNS_FOR_BAN, fwarns, fwarnMax, blj);
 		UI_Show(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "stats", json, "Закрыть");
 		return true;
 	}
@@ -53,10 +54,10 @@ stock bool:Cmd_Stats(playerid)
 	if (vipLevel > 0) format(vip, sizeof vip, "%s, ещё %d дн.", Vip_LevelName(vipLevel), Vip_DaysLeft(playerid));
 	else strcat(vip, "нет");
 
-	new extra[160];
+	new extra[320];
 	format(extra, sizeof extra, "\nВарны: %d/%d", warns, ADMIN_WARNS_FOR_BAN);
 	if (f) format(extra, sizeof extra, "%s\nВыговоры в организации: %d/%d", extra, fwarns, fwarnMax);
-	if (fbanUntil) format(extra, sizeof extra, "%s\n{E5484D}Запрет на вступление в организации до %s{FFFFFF}", extra, fban);
+	if (bl[0]) format(extra, sizeof extra, "%s\n{E5484D}Чёрный список: %s{FFFFFF}", extra, bl);
 	if (Player[playerid][pAdmin] > 0) format(extra, sizeof extra, "%s\nАдминка: %d", extra, Player[playerid][pAdmin]);
 	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "Статистика",
 		"{FFFFFF}Имя: {33CCFF}%s\n{FFFFFF}Уровень: %d (опыт %d/%d)\nДеньги: $%d (в банке $%d)\nДолг штату: $%d\nVIP: %s\nТелефон: %s\nРабота: %s\nФракция: %s (%s)\nСемья: %s\nДом: %s\nРозыск: %d зв.%s\n\n{8C9098}Выписка из тира: /skills · документы: /passport",
@@ -293,6 +294,9 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/duty", true))        { Cmd_Duty(playerid, cmdtext[pos] != '\0' && !strcmp(cmdtext[pos], "civ", true)); return 1; }
 	if (!strcmp(cmd, "/invite", true))      { Cmd_Invite(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/uninvite", true))    { Cmd_Uninvite(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/bl", true))          { Cmd_Bl(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/unbl", true))        { Cmd_UnBl(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/blist", true))       { Cmd_BList(playerid); return 1; }
 	if (!strcmp(cmd, "/giverank", true))    { Cmd_GiveRank(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/fleave", true))      { Cmd_FLeave(playerid); return 1; }
 	if (!strcmp(cmd, "/accept", true))      { Cmd_Accept(playerid); return 1; }

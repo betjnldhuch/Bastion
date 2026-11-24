@@ -627,7 +627,7 @@ function vipImg(level, cls) {
         ['Варны', '<span' + ((d.warns | 0) > 0 ? ' style="color:var(--red)"' : '') + '>' + (d.warns | 0) + ' / ' + (d.warnMax | 0) + '</span>']
       ];
       if ((d.fwarnMax | 0) > 0) rows.push(['Выговоры', (d.fwarns | 0) + ' / ' + (d.fwarnMax | 0) + ' <span class="mut">в организации</span>']);
-      if (d.fban) rows.push(['Запрет на орги', '<span style="color:var(--red)">до ' + esc(d.fban) + '</span> <span class="mut">после увольнения</span>']);
+      if (d.bl) rows.push(['Чёрный список', '<span style="color:var(--red)">' + esc(d.bl) + '</span>']);
       if (d.admin > 0) rows.push(['Админка', String(d.admin | 0)]);
       root.innerHTML = '<div class="card wide st">' + closeBtn() + '<div class="brand">BASTION ONLINE</div>' +
         '<div class="st-head">' + (lv ? vipImg(lv, 'st-badge') : '') + '<div><h1>' + esc(d.name) + '</h1>' +
