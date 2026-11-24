@@ -10,7 +10,8 @@
 //  Сервер узнаёт, что окна есть, по скрытой команде /__bui (ui.inc).
 //  Диалог "[hud]" — данные панели HUD (hud.inc): не показываем, передаём
 //  странице (BastionUI.hud), стандартные полоски ХП/брони и деньги прячем.
-//  Кислород под водой тоже рисует страница (BastionUI.breath, gtahud.cpp).
+//  Кислород под водой, значок оружия и патроны тоже рисует страница
+//  (BastionUI.breath, BastionUI.weapon, gtahud.cpp).
 //  Диалог "[bastion:rec]" — команда /rec (accounts.inc): после кика сервером
 //  переводим SA-MP в «ждёт подключения», и он сам заходит заново.
 //  Если CEF не запустился или версия SA-MP неизвестна — обычные диалоги.
@@ -65,6 +66,7 @@ int g_dialogId = -1;
 bool g_helloSent = false;
 bool g_hudOn = false;    // сервер прислал свою панель HUD
 int g_breathSent = -1;   // что последним ушло в BastionUI.breath
+std::string g_weaponSent = "-1";   // что последним ушло в BastionUI.weapon ("-1" — значка нет)
 bool g_recArmed = false; // /rec: ждём кика, чтобы подключиться заново
 DWORD g_recSince = 0;
 DWORD g_lastClick = 0;
@@ -184,6 +186,13 @@ HRESULT __stdcall HookPresent(IDirect3DDevice9* dev, const RECT* a, const RECT* 
     if (breath != g_breathSent) {
         g_breathSent = breath;
         browser::ExecJs("window.BastionUI && BastionUI.breath && BastionUI.breath(" + std::to_string(breath) + ")");
+    }
+    int wt = -1, wc = 0, wa = 0;
+    if (!g_hudOn || !gtahud::Weapon(wt, wc, wa)) wt = -1;
+    std::string weapon = wt < 0 ? "-1" : std::to_string(wt) + "," + std::to_string(wc) + "," + std::to_string(wa);
+    if (weapon != g_weaponSent) {
+        g_weaponSent = weapon;
+        browser::ExecJs("window.BastionUI && BastionUI.weapon && BastionUI.weapon(" + weapon + ")");
     }
     overlay::Present(dev, g_visible || (g_hudOn && gtahud::Drawn()));
     return g_origPresent(dev, a, b, w, r);

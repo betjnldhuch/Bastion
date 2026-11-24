@@ -23,6 +23,10 @@ constexpr uintptr_t kPlayers = 0xB7CD98;          // CWorld::Players[], CPlayerI
 constexpr uintptr_t kPedPlayerData = 0x480;       // CPed::m_pPlayerData
 constexpr uintptr_t kPlayerDataBreath = 0x44;     // CPlayerData::m_fBreath
 constexpr uintptr_t kPrintString = 0x71A700;      // CFont::PrintString(float, float, const char*)
+constexpr uintptr_t kDrawWeaponIcon = 0x58D7D0;   // CHud::DrawWeaponIcon(CPed*, int, int, float)
+constexpr uintptr_t kDrawAmmo = 0x5893B0;         // CHud::DrawAmmo(CPed*, int, int, float)
+constexpr uintptr_t kPedWeapons = 0x5A0;          // CPed::m_aWeapons[13], CWeapon 0x1C: тип, состояние, в обойме, всего
+constexpr uintptr_t kPedActiveSlot = 0x718;       // CPed::m_nActiveWeaponSlot (uint8)
 
 using VoidFn = void(__cdecl*)();
 using BarFn = void(__cdecl*)(int, int, int);
@@ -33,6 +37,11 @@ BarFn g_origHealth = nullptr;
 BarFn g_origArmor = nullptr;
 BarFn g_origBreath = nullptr;
 PrintFn g_origPrint = nullptr;
+using PedDrawFn = void(__cdecl*)(void*, int, int, float);
+PedDrawFn g_origIcon = nullptr;
+PedDrawFn g_origAmmo = nullptr;
+bool g_weaponHooks = false;   // оба перехвата стоят — значок и патроны рисует страница
+volatile DWORD g_lastWeapon = 0;
 
 volatile bool g_replaced = false;
 bool g_inInfo = false;
@@ -91,6 +100,17 @@ void __cdecl HookPrint(float x, float y, const char* s) {
     g_origPrint(x, y, s);
 }
 
+// Значок оружия и патроны: при своей панели их рисует страница (BastionUI.weapon) прямо в панели,
+// иначе значок висел отдельно в углу экрана, а его место зависит от разрешения и widescreen-фиксов.
+void __cdecl HookIcon(void* ped, int x, int y, float alpha) {
+    g_lastWeapon = GetTickCount();
+    if (!g_replaced || !g_weaponHooks) g_origIcon(ped, x, y, alpha);
+}
+
+void __cdecl HookAmmo(void* ped, int x, int y, float alpha) {
+    if (!g_replaced || !g_weaponHooks) g_origAmmo(ped, x, y, alpha);
+}
+
 template <typename T>
 bool Hook(uintptr_t addr, void* detour, T& orig, const char* name) {
     if (!LooksLikeFunction(addr)) {
@@ -114,6 +134,9 @@ bool Install() {
     Hook(kRenderArmorBar, reinterpret_cast<void*>(&HookArmor), g_origArmor, "CHud::RenderArmorBar");
     Hook(kRenderBreathBar, reinterpret_cast<void*>(&HookBreath), g_origBreath, "CHud::RenderBreathBar");
     Hook(kPrintString, reinterpret_cast<void*>(&HookPrint), g_origPrint, "CFont::PrintString");
+    bool icon = Hook(kDrawWeaponIcon, reinterpret_cast<void*>(&HookIcon), g_origIcon, "CHud::DrawWeaponIcon");
+    bool ammo = Hook(kDrawAmmo, reinterpret_cast<void*>(&HookAmmo), g_origAmmo, "CHud::DrawAmmo");
+    g_weaponHooks = icon && ammo;
     g_installed = true;
     return true;
 }
@@ -128,6 +151,23 @@ bool Drawn() {
 int Breath() {
     if (!g_replaced || !g_origBreath || GetTickCount() - g_lastBreath > 300) return -1;
     return g_breathPct;
+}
+
+bool Weapon(int& type, int& clip, int& total) {
+    if (!g_replaced || !g_weaponHooks || GetTickCount() - g_lastWeapon > 300) return false;
+    __try {
+        uintptr_t ped = *reinterpret_cast<uintptr_t*>(kPlayers);
+        if (!ped) return false;
+        int slot = *reinterpret_cast<uint8_t*>(ped + kPedActiveSlot);
+        if (slot > 12) return false;
+        const int32_t* w = reinterpret_cast<const int32_t*>(ped + kPedWeapons + 0x1C * slot);
+        type = w[0];
+        clip = w[2];
+        total = w[3];
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+    return type >= 0 && type <= 46;
 }
 
 }  // namespace gtahud
