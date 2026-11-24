@@ -360,6 +360,10 @@ button { font: inherit; cursor: pointer; }
 #hud .sep { height: 1px; background: var(--line); margin: 5px 0; }
 #hud .ln.arm.off { display: none; }
 #hud.warn .ln.food .ico { animation: pulse 1s ease-in-out infinite; }
+#hud .ln.breath { display: none; }
+#hud .ln.breath.on { display: flex; animation: fade .2s ease-out; }
+#hud .ln.breath.low .ico, #hud .ln.breath.low .v { animation: pulse .6s ease-in-out infinite; }
+#hud .ln.breath.low .v { color: var(--red); }
 @keyframes pulse { 50% { opacity: .35 } }
 @media (max-height: 420px) { #hud { top: 24vh; width: 170px; padding: 7px 9px 8px; } #hud .ln { height: 19px; } #hud .money { font-size: 13px; } }
 </style>
@@ -370,6 +374,7 @@ button { font: inherit; cursor: pointer; }
   <div class="hd"><span class="brand">BASTION RP</span><span class="who">ID <b id="h-id">0</b> · ур. <b id="h-lvl">1</b></span></div>
   <div class="ln hp"><span class="ico" data-k="hp"></span><span class="bar"><i id="h-hp"></i></span><span class="v" id="h-hpv">0</span></div>
   <div class="ln arm"><span class="ico" data-k="armor"></span><span class="bar"><i id="h-arm"></i></span><span class="v" id="h-armv">0</span></div>
+  <div class="ln breath"><span class="ico" data-k="breath"></span><span class="bar"><i id="h-breath"></i></span><span class="v" id="h-breathv">0</span></div>
   <div class="ln food"><span class="ico" data-k="food"></span><span class="bar"><i id="h-food"></i></span><span class="v" id="h-foodv">0</span></div>
   <div class="sep"></div>
   <div class="ln"><span class="ico" data-k="cash"></span><span class="money cash" id="h-cash">$0</span></div>
@@ -1113,7 +1118,7 @@ function vipImg(level, cls) {
 
   // --- HUD: ХП, броня, сытость, наличные, банк. Иконки — ui/hud/*.png (если файла нет — эмодзи) ---
   var hud = document.getElementById('hud');
-  var HUD_ICONS = { hp: '❤️', armor: '🛡️', food: '🍔', cash: '💵', bank: '🏦' };
+  var HUD_ICONS = { hp: '❤️', armor: '🛡️', food: '🍔', breath: '🫧', cash: '💵', bank: '🏦' };
   Array.prototype.forEach.call(hud.querySelectorAll('.ico'), function (el) {
     var k = el.getAttribute('data-k'), img = new Image();
     img.onload = function () { el.textContent = ''; el.appendChild(img); };
@@ -1146,6 +1151,16 @@ function vipImg(level, cls) {
     document.getElementById('h-bank').innerHTML = '<small>банк</small>' + hudMoney(d.bank);
     applyBankBlur();
     hud.classList.add('on');
+  };
+
+  // Кислород под водой: клиент сам читает его из игры и шлёт BastionUI.breath(0..100), -1 — убрать полоску
+  var breathLn = hud.querySelector('.ln.breath');
+  window.BastionUI.breath = function (p) {
+    p = Math.round(+p);
+    if (!(p >= 0)) { breathLn.classList.remove('on', 'low'); return; }
+    hudBar('h-breath', p, 100, p <= 20 ? 'var(--red)' : '#4fc3f7'); setText('h-breathv', p + '%');
+    breathLn.classList.toggle('low', p <= 20);
+    breathLn.classList.add('on');
   };
 
   // ПК (bastion_ui.asi): крупнее на больших экранах, Esc закрывает окно
@@ -1187,6 +1202,7 @@ function vipImg(level, cls) {
   var mh = /^#samp([0-9]|1[0-4])$/.exec(location.hash);
   if (!window.BastionNative && location.hash === '#hud') {
     BastionUI.hud({ id: 12, lvl: 7, hp: 74, arm: 40, food: 18, cash: 15400, bank: 1250000 });
+    BastionUI.breath(63);
     document.body.style.background = '#2b3440';
   } else if (!window.BastionNative && mh) {
     BastionUI.open({ window: 'samp', button1: 'Выбрать', button2: +mh[1] ? 'Отмена' : '',

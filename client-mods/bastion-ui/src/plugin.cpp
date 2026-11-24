@@ -10,6 +10,7 @@
 //  Сервер узнаёт, что окна есть, по скрытой команде /__bui (ui.inc).
 //  Диалог "[hud]" — данные панели HUD (hud.inc): не показываем, передаём
 //  странице (BastionUI.hud), стандартные полоски ХП/брони и деньги прячем.
+//  Кислород под водой тоже рисует страница (BastionUI.breath, gtahud.cpp).
 //  Диалог "[bastion:rec]" — команда /rec (accounts.inc): после кика сервером
 //  переводим SA-MP в «ждёт подключения», и он сам заходит заново.
 //  Если CEF не запустился или версия SA-MP неизвестна — обычные диалоги.
@@ -63,6 +64,7 @@ bool g_visible = false;  // окно открыто: перехватываем 
 int g_dialogId = -1;
 bool g_helloSent = false;
 bool g_hudOn = false;    // сервер прислал свою панель HUD
+int g_breathSent = -1;   // что последним ушло в BastionUI.breath
 bool g_recArmed = false; // /rec: ждём кика, чтобы подключиться заново
 DWORD g_recSince = 0;
 DWORD g_lastClick = 0;
@@ -177,6 +179,11 @@ HRESULT __stdcall HookPresent(IDirect3DDevice9* dev, const RECT* a, const RECT* 
             g_recArmed = false;
             Log("rec: кика не было, отбой");
         }
+    }
+    int breath = g_hudOn ? gtahud::Breath() : -1;
+    if (breath != g_breathSent) {
+        g_breathSent = breath;
+        browser::ExecJs("window.BastionUI && BastionUI.breath && BastionUI.breath(" + std::to_string(breath) + ")");
     }
     overlay::Present(dev, g_visible || (g_hudOn && gtahud::Drawn()));
     return g_origPresent(dev, a, b, w, r);

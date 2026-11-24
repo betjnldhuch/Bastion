@@ -73,6 +73,12 @@ public class BastionWebUi {
 
     private String pendingHud;
 
+    /** Called on the UI thread. Air under water 0..100, -1 hides the line (native CWidgetPlayerInfo). */
+    public void breath(int pct) {
+        if (web == null || !pageReady) return;
+        web.evaluateJavascript("window.BastionUI && BastionUI.breath && BastionUI.breath(" + pct + ")", null);
+    }
+
     private void updateVisibility() {
         if (web == null) return;
         web.setVisibility(!paused && (shown || hudOn) ? View.VISIBLE : View.GONE);
