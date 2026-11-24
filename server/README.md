@@ -70,6 +70,8 @@
 
 ## 4. Запуск
 
+> Удобнее через **стартер Bastion Server** (`server/starter`, готовый exe — `BastionServer.zip` в релизе «builds»): положи `BastionServer.exe` рядом с `omp-server.exe`. В нём старт/стоп/рестарт, консоль, онлайн, обновление мода с GitHub одной кнопкой и правка `config.json`.
+
 1. Запусти `C:\openmp\omp-server.exe`.
 2. В консоли должно быть примерно:
    ```
