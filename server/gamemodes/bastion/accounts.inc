@@ -187,6 +187,7 @@ stock Account_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			SendClientMessage(playerid, COLOR_GREEN, "Регистрация завершена! Тебе выдано $%d на старт.", START_MONEY);
 			SendClientMessage(playerid, COLOR_WHITE, "Список команд: /help");
 			Quest_OnRegister(playerid);     // квест новичка стартует сам (quest.inc)
+			Docs_OnRegister(playerid);      // паспорт — только в мэрии (docs.inc)
 			Account_FinishLogin(playerid);
 			return 1;
 		}

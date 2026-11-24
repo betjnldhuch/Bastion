@@ -157,6 +157,7 @@ public OnGameModeInit()
 	Gates_Init();
 	Fps_Init();
 	Licenses_Init();
+	Docs_Init();           // паспортный стол в мэрии (docs.inc)
 	Skills_Init();         // навыки оружия в accounts (skills.inc)
 	Needs_Init();
 	Dev_Init();           // свои объекты карты, убранные здания
@@ -255,6 +256,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Job_Stop(playerid);
 	Jobs_OnDisconnect(playerid);
 	Licenses_Abort(playerid);
+	Docs_OnDisconnect(playerid);
 	Phone_HangUp(playerid);
 	PhoneApp_OnDisconnect(playerid);
 	Skills_OnDisconnect(playerid);      // навыки оружия (skills.inc)
@@ -496,6 +498,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Rental_OnDialog(playerid, dialogid, response)) return 1;
 	if (Quest_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (PhoneApp_OnDialog(playerid, dialogid, response, inputtext)) return 1;
+	if (Docs_OnDialog(playerid, dialogid, response)) return 1;
 	return 0;
 }
 

@@ -12,11 +12,36 @@
 //
 //  Команды: /passport — свой паспорт; показать игроку рядом (откроется окно):
 //  /showpass [id], /showmedcard [id], /showlic [id].
+//
+//  Паспорт новичку не дают сразу: его получают в мэрии у паспортного стола
+//  (первый шаг квеста новичка, quest.inc). ALT у стола: игрок садится на стул,
+//  камера снимает его лицо, в паспорт идёт скин на момент съёмки
+//  (accounts.passport_skin). ПК-клиент bastion_ui.asi v4 по скрытому диалогу
+//  "[bastion:photo]" сам снимает кадр в bastion_ui\ui\doc\skins\<скин>.bmp,
+//  без него в паспорте общее фото (ui/doc/photo_m.png, photo_f.png).
+//  Пересъёмка с паспортом — PASS_RETAKE_PRICE. Стол переносится через /markers.
 // =====================================================================
 
 #define DOC_SHOW_RANGE      3.0
 
+#define PASS_DESK_X         1477.6      // паспортный стол — у мэрии, рядом с автошколой
+#define PASS_DESK_Y         -1771.3
+#define PASS_DESK_Z         18.8
+#define PASS_DESK_A         180.0       // куда смотрит игрок на стуле (камера встаёт перед ним)
+#define PASS_RETAKE_PRICE   500
+#define PASS_CHAIR_MODEL    1714        // офисное кресло
+#define PASS_PHOTO_PC_VER   4           // bastion_ui.asi с поддержкой "[bastion:photo]"
+
 static gDocRegDate[MAX_PLAYERS];
+static bool:gDocPass[MAX_PLAYERS];      // паспорт получен
+static gDocPassSkin[MAX_PLAYERS];       // скин на фото, -1 — фото нет (старый паспорт)
+static gDocPassDate[MAX_PLAYERS];       // дата выдачи (съёмки)
+static bool:gDocFresh[MAX_PLAYERS];     // только что зарегистрировался: паспорта нет
+static gPassMk = -1;
+static gPhotoStage[MAX_PLAYERS];        // 0 — нет съёмки, 1 — сидит, 2 — снято
+static gPhotoChair[MAX_PLAYERS] = { INVALID_OBJECT_ID, ... };
+static PlayerText:gPhotoFlash[MAX_PLAYERS] = { PlayerText:INVALID_PLAYER_TEXT_DRAW, ... };
+static bool:gPhotoPaid[MAX_PLAYERS];
 
 // Женские скины GTA SA (для графы «Пол» в паспорте)
 static const gDocFemaleSkins[] = {
@@ -26,15 +51,60 @@ static const gDocFemaleSkins[] = {
 	246, 251, 256, 257, 263, 298, 306, 307, 308, 309
 };
 
+// Из OnGameModeInit
+stock Docs_Init()
+{
+	// у старых аккаунтов паспорт уже есть (DEFAULT 1), новичкам ставим 0 при регистрации
+	DB_AddColumn("accounts", "passport", "INTEGER DEFAULT 1");
+	DB_AddColumn("accounts", "passport_skin", "INTEGER DEFAULT -1");
+	DB_AddColumn("accounts", "passport_date", "INTEGER DEFAULT 0");
+	new Float:x = PASS_DESK_X, Float:y = PASS_DESK_Y, Float:z = PASS_DESK_Z;
+	gPassMk = Marker_Create(MK_SCHOOL, 1, "Паспортный стол", 0, x, y, z, 0, 0, GPS_GOV, PASS_DESK_A);
+	Marker_SetLabel(gPassMk, "{33CCFF}Паспортный стол\n{FFFFFF}ALT — сфотографироваться на паспорт");
+}
+
+// После выбора пола при регистрации (accounts.inc), до Account_FinishLogin
+stock Docs_OnRegister(playerid)
+{
+	gDocFresh[playerid] = true;
+}
+
+stock Docs_OnDisconnect(playerid)
+{
+	Docs_PhotoCleanup(playerid);
+	gDocFresh[playerid] = false;
+}
+
+stock bool:Docs_HasPassport(playerid) { return gDocPass[playerid]; }
+stock Docs_PassDeskMarker() { return gPassMk; }
+stock bool:Docs_IsNearPassDesk(playerid) { return Marker_InRange(playerid, gPassMk, 3.0) != 0; }
+
 // После входа (Account_FinishLogin)
 stock Docs_LoadPlayer(playerid)
 {
 	gDocRegDate[playerid] = 0;
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT reg_date FROM accounts WHERE id = %d", Player[playerid][pDbId]);
+	gDocPass[playerid] = true;
+	gDocPassSkin[playerid] = -1;
+	gDocPassDate[playerid] = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT reg_date, passport, passport_skin, passport_date FROM accounts WHERE id = %d", Player[playerid][pDbId]);
 	if (r != DBResult:0)
 	{
-		if (DB_GetRowCount(r) > 0) gDocRegDate[playerid] = DB_GetFieldInt(r, 0);
+		if (DB_GetRowCount(r) > 0)
+		{
+			gDocRegDate[playerid] = DB_GetFieldInt(r, 0);
+			gDocPass[playerid] = DB_GetFieldInt(r, 1) != 0;
+			gDocPassSkin[playerid] = DB_GetFieldInt(r, 2);
+			gDocPassDate[playerid] = DB_GetFieldInt(r, 3);
+		}
 		DB_FreeResultSet(r);
+	}
+	if (gDocFresh[playerid])
+	{
+		// новичок: паспорт получит в мэрии (квест новичка)
+		gDocFresh[playerid] = false;
+		gDocPass[playerid] = false;
+		gDocPassSkin[playerid] = -1;
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET passport = 0, passport_skin = -1 WHERE id = %d", Player[playerid][pDbId]));
 	}
 	// старые аккаунты без даты регистрации: паспорт выдан сегодня
 	if (gDocRegDate[playerid] <= 0)
@@ -55,7 +125,7 @@ stock Docs_Has(playerid, item)
 {
 	switch (item)
 	{
-		case INV_PASSPORT: return Player[playerid][pDbId] != 0;
+		case INV_PASSPORT: return Player[playerid][pDbId] != 0 && gDocPass[playerid];
 		case INV_MEDCARD: return Hospital_MedcardUntil(playerid) > 0;
 		case INV_LICENSES: return Docs_HasAnyLicense(playerid);
 		case INV_SHOOTING: return Skills_RecordDate(playerid) > 0;
@@ -66,7 +136,7 @@ stock Docs_Has(playerid, item)
 // Какие документы лежат в сумке. Перед каждым показом сумки (needs.inc).
 stock Docs_Sync(playerid)
 {
-	Inv_SetDoc(playerid, INV_PASSPORT, Player[playerid][pDbId] != 0);
+	Inv_SetDoc(playerid, INV_PASSPORT, Player[playerid][pDbId] != 0 && gDocPass[playerid]);
 	Inv_SetDoc(playerid, INV_MEDCARD, Hospital_MedcardUntil(playerid) > 0);
 	Inv_SetDoc(playerid, INV_LICENSES, Docs_HasAnyLicense(playerid));
 	Inv_SetDoc(playerid, INV_SHOOTING, Skills_RecordDate(playerid) > 0);
@@ -119,7 +189,8 @@ static Docs_ShowPassport(owner, viewer)
 	new spouse[MAX_PLAYER_NAME];
 	spouse = Marriage_GetSpouseName(owner);
 	for (new i = 0; spouse[i]; i++) if (spouse[i] == '_') spouse[i] = ' ';
-	new bool:female = Docs_IsFemale(Player[owner][pSkin]);
+	new photo = gDocPassSkin[owner];
+	new bool:female = Docs_IsFemale(photo >= 0 ? photo : Player[owner][pSkin]);
 	new marital[MAX_PLAYER_NAME + 16];
 	if (spouse[0]) format(marital, sizeof marital, "%s %s", female ? ("замужем за") : ("женат на"), spouse);
 	else strcat(marital, female ? ("не замужем") : ("не женат"));
@@ -142,8 +213,8 @@ static Docs_ShowPassport(owner, viewer)
 		UI_JsonEscape(e[2], home);
 		UI_JsonEscape(e[3], marital);
 		format(json, sizeof json,
-			"{\"kind\":\"passport\",\"own\":%d,\"name\":\"%s\",\"num\":\"%s\",\"female\":%d,\"issued\":\"%s\",\"years\":%d,\"work\":\"%s\",\"home\":\"%s\",\"marital\":\"%s\",\"skin\":%d}",
-			owner == viewer, e[0], num, female, issued, Player[owner][pLevel], e[1], e[2], e[3], Player[owner][pSkin]);
+			"{\"kind\":\"passport\",\"own\":%d,\"name\":\"%s\",\"num\":\"%s\",\"female\":%d,\"issued\":\"%s\",\"years\":%d,\"work\":\"%s\",\"home\":\"%s\",\"marital\":\"%s\",\"skin\":%d,\"photo\":%d}",
+			owner == viewer, e[0], num, female, issued, Player[owner][pLevel], e[1], e[2], e[3], photo, gDocPassDate[owner]);
 		UI_Show(viewer, DIALOG_HELP, DIALOG_STYLE_MSGBOX, "document", json, "Закрыть");
 		return;
 	}
@@ -285,8 +356,149 @@ stock Docs_ShowTo(playerid, item, target, why[], whySize = sizeof why)
 
 stock bool:Cmd_Passport(playerid)
 {
+	if (!Docs_Has(playerid, INV_PASSPORT))
+	{
+		SendClientMessage(playerid, COLOR_GREY, "У тебя ещё нет паспорта. Его выдают в мэрии у паспортного стола (/quest, /gps).");
+		return true;
+	}
 	Docs_Use(playerid, INV_PASSPORT);
 	return true;
+}
+
+// ---------------------------------------------------------------------
+//  Паспортный стол: съёмка на паспорт
+// ---------------------------------------------------------------------
+stock Docs_PassDesk(playerid)
+{
+	if (gPhotoStage[playerid]) return 1;
+	if (IsPlayerInAnyVehicle(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Выйди из машины.");
+	if (gDocPass[playerid])
+	{
+		ShowPlayerDialog(playerid, DIALOG_PASS_RETAKE, DIALOG_STYLE_MSGBOX, "Паспортный стол",
+			"{FFFFFF}Паспорт у тебя уже есть.\nПереснять фото (например, после смены одежды) стоит {33AA33}$%d{FFFFFF}.", "Переснять", "Отмена", PASS_RETAKE_PRICE);
+		return 1;
+	}
+	Docs_PhotoStart(playerid, false);
+	return 1;
+}
+
+stock Docs_OnDialog(playerid, dialogid, response)
+{
+	if (dialogid != DIALOG_PASS_RETAKE) return 0;
+	if (!response || !Docs_IsNearPassDesk(playerid) || gPhotoStage[playerid]) return 1;
+	if (GetMoney(playerid) < PASS_RETAKE_PRICE)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Не хватает денег: нужно $%d.", PASS_RETAKE_PRICE);
+		return 1;
+	}
+	Docs_PhotoStart(playerid, true);
+	return 1;
+}
+
+// голова сидящего игрока и точка камеры перед ним
+static Docs_PhotoHead(&Float:hx, &Float:hy, &Float:hz, &Float:cx, &Float:cy)
+{
+	new m = gPassMk;
+	new Float:a = gMarker[m][mkA];
+	hx = gMarker[m][mkX];
+	hy = gMarker[m][mkY];
+	hz = gMarker[m][mkZ] + 0.42;
+	cx = hx - 1.15 * floatsin(a, degrees);
+	cy = hy + 1.15 * floatcos(a, degrees);
+}
+
+static Docs_PhotoStart(playerid, bool:paid)
+{
+	if (!Marker_IsValid(gPassMk)) return;
+	new m = gPassMk;
+	new Float:x = gMarker[m][mkX], Float:y = gMarker[m][mkY], Float:z = gMarker[m][mkZ], Float:a = gMarker[m][mkA];
+	gPhotoStage[playerid] = 1;
+	gPhotoPaid[playerid] = paid;
+	TogglePlayerControllable(playerid, false);
+	SetPlayerPos(playerid, x, y, z);
+	SetPlayerFacingAngle(playerid, a);
+	gPhotoChair[playerid] = CreatePlayerObject(playerid, PASS_CHAIR_MODEL, x, y, z - 0.95, 0.0, 0.0, a + 180.0);
+	ApplyAnimation(playerid, "PED", "SEAT_idle", 4.1, true, false, false, true, 0, SYNC_ALL);
+	new Float:hx, Float:hy, Float:hz, Float:cx, Float:cy;
+	Docs_PhotoHead(hx, hy, hz, cx, cy);
+	SetPlayerCameraPos(playerid, cx, cy, hz + 0.05);
+	SetPlayerCameraLookAt(playerid, hx, hy, hz, CAMERA_CUT);
+	SendClientMessage(playerid, 0x33CCFFFF, "Фотограф: «Садись, смотри прямо в камеру... Не моргай!»");
+	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, "%s садится перед фотографом паспортного стола.", GetRPName(playerid));
+	SetTimerEx("Docs_PhotoShot", 2500, false, "i", playerid);
+}
+
+forward Docs_PhotoShot(playerid);
+public Docs_PhotoShot(playerid)
+{
+	if (!IsPlayerConnected(playerid) || gPhotoStage[playerid] != 1) return 0;
+	gPhotoStage[playerid] = 2;
+	// ПК-клиент снимает кадр до вспышки (скрытый диалог, как "[hud]": id панели HUD, чтобы не сбить окна)
+	if (!IsPlayerMobile[playerid] && gUiPcVersion[playerid] >= PASS_PHOTO_PC_VER)
+		ShowPlayerDialog(playerid, HUD_DIALOG_ID, DIALOG_STYLE_MSGBOX, "[bastion:photo]", "%d", "OK", "", GetPlayerSkin(playerid));
+	PlayerPlaySound(playerid, 1132, 0.0, 0.0, 0.0);
+	SetTimerEx("Docs_PhotoFlash", 250, false, "i", playerid);
+	SetTimerEx("Docs_PhotoDone", 1400, false, "i", playerid);
+	return 1;
+}
+
+forward Docs_PhotoFlash(playerid);
+public Docs_PhotoFlash(playerid)
+{
+	if (!IsPlayerConnected(playerid) || gPhotoStage[playerid] != 2) return 0;
+	if (gPhotoFlash[playerid] == PlayerText:INVALID_PLAYER_TEXT_DRAW)
+	{
+		gPhotoFlash[playerid] = CreatePlayerTextDraw(playerid, -10.0, -10.0, "_");
+		PlayerTextDrawLetterSize(playerid, gPhotoFlash[playerid], 0.0, 55.0);
+		PlayerTextDrawTextSize(playerid, gPhotoFlash[playerid], 660.0, 0.0);
+		PlayerTextDrawUseBox(playerid, gPhotoFlash[playerid], true);
+		PlayerTextDrawBoxColour(playerid, gPhotoFlash[playerid], 0xFFFFFFDD);
+	}
+	PlayerTextDrawShow(playerid, gPhotoFlash[playerid]);
+	return 1;
+}
+
+static Docs_PhotoCleanup(playerid)
+{
+	if (gPhotoFlash[playerid] != PlayerText:INVALID_PLAYER_TEXT_DRAW)
+	{
+		PlayerTextDrawDestroy(playerid, gPhotoFlash[playerid]);
+		gPhotoFlash[playerid] = PlayerText:INVALID_PLAYER_TEXT_DRAW;
+	}
+	if (gPhotoChair[playerid] != INVALID_OBJECT_ID)
+	{
+		DestroyPlayerObject(playerid, gPhotoChair[playerid]);
+		gPhotoChair[playerid] = INVALID_OBJECT_ID;
+	}
+	gPhotoStage[playerid] = 0;
+}
+
+forward Docs_PhotoDone(playerid);
+public Docs_PhotoDone(playerid)
+{
+	if (!IsPlayerConnected(playerid) || gPhotoStage[playerid] != 2) return 0;
+	Docs_PhotoCleanup(playerid);
+	ClearAnimations(playerid, SYNC_ALL);
+	SetCameraBehindPlayer(playerid);
+	TogglePlayerControllable(playerid, true);
+	if (gPhotoPaid[playerid])
+	{
+		if (GetMoney(playerid) < PASS_RETAKE_PRICE) return SendClientMessage(playerid, COLOR_GREY, "Не хватает денег на пересъёмку.");
+		GiveMoney(playerid, -PASS_RETAKE_PRICE, "пересъёмка фото на паспорт");
+	}
+	new bool:first = !gDocPass[playerid];
+	gDocPass[playerid] = true;
+	gDocPassSkin[playerid] = GetPlayerSkin(playerid);
+	gDocPassDate[playerid] = gettime();
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET passport = 1, passport_skin = %d, passport_date = %d WHERE id = %d",
+		gDocPassSkin[playerid], gDocPassDate[playerid], Player[playerid][pDbId]));
+	GameTextForPlayer(playerid, "~w~Passport", 2000, 1);
+	if (first) SendClientMessage(playerid, COLOR_GREEN, "Паспорт готов! Он лежит в сумке (/inv), посмотреть: /passport, показать: /showpass [id].");
+	else SendClientMessage(playerid, COLOR_GREEN, "Фото в паспорте обновлено ($%d). Посмотреть: /passport.", PASS_RETAKE_PRICE);
+#if defined Quest_OnPassport
+	Quest_OnPassport(playerid);     // квест новичка (quest.inc)
+#endif
+	return 1;
 }
 
 static Docs_CmdShow(playerid, item, const params[], const usage[])
@@ -295,7 +507,7 @@ static Docs_CmdShow(playerid, item, const params[], const usage[])
 	new target = NextPlayerParam(params, pos);
 	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "Использование: %s [id]", usage);
 	if (!Docs_Has(playerid, item))
-		return SendClientMessage(playerid, COLOR_GREY, item == INV_MEDCARD ? ("У тебя нет медкарты, её дают в больнице.") : ("У тебя нет лицензий."));
+		return SendClientMessage(playerid, COLOR_GREY, item == INV_PASSPORT ? ("У тебя нет паспорта, его выдают в мэрии.") : item == INV_MEDCARD ? ("У тебя нет медкарты, её дают в больнице.") : ("У тебя нет лицензий."));
 	if (!Docs_ShowTo(playerid, item, target, why)) SendClientMessage(playerid, COLOR_GREY, "%s", why);
 	return 1;
 }

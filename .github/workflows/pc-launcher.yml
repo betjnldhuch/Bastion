@@ -74,21 +74,6 @@ jobs:
           "version=$ver" >> $env:GITHUB_OUTPUT
           Write-Host "Launcher version $ver"
 
-      # Тот же компилятор .NET Framework 4, что и в build.bat у игрока
-      - name: Compile BastionLauncher.exe
-        shell: pwsh
-        working-directory: launcher/source
-        run: |
-          $csc = "$env:WINDIR\Microsoft.NET\Framework\v4.0.30319\csc.exe"
-          # загрузочные экраны по времени суток (LoadScreens.cs)
-          $res = Get-ChildItem loadscreens\*.jpg | ForEach-Object { "/resource:loadscreens\$($_.Name),ls_$($_.Name)" }
-          if ($res.Count -ne 15) { Write-Error "expected 15 loadscreens, got $($res.Count)"; exit 1 }
-          & $csc /nologo /codepage:65001 /target:winexe /platform:x86 /optimize+ `
-            /r:System.Windows.Forms.dll /r:System.Drawing.dll `
-            /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll /win32icon:bastion.ico /resource:logo-banner.png,logo-banner.png /resource:logo-shield.png,logo-shield.png @res `
-            /out:..\BastionLauncher.exe Core.cs Ui.cs Installer.cs Updater.cs ClientPack.cs UiPack.cs LoadScreens.cs Secrets.cs
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
       # Пакет FPS (до 165 FPS): загрузчик ASI, снятие лимита SA-MP (ModernFpsLimit) и SilentPatch.
       # FramerateVigilante готовых сборок на GitHub не имеет — его кладут в fps\ руками.
       # Берём с официальных релизов авторов на GitHub (см. launcher/fps/README.txt).
@@ -129,6 +114,23 @@ jobs:
           try { Fetch "CookiePLMonster/SilentPatch" '^SilentPatchSA.*\.(zip|7z|rar)$' @("SilentPatchSA.asi", "SilentPatchSA.ini") } catch { Write-Host "::warning::$_" }
           Get-ChildItem $fps | Format-Table Name, Length
 
+      # Тот же компилятор .NET Framework 4, что и в build.bat у игрока
+      - name: Compile BastionLauncher.exe
+        shell: pwsh
+        working-directory: launcher/source
+        run: |
+          $csc = "$env:WINDIR\Microsoft.NET\Framework\v4.0.30319\csc.exe"
+          # загрузочные экраны по времени суток (LoadScreens.cs)
+          $res = Get-ChildItem loadscreens\*.jpg | ForEach-Object { "/resource:loadscreens\$($_.Name),ls_$($_.Name)" }
+          if ($res.Count -ne 15) { Write-Error "expected 15 loadscreens, got $($res.Count)"; exit 1 }
+          # шрифт и пакет FPS вшиты в exe (Home.cs выкладывает их рядом): хватает одного exe
+          $res += Get-ChildItem ..\fonts, ..\fps -File | ForEach-Object { "/resource:$($_.FullName),home/$($_.Directory.Name)/$($_.Name)" }
+          & $csc /nologo /codepage:65001 /target:winexe /platform:x86 /optimize+ `
+            /r:System.Windows.Forms.dll /r:System.Drawing.dll `
+            /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll /win32icon:bastion.ico /resource:logo-banner.png,logo-banner.png /resource:logo-shield.png,logo-shield.png @res `
+            /out:..\BastionLauncher.exe Core.cs Ui.cs Installer.cs Updater.cs ClientPack.cs UiPack.cs LoadScreens.cs Home.cs Secrets.cs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Package BastionLauncher folder
         shell: pwsh
         run: |
@@ -140,6 +142,19 @@ jobs:
           New-Item -ItemType Directory -Force "$out\source" | Out-Null
           git show HEAD:launcher/source/Secrets.cs | Set-Content "$out\source\Secrets.cs" -Encoding utf8
           Get-ChildItem launcher\source -Exclude Secrets.cs | Copy-Item -Destination "$out\source"
+
+      # Установщик BastionSetup.exe (Inno Setup): ставит в %LocalAppData%\Bastion Online\Launcher,
+      # ярлыки, сразу запускает лаунчер. Постоянная ссылка — releases/latest/download/BastionSetup.exe
+      - name: Build BastionSetup.exe
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          if (-not (Test-Path $iscc)) { $iscc = (Get-Command iscc -ErrorAction Stop).Source }
+          $src = (Resolve-Path dist\BastionLauncher).Path
+          & $iscc /Q "/DAppVersion=${{ steps.ver.outputs.version }}" "/DSrcDir=$src" launcher\installer\BastionSetup.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-Item dist\BastionSetup.exe | Format-Table Name, Length
 
       - name: Upload launcher
         uses: actions/upload-artifact@v4
@@ -161,7 +176,7 @@ jobs:
           Compress-Archive -Path dist\BastionLauncher -DestinationPath BastionLauncher-PC.zip -Force
           gh release view builds *> $null
           if ($LASTEXITCODE -ne 0) { gh release create builds --prerelease --title "Свежие сборки" --notes "Последние ручные сборки лаунчеров." }
-          gh release upload builds BastionLauncher-PC.zip --clobber
+          gh release upload builds BastionLauncher-PC.zip dist\BastionSetup.exe --clobber
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # Файл версии для автообновления лаунчера (Updater.cs). Кладётся после архива,
           # чтобы игрок не увидел новую версию раньше, чем загрузится сам архив.
