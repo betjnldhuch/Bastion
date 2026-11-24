@@ -162,7 +162,12 @@ button { font: inherit; cursor: pointer; }
 .tier li b { color: var(--text); font-weight: 600; }
 .tier .btn { flex: none; height: 38px; font-size: 13px; }
 @media (max-height: 420px) { .tier .tbadge { width: 44px; height: 44px; } }
-.tier .btn[data-sure] { background: linear-gradient(180deg, var(--green), #2c9a57); }
+.vip-sure { position: sticky; bottom: 0; margin-top: 10px; padding: 12px 14px; border-radius: 12px; background: #1c1f25;
+  border: 1px solid var(--tc, var(--accent)); box-shadow: 0 -6px 24px rgba(0,0,0,.5); display: flex; align-items: center; gap: 14px; flex-wrap: wrap; animation: rise .15s ease-out; }
+.vip-sure .q { flex: 1 1 220px; font-weight: 600; }
+.vip-sure .q span { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
+.vip-sure .row { margin: 0; flex: none; }
+.vip-sure .btn { white-space: nowrap; padding-left: 18px; padding-right: 18px; }
 .packs { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
 @media (max-height: 420px) { .card.shop.vipw { display: block; } .vipw .shop-foot { display: none; } .vipw .row { margin-top: 8px; } .vipw .row .btn { height: 38px; } .tier ul { font-size: 11px; } }
 .pack.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: rgba(255,122,26,.08); }
@@ -290,11 +295,11 @@ button { font: inherit; cursor: pointer; }
 .doc-fields .st-sk .sk { grid-template-columns: 12.5em 1fr 3em 5.2em; }
 @media (max-height: 420px) { .sk { font-size: 12px; margin-bottom: 3px; } .sk-note { display: none; } }
 /* Документы: паспорт, медкарта, лицензии (docs.inc) */
-.card.doc { width: min(520px, 100%); max-height: 100%; padding: 0; overflow: hidden; background: rgba(16, 18, 22, .82); display: flex; flex-direction: column; }
+.card.doc { width: min(520px, 100%); max-height: 100%; padding: 0; overflow: hidden; background: linear-gradient(180deg, #1a1d22, #131519); display: flex; flex-direction: column; }
 .card.doc > * { flex: none; }
 .card.doc > .doc-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .doc-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 20px 12px;
-  background: linear-gradient(100deg, rgba(29,32,38,.82), rgba(21,23,27,.82)); border-bottom: 2px solid var(--accent); }
+  background: linear-gradient(100deg, #1f2228, #17191d); border-bottom: 2px solid var(--accent); }
 .doc-top .t { font-family: "Russo One", sans-serif; font-size: 19px; letter-spacing: .05em; }
 .doc-top .s { font-size: 11px; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }
 .doc-top .seal { width: 46px; height: 46px; flex: none; border-radius: 50%; border: 2px solid rgba(255,122,26,.7); display: flex;
@@ -305,8 +310,16 @@ button { font: inherit; cursor: pointer; }
 .doc-body::after { content: "BASTION"; position: absolute; right: 14px; bottom: 2px; font-family: "Russo One", sans-serif; font-size: 44px;
   color: rgba(255,255,255,.025); letter-spacing: .1em; pointer-events: none; }
 .doc-photo { width: 108px; height: 136px; flex: none; border-radius: 10px; border: 1px solid var(--line); position: relative; overflow: hidden;
-  background: radial-gradient(circle at 50% 36%, #3a3f48 0 22%, transparent 23%), radial-gradient(ellipse at 50% 100%, #3a3f48 0 46%, transparent 47%), #1b1e23;
-  display: flex; align-items: flex-end; justify-content: center; }
+  background: linear-gradient(180deg, #c9d3de, #8d9aa8); display: flex; align-items: flex-end; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,.35); }
+.doc-photo > svg, .doc-photo > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.doc-photo.pic > svg { display: none; }
+.doc-photo::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(160deg, rgba(255,255,255,.18), transparent 40%); }
+.doc-sign { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 8px 20px 0; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,.12); }
+.doc-sign .sg { font: italic 600 20px/1 "Segoe Script", "Brush Script MT", cursive; color: #8fb4ff; transform: rotate(-3deg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-sign .k { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.doc-sign .r { text-align: right; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.doc-sign .r b { color: var(--text); font-weight: 600; }
 .doc-chart { width: 108px; height: 136px; flex: none; border-radius: 10px; border: 1px solid var(--line); background: var(--well);
   display: flex; flex-direction: column; overflow: hidden; }
 .doc-chart .bars { flex: 1; display: flex; align-items: flex-end; gap: 4px; padding: 10px 8px 6px; }
@@ -323,8 +336,8 @@ button { font: inherit; cursor: pointer; }
 .doc-fields .k { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
 .doc-fields .v { font-size: 14.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .doc-fields .v.big { font-family: "Russo One", sans-serif; font-weight: 400; font-size: 18px; white-space: normal; }
-.doc-mrz { margin: 10px 20px 0; padding: 7px 10px; border-radius: 8px; background: rgba(11,12,15,.75); border: 1px solid var(--line);
-  font: 12px/1.35 ui-monospace, "Courier New", monospace; color: #9aa0aa; letter-spacing: .12em; overflow: hidden; white-space: nowrap; }
+.doc-mrz { margin: 10px 20px 0; padding: 8px 12px; border-radius: 8px; background: linear-gradient(180deg, #e9e4d6, #d9d3c3); border: 1px solid #bdb6a4;
+  font: 600 12.5px/1.45 "OCR B", "OCR-B", "Consolas", ui-monospace, "Courier New", monospace; color: #23262b; letter-spacing: .14em; overflow: hidden; white-space: nowrap; text-align: center; }
 .doc-stamp { display: inline-block; padding: 3px 10px; border-radius: 6px; font-family: "Russo One", sans-serif; font-size: 13px; letter-spacing: .06em;
   border: 2px solid currentColor; transform: rotate(-3deg); }
 .doc-stamp.ok { color: var(--green); } .doc-stamp.bad { color: var(--red); }
@@ -349,6 +362,7 @@ button { font: inherit; cursor: pointer; }
   background: linear-gradient(180deg, rgba(27,30,35,.88), rgba(20,22,26,.86)); border: 1px solid var(--line);
   border-radius: 12px; padding: 9px 11px 10px; box-shadow: 0 8px 24px rgba(0,0,0,.45); overflow: hidden; }
 #hud.on { display: block; animation: fade .25s ease-out; }
+#root.on ~ #hud { display: none !important; }   /* окно открыто — панель HUD не лезет поверх */
 #hud::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
   background: linear-gradient(90deg, var(--accent), var(--accent-dark)); }
 #hud .hd { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 7px; }
@@ -383,8 +397,8 @@ button { font: inherit; cursor: pointer; }
 #root.phone-mode { background: radial-gradient(ellipse at 80% 60%, rgba(8,9,12,.25), rgba(8,9,12,.05)); justify-content: flex-end; padding: 12px 6vw 12px 12px; }
 @media (max-aspect-ratio: 1/1) { #root.phone-mode { justify-content: center; padding: 12px; } }
 /* телефон в альбомной ориентации: экран низкий — телефон во всю высоту и крупнее текст */
-@media (max-height: 520px) { #root.phone-mode { padding: 6px 4vw 6px 6px; } .ph { --h: calc(100vh - 12px); width: calc(var(--h) * .53); font-size: calc(var(--h) * .027); } }
-.ph { --h: min(640px, calc(100vh - 24px)); height: var(--h); width: calc(var(--h) * .49); position: relative; flex: none;
+@media (max-height: 520px) { #root.phone-mode { padding: 6px 4vw 6px 6px; } .ph { --h: 86vh; width: calc(var(--h) * .53); font-size: calc(var(--h) * .03); } }
+.ph { --h: min(560px, 72vh); height: var(--h); width: calc(var(--h) * .49); position: relative; flex: none;
   border-radius: calc(var(--h) * .075); background: #111317; padding: calc(var(--h) * .022);
   box-shadow: 0 0 0 2px #3a3e46, 0 0 0 4px #15171b, 0 24px 70px rgba(0,0,0,.6); animation: rise .22s ease-out; font-size: calc(var(--h) * .022); }
 .ph.again { animation: none; }
@@ -651,6 +665,49 @@ function vipImg(level, cls) {
     }).join('') + '<div class="sk-note">Растут за попадания. На 100% пистолет, обрез и ПП берутся в обе руки.</div></div>';
   }
 
+  // Фото в документе: doc/skins/<скин>.png (портрет скина), иначе doc/photo_m.png / photo_f.png, иначе рисованный силуэт
+  function docPhoto(skin, female) {
+    var g = female ? 'f' : 'm';
+    var svg = '<svg viewBox="0 0 108 136" aria-hidden="true"><defs><linearGradient id="dpg' + g + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="#4a5361"/><stop offset="1" stop-color="#2a3039"/></linearGradient></defs>' +
+      (female ? '<path d="M30 70 C24 34 40 18 54 18 C68 18 84 34 78 70 C74 84 34 84 30 70Z" fill="#2b2f36"/>' : '') +
+      '<path d="M10 136 C12 108 28 98 44 95 L46 84 C38 79 34 68 34 56 C34 36 43 26 54 26 C65 26 74 36 74 56 C74 68 70 79 62 84 L64 95 C80 98 96 108 98 136Z" fill="url(#dpg' + g + ')"/>' +
+      '<path d="M44 95 L54 112 L64 95 L60 92 L54 100 L48 92Z" fill="#e6e9ee" opacity=".85"/></svg>';
+    return '<div class="doc-photo">' + svg + '<img src="doc/skins/' + skin + '.png" alt="" draggable="false" ' +
+      'onload="this.parentNode.classList.add(\'pic\')" onerror="if(this.dataset.f){this.remove()}else{this.dataset.f=1;this.src=\'doc/photo_' + g + '.png\'}"></div>';
+  }
+  function docExpiry(issued) {
+    var m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(issued || '');
+    return m ? m[1] + '.' + m[2] + '.' + (+m[3] + 10) : '—';
+  }
+  // Машиночитаемая зона как в загранпаспорте (ICAO 9303, TD3): 2 строки по 44 знака с контрольными цифрами
+  function mrzCheck(str) {
+    var w = [7, 3, 1], sum = 0;
+    for (var i = 0; i < str.length; i++) {
+      var c = str.charCodeAt(i), v = c >= 48 && c <= 57 ? c - 48 : c >= 65 && c <= 90 ? c - 55 : 0;
+      sum += v * w[i % 3];
+    }
+    return String(sum % 10);
+  }
+  function mrzText(s) { return translit(plain(s)).toUpperCase().replace(/[^A-Z ]/g, '').trim().replace(/ +/g, '<'); }
+  function translit(s) {
+    var T = { а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'i',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'kh',ц:'ts',ч:'ch',ш:'sh',щ:'shch',ы:'y',э:'e',ю:'iu',я:'ia' };
+    return String(s || '').replace(/[_]/g, ' ').replace(/[а-яё]/gi, function (c) { var r = T[c.toLowerCase()] || ''; return c === c.toLowerCase() ? r : r.toUpperCase(); });
+  }
+  function mrzPad(s, n) { s = s.slice(0, n); while (s.length < n) s += '<'; return s; }
+  function passportMrz(d) {
+    var parts = translit(plain(d.name)).replace(/_/g, ' ').trim().split(/\s+/);
+    var sur = mrzText(parts.length > 1 ? parts.slice(1).join(' ') : parts[0] || ''), given = parts.length > 1 ? mrzText(parts[0]) : '';
+    var l1 = mrzPad('P<SAN' + sur + '<<' + given, 44);
+    var num = mrzPad(String(d.num || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), 9);
+    var m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(d.issued || ''), iss = m ? m[3].slice(2) + m[2] + m[1] : '<<<<<<';
+    var exp = m ? String(+m[3] + 10).slice(2) + m[2] + m[1] : '<<<<<<';
+    var sex = d.female ? 'F' : 'M', pers = mrzPad('BASTION', 14);
+    var core = num + mrzCheck(num) + 'SAN' + iss + mrzCheck(iss) + sex + exp + mrzCheck(exp) + pers + mrzCheck(pers);
+    var fin = mrzCheck(num + mrzCheck(num) + iss + mrzCheck(iss) + exp + mrzCheck(exp) + pers + mrzCheck(pers));
+    return [l1, core + fin];
+  }
+
   // Документ (docs.inc): паспорт, медкарта, лицензии. own — свой или показали
   function docWindow(d, m) {
     var K = { passport: ['ПАСПОРТ', 'Штат San Andreas · гражданин'], medcard: ['МЕДКАРТА', 'Больница Лос-Сантоса'], licenses: ['ЛИЦЕНЗИИ', 'Штат San Andreas · разрешения'], bizstat: ['ВЫПИСКА', 'Bastion Bank · доход бизнеса'], shooting: ['ВЫПИСКА ИЗ ТИРА', 'Ammu-Nation · стрелковая подготовка'] };
@@ -658,7 +715,7 @@ function vipImg(level, cls) {
     function f(key, val, cls) { return '<div class="f' + (cls ? ' ' + cls : '') + '"><div class="k">' + key + '</div><div class="v">' + val + '</div></div>'; }
     var name = esc(plain(d.name)), fields = '';
     function usd(v) { return '$' + String(v | 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
-    var photo = '<div class="doc-photo"><span>скин ' + (d.skin | 0) + '</span></div>';
+    var photo = docPhoto(d.skin | 0, !!d.female);
     if (d.kind === 'bizstat') {
       // доход по дням: столбики, последний — сегодня
       var dd = d.days || [], top = Math.max.apply(null, dd.concat([1]));
@@ -700,12 +757,15 @@ function vipImg(level, cls) {
     // машиночитаемая строка внизу, как в настоящем паспорте
     var mrz = ({ bizstat: 'B<BNK', passport: 'P<SAN', medcard: 'M<LSH', licenses: 'L<SAN', shooting: 'S<AMN' }[d.kind] || 'P<SAN') +
       plain(d.kind === 'bizstat' ? d.owner : d.name).toUpperCase().replace(/[^A-Z ]/g, '').replace(/ /g, '<<') + '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<';
+    var mrzLines = d.kind === 'passport' || !d.kind ? passportMrz(d) : null;
+    var sign = d.kind === 'passport' || !d.kind ? '<div class="doc-sign"><div><div class="k">Подпись владельца</div><div class="sg">' + esc(plain(d.name)) + '</div></div>' +
+      '<div class="r">Выдан: <b>Мэрия Лос-Сантоса</b><br>Действителен до <b>' + esc(docExpiry(d.issued)) + '</b></div></div>' : '';
     var tag = d.verified ? '<div class="s" style="color:var(--green)">Данные из банка на момент выдачи</div>' : d.own ? '' : '<div class="s" style="color:var(--accent)">Тебе показывают документ</div>';
     root.innerHTML = '<div class="card doc' + (d.kind === 'shooting' ? ' wide' : '') + '">' + closeBtn() +
       '<div class="doc-top"><div><div class="brand">BASTION ONLINE</div><div class="t">' + k[0] + '</div><div class="s">' + k[1] + '</div>' + tag + '</div>' +
       '<div class="seal' + (d.kind === 'shooting' ? ' img' : '') + '">BS</div></div>' +
       '<div class="doc-body">' + photo + '<div class="doc-fields">' + fields + '</div></div>' +
-      '<div class="doc-mrz">' + esc(mrz.slice(0, 44)) + '<br>' + esc((String(d.kind === 'bizstat' ? 'BIZ' + d.num + '<' + d.code : d.num || '').replace(/\s/g, '') + '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<').slice(0, 44)) + '</div>' +
+      sign + '<div class="doc-mrz">' + (mrzLines ? esc(mrzLines[0]) + '<br>' + esc(mrzLines[1]) + '</div>' : esc(mrz.slice(0, 44)) + '<br>' + esc((String(d.kind === 'bizstat' ? 'BIZ' + d.num + '<' + d.code : d.num || '').replace(/\s/g, '') + '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<').slice(0, 44)) + '</div>') +
       '<div class="doc-foot"><div class="row"><button class="btn primary" id="b1">' + esc(m.button1 || 'Закрыть') + '</button></div></div></div>';
     document.getElementById('b1').onclick = document.getElementById('x').onclick = function () { respond(1, -1, ''); };
   }
@@ -1108,13 +1168,24 @@ function vipImg(level, cls) {
         bindClose();
         document.getElementById('b2').onclick = function () { list('', true); };
         Array.prototype.forEach.call(root.querySelectorAll('.tier .btn'), function (el) {
+          // Подтверждение — отдельной панелью с другой кнопкой: второй клик в ту же точку на ПК
+          // мог уйти как двойной и потеряться, покупка не проходила
           el.onclick = function () {
-            var n = +el.getAttribute('data-n');
-            if (el.getAttribute('data-sure')) { respond(1, 1, '1 ' + n); return; }
-            Array.prototype.forEach.call(root.querySelectorAll('.tier .btn[data-sure]'), function (o) { o.removeAttribute('data-sure'); o.textContent = o.getAttribute('data-t'); });
-            el.setAttribute('data-t', el.textContent);
-            el.setAttribute('data-sure', '1');
-            el.innerHTML = 'Точно? −' + tiers[n - 1].p;
+            var n = +el.getAttribute('data-n'), t = tiers[n - 1];
+            var what = lvl === n ? 'Продлить VIP ' + esc(t.n) : lvl ? 'Улучшить VIP до ' + esc(t.n) : 'Купить VIP ' + esc(t.n);
+            var old = root.querySelector('.vip-sure'); if (old) old.remove();
+            var box = document.createElement('div');
+            box.className = 'vip-sure';
+            box.style.setProperty('--tc', '#' + t.c);
+            box.innerHTML = '<div class="q">' + what + ' за ' + coin(t.p) + '?<span>Останется ' + (coins - t.p) + ' монет</span></div>' +
+              '<div class="row"><button type="button" class="btn" id="vs-no">Отмена</button><button type="button" class="btn primary" id="vs-yes">Да, ' + (lvl === n ? 'продлить' : lvl ? 'улучшить' : 'купить') + '</button></div>';
+            root.querySelector('.vipw').appendChild(box);
+            box.scrollIntoView({ block: 'nearest' });
+            document.getElementById('vs-no').onclick = function () { box.remove(); };
+            document.getElementById('vs-yes').onclick = function () {
+              this.disabled = true; this.textContent = 'Покупаем…';
+              respond(1, 1, '1 ' + n);
+            };
           };
         });
       }
