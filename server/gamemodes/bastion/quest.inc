@@ -22,14 +22,13 @@
 #define QUEST_MAX_LEVEL     2       // до какого уровня можно начать квест через /quest
 #define QUEST_FINAL_EXP     1       // опыт за последний шаг
 
-// Паспортный стол в мэрии (docs.inc, по умолчанию у автошколы). docs.inc подключается
-// позже, поэтому метка GPS — по точке стола по умолчанию.
+// Паспортный стол в мэрии: метка GPS по его маркеру (Docs_PassDeskMarker), это — запасная точка.
 #define QUEST_HALL_X        1477.6
 #define QUEST_HALL_Y        -1771.3
 #define QUEST_HALL_Z        18.8
 // Вход в автосалон «Эконом» (Coutt & Schutz)
-#define QUEST_SALON_X       2131.7
-#define QUEST_SALON_Y       -1150.4
+#define QUEST_SALON_X       2126.0
+#define QUEST_SALON_Y       -1150.6
 #define QUEST_SALON_Z       24.1
 
 enum
@@ -71,7 +70,7 @@ static const gQuestSteps[QS_COUNT][E_QUEST_STEP] =
 	{ "bank",     "Положи деньги в банк",    "Подойди к банкомату (метка GPS) или в зал банка, нажми ALT и положи на счёт любую сумму. Зарплата приходит на счёт.", 500 },
 	{ "payday",   "Получи первую зарплату",  "Зарплата (PayDay) приходит в начале каждого часа, если ты в игре. Просто играй и дождись её.", 3000 },
 	{ "passport", "Получи паспорт",          "Приди в мэрию (метка GPS), подойди к паспортному столу, сфотографируйся и получи паспорт. Показать его: /showpass.", 300 },
-	{ "vehicle",  "Купи свой транспорт",     "Приезжай в автосалон «Эконом» (метка GPS) и купи машину или мопед: /buycar. Faggio стоит $3000. Свои машины: /cars.", 1500 }
+	{ "vehicle",  "Купи свой транспорт",     "Приезжай в автосалон «Эконом» (метка GPS), зайди внутрь и купи у менеджера машину или мопед (ALT). Faggio стоит $3000. Свои машины: /cars.", 1500 }
 };
 
 static gQuestStep[MAX_PLAYERS];
@@ -159,8 +158,13 @@ static Quest_SetGps(playerid, bool:quiet = false)
 	{
 		case QS_PASSPORT:
 		{
-			Gps_SetPoint(playerid, QUEST_HALL_X, QUEST_HALL_Y, QUEST_HALL_Z, "Мэрия");
-			return 1;
+			// маркер паспортного стола (docs.inc, двигается через /markers), иначе точка по умолчанию
+			m = Docs_PassDeskMarker();
+			if (!Marker_IsValid(m))
+			{
+				Gps_SetPoint(playerid, QUEST_HALL_X, QUEST_HALL_Y, QUEST_HALL_Z, "Паспортный стол");
+				return 1;
+			}
 		}
 		case QS_RENTAL:  m = Quest_NearestMarker(playerid, MK_RENTAL);
 		case QS_PHONE:   m = Quest_NearestBiz(playerid, BIZ_SHOP, BIZ_SHOP);
@@ -407,6 +411,12 @@ stock Quest_OnRegister(playerid)
 // ---------------------------------------------------------------------
 //  События из других модулей
 // ---------------------------------------------------------------------
+// Шаг «Поешь»: из needs.inc, чтобы сытый новичок всё равно мог съесть еду из сумки (1 — да)
+stock Quest_WantsFood(playerid)
+{
+	return (Quest_Active(playerid) && gQuestStep[playerid] == QS_FOOD) ? 1 : 0;
+}
+
 stock Quest_OnPassport(playerid) { Quest_Complete(playerid, QS_PASSPORT); }
 stock Quest_OnRental(playerid)  { Quest_Complete(playerid, QS_RENTAL); }
 stock Quest_OnPhone(playerid)   { Quest_Complete(playerid, QS_PHONE); }
