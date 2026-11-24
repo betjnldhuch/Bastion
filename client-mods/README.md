@@ -155,7 +155,9 @@ bpd4_subway_tile, bpd4_concrete, bpd4_sign_cells, bpd4_sign_interrogation, bpd4_
 | 1247 | bribe / icons9 | выход | выходы из интерьеров |
 | 1273 | property_fsale / icons3 | дом продаётся | дома |
 | 1272 | property_locked / icons4 | дом занят | дома (1277, 1314 тоже в icons4) |
-| 1239 | info / icons6 | бизнес | бизнесы, аренда, СТО, штрафстоянка, церковь |
+| 1239 | info / icons6 | бизнес | бизнесы, аренда, церковь |
+| 1248 | bonus / bonus | эвакуатор | штрафстоянка |
+| 1279 | craigpackage / craigpackage | ключ и отвёртка | СТО |
 | 1274 | bigdollar / icons2 | касса | автосалон, касса банка, хранилище, лотерея, владелец завода |
 | 1275 | clothesp / icons1 | работа | работы, фракции, амбар, свалка, пост охраны |
 | 1242 | bodyarmour / icons7 | склад | склады фракций и армии |

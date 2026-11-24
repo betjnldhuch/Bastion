@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "product": "Bastion PC client pack",
   "files": [
     {
@@ -38,6 +38,20 @@
       "url": "pack/models/gta3.img/bodyarmour.dff",
       "size": 5086,
       "sha256": "d7de0fd2fd9ca445e70632c00f66426ce33cd265aa05446ac9c616df2dbade07"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "bonus.dff",
+      "url": "pack/models/gta3.img/bonus.dff",
+      "size": 5077,
+      "sha256": "059042efe5bd7b9c40349fc8077846e8c29180dd2e5921b416f3e36c82de9861"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "bonus.txd",
+      "url": "pack/models/gta3.img/bonus.txd",
+      "size": 87576,
+      "sha256": "a2a95bca0c066244bd12d15eece0a694d3c5df4a04683d7538babb7ca7b7c24d"
     },
     {
       "path": "models/gta3.img",
@@ -113,6 +127,20 @@
       "url": "pack/models/gta3.img/clothesp.dff",
       "size": 5076,
       "sha256": "cb5aaa240e5b92552aab832d1b6f0eabf2287364429a3512722a77542432c1ba"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "craigpackage.dff",
+      "url": "pack/models/gta3.img/craigpackage.dff",
+      "size": 5084,
+      "sha256": "1dc3d6f3a3bea8e5da7fe3d9efa9fc58096f0bc1c6ff431c4b227335a1adbff2"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "craigpackage.txd",
+      "url": "pack/models/gta3.img/craigpackage.txd",
+      "size": 87576,
+      "sha256": "315a02e91c88ec4b6da624dac089db583a74f57360ea036de85745aad0f93ddb"
     },
     {
       "path": "models/gta3.img",
