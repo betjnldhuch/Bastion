@@ -11,7 +11,7 @@ from txdpatch import hdr, native
 SRC = os.path.join(HERE, '..', 'markers', 'src')
 VER = 0x1803FFFF            # RW 3.6.0.3 (GTA SA PC)
 TEX = 128                   # размер текстуры
-R = 0.45                    # радиус монетки, м
+R = 0.25                    # радиус монетки, м (было 0.45 — слишком крупно)
 SEG = 40                    # сегментов окружности
 
 # модель SA-MP -> (dff, txd из dynamic.ide, значок)
