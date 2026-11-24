@@ -1052,6 +1052,29 @@ replace_exact(cpp / "net/netrpc.cpp", """	if (!strcmp(szTitle, "[bastion:rec]"))
 	}
 	if (!strcmp(szTitle, "[bastion:rec]"))
 """)
+replace_exact(jni_h, "\tbool ShowSystemInput();\n", "\tbool ShowSystemInput();\n\tvoid SetBreath(int pct);\n\tjmethodID s_bastionBreath = nullptr;\n")
+replace_exact(jni_cpp, """    if (env->ExceptionCheck()) { env->ExceptionClear(); s_showSystemInput = nullptr; }
+""", """    if (env->ExceptionCheck()) { env->ExceptionClear(); s_showSystemInput = nullptr; }
+    s_bastionBreath = env->GetMethodID(clas, "bastionBreath", "(I)V");
+    if (env->ExceptionCheck()) { env->ExceptionClear(); s_bastionBreath = nullptr; }
+""")
+write(jni_cpp, read(jni_cpp) + """
+// Bastion: air under water for the HUD page (BastionUI.breath), -1 hides it.
+void CJavaWrapper::SetBreath(int pct)
+{
+    if (!s_bastionBreath) return;
+    JNIEnv* env = GetEnv();
+    if (!env) return;
+    env->CallVoidMethod(activity, s_bastionBreath, pct);
+    if (env->ExceptionCheck()) env->ExceptionClear();
+}
+""")
+replace_exact(samp_java, """    /** Bastion: called from native Keyboard::show.""", """    /** Bastion: called from native CWidgetPlayerInfo (breath bar under water), -1 hides it. */
+    public void bastionBreath(int pct) {
+        runOnUiThread(() -> mWebUi.breath(pct));
+    }
+
+    /** Bastion: called from native Keyboard::show.""")
 replace_exact(samp_java, """            if (BastionWebUi.wants(caption)) {""", """            if (BastionWebUi.isHud(caption)) {
                 this.mWebUi.hud(content);   // HUD data, not a window: the open dialog stays
                 return;
