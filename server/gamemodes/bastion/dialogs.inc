@@ -281,5 +281,6 @@ enum
 	DIALOG_QUEST_MORE,
 
 	// --- Телефон с приложениями (phoneapp.inc)
-	DIALOG_PHONE
+	DIALOG_PHONE,
+	DIALOG_PASS_RETAKE       // паспортный стол: переснять фото (docs.inc)
 }

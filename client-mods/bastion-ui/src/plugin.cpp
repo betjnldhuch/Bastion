@@ -14,6 +14,9 @@
 //  (BastionUI.breath, BastionUI.weapon, gtahud.cpp).
 //  Диалог "[bastion:rec]" — команда /rec (accounts.inc): после кика сервером
 //  переводим SA-MP в «ждёт подключения», и он сам заходит заново.
+//  Диалог "[bastion:photo]" (текст — номер скина) — съёмка на паспорт в мэрии
+//  (docs.inc): со следующего кадра вырезаем лицо по центру экрана и сохраняем
+//  bastion_ui\ui\doc\skins\<скин>.bmp, его показывает паспорт.
 //  Если CEF не запустился или версия SA-MP неизвестна — обычные диалоги.
 // =====================================================================
 #include <windows.h>
@@ -63,7 +66,8 @@ WNDPROC g_origWndProc = nullptr;
 bool g_cefTried = false;
 bool g_visible = false;  // окно открыто: перехватываем мышь и клавиатуру
 int g_dialogId = -1;
-int g_dialogStyle = 0;    // стиль открытого диалога: у не-списков пункт в ответе всегда -1
+int g_dialogStyle = 0;
+int g_photoSkin = -1;    // "[bastion:photo]": снять кадр для паспорта на следующем Present    // стиль открытого диалога: у не-списков пункт в ответе всегда -1
 bool g_helloSent = false;
 bool g_hudOn = false;    // сервер прислал свою панель HUD
 int g_breathSent = -1;   // что последним ушло в BastionUI.breath
@@ -106,6 +110,11 @@ void __fastcall HookShow(void* self, void*, int id, int type, const char* captio
         }
         return;
     }
+    if (serverside && caption && strcmp(caption, "[bastion:photo]") == 0) {
+        int skin = txt ? atoi(txt) : -1;
+        if (skin >= 0 && skin < 20000) g_photoSkin = skin;
+        return;
+    }
     if (serverside && caption && strncmp(caption, "[hud]", 5) == 0) {
         // панель HUD: окна нет, ответа нет; без страницы просто молчим
         if (!browser::PageLoaded()) return;
@@ -121,8 +130,8 @@ void __fastcall HookShow(void* self, void*, int id, int type, const char* captio
     }
     if (!g_helloSent) {
         g_helloSent = true;
-        samp::SendCommand("/__bui 3");  // сервер включит HTML-окна (ui.inc) и перешлёт окно входа;
-                                          // версия: 2 — скрытая панель "[hud]" (hud.inc), 3 — /rec
+        samp::SendCommand("/__bui 4");  // сервер включит HTML-окна (ui.inc) и перешлёт окно входа;
+                                          // версия: 2 — скрытая панель "[hud]" (hud.inc), 3 — /rec, 4 — фото на паспорт
     }
 
     std::string cap = text::Cp1251ToUtf8(caption);
@@ -153,6 +162,66 @@ void __fastcall HookShow(void* self, void*, int id, int type, const char* captio
 void __fastcall HookHide(void* self, void*) {
     CloseWindowUi(true);  // сервер закрыл диалог (ShowPlayerDialog с -1)
     g_origHide(self);
+}
+
+// ---------------- фото на паспорт ----------------
+// Кадр игры (до наших окон) -> центр экрана 3:4 -> 300x400 -> BMP 24 бит.
+// Камеру сервер ставит прямо перед лицом сидящего игрока (docs.inc).
+bool SavePhoto(IDirect3DDevice9* dev, int skin) {
+    const int W = 300, H = 400;
+    IDirect3DSurface9 *bb = nullptr, *rt = nullptr, *sys = nullptr;
+    bool ok = false;
+    do {
+        if (FAILED(dev->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &bb))) break;
+        D3DSURFACE_DESC d;
+        bb->GetDesc(&d);
+        if (FAILED(dev->CreateRenderTarget(W, H, D3DFMT_X8R8G8B8, D3DMULTISAMPLE_NONE, 0, FALSE, &rt, nullptr))) break;
+        LONG h = static_cast<LONG>(d.Height * 0.62), w = h * 3 / 4;
+        RECT src = {static_cast<LONG>(d.Width / 2) - w / 2, static_cast<LONG>(d.Height * 0.16), 0, 0};
+        src.right = src.left + w;
+        src.bottom = src.top + h;
+        if (FAILED(dev->StretchRect(bb, &src, rt, nullptr, D3DTEXF_LINEAR))) break;
+        if (FAILED(dev->CreateOffscreenPlainSurface(W, H, D3DFMT_X8R8G8B8, D3DPOOL_SYSTEMMEM, &sys, nullptr))) break;
+        if (FAILED(dev->GetRenderTargetData(rt, sys))) break;
+        D3DLOCKED_RECT lr;
+        if (FAILED(sys->LockRect(&lr, nullptr, D3DLOCK_READONLY))) break;
+        std::wstring dir = g_dir + L"\\ui\\doc\\skins";
+        CreateDirectoryW((g_dir + L"\\ui\\doc").c_str(), nullptr);
+        CreateDirectoryW(dir.c_str(), nullptr);
+        std::wstring path = dir + L"\\" + std::to_wstring(skin) + L".bmp";
+        FILE* f = _wfopen(path.c_str(), L"wb");
+        if (f) {
+            const int row = W * 3, size = row * H;   // 900 байт — кратно 4, без выравнивания
+            BITMAPFILEHEADER fh = {};
+            BITMAPINFOHEADER ih = {};
+            fh.bfType = 0x4D42;
+            fh.bfOffBits = sizeof fh + sizeof ih;
+            fh.bfSize = fh.bfOffBits + size;
+            ih.biSize = sizeof ih;
+            ih.biWidth = W;
+            ih.biHeight = H;   // снизу вверх
+            ih.biPlanes = 1;
+            ih.biBitCount = 24;
+            ih.biCompression = BI_RGB;
+            ih.biSizeImage = size;
+            fwrite(&fh, sizeof fh, 1, f);
+            fwrite(&ih, sizeof ih, 1, f);
+            std::string line(row, '\0');
+            for (int y = H - 1; y >= 0; --y) {
+                const unsigned char* px = static_cast<const unsigned char*>(lr.pBits) + y * lr.Pitch;
+                for (int x = 0; x < W; ++x) memcpy(&line[x * 3], px + x * 4, 3);   // BGRX -> BGR
+                fwrite(line.data(), 1, row, f);
+            }
+            fclose(f);
+            ok = true;
+        }
+        sys->UnlockRect();
+    } while (false);
+    if (sys) sys->Release();
+    if (rt) rt->Release();
+    if (bb) bb->Release();
+    Log(ok ? "фото на паспорт: скин %d сохранён" : "фото на паспорт: скин %d не снялся", skin);
+    return ok;
 }
 
 // ---------------- кадр ----------------
@@ -200,6 +269,10 @@ HRESULT __stdcall HookPresent(IDirect3DDevice9* dev, const RECT* a, const RECT* 
     if (weapon != g_weaponSent) {
         g_weaponSent = weapon;
         browser::ExecJs("window.BastionUI && BastionUI.weapon && BastionUI.weapon(" + weapon + ")");
+    }
+    if (g_photoSkin >= 0) {
+        SavePhoto(dev, g_photoSkin);   // до overlay: на фото только игра
+        g_photoSkin = -1;
     }
     overlay::Present(dev, g_visible || (g_hudOn && gtahud::Drawn()));
     return g_origPresent(dev, a, b, w, r);

@@ -665,16 +665,18 @@ function vipImg(level, cls) {
     }).join('') + '<div class="sk-note">Растут за попадания. На 100% пистолет, обрез и ПП берутся в обе руки.</div></div>';
   }
 
-  // Фото в документе: doc/skins/<скин>.png (портрет скина), иначе doc/photo_m.png / photo_f.png, иначе рисованный силуэт
-  function docPhoto(skin, female) {
+  // Фото в документе: снимок из мэрии doc/skins/<скин>.bmp (ПК снимает сам) или .png, иначе общее
+  // doc/photo_m.png / photo_f.png, иначе рисованный силуэт. skin < 0 — фото нет, сразу общее. ver — дата съёмки (сброс кэша)
+  function docPhoto(skin, female, ver) {
     var g = female ? 'f' : 'm';
     var svg = '<svg viewBox="0 0 108 136" aria-hidden="true"><defs><linearGradient id="dpg' + g + '" x1="0" y1="0" x2="0" y2="1">' +
       '<stop offset="0" stop-color="#4a5361"/><stop offset="1" stop-color="#2a3039"/></linearGradient></defs>' +
       (female ? '<path d="M30 70 C24 34 40 18 54 18 C68 18 84 34 78 70 C74 84 34 84 30 70Z" fill="#2b2f36"/>' : '') +
       '<path d="M10 136 C12 108 28 98 44 95 L46 84 C38 79 34 68 34 56 C34 36 43 26 54 26 C65 26 74 36 74 56 C74 68 70 79 62 84 L64 95 C80 98 96 108 98 136Z" fill="url(#dpg' + g + ')"/>' +
       '<path d="M44 95 L54 112 L64 95 L60 92 L54 100 L48 92Z" fill="#e6e9ee" opacity=".85"/></svg>';
-    return '<div class="doc-photo">' + svg + '<img src="doc/skins/' + skin + '.png" alt="" draggable="false" ' +
-      'onload="this.parentNode.classList.add(\'pic\')" onerror="if(this.dataset.f){this.remove()}else{this.dataset.f=1;this.src=\'doc/photo_' + g + '.png\'}"></div>';
+    var list = (skin >= 0 ? ['doc/skins/' + skin + '.bmp?' + (ver | 0), 'doc/skins/' + skin + '.png'] : []).concat(['doc/photo_' + g + '.png']);
+    return '<div class="doc-photo">' + svg + '<img src="' + list[0] + '" data-next="' + list.slice(1).join('|') + '" alt="" draggable="false" ' +
+      'onload="this.parentNode.classList.add(\'pic\')" onerror="var n=this.dataset.next.split(\'|\').filter(Boolean);if(!n.length){this.remove()}else{this.dataset.next=n.slice(1).join(\'|\');this.src=n[0]}"></div>';
   }
   function docExpiry(issued) {
     var m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(issued || '');
@@ -715,7 +717,7 @@ function vipImg(level, cls) {
     function f(key, val, cls) { return '<div class="f' + (cls ? ' ' + cls : '') + '"><div class="k">' + key + '</div><div class="v">' + val + '</div></div>'; }
     var name = esc(plain(d.name)), fields = '';
     function usd(v) { return '$' + String(v | 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
-    var photo = docPhoto(d.skin | 0, !!d.female);
+    var photo = docPhoto(d.skin == null ? -1 : d.skin | 0, !!d.female, d.photo);
     if (d.kind === 'bizstat') {
       // доход по дням: столбики, последний — сегодня
       var dd = d.days || [], top = Math.max.apply(null, dd.concat([1]));
