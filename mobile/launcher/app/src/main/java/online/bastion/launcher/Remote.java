@@ -23,7 +23,10 @@ import java.util.List;
  * Скачанное сохраняется в памяти приложения: без сети лаунчер показывает
  * последнее скачанное, а если и его нет — файлы из assets.
  *
- * version.ini:
+ * Номер свежей версии — version-android.ini из релиза «builds» на GitHub: CI
+ * (bastion-single-apk.yml) выкладывает туда каждую сборку main вместе с APK.
+ *
+ * version-android.ini:
  *   android_version_code = 15
  *   android_url          = Bastion.apk     (имя в той же папке или полная https-ссылка)
  *   android_notes        = что нового, одной строкой
@@ -31,6 +34,8 @@ import java.util.List;
 public final class Remote {
     private static final int LIMIT = 256 * 1024;
     private static final int TIMEOUT = 6000;
+    static final String UPDATE_URL =
+            "https://github.com/betjnldhuch/bastion/releases/download/builds/version-android.ini";
 
     /** Что вернула проверка версии. */
     public static final class Update {
@@ -133,8 +138,7 @@ public final class Remote {
 
     /** Есть ли APK новее установленного. null — нет или узнать не удалось. */
     public static Update checkUpdate() {
-        String base = baseUrl();
-        if (base.length() == 0) return null;
+        String base = UPDATE_URL;
         try {
             Update u = new Update();
             for (String raw : lines(read(base + "version.ini"))) {

@@ -880,10 +880,11 @@ namespace BastionLauncher
         void OfferUpdate(UpdateInfo info)
         {
             if (installing) return;
-            string text = "Вышла новая версия лаунчера: " + info.Version + " (у тебя " + Updater.Current + ").";
+            string text = "Новая версия лаунчера: " + info.Version + "\r\nУ тебя: " + Updater.Current;
             if (info.Notes.Length > 0) text += "\r\n\r\n" + info.Notes;
-            text += "\r\n\r\nОбновить сейчас? Лаунчер перезапустится сам.";
-            if (MessageBox.Show(this, text, cfg.Title, MessageBoxButtons.YesNo, MessageBoxIcon.Information) != DialogResult.Yes) return;
+            text += "\r\n\r\nЛаунчер скачает обновление и перезапустится сам. Игра и настройки останутся.";
+            using (UpdateDialog d = new UpdateDialog(text))
+                if (d.ShowDialog(this) != DialogResult.OK) { SetStatus("Доступно обновление лаунчера."); return; }
 
             installing = true;
             play.Enabled = false;
@@ -1598,6 +1599,70 @@ namespace BastionLauncher
         void Warn(string msg)
         {
             MessageBox.Show(this, msg, cfg.Title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+    }
+
+    // -----------------------------------------------------------------
+    //  Окно «Доступно обновление» в стиле лаунчера
+    // -----------------------------------------------------------------
+    class UpdateDialog : Form
+    {
+        public UpdateDialog(string message)
+        {
+            FormBorderStyle = FormBorderStyle.None;
+            StartPosition = FormStartPosition.CenterParent;
+            ShowInTaskbar = false;
+            BackColor = Theme.Card;
+            ClientSize = new Size(440, 250);
+            Text = "Доступно обновление";
+
+            Label title = new Label();
+            title.Text = "ДОСТУПНО ОБНОВЛЕНИЕ";
+            title.Font = Theme.Hv(14f);
+            title.ForeColor = Theme.Text;
+            title.BackColor = Theme.Card;
+            title.SetBounds(24, 20, 392, 30);
+            Controls.Add(title);
+
+            Panel bar = new Panel();
+            bar.BackColor = Theme.Orange;
+            bar.SetBounds(24, 54, 40, 2);
+            Controls.Add(bar);
+
+            Label msg = new Label();
+            msg.Text = message;
+            msg.Font = Theme.F(9.5f, FontStyle.Regular);
+            msg.ForeColor = Theme.Dim;
+            msg.BackColor = Theme.Card;
+            msg.SetBounds(24, 68, 392, 112);
+            Controls.Add(msg);
+
+            FlatBtn later = new FlatBtn();
+            later.Text = "ПОЗЖЕ";
+            later.SetBounds(196, 194, 100, 36);
+            later.Click += delegate { DialogResult = DialogResult.Cancel; Close(); };
+            Controls.Add(later);
+
+            FlatBtn install = new FlatBtn();
+            install.Primary = true;
+            install.Text = "УСТАНОВИТЬ";
+            install.SetBounds(306, 194, 110, 36);
+            install.Click += delegate { DialogResult = DialogResult.OK; Close(); };
+            Controls.Add(install);
+
+            AcceptButton = null;
+            KeyPreview = true;
+            KeyDown += delegate (object s, KeyEventArgs e)
+            {
+                if (e.KeyCode == Keys.Escape) { DialogResult = DialogResult.Cancel; Close(); }
+                else if (e.KeyCode == Keys.Enter) { DialogResult = DialogResult.OK; Close(); }
+            };
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            using (Pen p = new Pen(Theme.Orange)) e.Graphics.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
         }
     }
 

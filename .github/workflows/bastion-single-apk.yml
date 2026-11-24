@@ -78,6 +78,11 @@ jobs:
       - name: Patch SAMP-Mobile for embedding (library, storage, manifest)
         run: python3 -I mobile/samp-mobile-patches/apply.py mobile/samp-mobile
 
+      # Номер сборки APK по времени коммита (минуты с 2020-01-01): каждая следующая
+      # сборка main старше прошлой, и лаунчер на телефоне предложит обновиться.
+      - name: Stamp APK version
+        run: echo "BASTION_VERSION_CODE=$(( ($(git log -1 --format=%ct) - 1577836800) / 60 ))" >> "$GITHUB_ENV"
+
       - name: Build the one installable Bastion APK
         working-directory: mobile/launcher
         env:
@@ -195,12 +200,20 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-      # Ручной запуск: APK кладётся в релиз «builds» (не занимает место артефактов Actions)
+      # Ручной запуск и каждый push в main: APK кладётся в релиз «builds»
+      # (не занимает место артефактов Actions), рядом — version-android.ini для
+      # автообновления лаунчера на телефоне (Remote.checkUpdate).
       - name: Publish to builds release
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -e
           gh release view builds >/dev/null 2>&1 || \
             gh release create builds --prerelease --title "Свежие сборки" --notes "Последние ручные сборки лаунчеров."
           gh release upload builds mobile/artifacts/Bastion-Launcher-SAMP-Mobile-debug.apk --clobber
+          # файл версии — после APK, чтобы телефон не увидел обновление раньше файла
+          NOTES=$(git log -1 --format=%s | tr -d '\r\n')
+          printf '; Создаётся CI (bastion-single-apk.yml), руками не править.\nandroid_version_code = %s\nandroid_url = Bastion-Launcher-SAMP-Mobile-debug.apk\nandroid_notes = %s\n' \
+            "$BASTION_VERSION_CODE" "$NOTES" > version-android.ini
+          gh release upload builds version-android.ini --clobber
