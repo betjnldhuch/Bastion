@@ -8,12 +8,16 @@
 //  У каждой выписки свой код. Цифры на момент выдачи сохраняются в
 //  biz_statements, и любой игрок проверяет подлинность: /checkbiz [код].
 //  Скрин с другими цифрами при том же коде сразу видно.
+//  Меню бизнеса > «История дохода» — доход по дням за BIZS_HISTORY_DAYS дней.
+//  /topbiz — топ бизнесов сервера по доходу за неделю.
 // =====================================================================
 
 #define BIZS_DAYS           7           // дней в выписке
 #define BIZS_SHOW_RANGE     3.0
 #define BIZS_TZ             (3 * 3600)  // день считается по Москве
-#define BIZS_KEEP_DAYS      60          // сколько дней хранить историю дохода
+#define BIZS_KEEP_DAYS      90          // сколько дней хранить историю дохода
+#define BIZS_HISTORY_DAYS   30          // сколько дней показывать в «Истории дохода»
+#define BIZS_TOP            10          // мест в /topbiz
 
 static BizS_Today()
 {
@@ -242,5 +246,70 @@ stock bool:Cmd_CheckBiz(playerid, const params[])
 	}
 	while (k < BIZS_DAYS) s[bsDays][k++] = 0;
 	BizS_Send(playerid, s, false, true);
+	return true;
+}
+
+static BizS_Date(dest[], size, day)
+{
+	new z = day + 719468;
+	new era = z / 146097;
+	new doe = z - era * 146097;
+	new yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+	new doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+	new mp = (5 * doy + 2) / 153;
+	new d = doy - (153 * mp + 2) / 5 + 1;
+	new m = mp < 10 ? mp + 3 : mp - 9;
+	format(dest, size, "%02d.%02d", d, m);
+}
+
+// Меню бизнеса > «История дохода»
+stock BizS_ShowHistory(playerid, b)
+{
+	new amount[BIZS_HISTORY_DAYS], today = BizS_Today(), sum = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT day, amount FROM biz_income WHERE biz = %d AND day > %d", Biz[b][bDbId], today - BIZS_HISTORY_DAYS);
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new i = 0; i < rows; i++)
+		{
+			new k = today - DB_GetFieldInt(r, 0);
+			if (k >= 0 && k < BIZS_HISTORY_DAYS) { amount[k] = DB_GetFieldInt(r, 1); sum += amount[k]; }
+			DB_SelectNextRow(r);
+		}
+		DB_FreeResultSet(r);
+	}
+	new list[1400], line[48], date[8];
+	format(list, sizeof list, "День\tДоход\n{FF9900}Всего за %d дн.\t{33AA33}$%d\n", BIZS_HISTORY_DAYS, sum);
+	for (new k = 0; k < BIZS_HISTORY_DAYS; k++)
+	{
+		BizS_Date(date, sizeof date, today - k);
+		if (k == 0) format(line, sizeof line, "Сегодня, %s\t$%d\n", date, amount[k]);
+		else format(line, sizeof line, "%s\t%s$%d\n", date, amount[k] > 0 ? ("") : ("{8C9098}"), amount[k]);
+		strcat(list, line);
+	}
+	ShowPlayerDialog(playerid, DIALOG_BIZX_INFO, DIALOG_STYLE_TABLIST_HEADERS, "История дохода", "%s", "Назад", "Закрыть", list);
+}
+
+// /topbiz — лучшие бизнесы за неделю
+stock bool:Cmd_TopBiz(playerid)
+{
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT biz, SUM(amount) AS s FROM biz_income WHERE day > %d GROUP BY biz ORDER BY s DESC LIMIT %d", BizS_Today() - BIZS_DAYS, BIZS_TOP);
+	new list[1400] = "Место\tБизнес\tВладелец\tДоход за неделю\n", line[128], n = 0;
+	if (r != DBResult:0)
+	{
+		new rows = DB_GetRowCount(r);
+		for (new i = 0; i < rows; i++)
+		{
+			new b = Biz_FindByDbId(DB_GetFieldInt(r, 0)), s = DB_GetFieldInt(r, 1);
+			DB_SelectNextRow(r);
+			if (b == -1 || Biz[b][bOwner] == 0 || s <= 0) continue;
+			n++;
+			format(line, sizeof line, "%s%d\t%s\t%s\t$%d\n", n <= 3 ? ("{FFC940}") : (""), n, Biz[b][bName], Biz[b][bOwnerName], s);
+			strcat(list, line);
+		}
+		DB_FreeResultSet(r);
+	}
+	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "За неделю бизнесы ещё ничего не заработали.");
+	ShowPlayerDialog(playerid, DIALOG_HELP, DIALOG_STYLE_TABLIST_HEADERS, "Топ бизнесов за неделю", "%s", "Закрыть", "", list);
 	return true;
 }
