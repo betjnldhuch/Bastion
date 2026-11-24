@@ -1,8 +1,10 @@
 name: Build Bastion Mac app
 
 # Bastion Online.app для macOS (Apple Silicon и Intel): Wine (CrossOver от Gcenx) + wine-mono
-# + ПК-лаунчер BastionLauncher.exe из релиза builds. Собирается в DMG и проверяется
-# на раннере macOS: окружение создаётся, лаунчер стартует, делается снимок экрана.
+# + ПК-лаунчер BastionLauncher.exe из релиза builds. Упаковывается в Bastion-Mac.zip.
+# Собирается на Linux (раннеры macOS у репозитория не запускаются). Проверка:
+# структура .app и Wine для Mac, плюс тот же лаунчер под Wine + wine-mono на Linux
+# (снимок экрана в логе между SHOT-BEGIN и SHOT-END, base64 JPEG).
 
 on:
   workflow_dispatch:
@@ -24,11 +26,13 @@ env:
   WINE_URL: https://github.com/Gcenx/macOS_Wine_builds/releases/download/crossover-wine-23.7.1-1/wine-crossover-23.7.1-1-osx64.tar.xz
   # wine-mono под Wine 8.0 (CrossOver 23): .NET для лаунчера
   MONO_URL: https://dl.winehq.org/wine/wine-mono/7.4.0/wine-mono-7.4.0-x86.msi
-  APP: dist/dmg/Bastion Online.app
+  # wine-mono под Wine 9.0 из Ubuntu 24.04 — только для проверки на Linux
+  TEST_MONO_URL: https://dl.winehq.org/wine/wine-mono/8.1.0/wine-mono-8.1.0-x86.msi
+  APP: dist/Bastion Online.app
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
       - name: Checkout
@@ -39,7 +43,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: cache
-          key: mac-runtime-${{ hashFiles('.github/workflows/mac-launcher.yml') }}
+          key: mac-runtime-${{ env.WINE_URL }}-${{ env.MONO_URL }}-${{ env.TEST_MONO_URL }}
 
       - name: Download Wine and wine-mono
         if: steps.cache.outputs.cache-hit != 'true'
@@ -48,8 +52,9 @@ jobs:
           mkdir -p cache
           curl -fL --retry 4 -o cache/wine.tar.xz "$WINE_URL"
           curl -fL --retry 4 -o cache/wine-mono.msi "$MONO_URL"
+          curl -fL --retry 4 -o cache/test-mono.msi "$TEST_MONO_URL"
           ls -l cache
-          shasum -a 256 cache/*
+          sha256sum cache/*
 
       # Свежий ПК-лаунчер (с ключами раздачи) — из релиза builds, его кладёт pc-launcher.yml
       - name: Get PC launcher
@@ -66,95 +71,86 @@ jobs:
           set -e
           VER=$(sed -n 's/.*AssemblyVersion("\([0-9]*\.[0-9]*\).*/\1/p' launcher/source/Core.cs)
           BUILD="$(git log -1 --format=%cd --date=format:%Y%m%d%H%M)-$(git rev-parse --short HEAD)"
-          echo "BUILD=$BUILD" >> "$GITHUB_ENV"
           C="$APP/Contents"
           mkdir -p "$C/MacOS" "$C/Resources"
           sed -e "s/@VERSION@/$VER/" -e "s/@BUILD@/$BUILD/" launcher/mac/Info.plist > "$C/Info.plist"
-          plutil -lint "$C/Info.plist"
-
-          clang -O2 -arch arm64 -arch x86_64 -mmacosx-version-min=11.0 -framework ApplicationServices \
-            -o "$C/MacOS/Bastion Online" launcher/mac/stub.c
-          lipo -info "$C/MacOS/Bastion Online"
-          cp launcher/mac/bastion.sh "$C/Resources/bastion.sh"
-          chmod +x "$C/Resources/bastion.sh"
+          python3 -c "import plistlib,sys; print(plistlib.load(open(sys.argv[1],'rb'))['CFBundleExecutable'])" "$C/Info.plist"
+          install -m 755 "launcher/mac/Bastion Online" "$C/MacOS/Bastion Online"
+          bash -n "$C/MacOS/Bastion Online"
           echo "$BUILD" > "$C/Resources/build.txt"
 
           # Wine: из архива берём папку wine (bin, lib, share)
           mkdir -p wx && tar -xJf cache/wine.tar.xz -C wx
-          W=$(dirname "$(dirname "$(find wx -type f -path '*/bin/wine64' | head -1)")")
-          echo "Wine: $W"; ls "$W/bin"
-          cp -R "$W" "$C/Resources/wine"
+          W=$(dirname "$(dirname "$(find wx -path '*/bin/wine64' | head -1)")")
+          echo "Wine: $W"; ls -l "$W/bin"
+          cp -a "$W" "$C/Resources/wine"
           rm -rf "$C/Resources/wine/include" "$C/Resources/wine/share/man" "$C/Resources/wine/share/applications"
-          "$C/Resources/wine/bin/wine64" --version || true
+          file -L "$C/Resources/wine/bin/wine64" "$C/Resources/wine/bin/wineserver" "$C/Resources/wine/bin/wine" || true
+          file -L "$C/Resources/wine/bin/wine64" | grep -q "Mach-O 64-bit x86_64"
+          test -x "$C/Resources/wine/bin/wineserver"
+          ls "$C/Resources/wine/lib/wine" | head
           cp cache/wine-mono.msi "$C/Resources/wine-mono.msi"
 
           mkdir -p "$C/Resources/BastionLauncher"
           (cd pc/BastionLauncher && cp -R BastionLauncher.exe launcher.ini news.txt fonts fps "$GITHUB_WORKSPACE/$C/Resources/BastionLauncher/")
 
-          # Иконка из bastion.ico
-          sips -s format png launcher/source/bastion.ico --out icon.png >/dev/null
-          mkdir bastion.iconset
-          for s in 16 32 128 256 512; do
-            sips -z $s $s icon.png --out bastion.iconset/icon_${s}x${s}.png >/dev/null
-            sips -z $((s*2)) $((s*2)) icon.png --out bastion.iconset/icon_${s}x${s}@2x.png >/dev/null
-          done
-          iconutil -c icns bastion.iconset -o "$C/Resources/bastion.icns"
+          # Иконка .icns из bastion.ico
+          pip install --quiet pillow
+          python3 - "$C/Resources/bastion.icns" <<'PY'
+          import sys
+          from PIL import Image
+          ico = Image.open("launcher/source/bastion.ico")
+          sizes = sorted(ico.info.get("sizes", {ico.size}))
+          ico.size = max(sizes)
+          img = ico.convert("RGBA").resize((1024, 1024), Image.LANCZOS)
+          img.save(sys.argv[1], format="ICNS")
+          print("icon from", max(sizes))
+          PY
 
-          cp launcher/mac/README-mac.txt "dist/dmg/Прочитай меня.txt"
-          ln -s /Applications "dist/dmg/Applications"
-
-          # Подпись ad-hoc (без неё на Apple Silicon «приложение повреждено»)
-          codesign --force --sign - "$APP" && codesign --verify --verbose "$APP" || echo "::warning::bundle signing failed"
+          cp launcher/mac/README-mac.txt "dist/Прочитай меня.txt"
+          cd dist
+          zip -qry -9 ../Bastion-Mac.zip "Bastion Online.app" "Прочитай меня.txt"
+          cd ..
+          ls -l Bastion-Mac.zip
           du -sh "$APP"
 
-      # Проверка как у игрока: карантин, первый запуск, создание окружения, папка GTA, лаунчер.
-      - name: Test on this Mac
+      # Wine для Mac на Linux не запустить, поэтому так же, как bastion.sh делает на Mac,
+      # гоняем тот же BastionLauncher.exe под Wine + wine-mono на Linux.
+      - name: Test launcher under Wine (Linux)
         run: |
           set -x
-          xattr -w com.apple.quarantine "0081;00000000;Safari;" "$APP/Contents/MacOS/Bastion Online"
-          mkdir -p "$RUNNER_TEMP/GTA San Andreas" && touch "$RUNNER_TEMP/GTA San Andreas/gta_sa.exe"
-          export BASTION_TEST=1 BASTION_GTA_DIR="$RUNNER_TEMP/GTA San Andreas"
-          time "$APP/Contents/MacOS/Bastion Online"
-          echo "exit=$?"
-          sleep 60
+          sudo dpkg --add-architecture i386
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends wine wine32:i386 wine64 xvfb imagemagick xauth > /dev/null
+          wine --version
+          export WINEPREFIX="$RUNNER_TEMP/prefix" WINEDEBUG=-all,err+module
+          Xvfb :99 -screen 0 1280x800x24 & export DISPLAY=:99
+          sleep 2
+          WINEDLLOVERRIDES="mscoree=d;mshtml=d;winemenubuilder.exe=d" wineboot -u; wineserver -w
+          wine msiexec /i cache/test-mono.msi /qn; wineserver -w
+          ls "$WINEPREFIX/drive_c/windows/mono" || echo "::error::wine-mono not installed"
+          D="$WINEPREFIX/drive_c/BastionLauncher"
+          cp -R "$APP/Contents/Resources/BastionLauncher" "$D"
+          mkdir -p "$RUNNER_TEMP/gta" && touch "$RUNNER_TEMP/gta/gta_sa.exe"
+          wine reg add 'HKCU\Software\SAMP' /v gta_sa_exe /t REG_SZ /d "Z:${RUNNER_TEMP//\//\\}\\gta\\gta_sa.exe" /f
+          (cd "$D" && wine BastionLauncher.exe > "$RUNNER_TEMP/launcher.log" 2>&1 &)
+          sleep 50
           OK=1; pgrep -fl BastionLauncher.exe && { OK=0; echo "LAUNCHER RUNNING"; } || echo "::error::launcher is not running"
-          P="$HOME/Library/Application Support/Bastion Online/prefix"
-          ls "$P/drive_c" "$P/drive_c/windows/mono" "$P/drive_c/BastionLauncher" "$P/drive_c/windows/Fonts" | head -60
-          ls -la "$P"/drive_c/users/*/
-          "$APP/Contents/Resources/wine/bin/wine64" reg query 'HKCU\Software\SAMP' /v gta_sa_exe
-          screencapture -x shot.png && sips -Z 1100 -s format jpeg -s formatOptions 60 shot.png --out shot.jpg >/dev/null
-          if [ -f shot.jpg ]; then echo "SHOT-BEGIN"; base64 -i shot.jpg | fold -w 4000; echo "SHOT-END"; fi
-          echo "----- bastion.log"; tail -n 150 "$HOME/Library/Logs/Bastion Online/bastion.log"
-          # второй запуск: окружение уже есть, должен просто выйти (лаунчер открыт)
-          time "$APP/Contents/MacOS/Bastion Online"
-          tail -n 3 "$HOME/Library/Logs/Bastion Online/bastion.log"
-          "$APP/Contents/Resources/wine/bin/wineserver" -k || true
+          import -window root shot.png && convert shot.png -resize 1000x -quality 60 shot.jpg
+          if [ -f shot.jpg ]; then echo "SHOT-BEGIN"; base64 -w 4000 shot.jpg; echo "SHOT-END"; fi
+          echo "----- launcher log"; tail -n 80 "$RUNNER_TEMP/launcher.log"
+          wineserver -k || true
           exit $OK
 
-      - name: Upload screenshot
+      - name: Upload
         if: always()
-        uses: actions/upload-artifact@v4
-        continue-on-error: true
-        with:
-          name: mac-test
-          path: |
-            shot.png
-            ~/Library/Logs/Bastion Online/
-          retention-days: 7
-
-      - name: Make DMG
-        run: |
-          set -e
-          xattr -cr dist/dmg
-          hdiutil create -volname "Bastion Online" -srcfolder dist/dmg -fs HFS+ -format ULMO -ov Bastion-Mac.dmg
-          ls -l Bastion-Mac.dmg
-
-      - name: Upload DMG
         uses: actions/upload-artifact@v4
         continue-on-error: true # квота артефактов не должна ронять сборку
         with:
           name: Bastion-Mac
-          path: Bastion-Mac.dmg
+          path: |
+            Bastion-Mac.zip
+            shot.png
           retention-days: 7
 
       - name: Publish to builds release
@@ -164,4 +160,4 @@ jobs:
         run: |
           set -e
           gh release view builds >/dev/null 2>&1 || gh release create builds --prerelease --title "Свежие сборки" --notes "Последние ручные сборки лаунчеров."
-          gh release upload builds Bastion-Mac.dmg --clobber
+          gh release upload builds Bastion-Mac.zip --clobber

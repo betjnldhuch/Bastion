@@ -1,5 +1,5 @@
 #!/bin/bash
-# Bastion Online для macOS.
+# Bastion Online для macOS (исполняемый файл .app: Contents/MacOS/Bastion Online).
 # Внутри .app: Wine (сборка CrossOver от Gcenx), wine-mono и ПК-лаунчер BastionLauncher.exe.
 # Своё Windows-окружение (префикс) — в ~/Library/Application Support/Bastion Online/prefix,
 # игру GTA SA игрок указывает свою. Логи — ~/Library/Logs/Bastion Online/bastion.log.
@@ -7,12 +7,17 @@
 # Переменные для проверки в CI:
 #   BASTION_TEST=1       — без окон-диалогов, ждать запуска лаунчера
 #   BASTION_GTA_DIR=путь — папка игры без диалога выбора
-#   BASTION_MENU=1       — служебное меню (ставит stub, если зажат Option)
+#   BASTION_MENU=1       — служебное меню (или зажатый Option при запуске)
 
 set -u
 
 APP="$(cd "$(dirname "$0")/../.." && pwd)"
 RES="$APP/Contents/Resources"
+
+# Зажатый Option при запуске — служебное меню
+if [ -z "${BASTION_MENU:-}" ] && [ "${BASTION_TEST:-0}" != 1 ]; then
+    BASTION_MENU="$(osascript -l JavaScript -e 'ObjC.import("AppKit"); ($.NSEvent.modifierFlags & 524288) ? "1" : "0"' 2>/dev/null || echo 0)"
+fi
 WINEDIR="$RES/wine"
 TITLE="Bastion Online"
 BUILD="$(cat "$RES/build.txt" 2>/dev/null || echo dev)"
