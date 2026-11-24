@@ -38,7 +38,7 @@ forward bool:BizX_UsesStock(b);
 #define BIZW_RANGE          4.0         // продавец и покупатель р€дом
 #define BIZW_BONUS_MAX      1000000
 
-#define BIZ_TAX_PERMILLE    2           // налог за PayDay, Й от цены бизнеса (40 000 -> $80)
+#define BIZ_TAX_PERMILLE    1           // налог за PayDay, Й от цены бизнеса (40 000 -> $40)
 #define BIZ_TAX_CLOSE_PD    24          // долг столько PayDay подр€д Ч бизнес закрыт
 #define BIZ_TAX_SEIZE_PD    72          // а столько Ч штат забирает бизнес
 
