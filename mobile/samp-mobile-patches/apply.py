@@ -1029,4 +1029,30 @@ replace_exact(samp_java, """            if (BastionWebUi.wants(caption)) {""", "
             }
             if (BastionWebUi.wants(caption)) {""")
 
+# ---------------------------------------------------------------------------
+# 17. Our textures on the phone (cpp/bastion_textures.cpp): radar icons, interiors
+#     and markers from the PC client pack replace texdb textures by name. Files come
+#     from the launcher (assets/bastion-mods -> <game>/SAMP/bastion/tex/), loaded
+#     once right after RenderWare starts.
+# ---------------------------------------------------------------------------
+replace_exact(hooks_cpp, "void InstallHooks()\n", read(patch_dir / "bastion_textures.cpp") + "\nvoid InstallHooks()\n")
+replace_exact(hooks_cpp, """    BastionInstallHudHooks();
+""", """    BastionInstallHudHooks();
+    BastionInstallTextureHooks();
+""")
+replace_exact(hooks_cpp, "bool (*CGame__InitialiseRenderWare)();\n",
+              "static void BastionLoadTextures();\nbool (*CGame__InitialiseRenderWare)();\n")
+replace_exact(hooks_cpp, """    TextureDatabaseRuntime::Load("samp", false, TextureDatabaseFormat::DF_Default);
+
+    InitGui();""", """    TextureDatabaseRuntime::Load("samp", false, TextureDatabaseFormat::DF_Default);
+    BastionLoadTextures();
+
+    InitGui();""")
+replace_exact(cpp / "CMakeLists.txt", """target_link_libraries(samp
+        log
+""", """target_link_libraries(samp
+        log
+        z
+""")
+
 print("SAMP-Mobile prepared for Bastion: library module, Bastion storage, :game process, no Firebase.")

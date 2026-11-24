@@ -246,6 +246,7 @@ public final class ClientInstaller {
                 } finally { try { in.close(); } finally { out.close(); } }
             } catch (Exception ignored) { }
         }
+        BastionMods.apply(ctx, root);   // наши текстуры и маркеры
         java.util.List<String> missing = new java.util.ArrayList<String>();
         for (String rel : REQUIRED_FILES) {
             File f = resolveIgnoreCase(root, rel);
