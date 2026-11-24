@@ -13,21 +13,21 @@
       "name": "adrenaline.dff",
       "url": "pack/models/gta3.img/adrenaline.dff",
       "size": 5082,
-      "sha256": "a8f8d0cfea5cdf2bb577a98dd09e0dee83cab354077fed747e74e847e3fad958"
+      "sha256": "dc818ed7638fe1d345663a2c6fb4cb41da415783267a0e2e09d76fa81bc5395d"
     },
     {
       "path": "models/gta3.img",
       "name": "bigdollar.dff",
       "url": "pack/models/gta3.img/bigdollar.dff",
       "size": 5081,
-      "sha256": "8bcaf2ad5e4c9a6dff39a4c1327743af9921a801874950d200925e83165bd328"
+      "sha256": "a7cd8b11316458fae05f1abcb419bcb2b47165efaba31aadd516e82d2b408314"
     },
     {
       "path": "models/gta3.img",
       "name": "bodyarmour.dff",
       "url": "pack/models/gta3.img/bodyarmour.dff",
       "size": 5086,
-      "sha256": "5172db1be50e7d6c4fc2d4411ec8a4915c3a93ab10e405bbfe17c1eef0c37d74"
+      "sha256": "d7de0fd2fd9ca445e70632c00f66426ce33cd265aa05446ac9c616df2dbade07"
     },
     {
       "path": "models/gta3.img",
@@ -41,28 +41,28 @@
       "name": "bribe.dff",
       "url": "pack/models/gta3.img/bribe.dff",
       "size": 5077,
-      "sha256": "053fa2e49889120f815663759efcb3d02bb631a47779bd1192e035586cc2e58d"
+      "sha256": "be94d92238ed7a60664161bb0361d436336a547861bfd8035c7cd79d8ec27004"
     },
     {
       "path": "models/gta3.img",
       "name": "briefcase.dff",
       "url": "pack/models/gta3.img/briefcase.dff",
       "size": 5081,
-      "sha256": "0a1c34982617fffd008c0a7e110cfb33317491fb42df00b23174eb72c9ffed9e"
+      "sha256": "04459b687060772995fadecdb7bfb337df69ec609b2396f1b803e7f79c2bc0e1"
     },
     {
       "path": "models/gta3.img",
       "name": "camerapickup.dff",
       "url": "pack/models/gta3.img/camerapickup.dff",
       "size": 5084,
-      "sha256": "f972187a2071ee4d83bf9063d2977d8f0de06fe376252c597f14d0b8b83ad0a3"
+      "sha256": "b8fe99a7deb6bb54c1bd8d78513e469a01c1561222bcfd0cb79847d03665e50e"
     },
     {
       "path": "models/gta3.img",
       "name": "clothesp.dff",
       "url": "pack/models/gta3.img/clothesp.dff",
       "size": 5076,
-      "sha256": "0233d80b851854210e463ef67600a4c3aee98290840ce8d3815db6e64917aab9"
+      "sha256": "cb5aaa240e5b92552aab832d1b6f0eabf2287364429a3512722a77542432c1ba"
     },
     {
       "path": "models/gta3.img",
@@ -76,7 +76,7 @@
       "name": "health.dff",
       "url": "pack/models/gta3.img/health.dff",
       "size": 5082,
-      "sha256": "880c4e0ce3b9881254134f05ad6f0b888c71e63e8c56078743a0889871078de5"
+      "sha256": "02f28a7350afd592de63176fc773aabc8e3d34d20c1ac962f507a5a5e770e752"
     },
     {
       "path": "models/gta3.img",
@@ -153,56 +153,56 @@
       "name": "info.dff",
       "url": "pack/models/gta3.img/info.dff",
       "size": 5080,
-      "sha256": "62e6bd0e721f6bf91851be06035d75a47b6dc942eb82b7093ce25d963715f14d"
+      "sha256": "867e7560382c6e4239fde6a864140f35825efce5e88004a18c0dc774392ee11c"
     },
     {
       "path": "models/gta3.img",
       "name": "killfrenzy.dff",
       "url": "pack/models/gta3.img/killfrenzy.dff",
       "size": 5082,
-      "sha256": "cf48aa73facfaeee3e1a96d6fad51e6d51b27566665cef9e55e1e655b64b3172"
+      "sha256": "1f37d684aacf0810a55e2320ce51f994f3c058d41d72dcb71d2d5d06518eee8b"
     },
     {
       "path": "models/gta3.img",
       "name": "killfrenzy2plyr.dff",
       "url": "pack/models/gta3.img/killfrenzy2plyr.dff",
       "size": 5087,
-      "sha256": "3ed48be2df3cf8d8c448a35fc2d681b7bbd1958e0da9be09b933a85d962027d8"
+      "sha256": "2603468e4684cbdedbe76d6abd137fe9dd1e051b23629e5f7e8fc83dba6ab27a"
     },
     {
       "path": "models/gta3.img",
       "name": "money.dff",
       "url": "pack/models/gta3.img/money.dff",
       "size": 5073,
-      "sha256": "f89ffeec4bf0ea179d78beb94fd891844c54c488109e8fcd0a42ef3dd13d65de"
+      "sha256": "1a89247802b776450a826361a20ec605aab62a141b035622cebd6abb5f60026c"
     },
     {
       "path": "models/gta3.img",
       "name": "pickupsave.dff",
       "url": "pack/models/gta3.img/pickupsave.dff",
       "size": 5086,
-      "sha256": "1826513a9a39878ee7972546640fd0446f86aa059f44fa4239406250b5852546"
+      "sha256": "ce88ac7461bcf5d2a0c996c5cc2f17fcbe07c3ca9ee251e27360c5baada9d3d1"
     },
     {
       "path": "models/gta3.img",
       "name": "property_fsale.dff",
       "url": "pack/models/gta3.img/property_fsale.dff",
       "size": 5090,
-      "sha256": "c20e73270097149b8e9799473cbed9a9ff371f9d85555b5a9a8c5ee9d8dfd758"
+      "sha256": "4ed16295e0c65f29416c97014592db885f80f3ccaf883fe23a0abb04af43840e"
     },
     {
       "path": "models/gta3.img",
       "name": "property_locked.dff",
       "url": "pack/models/gta3.img/property_locked.dff",
       "size": 5091,
-      "sha256": "dd240032e1d76816524b2095dfa0725677ec33f821e96ef110c1e065d25169c9"
+      "sha256": "e82a342ba1e8427b0f751ca36092e6659af02f50db70237c320376c3489d7922"
     },
     {
       "path": "models/gta3.img",
       "name": "twoplayer.dff",
       "url": "pack/models/gta3.img/twoplayer.dff",
       "size": 5085,
-      "sha256": "4febb4b9bf47aceda4605bd82b1ca1d05b594df9d5afc5042c34181cc98fcccf"
+      "sha256": "261e8caa4b4e8e8290dc57550976d3edad183fbc647f68e6d56105a30efa5ab6"
     },
     {
       "path": "models/gta_int.img",
