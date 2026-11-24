@@ -23,17 +23,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # sqlite3.dll (x86) для вкладки «Логи» — вшивается в exe
+      - name: Fetch sqlite3.dll
+        shell: pwsh
+        working-directory: server/starter
+        run: |
+          Invoke-WebRequest "https://www.sqlite.org/2024/sqlite-dll-win-x86-3460100.zip" -OutFile sqlite.zip
+          Expand-Archive sqlite.zip -DestinationPath sqlite -Force
+          Copy-Item sqlite\sqlite3.dll .
+          if (-not (Test-Path sqlite3.dll)) { Write-Error "sqlite3.dll not found"; exit 1 }
+
       - name: Compile BastionServer.exe
         shell: pwsh
         working-directory: server/starter
         run: |
           $csc = "$env:WINDIR\Microsoft.NET\Framework\v4.0.30319\csc.exe"
-          & $csc /nologo /codepage:65001 /target:winexe /platform:anycpu /optimize+ `
+          & $csc /nologo /codepage:65001 /target:winexe /platform:x86 /optimize+ `
             /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll `
             /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll `
             /win32icon:..\..\launcher\source\bastion.ico `
-            /resource:..\..\launcher\source\logo-shield.png,logo-shield.png `
-            /out:BastionServer.exe Starter.cs
+            /resource:..\..\launcher\source\logo-shield.png,logo-shield.png /resource:sqlite3.dll,sqlite3.dll `
+            /out:BastionServer.exe Starter.cs Logs.cs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           New-Item -ItemType Directory -Force ..\..\dist\BastionServer | Out-Null
           Copy-Item BastionServer.exe, README.txt ..\..\dist\BastionServer

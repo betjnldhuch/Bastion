@@ -465,6 +465,7 @@ namespace BastionServer
         Btn btnStart, btnStop, btnRestart;
         Tabs tabs;
         Panel pConsole, pUpdate, pSettings;
+        LogsPage pLogs;
         RichTextBox console;
         TextBox cmdBox;
         ListBox players;
@@ -502,25 +503,26 @@ namespace BastionServer
             BackColor = T.Bg;
             ForeColor = T.Text;
             Font = T.F(9.5f, FontStyle.Regular);
-            ClientSize = new Size(1000, 640);
-            MinimumSize = new Size(860, 520);
+            ClientSize = new Size(1060, 660);
+            MinimumSize = new Size(1000, 560);
             StartPosition = FormStartPosition.CenterScreen;
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch (Exception) { }
 
             BuildHeader();
-            tabs = new Tabs("Консоль", "Обновление мода", "Настройки");
+            tabs = new Tabs("Консоль", "Логи", "Обновление мода", "Настройки");
             tabs.Dock = DockStyle.Top;
             tabs.Changed += delegate { ShowTab(); };
 
             pConsole = MakePage(); BuildConsole();
             pUpdate = MakePage(); BuildUpdate();
             pSettings = MakePage(); BuildSettings();
-            Controls.Add(pConsole); Controls.Add(pUpdate); Controls.Add(pSettings);
+            pLogs = new LogsPage(delegate { return ServerDir; });
+            Controls.Add(pConsole); Controls.Add(pLogs); Controls.Add(pUpdate); Controls.Add(pSettings);
             Controls.Add(tabs);
             Controls.Add(headerPanel);
             // BastionServer.exe --tab=2 откроет сразу «Настройки»
             foreach (string a in Environment.GetCommandLineArgs())
-                if (a.StartsWith("--tab=")) { int t; if (int.TryParse(a.Substring(6), out t) && t >= 0 && t < 3) tabs.Selected = t; }
+                if (a.StartsWith("--tab=")) { int t; if (int.TryParse(a.Substring(6), out t) && t >= 0 && t < 4) tabs.Selected = t; }
             ShowTab();
 
             tray = new NotifyIcon();
@@ -639,10 +641,11 @@ namespace BastionServer
         void ShowTab()
         {
             pConsole.Visible = tabs.Selected == 0;
-            pUpdate.Visible = tabs.Selected == 1;
-            pSettings.Visible = tabs.Selected == 2;
-            if (tabs.Selected == 2) LoadConfigFields();
-            if (tabs.Selected == 1) RefreshLocalMod();
+            pLogs.Visible = tabs.Selected == 1;
+            pUpdate.Visible = tabs.Selected == 2;
+            pSettings.Visible = tabs.Selected == 3;
+            if (tabs.Selected == 3) LoadConfigFields();
+            if (tabs.Selected == 2) RefreshLocalMod();
         }
 
         void GoConsole() { tabs.Selected = 0; tabs.Invalidate(); ShowTab(); }
@@ -670,6 +673,15 @@ namespace BastionServer
             players.BorderStyle = BorderStyle.None;
             players.Font = T.F(9.5f, FontStyle.Regular);
             players.IntegralHeight = false;
+            // двойной клик по игроку — его логи
+            players.DoubleClick += delegate
+            {
+                string n = players.SelectedItem as string;
+                if (n == null || n.StartsWith("(")) return;
+                int sp = n.IndexOf("  (");
+                tabs.Selected = 1; tabs.Invalidate(); ShowTab();
+                pLogs.ShowPlayer(sp > 0 ? n.Substring(0, sp) : n);
+            };
 
             FlowLayoutPanel tools = new FlowLayoutPanel();
             tools.Dock = DockStyle.Bottom;
