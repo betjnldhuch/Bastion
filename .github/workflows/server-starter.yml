@@ -1,0 +1,58 @@
+name: Build Bastion server starter
+
+# Стартер ПК-сервера (server/starter). Каждый push в main и ручной запуск
+# кладут BastionServer.zip в релиз «builds»:
+# https://github.com/<repo>/releases/download/builds/BastionServer.zip
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "server/starter/**"
+      - ".github/workflows/server-starter.yml"
+  pull_request:
+    paths:
+      - "server/starter/**"
+      - ".github/workflows/server-starter.yml"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile BastionServer.exe
+        shell: pwsh
+        working-directory: server/starter
+        run: |
+          $csc = "$env:WINDIR\Microsoft.NET\Framework\v4.0.30319\csc.exe"
+          & $csc /nologo /codepage:65001 /target:winexe /platform:anycpu /optimize+ `
+            /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll `
+            /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll `
+            /win32icon:..\..\launcher\source\bastion.ico `
+            /resource:..\..\launcher\source\logo-shield.png,logo-shield.png `
+            /out:BastionServer.exe Starter.cs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force ..\..\dist\BastionServer | Out-Null
+          Copy-Item BastionServer.exe, README.txt ..\..\dist\BastionServer
+
+      - uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: BastionServer
+          path: dist/
+          retention-days: 7
+
+      - name: Publish to builds release
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          Compress-Archive -Path dist\BastionServer\* -DestinationPath BastionServer.zip -Force
+          gh release view builds *> $null
+          if ($LASTEXITCODE -ne 0) { gh release create builds --prerelease --title "Свежие сборки" --notes "Последние ручные сборки." }
+          gh release upload builds BastionServer.zip --clobber
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
