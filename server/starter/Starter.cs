@@ -699,7 +699,7 @@ namespace BastionServer
             Btn bLog = new Btn("Открыть log.txt", 208);
             Btn bClear = new Btn("Очистить экран", 208);
             bFolder.Click += delegate { OpenPath(ServerDir); };
-            bLog.Click += delegate { OpenPath(Path.Combine(ServerDir, "log.txt")); };
+            bLog.Click += delegate { OpenPath(LogPath); };
             bClear.Click += delegate { console.Clear(); };
             tools.Controls.Add(bFolder); tools.Controls.Add(bLog); tools.Controls.Add(bClear);
 
@@ -806,7 +806,39 @@ namespace BastionServer
         }
 
         // ---------------- лог сервера ----------------
-        string LogPath { get { return Path.Combine(ServerDir, "log.txt"); } }
+        // Путь к логу: logging.file из config.json (по умолчанию log.txt в папке сервера).
+        // Перечитываем не чаще раза в 3 с и только если config.json поменялся.
+        string logPathCache;
+        DateTime logPathAt, logCfgTime;
+        string LogPath
+        {
+            get
+            {
+                if (logPathCache != null && (DateTime.Now - logPathAt).TotalSeconds < 3) return logPathCache;
+                logPathAt = DateTime.Now;
+                string file = "log.txt";
+                try
+                {
+                    DateTime mt = File.Exists(ConfigPath) ? File.GetLastWriteTimeUtc(ConfigPath) : DateTime.MinValue;
+                    if (logPathCache != null && mt == logCfgTime && logPathCache.StartsWith(ServerDir, StringComparison.OrdinalIgnoreCase)) return logPathCache;
+                    logCfgTime = mt;
+                    if (mt != DateTime.MinValue)
+                    {
+                        Dictionary<string, object> d = Json.Load(ConfigPath);
+                        string f = Json.Str(Json.Sub(d, "logging"), "file");
+                        if (!string.IsNullOrEmpty(f)) file = f;
+                    }
+                }
+                catch (Exception) { }
+                string path = Path.IsPathRooted(file) ? file : Path.Combine(ServerDir, file);
+                if (logPathCache != null && !string.Equals(path, logPathCache, StringComparison.OrdinalIgnoreCase))
+                {
+                    logPos = -1; logPartial = ""; // файл лога сменился — читаем новый с конца
+                }
+                logPathCache = path;
+                return path;
+            }
+        }
 
         void ShowLogTail()
         {

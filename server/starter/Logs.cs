@@ -50,6 +50,8 @@ namespace BastionServer
         static extern IntPtr sqlite3_errmsg(IntPtr db);
         [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
         static extern IntPtr LoadLibrary(string path);
+        [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
+        static extern bool SetDllDirectory(string path);
 
         static bool loaded;
 
@@ -65,7 +67,12 @@ namespace BastionServer
             if (s == null) return;
             string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BastionServer");
             Directory.CreateDirectory(dir);
-            string path = Path.Combine(dir, "sqlite3-" + s.Length + ".dll");
+            // Имя файла обязательно sqlite3.dll: DllImport("sqlite3") ищет модуль
+            // именно с таким именем, а под другим именем (sqlite3-NNN.dll) уже
+            // загруженную библиотеку не узнаёт. Версию различаем папкой.
+            dir = Path.Combine(dir, "sqlite3-" + s.Length);
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, "sqlite3.dll");
             if (!File.Exists(path) || new FileInfo(path).Length != s.Length)
             {
                 string tmp = path + ".tmp";
@@ -74,6 +81,7 @@ namespace BastionServer
                 File.Move(tmp, path);
             }
             s.Dispose();
+            SetDllDirectory(dir);
             if (LoadLibrary(path) == IntPtr.Zero)
                 throw new Exception("не загрузилась sqlite3.dll (" + Marshal.GetLastWin32Error() + ")");
         }
