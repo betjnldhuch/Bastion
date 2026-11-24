@@ -501,6 +501,43 @@ button { font: inherit; cursor: pointer; }
 .ph .walls button.on { border-color: var(--accent); }
 .ph .kv { display: flex; justify-content: space-between; padding: .5em 0; border-bottom: 1px solid rgba(255,255,255,.06); }
 .ph .kv span { color: var(--muted); }
+/* Квест новичка «Первые шаги» (quest.inc): шаги с картинками ui/quest/<key>.png, прогресс, текущее задание */
+.qs-bar { height: 8px; border-radius: 4px; background: var(--well); overflow: hidden; margin: 2px 0 6px; }
+.qs-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent-dark), var(--accent)); border-radius: 4px; }
+.qs-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+.qs-meta b { color: var(--green); font-weight: 600; }
+.qs-now { display: flex; gap: 14px; align-items: flex-start; padding: 14px; border-radius: 12px; margin-bottom: 12px;
+  background: linear-gradient(135deg, rgba(255,122,26,.16), rgba(255,122,26,.04)); border: 1px solid rgba(255,122,26,.35); }
+.qs-now .qs-ico { width: 64px; height: 64px; font-size: 40px; }
+.qs-now .t { font-family: "Russo One", sans-serif; font-size: 17px; margin-bottom: 4px; }
+.qs-now .h { color: var(--muted); font-size: 13px; }
+.qs-now .rw { display: inline-block; margin-top: 8px; font-size: 13px; color: var(--gold); font-weight: 600; }
+.qs-now .cnt { display: inline-block; margin: 8px 0 0 10px; font-size: 13px; color: var(--text); }
+.qs-ico { flex: none; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; font-size: 22px; line-height: 1; }
+.qs-ico img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); }
+.qs-list { list-style: none; margin: 0 0 14px; padding: 0; overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--well); }
+.qs-list li { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.qs-list li:last-child { border-bottom: 0; }
+.qs-list .nm { flex: 1; }
+.qs-list .rw { color: var(--muted); font-size: 13px; }
+.qs-list li.done { color: var(--muted); }
+.qs-list li.done .nm { text-decoration: line-through; text-decoration-color: rgba(140,144,152,.5); }
+.qs-list li.done .rw { color: var(--green); }
+.qs-list li.cur { background: rgba(255,122,26,.10); }
+.qs-list li.cur .nm { color: var(--text); font-weight: 600; }
+.qs-list li.cur .rw { color: var(--gold); }
+.qs-list li.next { opacity: .6; }
+.qs-list li.next .qs-ico { filter: grayscale(1); }
+.card.wide > .qs-list { flex: 1 1 auto; min-height: 64px; }
+.qs-links { display: flex; gap: 16px; justify-content: center; margin-top: 10px; font-size: 13px; }
+.qs-links a { color: var(--muted); text-decoration: underline; cursor: pointer; }
+/* Телефон в ландшафте: список шагов прячем, остаётся текущее задание и кнопки */
+@media (max-height: 520px) {
+  .card.wide > .qs-list { display: none; }
+  .qs-now { padding: 10px; margin-bottom: 8px; } .qs-now .qs-ico { width: 44px; height: 44px; font-size: 28px; }
+  .qs-meta { margin-bottom: 8px; } .qs-links { margin-top: 6px; }
+}
+.qs-ask { padding: 12px; border-radius: 10px; border: 1px solid rgba(229,72,77,.35); background: rgba(229,72,77,.08); margin-bottom: 10px; font-size: 14px; }
 </style>
 </head>
 <body>
@@ -1508,6 +1545,53 @@ function vipImg(level, cls) {
       var b2 = document.getElementById('b2'); if (b2) b2.onclick = function () { answer(0); };
       document.getElementById('f').onsubmit = function (e) { e.preventDefault(); answer(1); };
       if (input) setTimeout(function () { input.focus(); }, 50);
+    },
+    // Квест новичка «Первые шаги» (quest.inc). d.steps: [ключ, название, подсказка, награда], d.cur — текущий шаг.
+    // Ответ (стиль LIST): 1/0 — метка GPS, 1/1 — пропустить шаг, 1/2 — отказаться от квеста; 0 — закрыть.
+    quest: function (d, m) {
+      var QS_EMO = { passport: '🛂', rental: '🛵', phone: '📱', food: '🍔', license: '🚗', hire: '👷', work: '📦', bank: '🏦', payday: '💰', vehicle: '🔑' };
+      var steps = d.steps || [], cur = d.cur | 0, st = steps[cur] || ['', '', '', 0];
+      function money(n) { return '$' + String(n | 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+      function ico(k, cls) {
+        var e = QS_EMO[k] || '⭐';
+        return '<span class="qs-ico' + (cls ? ' ' + cls : '') + '"><img src="quest/' + esc(k) + '.png" alt="" draggable="false" onerror="this.parentNode.replaceChild(document.createTextNode(\'' + e + '\'), this)"></span>';
+      }
+      var got = 0;
+      for (var i = 0; i < cur; i++) got += steps[i][3] | 0;
+      var list = steps.map(function (s, i) {
+        var cls = i < cur ? 'done' : i === cur ? 'cur' : 'next';
+        return '<li class="' + cls + '">' + ico(s[0]) + '<span class="nm">' + (i + 1) + '. ' + esc(plain(s[1])) + '</span>' +
+          '<span class="rw">' + (i < cur ? '✓ ' : '') + money(s[3]) + '</span></li>';
+      }).join('');
+      var pct = steps.length ? Math.round(cur * 100 / steps.length) : 0;
+      var head = d.intro
+        ? '<h1>Добро пожаловать!</h1><p class="sub">Пройди ' + steps.length + ' коротких заданий: они покажут город, работу и банк. За каждое — деньги, всего до <b style="color:var(--green)">' + money(d.sum) + '</b>.</p>'
+        : '<h1>Первые шаги</h1>';
+      root.innerHTML = '<div class="card wide">' + closeBtn() + '<div class="brand">BASTION ONLINE · КВЕСТ НОВИЧКА</div>' + head +
+        '<div class="qs-bar"><i style="width:' + pct + '%"></i></div>' +
+        '<div class="qs-meta"><span>Задание ' + (cur + 1) + ' из ' + steps.length + '</span><span>Получено <b>' + money(got) + '</b> из ' + money(d.sum) + '</span></div>' +
+        '<div class="qs-now">' + ico(st[0]) + '<div><div class="t">' + esc(plain(st[1])) + '</div><div class="h">' + esc(plain(st[2])) + '</div>' +
+          '<span class="rw">Награда: ' + money(st[3]) + '</span>' + ((d.need | 0) > 0 ? '<span class="cnt">Выполнено: ' + (d.cnt | 0) + '/' + (d.need | 0) + '</span>' : '') + '</div></div>' +
+        '<ul class="qs-list">' + list + '</ul>' +
+        '<div id="qa"></div>' +
+        '<div class="row" id="qr"><button class="btn" id="b2">' + esc(m.button2 || 'Закрыть') + '</button>' +
+        '<button class="btn primary" id="b1">' + (d.intro ? '' : '📍 ') + esc(m.button1 || 'Метка GPS') + '</button></div>' +
+        (d.intro ? '<p class="sub" style="text-align:center;margin:10px 0 0">Метка уже на карте. Список заданий: /quest</p></div>'
+          : '<div class="qs-links"><a id="qskip">Пропустить задание</a><a id="qquit">Отказаться от квеста</a></div></div>');
+      var curLi = root.querySelector('.qs-list li.cur'); if (curLi && curLi.scrollIntoView) curLi.scrollIntoView({ block: 'nearest' });
+      function close() { respond(0, -1, ''); }
+      document.getElementById('x').onclick = document.getElementById('b2').onclick = close;
+      document.getElementById('b1').onclick = function () { respond(1, 0, ''); };
+      function ask(text, item, yes) {
+        document.getElementById('qa').innerHTML = '<div class="qs-ask">' + text + '</div>';
+        document.getElementById('qr').innerHTML = '<button class="btn" id="qn">Отмена</button><button class="btn danger" id="qy">' + yes + '</button>';
+        document.getElementById('qn').onclick = function () { WINDOWS.quest(d, m); };
+        document.getElementById('qy').onclick = function () { respond(1, item, ''); };
+      }
+      if (d.intro) return;
+      document.getElementById('qskip').onclick = function () { ask('Пропустить «' + esc(plain(st[1])) + '»? Награду за него ты не получишь.', 1, 'Пропустить'); };
+      document.getElementById('qquit').onclick = function () { ask('Отказаться от всех заданий? Вернуться к квесту будет нельзя.', 2, 'Отказаться'); };
+      keyHandler = function (e) { if (e.key === 'Escape') close(); else if (e.key === 'Enter') respond(1, 0, ''); };
     },
     // Запасное окно: заголовок + текст + кнопки
     message: function (d, m) {

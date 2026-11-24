@@ -280,6 +280,7 @@ static Dealer_Buy(playerid)
 	PutPlayerInVehicle(playerid, v, 0);
 	SendClientMessage(playerid, COLOR_GREEN, "Ты купил %s за $%d! Припаркуй в удобном месте: /park", name, price);
 	SendClientMessage(playerid, COLOR_WHITE, "Транспорта у тебя %d из %d. Весь список и смена машины: /cars", Vehicles_CountOwned(playerid), Props_MaxVehicles(playerid));
+	Quest_OnVehicle(playerid);          // квест новичка (quest.inc)
 }
 
 // ---------------------------------------------------------------------

@@ -279,6 +279,7 @@ enum
 	DIALOG_QUEST,
 	DIALOG_QUEST_INTRO,
 	DIALOG_QUEST_MORE,
+	DIALOG_QUEST_UI,
 
 	// --- Телефон с приложениями (phoneapp.inc)
 	DIALOG_PHONE,
