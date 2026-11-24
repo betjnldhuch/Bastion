@@ -790,13 +790,13 @@ function vipImg(level, cls) {
   // отправить серверу; окно ждёт новый кадр (если не пришёл — закрывается)
   function phSend(text, closeNow) {
     if (!current) return;
-    if (closeNow) { respond(1, 0, text); return; }
+    if (closeNow) { respond(1, -1, text); return; }
     current = null;
     var ph = root.querySelector('.ph'); if (ph) ph.classList.add('busy');
     clearTimeout(phTimer);
     phTimer = setTimeout(function () { if (!current) { root.classList.remove('on', 'phone-mode'); root.innerHTML = ''; } }, 2500);
-    if (window.BastionNative) BastionNative.respond(1, 0, text);
-    else console.log('respond', 1, 0, text);
+    if (window.BastionNative) BastionNative.respond(1, -1, text);
+    else console.log('respond', 1, -1, text);
   }
   function phoneWindow(d, m) {
     clearTimeout(phTimer);
@@ -1184,7 +1184,7 @@ function vipImg(level, cls) {
             document.getElementById('vs-no').onclick = function () { box.remove(); };
             document.getElementById('vs-yes').onclick = function () {
               this.disabled = true; this.textContent = 'Покупаем…';
-              respond(1, 1, '1 ' + n);
+              respond(1, -1, '1 ' + n);
             };
           };
         });
@@ -1237,7 +1237,7 @@ function vipImg(level, cls) {
             arg = v.value.trim();
             if (inp.bad(arg)) { err.textContent = inp.e; err.classList.add('on'); v.focus(); return; }
           }
-          respond(1, i, i + (arg ? ' ' + arg : ''));
+          respond(1, -1, i + (arg ? ' ' + arg : ''));
         };
         upd();
         if (v) setTimeout(function () { v.focus(); }, 50);
@@ -1366,9 +1366,9 @@ function vipImg(level, cls) {
         }
         det.innerHTML = html;
         var bu = document.getElementById('bu'), bg = document.getElementById('bg'), bd = document.getElementById('bd');
-        if (bu) bu.onclick = function () { if (it.cat === 'ground') respond(1, -1, 'p ' + it.drop); else respond(1, it.k, 'u ' + it.k); };
+        if (bu) bu.onclick = function () { if (it.cat === 'ground') respond(1, -1, 'p ' + it.drop); else respond(1, -1, 'u ' + it.k); };
         if (bg) bg.onclick = function () { sheet = 'g'; detail(); };
-        if (bd) bd.onclick = function () { if (it.n > 1 || it.cat === 'wear') { sheet = 'd'; detail(); } else respond(1, it.k, 'd ' + it.k + ' 1'); };
+        if (bd) bd.onclick = function () { if (it.n > 1 || it.cat === 'wear') { sheet = 'd'; detail(); } else respond(1, -1, 'd ' + it.k + ' 1'); };
         var sf = document.getElementById('sf');
         if (!sf) return;
         var amount = 1, am = document.getElementById('am');
@@ -1383,10 +1383,10 @@ function vipImg(level, cls) {
         if (pid) setTimeout(function () { pid.focus(); }, 50);
         sf.onsubmit = function (e) {
           e.preventDefault();
-          if (sheet === 'd') { respond(1, it.k, 'd ' + it.k + ' ' + amount); return; }
+          if (sheet === 'd') { respond(1, -1, 'd ' + it.k + ' ' + amount); return; }
           var v = pid.value.trim();
           if (!/^\d{1,4}$/.test(v)) { var err = document.getElementById('err'); err.textContent = 'Введи id игрока — число.'; err.classList.add('on'); pid.focus(); return; }
-          respond(1, it.k, 'g ' + it.k + ' ' + v + (it.cat === 'wear' || it.cat === 'docs' ? '' : ' ' + amount));
+          respond(1, -1, 'g ' + it.k + ' ' + v + (it.cat === 'wear' || it.cat === 'docs' ? '' : ' ' + amount));
         };
       }
 

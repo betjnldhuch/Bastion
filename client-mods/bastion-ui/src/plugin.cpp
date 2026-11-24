@@ -63,6 +63,7 @@ WNDPROC g_origWndProc = nullptr;
 bool g_cefTried = false;
 bool g_visible = false;  // окно открыто: перехватываем мышь и клавиатуру
 int g_dialogId = -1;
+int g_dialogStyle = 0;    // стиль открытого диалога: у не-списков пункт в ответе всегда -1
 bool g_helloSent = false;
 bool g_hudOn = false;    // сервер прислал свою панель HUD
 int g_breathSent = -1;   // что последним ушло в BastionUI.breath
@@ -141,6 +142,7 @@ void __fastcall HookShow(void* self, void*, int id, int type, const char* captio
     browser::ExecJs("window.BastionUI && BastionUI.open(" + msg + ")");
 
     g_dialogId = id;
+    g_dialogStyle = type;
     if (!g_visible) {
         g_visible = true;
         samp::SetCursor(true);
@@ -163,9 +165,14 @@ HRESULT __stdcall HookPresent(IDirect3DDevice9* dev, const RECT* a, const RECT* 
     while (browser::PopResponse(resp)) {
         if (g_dialogId < 0) continue;
         int id = g_dialogId;
+        // у INPUT/PASSWORD/MSGBOX обычный клиент SA-MP шлёт пункт -1; open.mp сверяет ответ, другой пункт мог не пройти
+        bool list = g_dialogStyle == 2 || g_dialogStyle == 4 || g_dialogStyle == 5;
+        int item = list ? resp.listItem : -1;
         CloseWindowUi(false);
-        if (!samp::SendDialogResponse(id, resp.button, resp.listItem, text::Utf8ToCp1251(resp.text)))
+        if (!samp::SendDialogResponse(id, resp.button, item, text::Utf8ToCp1251(resp.text)))
             Log("DialogResponse %d не отправлен", id);
+        else
+            Log("ответ окну %d: кнопка %d, пункт %d, текст %u байт", id, resp.button, item, static_cast<unsigned>(resp.text.size()));
     }
     if (g_recArmed) {
         int st = samp::GetGameState();
