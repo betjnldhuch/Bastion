@@ -376,42 +376,23 @@ public final class ClientInstaller {
             @Override public void run() {
                 File archive = null, part = null, staging = null;
                 try {
-                    String url = address == null ? "" : address.trim();
-                    boolean local = url.startsWith("content://") || url.startsWith("file://");
-                    if (!local && !url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("b2://") && !url.startsWith("gh://"))
-                        throw new IllegalArgumentException("Нужна прямая ссылка на ZIP-архив (http:// или https://).");
                     File external = context.getExternalFilesDir(null);
                     if (external == null) throw new IllegalStateException("Android не предоставил папку для файлов.");
                     File downloads = new File(external, "downloads");
-                    if (!downloads.exists() && !downloads.mkdirs())
-                        throw new IllegalStateException("Не удалось создать папку загрузки.");
                     archive = new File(downloads, "bastion_cache.zip");
                     part = new File(downloads, "bastion_cache.zip.part");
                     staging = new File(external, "game-installing");
                     deleteTree(staging);
                     if (!staging.mkdirs()) throw new IllegalStateException("Не удалось подготовить установку.");
 
-                    if (local) {
-                        report(callback, "Копирование архива…");
-                        copyLocalArchive(android.net.Uri.parse(url), part, callback);
-                    } else {
-                        downloadMirrored(url, part, callback);
-                    }
-                    if (archive.exists() && !archive.delete())
-                        throw new IllegalStateException("Не удалось заменить старый архив.");
-                    if (!part.renameTo(archive)) throw new IllegalStateException("Не удалось сохранить архив.");
-
-                    if (expectedMd5 != null && expectedMd5.trim().length() > 0) {
-                        report(callback, "Проверка архива (MD5)…");
-                        String actual = fileDigest(archive, "MD5");
-                        if (!actual.equalsIgnoreCase(expectedMd5.trim()))
-                            throw new SecurityException("MD5 не совпадает! Архив повреждён или это другая версия.");
-                    }
+                    fetchArchive(address, expectedMd5, archive, part, callback);
 
                     report(callback, "Проверка содержимого архива…");
                     String prefix = detectGamePrefix(archive);
                     report(callback, "Распаковка файлов игры…");
-                    int count = extractZip(archive, staging, prefix, callback);
+                    StringBuilder manifest = new StringBuilder();
+                    int count = extractZip(archive, staging, prefix, callback, manifest);
+                    writeText(new File(staging, FILES_MANIFEST), manifest.toString());
                     if (count == 0)
                         throw new IllegalStateException("В архиве нет файлов игры («" + prefix + "»).");
                     report(callback, "Проверка установки…");
@@ -446,6 +427,217 @@ public final class ClientInstaller {
                 }
             }
         }, "bastion-archive-installer").start();
+    }
+
+    /** Скачивает (или копирует с телефона) архив игры в archive и сверяет MD5, если он задан. */
+    private void fetchArchive(String address, String expectedMd5, File archive, File part, Callback callback) throws Exception {
+        String url = address == null ? "" : address.trim();
+        boolean local = url.startsWith("content://") || url.startsWith("file://");
+        if (!local && !url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("b2://") && !url.startsWith("gh://"))
+            throw new IllegalArgumentException("Нужна прямая ссылка на ZIP-архив (http:// или https://).");
+        File downloads = archive.getParentFile();
+        if (downloads != null && !downloads.exists() && !downloads.mkdirs())
+            throw new IllegalStateException("Не удалось создать папку загрузки.");
+        if (local) {
+            report(callback, "Копирование архива…");
+            copyLocalArchive(android.net.Uri.parse(url), part, callback);
+        } else {
+            downloadMirrored(url, part, callback);
+        }
+        if (archive.exists() && !archive.delete())
+            throw new IllegalStateException("Не удалось заменить старый архив.");
+        if (!part.renameTo(archive)) throw new IllegalStateException("Не удалось сохранить архив.");
+        if (expectedMd5 != null && expectedMd5.trim().length() > 0) {
+            report(callback, "Проверка архива (MD5)…");
+            String actual = fileDigest(archive, "MD5");
+            if (!actual.equalsIgnoreCase(expectedMd5.trim()))
+                throw new SecurityException("MD5 не совпадает! Архив повреждён или это другая версия.");
+        }
+    }
+
+    // ==================================================================
+    //  Проверка и восстановление файлов игры
+    // ==================================================================
+    /** Эталон установки: «путь\tразмер\tCRC32» каждого файла из архива (пишется при установке). */
+    static final String FILES_MANIFEST = ".bastion_files";
+
+    public interface VerifyCallback {
+        void onProgress(String message);
+        /** bad — повреждённые и отсутствующие файлы; checked — сколько проверено; -1, если эталона нет. */
+        void onResult(java.util.List<String> bad, int checked);
+        void onError(String message);
+    }
+
+    /**
+     * Файлы, которые лаунчер сам меняет (наши маркеры в gta3.img, настройки клиента):
+     * у них проверяется только наличие, иначе они всегда были бы «повреждены».
+     */
+    static boolean presenceOnly(String rel) {
+        String l = rel.toLowerCase(java.util.Locale.ROOT);
+        for (String img : BastionMods.GTA3_IMG) if (l.equals(img) || l.endsWith("/" + img)) return true;
+        if (l.startsWith("samp/bastion/") || l.contains("/samp/bastion/")) return true;
+        return l.endsWith(".ini") || l.endsWith(".cfg") || l.endsWith(".set") || l.endsWith(".log")
+                || l.endsWith(".txt") || l.endsWith(".json");
+    }
+
+    /** Быстрая проверка по эталону: размер и CRC32 каждого файла игры. Ничего не скачивает. */
+    public void verifyGame(final VerifyCallback callback) {
+        new Thread(new Runnable() {
+            @Override public void run() {
+                try {
+                    File root = gameDir(context);
+                    File list = root == null ? null : new File(root, FILES_MANIFEST);
+                    final java.util.List<String> bad = new java.util.ArrayList<String>();
+                    int checked = -1;
+                    if (list != null && list.isFile()) {
+                        String[] lines = readText(list).split("\n");
+                        checked = 0;
+                        for (String line : lines) {
+                            String[] f = line.split("\t");
+                            if (f.length < 3) continue;
+                            checked++;
+                            if (checked % 25 == 0) progress(callback, "Проверка файлов игры: " + checked + " из " + lines.length);
+                            File file = new File(root, f[0]);
+                            if (!file.isFile()) { bad.add(f[0] + " — нет файла"); continue; }
+                            if (presenceOnly(f[0])) continue;
+                            if (file.length() != Long.parseLong(f[1]) || crc32(file) != Long.parseLong(f[2]))
+                                bad.add(f[0] + " — повреждён");
+                        }
+                    }
+                    final int n = checked;
+                    main.post(new Runnable() { @Override public void run() { callback.onResult(bad, n); } });
+                } catch (final Exception e) {
+                    main.post(new Runnable() {
+                        @Override public void run() { callback.onError(e.getMessage() == null ? e.toString() : e.getMessage()); }
+                    });
+                }
+            }
+        }, "bastion-verify").start();
+    }
+
+    /**
+     * Восстановление: скачивает архив игры, сверяет с ним каждый файл установки
+     * и заменяет только отсутствующие и повреждённые. Свои настройки и ник не трогает.
+     * Заодно пишет новый эталон (для установок, сделанных до этой версии лаунчера).
+     */
+    public void repairGame(final String address, final String expectedMd5, final Callback callback) {
+        new Thread(new Runnable() {
+            @Override public void run() {
+                File archive = null, part = null;
+                try {
+                    File external = context.getExternalFilesDir(null);
+                    File root = gameDir(context);
+                    if (external == null || root == null || !root.isDirectory())
+                        throw new IllegalStateException("Игра не установлена — нажми «Переустановить».");
+                    File downloads = new File(external, "downloads");
+                    archive = new File(downloads, "bastion_cache.zip");
+                    part = new File(downloads, "bastion_cache.zip.part");
+                    fetchArchive(address, expectedMd5, archive, part, callback);
+                    String prefix = detectGamePrefix(archive);
+                    String base = root.getCanonicalPath() + File.separator;
+                    StringBuilder manifest = new StringBuilder();
+                    int fixed = 0, seen = 0;
+                    java.util.zip.ZipInputStream zip = new java.util.zip.ZipInputStream(
+                            new BufferedInputStream(new java.io.FileInputStream(archive)));
+                    try {
+                        java.util.zip.ZipEntry entry;
+                        while ((entry = zip.getNextEntry()) != null) {
+                            String name = entry.getName();
+                            if (entry.isDirectory() || name == null || !name.startsWith(prefix)) { zip.closeEntry(); continue; }
+                            String rel = name.substring(prefix.length());
+                            if (rel.length() == 0 || rel.startsWith("/") || rel.indexOf('\\') >= 0) { zip.closeEntry(); continue; }
+                            File out = new File(root, rel);
+                            if (!out.getCanonicalPath().startsWith(base))
+                                throw new SecurityException("Архив пытается записать файл вне папки игры: " + name);
+                            seen++;
+                            if (seen % 25 == 0) report(callback, "Сверка файлов игры: " + seen + ", заменено " + fixed);
+                            boolean ok = out.isFile() && (presenceOnly(rel)
+                                    || (entry.getSize() >= 0 && entry.getCrc() >= 0
+                                        && out.length() == entry.getSize() && crc32(out) == entry.getCrc()));
+                            long[] info;
+                            if (ok && entry.getSize() >= 0 && entry.getCrc() >= 0) {
+                                info = new long[]{entry.getSize(), entry.getCrc()};
+                            } else if (ok) {
+                                info = copyEntry(zip, null);     // размер/CRC не в заголовке: считаем по потоку
+                            } else {
+                                report(callback, "Замена: " + rel);
+                                File parent = out.getParentFile();
+                                if (parent != null && !parent.exists()) parent.mkdirs();
+                                File tmp = new File(out.getPath() + ".bastion_tmp");
+                                info = copyEntry(zip, tmp);
+                                if (out.exists() && !out.delete()) { tmp.delete(); throw new IllegalStateException("Не удалось заменить " + rel); }
+                                if (!tmp.renameTo(out)) throw new IllegalStateException("Не удалось записать " + rel);
+                                fixed++;
+                            }
+                            manifest.append(rel).append('\t').append(info[0]).append('\t').append(info[1]).append('\n');
+                            zip.closeEntry();
+                        }
+                    } finally { zip.close(); }
+                    if (seen == 0) throw new IllegalStateException("В архиве нет файлов игры («" + prefix + "»).");
+                    writeText(new File(root, FILES_MANIFEST), manifest.toString());
+                    new File(root, INSTALL_MARKER).createNewFile();
+                    BastionMods.reset(findSampStorageRoot(context));        // наши текстуры и маркеры поставятся заново при запуске
+                    archive.delete();
+                    final int n = fixed;
+                    final File result = root;
+                    main.post(new Runnable() { @Override public void run() { callback.onComplete(n, result); } });
+                } catch (final Exception e) {
+                    if (part != null) part.delete();
+                    if (archive != null) archive.delete();
+                    main.post(new Runnable() {
+                        @Override public void run() { callback.onError(e.getMessage() == null ? e.toString() : e.getMessage()); }
+                    });
+                }
+            }
+        }, "bastion-repair").start();
+    }
+
+    /** Копирует текущую запись ZIP в target (null — только прочитать). Возвращает {размер, CRC32}. */
+    private static long[] copyEntry(java.util.zip.ZipInputStream zip, File target) throws Exception {
+        java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+        FileOutputStream out = target == null ? null : new FileOutputStream(target);
+        long size = 0;
+        try {
+            byte[] buffer = new byte[32768];
+            int n;
+            while ((n = zip.read(buffer)) != -1) {
+                crc.update(buffer, 0, n);
+                size += n;
+                if (out != null) out.write(buffer, 0, n);
+            }
+        } finally { if (out != null) out.close(); }
+        return new long[]{size, crc.getValue()};
+    }
+
+    static long crc32(File file) throws Exception {
+        java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+        InputStream in = new BufferedInputStream(new java.io.FileInputStream(file));
+        try {
+            byte[] buffer = new byte[65536];
+            int n;
+            while ((n = in.read(buffer)) != -1) crc.update(buffer, 0, n);
+        } finally { in.close(); }
+        return crc.getValue();
+    }
+
+    private static void writeText(File file, String text) throws Exception {
+        java.io.Writer w = new java.io.OutputStreamWriter(new FileOutputStream(file), "UTF-8");
+        try { w.write(text); } finally { w.close(); }
+    }
+
+    private static String readText(File file) throws Exception {
+        InputStream in = new java.io.FileInputStream(file);
+        try {
+            java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[32768];
+            int n;
+            while ((n = in.read(buffer)) != -1) b.write(buffer, 0, n);
+            return new String(b.toByteArray(), "UTF-8");
+        } finally { in.close(); }
+    }
+
+    private void progress(final VerifyCallback callback, final String message) {
+        main.post(new Runnable() { @Override public void run() { callback.onProgress(message); } });
     }
 
     /** ZIP, выбранный на телефоне (например, скачанный в браузере кэш SAMP-Mobile). */
@@ -847,7 +1039,7 @@ public final class ClientInstaller {
     }
 
     /** Распаковывает только записи внутри prefix (сам prefix отрезается). Возвращает число файлов. */
-    private int extractZip(File archive, File destination, String prefix, Callback callback) throws Exception {
+    private int extractZip(File archive, File destination, String prefix, Callback callback, StringBuilder manifest) throws Exception {
         java.util.zip.ZipInputStream zip = new java.util.zip.ZipInputStream(
                 new BufferedInputStream(new java.io.FileInputStream(archive)));
         int count = 0;
@@ -872,14 +1064,19 @@ public final class ClientInstaller {
                     File parent = outFile.getParentFile();
                     if (parent != null && !parent.exists() && !parent.mkdirs()) throw new IllegalStateException("Не удалось создать папку: " + relative);
                     FileOutputStream out = new FileOutputStream(outFile);
+                    java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+                    long size = 0;
                     try {
                         int n;
                         while ((n = zip.read(buffer)) != -1) {
                             total += n;
+                            size += n;
                             if (total > MAX_EXTRACTED_SIZE) throw new IllegalStateException("Распакованные файлы превышают лимит 4 ГБ.");
                             out.write(buffer, 0, n);
+                            crc.update(buffer, 0, n);
                         }
                     } finally { out.close(); }
+                    if (manifest != null) manifest.append(relative).append('\t').append(size).append('\t').append(crc.getValue()).append('\n');
                     count++;
                     if (count % 50 == 0) report(callback, "Распаковка файлов игры… " + count);
                 }

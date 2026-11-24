@@ -18,9 +18,14 @@ import java.util.Map;
 final class BastionMods {
     private static final String ASSETS = "bastion-mods";
     private static final String STAMP = "SAMP/bastion/installed.txt";
-    private static final String[] GTA3_IMG = {"texdb/gta3.img", "models/gta3.img"};
+    static final String[] GTA3_IMG = {"texdb/gta3.img", "models/gta3.img"};
 
     private BastionMods() { }
+
+    /** Сбросить отметку установки: при следующем запуске наши файлы поставятся заново. */
+    static void reset(File root) {
+        if (root != null) new File(root, STAMP).delete();
+    }
 
     /** Ничего не бросает: без наших файлов игра всё равно запустится со стандартной графикой. */
     static void apply(Context ctx, File root) {
