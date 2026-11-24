@@ -32,6 +32,12 @@ jobs:
     uses: ./.github/workflows/pc-launcher.yml
     secrets: inherit
 
+  # Mac-версия берёт свежий ПК-лаунчер из релиза builds, поэтому после pc
+  mac:
+    needs: pc
+    uses: ./.github/workflows/mac-launcher.yml
+    secrets: inherit
+
   server:
     runs-on: ubuntu-22.04
     steps:

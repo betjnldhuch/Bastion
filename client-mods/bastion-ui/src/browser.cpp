@@ -31,6 +31,12 @@ CefRefPtr<CefBrowserHost> Host() {
     return g_browser ? g_browser->GetHost() : nullptr;
 }
 
+// Игра запущена через Wine (Mac / Linux): у Chromium там нет песочницы и части API Windows
+bool UnderWine() {
+    HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
+    return ntdll && GetProcAddress(ntdll, "wine_get_version") != nullptr;
+}
+
 class App : public CefApp, public CefBrowserProcessHandler {
 public:
     CefRefPtr<CefBrowserProcessHandler> GetBrowserProcessHandler() override { return this; }
@@ -43,6 +49,14 @@ public:
         cmd->AppendSwitch("disable-spell-checking");
         cmd->AppendSwitch("no-proxy-server");
         cmd->AppendSwitchWithValue("autoplay-policy", "no-user-gesture-required");
+        if (UnderWine()) {
+            cmd->AppendSwitch("no-sandbox");
+            cmd->AppendSwitch("in-process-gpu");
+            cmd->AppendSwitch("disable-gpu-sandbox");
+            cmd->AppendSwitch("disable-direct-composition");
+            cmd->AppendSwitchWithValue("disable-features",
+                "RendererCodeIntegrity,WinUseBrowserSpellChecker,CalculateNativeWinOcclusion");
+        }
     }
 
 private:
@@ -157,6 +171,7 @@ int Modifiers() {
 
 bool Init(HWND gameWindow, const std::wstring& dir) {
     if (g_started) return true;
+    if (UnderWine()) Log("Wine detected: CEF in compatibility mode");
     CefMainArgs args(GetModuleHandleW(nullptr));
     CefSettings s;
     s.no_sandbox = true;
