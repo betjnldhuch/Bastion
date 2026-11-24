@@ -410,6 +410,13 @@ public OnPlayerText(playerid, text[])
 	// »гроки не могут красить текст кодами {RRGGBB}: так подделывают системные сообщени€
 	if (Player[playerid][pAdmin] < 1) StripColorCodes(text);
 	if (text[0] == '\0') return 0;
+	// Ђ.ыефеыї / Ђ.statsї Ч команда, набранна€ в русской раскладке (chat.inc).
+	// Ќеизвестна€ команда уходит в чат как обычный текст.
+	new fixed[145];
+	if (text[0] == '.' && Chat_CmdFromLayout(text, fixed))
+	{
+		if (Commands_Process(playerid, fixed, true)) { Log_OnCommand(playerid, fixed); return 0; }
+	}
 	Log_OnText(playerid, text);
 	Chat_OnText(playerid, text);
 	return 0;   // 0 = не отправл€ть стандартный глобальный чат
@@ -424,6 +431,9 @@ public OnPlayerCommandText(playerid, cmdtext[])
 		if (Chat_IsFlood(playerid, true)) return 1;   // антифлуд (chat.inc)
 		Log_OnCommand(playerid, cmdtext);
 	}
+	// Ђ/ыефеыї Ч им€ команды в русской раскладке -> Ђ/statsї (chat.inc)
+	new fixed[145];
+	if (Chat_CmdFromLayout(cmdtext, fixed)) return Commands_Process(playerid, fixed);
 	return Commands_Process(playerid, cmdtext);
 }
 
