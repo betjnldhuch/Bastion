@@ -54,6 +54,26 @@ jobs:
           "@
           Set-Content -Path Secrets.cs -Value $src -Encoding utf8
 
+      # Номер версии ставится сам по времени коммита: major.minor из Core.cs,
+      # дальше дни с 2025-01-01 и минуты в сутках (UTC). Каждая следующая сборка main
+      # старше прошлой, и лаунчер у игрока предложит обновиться (Updater.cs).
+      - name: Stamp launcher version
+        id: ver
+        shell: pwsh
+        working-directory: launcher/source
+        run: |
+          $t = [DateTimeOffset]::FromUnixTimeSeconds([long](git log -1 --format=%ct)).UtcDateTime
+          $days = [int]($t.Date - [DateTime]'2025-01-01').TotalDays
+          $mins = $t.Hour * 60 + $t.Minute
+          $core = Get-Content Core.cs -Raw -Encoding utf8
+          $m = [regex]::Match($core, 'AssemblyVersion\("(\d+)\.(\d+)\.\d+\.\d+"\)')
+          if (-not $m.Success) { Write-Error "AssemblyVersion not found in Core.cs"; exit 1 }
+          $ver = "$($m.Groups[1].Value).$($m.Groups[2].Value).$days.$mins"
+          $core = $core.Replace($m.Value, "AssemblyVersion(""$ver"")")
+          [IO.File]::WriteAllText((Resolve-Path Core.cs), $core, (New-Object Text.UTF8Encoding $true))
+          "version=$ver" >> $env:GITHUB_OUTPUT
+          Write-Host "Launcher version $ver"
+
       # Тот же компилятор .NET Framework 4, что и в build.bat у игрока
       - name: Compile BastionLauncher.exe
         shell: pwsh
@@ -142,3 +162,15 @@ jobs:
           gh release view builds *> $null
           if ($LASTEXITCODE -ne 0) { gh release create builds --prerelease --title "Свежие сборки" --notes "Последние ручные сборки лаунчеров." }
           gh release upload builds BastionLauncher-PC.zip --clobber
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Файл версии для автообновления лаунчера (Updater.cs). Кладётся после архива,
+          # чтобы игрок не увидел новую версию раньше, чем загрузится сам архив.
+          $sha = (Get-FileHash BastionLauncher-PC.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          $notes = ((git log -1 --format=%s) -replace '[\r\n]', ' ').Trim()
+          $ini = "; Создаётся CI (pc-launcher.yml), руками не править.`r`n" +
+                 "pc_version = ${{ steps.ver.outputs.version }}`r`n" +
+                 "pc_url = BastionLauncher-PC.zip`r`n" +
+                 "pc_sha256 = $sha`r`n" +
+                 "pc_notes = $notes`r`n"
+          [IO.File]::WriteAllText("version-pc.ini", $ini, (New-Object Text.UTF8Encoding $false))
+          gh release upload builds version-pc.ini --clobber

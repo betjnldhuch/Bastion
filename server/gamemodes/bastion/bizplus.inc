@@ -57,7 +57,8 @@ static const gBizCfg[BIZ_TYPES][E_BIZ_CFG] =
 	{ 50000,  150, 20000 },     // 11 спортзал
 	{ 35000,  150, 20000 },     // 12 хозтовары
 	{ 45000,  150, 20000 },     // 13 электроника
-	{ 25000,  100, 10000 }      // 14 лотерея
+	{ 25000,  100, 10000 },     // 14 лотерея
+	{ 60000,  200, 0     }      // 15 тир (склад не нужен: продаёт услуги)
 };
 
 // Новые бизнесы, которые появляются один раз при обновлении (координаты примерные, двигаются в /markers)
@@ -80,7 +81,7 @@ static const gBizXDefaults[][E_BIZX_DEF] =
 };
 
 static gMenuBiz[MAX_PLAYERS];                   // номер бизнеса в базе, для которого открыто меню
-static gMenuActs[MAX_PLAYERS][10];
+static gMenuActs[MAX_PLAYERS][16];
 static gStyle[MAX_PLAYERS];                     // стиль боя
 static gStyleAcc[MAX_PLAYERS];                  // для какого аккаунта он загружен
 static gOfferSeller[MAX_PLAYERS];               // предложение купить бизнес: аккаунт продавца,
@@ -91,6 +92,11 @@ enum
 {
 	BXA_INFO,
 	BXA_STATEMENT,
+	BXA_HISTORY,
+	BXA_TAX,
+	BXA_SELLER,
+	BXA_STAFF,
+	BXA_UPG,
 	BXA_CASH,
 	BXA_STOCK,
 	BXA_MARKUP,
@@ -122,16 +128,28 @@ stock BizX_Price(b, base)
 	return (price < 1) ? 1 : price;
 }
 
+// Сколько списывается со склада за продажу товара с базовой ценой base
+stock BizX_StockCost(base) { return base * BIZ_WHOLESALE_PCT / 100; }
+
 stock BizX_StockMax(b)
 {
 	new t = Biz[b][bType];
-	return (t > BIZ_NONE && t < BIZ_TYPES) ? gBizCfg[t][bcStockMax] : 0;
+	if (t <= BIZ_NONE || t >= BIZ_TYPES) return 0;
+	return BizW_HasUpg(b, UPG_STOCK) ? gBizCfg[t][bcStockMax] * 2 : gBizCfg[t][bcStockMax];
+}
+
+// Доход за PayDay с учётом рекламы
+stock BizX_PayDayIncome(b)
+{
+	new t = Biz[b][bType];
+	if (t <= BIZ_NONE || t >= BIZ_TYPES) return 0;
+	return BizW_HasUpg(b, UPG_ADS) ? gBizCfg[t][bcPayDay] * (100 + UPG_ADS_PCT) / 100 : gBizCfg[t][bcPayDay];
 }
 
 stock BizX_Save(b)
 {
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE businesses SET till = %d, markup = %d, stock = %d, earned = %d WHERE id = %d",
-		Biz[b][bTill], Biz[b][bMarkup], Biz[b][bStock], Biz[b][bEarned], Biz[b][bDbId]));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE businesses SET till = %d, markup = %d, stock = %d, earned = %d, tax_debt = %d, tax_pd = %d, upg = %d, sellmin = %d, comm = %d WHERE id = %d",
+		Biz[b][bTill], Biz[b][bMarkup], Biz[b][bStock], Biz[b][bEarned], Biz[b][bTaxDebt], Biz[b][bTaxPD], Biz[b][bUpg], Biz[b][bSellMin], Biz[b][bComm], Biz[b][bDbId]));
 }
 
 static BizX_AddTill(b, amount)
@@ -146,7 +164,7 @@ static BizX_AddTill(b, amount)
 // Продажа в бизнесе b: paid — заплатил покупатель, base — базовая цена (по ней списывается склад)
 stock BizX_Sale(b, paid, base)
 {
-	if (b < 0 || b >= gBizCount || Biz[b][bOwner] == 0) return;
+	if (b < 0 || b >= gBizCount || Biz[b][bOwner] == 0 || BizW_Closed(b)) return;
 	if (BizX_UsesStock(b))
 	{
 		new cost = base * BIZ_WHOLESALE_PCT / 100;
@@ -176,9 +194,10 @@ stock BizX_PayDay(b)
 {
 	new t = Biz[b][bType];
 	if (t <= BIZ_NONE || t >= BIZ_TYPES) return;
-	if (BizX_UsesStock(b) && Biz[b][bStock] <= 0) return;      // пустой магазин клиентов не держит
-	BizX_AddTill(b, gBizCfg[t][bcPayDay]);
+	// пустой или закрытый за долги магазин клиентов не держит
+	if (!BizW_Closed(b) && !(BizX_UsesStock(b) && Biz[b][bStock] <= 0)) BizX_AddTill(b, BizX_PayDayIncome(b));
 	BizX_Save(b);
+	BizW_PayDayTax(b);          // налог (bizwork.inc)
 }
 
 // Бизнес куплен у штата: цены обычные, на складе стартовый товар
@@ -197,8 +216,14 @@ stock BizX_Init()
 	DB_AddColumn("businesses", "markup", "INTEGER DEFAULT 100");
 	DB_AddColumn("businesses", "stock", "INTEGER DEFAULT " #BIZ_START_STOCK);
 	DB_AddColumn("businesses", "earned", "INTEGER DEFAULT 0");
+	DB_AddColumn("businesses", "tax_debt", "INTEGER DEFAULT 0");
+	DB_AddColumn("businesses", "tax_pd", "INTEGER DEFAULT 0");
+	DB_AddColumn("businesses", "upg", "INTEGER DEFAULT 0");
+	DB_AddColumn("businesses", "sellmin", "INTEGER DEFAULT 100");
+	DB_AddColumn("businesses", "comm", "INTEGER DEFAULT 10");
 	DB_AddColumn("accounts", "fstyle", "INTEGER DEFAULT 4");
 	BizS_Init();
+	BizW_Init();
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS bizx_meta (k TEXT PRIMARY KEY, v INTEGER)"));
 
 	// новые бизнесы добавляются один раз; удалённые админом заново не появятся
@@ -222,8 +247,24 @@ stock BizX_Init()
 		}
 		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO bizx_meta (k, v) VALUES ('seed1', 1)"));
 	}
+	// тир (вид 15) — один раз
+	r = DB_ExecuteQuery(gDB, "SELECT v FROM bizx_meta WHERE k = 'seed_range'");
+	seeded = false;
+	if (r != DBResult:0)
+	{
+		seeded = (DB_GetRowCount(r) > 0);
+		DB_FreeResultSet(r);
+	}
+	if (!seeded)
+	{
+		new price = BizX_DefaultPrice(BIZ_SHOOTRANGE);
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO businesses (name, type, price, x, y, z) VALUES ('%q', %d, %d, %f, %f, %f)",
+			"Тир Ammu-Nation Willowfield", BIZ_SHOOTRANGE, price, 2400.50, -1981.90, 13.55));
+		Biz_Add(DB_LastInsertId(), "Тир Ammu-Nation Willowfield", BIZ_SHOOTRANGE, 0, "", price, 2400.50, -1981.90, 13.55, 0);
+		DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO bizx_meta (k, v) VALUES ('seed_range', 1)"));
+	}
 
-	r = DB_ExecuteQuery(gDB, "SELECT id, markup, stock, earned FROM businesses");
+	r = DB_ExecuteQuery(gDB, "SELECT id, markup, stock, earned, tax_debt, tax_pd, upg, sellmin, comm FROM businesses");
 	if (r != DBResult:0)
 	{
 		new rows = DB_GetRowCount(r);
@@ -236,6 +277,11 @@ stock BizX_Init()
 				if (Biz[b][bMarkup] < BIZ_MARKUP_MIN || Biz[b][bMarkup] > BIZ_MARKUP_MAX) Biz[b][bMarkup] = 100;
 				Biz[b][bStock] = DB_GetFieldInt(r, 2);
 				Biz[b][bEarned] = DB_GetFieldInt(r, 3);
+				Biz[b][bTaxDebt] = DB_GetFieldInt(r, 4);
+				Biz[b][bTaxPD] = DB_GetFieldInt(r, 5);
+				Biz[b][bUpg] = DB_GetFieldInt(r, 6);
+				Biz[b][bSellMin] = DB_GetFieldInt(r, 7);
+				Biz[b][bComm] = DB_GetFieldInt(r, 8);
 			}
 			DB_SelectNextRow(r);
 		}
@@ -313,8 +359,11 @@ stock BizX_Lottery(playerid, price, mult)
 static BizX_Mine(playerid)
 {
 	new b = Biz_FindByDbId(gMenuBiz[playerid]);
-	if (b == -1 || Player[playerid][pDbId] == 0 || Biz[b][bOwner] != Player[playerid][pDbId]) return -1;
-	return b;
+	if (b == -1 || Player[playerid][pDbId] == 0 || Biz[b][bOwner] == 0) return -1;
+	if (Biz[b][bOwner] == Player[playerid][pDbId]) return b;
+	new sb;
+	if (BizW_RoleOf(playerid, sb) == BW_DEPUTY && sb == b) return b;     // заместитель (bizwork.inc)
+	return -1;
 }
 
 static bool:BizX_Near(playerid, b)
@@ -326,33 +375,58 @@ static bool:BizX_Near(playerid, b)
 
 stock bool:Cmd_BizMenu(playerid)
 {
-	new b = Biz_GetOwned(playerid);
+	new b = Biz_GetOwned(playerid), bool:own = true;
+	if (b == -1)
+	{
+		// заместитель управляет бизнесом владельца, кроме кассы и продажи
+		if (BizW_RoleOf(playerid, b) != BW_DEPUTY) b = -1;
+		own = false;
+	}
 	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет бизнеса. Купить: ALT у значка бизнеса, который продаётся. Виды бизнесов: /biztypes");
 	gMenuBiz[playerid] = Biz[b][bDbId];
 
-	new list[512], line[96], n = 0;
+	new list[1024], line[112], n = 0;
 	strcat(list, "Действие\tСейчас\n");
 	gMenuActs[playerid][n++] = BXA_INFO; strcat(list, "Информация\t \n");
 	gMenuActs[playerid][n++] = BXA_STATEMENT; strcat(list, "Финансовая выписка\tпоказать: /showbiz [id]\n");
-	format(line, sizeof line, "Забрать деньги из кассы\t{33AA33}$%d\n", Biz[b][bTill]);
-	gMenuActs[playerid][n++] = BXA_CASH; strcat(list, line);
+	gMenuActs[playerid][n++] = BXA_HISTORY; strcat(list, "История дохода\tпо дням\n");
+	if (own)
+	{
+		format(line, sizeof line, "Забрать деньги из кассы\t{33AA33}$%d\n", Biz[b][bTill]);
+		gMenuActs[playerid][n++] = BXA_CASH; strcat(list, line);
+	}
+	if (Biz[b][bTaxDebt] > 0) format(line, sizeof line, "Налог\t{FF6347}долг $%d\n", Biz[b][bTaxDebt]);
+	else format(line, sizeof line, "Налог\t$%d за PayDay\n", BizW_Tax(b));
+	gMenuActs[playerid][n++] = BXA_TAX; strcat(list, line);
 	if (BizX_UsesStock(b))
 	{
-		format(line, sizeof line, "Закупить товар\t%s$%d{FFFFFF} из $%d\n", (Biz[b][bStock] > 0) ? ("{FFFFFF}") : ("{FF6347}"), Biz[b][bStock], gBizCfg[Biz[b][bType]][bcStockMax]);
+		format(line, sizeof line, "Закупить товар\t%s$%d{FFFFFF} из $%d\n", (Biz[b][bStock] > 0) ? ("{FFFFFF}") : ("{FF6347}"), Biz[b][bStock], BizX_StockMax(b));
 		gMenuActs[playerid][n++] = BXA_STOCK; strcat(list, line);
-		format(line, sizeof line, "Цены\t%d%%\n", Biz[b][bMarkup]);
+		format(line, sizeof line, "Цены у кассы\t%d%%\n", Biz[b][bMarkup]);
 		gMenuActs[playerid][n++] = BXA_MARKUP; strcat(list, line);
+		format(line, sizeof line, "Продавцы: цены и процент\tот %d%%, продавцу %d%%\n", BizW_SellMin(b), Biz[b][bComm]);
+		gMenuActs[playerid][n++] = BXA_SELLER; strcat(list, line);
 	}
-	format(line, sizeof line, "Сменить название\t$%d\n", BIZ_RENAME_PRICE);
-	gMenuActs[playerid][n++] = BXA_NAME; strcat(list, line);
+	format(line, sizeof line, "Сотрудники\t%d\n", BizW_StaffCount(b, 0));
+	gMenuActs[playerid][n++] = BXA_STAFF; strcat(list, line);
+	if (own)
+	{
+		format(line, sizeof line, "Улучшения\t%d из %d\n", BizW_UpgCount(b), UPG_COUNT);
+		gMenuActs[playerid][n++] = BXA_UPG; strcat(list, line);
+		format(line, sizeof line, "Сменить название\t$%d\n", BIZ_RENAME_PRICE);
+		gMenuActs[playerid][n++] = BXA_NAME; strcat(list, line);
+	}
 	if (Biz[b][bInt] != 0)
 	{
 		gMenuActs[playerid][n++] = BXA_LOCK;
 		strcat(list, Biz[b][bLocked] ? ("Открыть вход\t{FF6347}закрыто\n") : ("Закрыть вход\t{33AA33}открыто\n"));
 	}
-	gMenuActs[playerid][n++] = BXA_SELLTO; strcat(list, "Продать игроку\t \n");
-	format(line, sizeof line, "Продать штату\t$%d\n", Biz[b][bPrice] / 2 + Biz[b][bTill]);
-	gMenuActs[playerid][n++] = BXA_SELL; strcat(list, line);
+	if (own)
+	{
+		gMenuActs[playerid][n++] = BXA_SELLTO; strcat(list, "Продать игроку\t \n");
+		format(line, sizeof line, "Продать штату\t$%d\n", Biz[b][bPrice] / 2 + Biz[b][bTill]);
+		gMenuActs[playerid][n++] = BXA_SELL; strcat(list, line);
+	}
 	for (new i = n; i < sizeof (gMenuActs[]); i++) gMenuActs[playerid][i] = -1;
 
 	ShowPlayerDialog(playerid, DIALOG_BIZX_MENU, DIALOG_STYLE_TABLIST_HEADERS, Biz_IconCaption(Biz[b][bType], Biz[b][bName]), "%s", "Выбрать", "Закрыть", list);
@@ -363,10 +437,10 @@ static BizX_ShowInfo(playerid, b)
 {
 	new text[900], line[160], t = Biz[b][bType];
 	format(text, sizeof text, "{FF9900}%s{FFFFFF}, №%d\nВид: %s\nЦена у штата: $%d\n\nВ кассе: {33AA33}$%d{FFFFFF}\nЗаработано за всё время: $%d\nДоход за PayDay: $%d\n",
-		Biz[b][bName], Biz[b][bDbId], Biz_GetTypeName(t), Biz[b][bPrice], Biz[b][bTill], Biz[b][bEarned], gBizCfg[t][bcPayDay]);
+		Biz[b][bName], Biz[b][bDbId], Biz_GetTypeName(t), Biz[b][bPrice], Biz[b][bTill], Biz[b][bEarned], BizX_PayDayIncome(b));
 	if (BizX_UsesStock(b))
 	{
-		format(line, sizeof line, "Товар на складе: $%d из $%d\nЦены: %d%% от обычных\n\n", Biz[b][bStock], gBizCfg[t][bcStockMax], Biz[b][bMarkup]);
+		format(line, sizeof line, "Товар на складе: $%d из $%d\nЦены: %d%% от обычных\n\n", Biz[b][bStock], BizX_StockMax(b), Biz[b][bMarkup]);
 		strcat(text, line);
 		format(line, sizeof line, "{AFAFAF}С каждой покупки в кассу идёт её цена минус налог %d%%,\nа со склада уходит %d%% обычной цены товара.\n", BIZ_SALE_TAX, BIZ_WHOLESALE_PCT);
 		strcat(text, line);
@@ -461,6 +535,8 @@ stock BizX_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 
 	new b = BizX_Mine(playerid);
 	if (b == -1) return 1;
+	// касса, название и продажа — только владельцу
+	if ((dialogid == DIALOG_BIZX_NAME || dialogid == DIALOG_BIZX_SELL || dialogid == DIALOG_BIZX_SELLTO) && Biz[b][bOwner] != Player[playerid][pDbId]) return 1;
 	if (!response)
 	{
 		if (dialogid != DIALOG_BIZX_MENU) Cmd_BizMenu(playerid);    // «Назад» из любого окна
@@ -476,13 +552,18 @@ stock BizX_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			{
 				case BXA_INFO: BizX_ShowInfo(playerid, b);
 				case BXA_STATEMENT: BizS_ShowOwn(playerid, b);
+				case BXA_HISTORY: BizS_ShowHistory(playerid, b);
+				case BXA_TAX: BizW_ShowTax(playerid, b);
+				case BXA_SELLER: BizW_ShowSellerCfg(playerid, b);
+				case BXA_STAFF: BizW_ShowStaff(playerid, b);
+				case BXA_UPG: BizW_ShowUpg(playerid, b);
 				case BXA_CASH:
 				{
 					Cmd_BizCash(playerid);
 				}
 				case BXA_STOCK:
 				{
-					new room = gBizCfg[Biz[b][bType]][bcStockMax] - Biz[b][bStock];
+					new room = BizX_StockMax(b) - Biz[b][bStock];
 					if (room <= 0) { SendClientMessage(playerid, COLOR_GREY, "Склад полон."); return 1; }
 					ShowPlayerDialog(playerid, DIALOG_BIZX_STOCK, DIALOG_STYLE_INPUT, "Закупка товара",
 						"{FFFFFF}На складе товара на {FFFF00}$%d{FFFFFF}, поместится ещё на {FFFF00}$%d{FFFFFF}.\nТовар на $100 даёт продаж примерно на $%d.\nПлатишь наличными, у тебя: $%d\n\nНа какую сумму закупить?",
@@ -523,7 +604,7 @@ stock BizX_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 		{
 			if (!BizX_UsesStock(b) || !BizX_Near(playerid, b)) return 1;
 			if (!IsNumeric(inputtext) || strlen(inputtext) > 9) { SendClientMessage(playerid, COLOR_GREY, "Нужно ввести сумму числом."); return 1; }
-			new sum = strval(inputtext), room = gBizCfg[Biz[b][bType]][bcStockMax] - Biz[b][bStock];
+			new sum = strval(inputtext), room = BizX_StockMax(b) - Biz[b][bStock];
 			if (sum > room) sum = room;
 			if (sum < 1) { SendClientMessage(playerid, COLOR_GREY, "Склад полон или сумма слишком мала."); return 1; }
 			if (GetMoney(playerid) < sum) { SendClientMessage(playerid, COLOR_GREY, "Не хватает наличных. Нужно $%d.", sum); return 1; }
@@ -581,6 +662,7 @@ stock BizX_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 				Biz[b][bMarkup] = 100;
 				Biz[b][bStock] = 0;
 				BizX_Save(b);
+				BizW_Reset(b);
 			}
 			return 1;
 		}
@@ -608,7 +690,7 @@ stock BizX_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			gOfferPrice[target] = price;
 			ShowPlayerDialog(target, DIALOG_BIZX_OFFER, DIALOG_STYLE_MSGBOX, "Покупка бизнеса",
 				"{FFFFFF}%s предлагает тебе купить бизнес\n{FF9900}%s{FFFFFF} (%s)\nза ${FFFF00}%d{FFFFFF}.\n\nТовар на складе: $%d. Доход за PayDay: $%d.\n\nКупить?",
-				"Купить", "Отказаться", GetRPName(playerid), Biz[b][bName], Biz_GetTypeName(Biz[b][bType]), price, Biz[b][bStock], gBizCfg[Biz[b][bType]][bcPayDay]);
+				"Купить", "Отказаться", GetRPName(playerid), Biz[b][bName], Biz_GetTypeName(Biz[b][bType]), price, Biz[b][bStock], BizX_PayDayIncome(b));
 			SendClientMessage(playerid, COLOR_WHITE, "Ты предложил %s купить «%s» за $%d. Ждём ответа.", GetRPName(target), Biz[b][bName], price);
 			return 1;
 		}

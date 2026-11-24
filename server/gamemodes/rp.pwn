@@ -83,6 +83,7 @@
 #include "bastion/fbi.inc"        // ФБР: маскировка, прослушка, слежка, досье
 #include "bastion/business.inc"
 #include "bastion/bizstat.inc"    // финансовая выписка бизнеса, /showbiz, /checkbiz
+#include "bastion/bizwork.inc"    // сотрудники бизнеса, налог, улучшения, /sell
 #include "bastion/bizplus.inc"    // новые виды бизнесов: склад, наценка, меню владельца
 #include "bastion/garage.inc"
 #include "bastion/dealers.inc"    // автосалоны и авиасалон, /cars — несколько машин у игрока
@@ -217,6 +218,7 @@ public OnPlayerConnect(playerid)
 	Admin_OnConnect(playerid);
 	Law_OnConnect(playerid);
 	Debts_OnConnect(playerid);
+	BizW_OnConnect(playerid);
 	Families_OnConnect(playerid);
 	Markers_OnConnect(playerid);        // свои надписи фракционных точек
 	Dev_OnConnect(playerid);            // убранные здания GTA (dev.inc)
@@ -415,7 +417,8 @@ public OnPlayerText(playerid, text[])
 
 public OnPlayerCommandText(playerid, cmdtext[])
 {
-	if (!strcmp(cmdtext, "/__bui")) return UI_OnPcHello(playerid);   // ПК-плагин HTML-окон (ui.inc)
+	if (!strcmp(cmdtext, "/__bui")) return UI_OnPcHello(playerid);
+	if (!strcmp(cmdtext, "/__bui ", false, 7)) return UI_OnPcHello(playerid, cmdtext[7]);   // "/__bui 2" — версия плагина   // ПК-плагин HTML-окон (ui.inc)
 	if (Player[playerid][pLogged])
 	{
 		if (Chat_IsFlood(playerid, true)) return 1;   // антифлуд (chat.inc)
@@ -449,6 +452,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Bank_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Business_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (BizX_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (BizW_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Keys_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Fuel_OnDialog(playerid, dialogid, response, inputtext)) return 1;
 	if (Licenses_OnDialog(playerid, dialogid, response, listitem)) return 1;

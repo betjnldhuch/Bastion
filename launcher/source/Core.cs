@@ -60,7 +60,16 @@ namespace BastionLauncher
         // на сервере раздачи (Updater.cs). «-» в launcher.ini выключает.
         public string EffectiveNewsUrl { get { return Remote.Pick(NewsUrl, "news.txt"); } }
         public string EffectiveServersUrl { get { return Remote.Pick(ServersUrl, "servers.ini"); } }
-        public string EffectiveUpdateUrl { get { return Remote.Pick(UpdateUrl, "version.ini"); } }
+        // Обновление лаунчера: по умолчанию релиз «builds» на GitHub (CI выкладывает туда
+        // каждую сборку main вместе с version-pc.ini), поэтому номер версии менять руками не нужно.
+        public string EffectiveUpdateUrl
+        {
+            get
+            {
+                if (UpdateUrl == "-") return "";
+                return UpdateUrl.Length > 0 ? UpdateUrl : Updater.DefaultVersionUrl;
+            }
+        }
         public string EffectiveClientPackUrl { get { return Remote.Pick(ClientPackUrl, "client-pack.json"); } }
         public string GameMd5 = "";
 
@@ -234,8 +243,9 @@ namespace BastionLauncher
 "; link = ФОРУМ | https://forum.example.com\r\n" +
 "; link = ДОНАТ | https://example.com/donate\r\n" +
 "\r\n" +
-"; Новости, список серверов и обновления лаунчер берёт из сети сам (папка launcher/ на\r\n" +
-"; сервере раздачи игры). Если сети нет — из news.txt и строк server ниже.\r\n" +
+"; Новости и список серверов лаунчер берёт из сети сам (папка launcher/ на сервере\r\n" +
+"; раздачи игры), обновления — из релиза builds на GitHub. Если сети нет — из news.txt\r\n" +
+"; и строк server ниже.\r\n" +
 "; Сюда можно вписать свою ссылку, а знак - (минус) выключает загрузку из сети.\r\n" +
 "news_url =\r\n" +
 "servers_url =\r\n" +

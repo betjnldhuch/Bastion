@@ -20,8 +20,10 @@ android {
         // SAMP-Mobile GTA-2.11 requires Android 9+ (API 28) and ARM64.
         minSdk 28
         targetSdk 34
-        versionCode 15
-        versionName "0.8.0"
+        // CI ставит номер сборки сам (минуты с 2020-01-01 по времени коммита),
+        // чтобы лаунчер видел, что вышла новая версия (Remote.checkUpdate)
+        versionCode envOr('BASTION_VERSION_CODE', '15').toInteger()
+        versionName "0.8.0" + (System.getenv('BASTION_VERSION_CODE') ? "." + System.getenv('BASTION_VERSION_CODE') : "")
         multiDexEnabled true
 
         ndk {

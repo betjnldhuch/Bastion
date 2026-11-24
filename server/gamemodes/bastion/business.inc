@@ -8,7 +8,7 @@
 //
 //  Типы: 1 — магазин 24/7, 2 — бар, 3 — одежда, 4 — оружейный, 5 — казино (casino.inc),
 //  6 — АЗС, 7 — автомастерская, 8 — закусочная, 9 — аптека, 10 — ночной клуб, 11 — спортзал,
-//  12 — хозтовары, 13 — электроника, 14 — лотерея. Склад, наценка, меню владельца: bizplus.inc.
+//  12 — хозтовары, 13 — электроника, 14 — лотерея, 15 — тир (тренировки и выписка, skills.inc). Склад, наценка, меню владельца: bizplus.inc.
 //  Админы (4+): /createbiz [тип] [цена] [название], /delbiz
 //
 //  Интерьер: у каждого бизнеса стандартный интерьер GTA по его типу (временное решение).
@@ -21,6 +21,12 @@
 // =====================================================================
 
 #define BIZ_RANGE           2.5
+forward bool:Skills_CanTrain(playerid, g, why[], size);   // тир (skills.inc)
+// bool-функции из bizwork/bizplus: объявлены до первого вызова (без warning 208)
+forward bool:BizW_HasUpg(b, bit);
+forward bool:BizW_Closed(b);
+forward bool:BizX_UsesStock(b);
+forward bool:Cmd_BizMenu(playerid);
 #define BIZ_WORLD_OFFSET    5000        // вирт. мир интерьера = 5000 + номер бизнеса в базе
 #define BIZ_EXIT_RANGE      1.5         // как близко к стрелке внутри срабатывает выход
 #define BIZ_IN_REF          1000000     // ref маркера выхода внутри: BIZ_IN_REF + номер бизнеса в базе
@@ -46,15 +52,16 @@ enum
 	BIZ_GYM,        // 11 — спортзал: стили боя
 	BIZ_HARDWARE,   // 12 — хозтовары
 	BIZ_ELECTRO,    // 13 — электроника
-	BIZ_LOTTERY     // 14 — лотерея
+	BIZ_LOTTERY,    // 14 — лотерея
+	BIZ_SHOOTRANGE  // 15 — тир: тренировки стрельбы и выписка (skills.inc)
 }
-#define BIZ_TYPES           15
+#define BIZ_TYPES           16
 
 static const gBizTypeNames[BIZ_TYPES][24] = { "-", "Магазин 24/7", "Бар", "Магазин одежды", "Оружейный магазин", "Казино",
-	"АЗС", "Автомастерская", "Закусочная", "Аптека", "Ночной клуб", "Спортзал", "Хозтовары", "Электроника", "Лотерея" };
+	"АЗС", "Автомастерская", "Закусочная", "Аптека", "Ночной клуб", "Спортзал", "Хозтовары", "Электроника", "Лотерея", "Тир" };
 
 // Стандартные интерьеры по типу бизнеса: номер интерьера и точка у двери (x, y, z, угол). 0 — без интерьера, торговля у значка
-static const gBizIntId[BIZ_TYPES] = { 0, 17, 11, 15, 1, 10, 0, 0, 10, 6, 17, 5, 0, 0, 0 };
+static const gBizIntId[BIZ_TYPES] = { 0, 17, 11, 15, 1, 10, 0, 0, 10, 6, 17, 5, 0, 0, 0, 1 };
 static const Float:gBizIntPos[BIZ_TYPES][4] =
 {
 	{ 0.0, 0.0, 0.0, 0.0 },
@@ -71,7 +78,8 @@ static const Float:gBizIntPos[BIZ_TYPES][4] =
 	{ 772.11, -3.90, 1000.73, 0.0 },        // спортзал Ganton
 	{ 0.0, 0.0, 0.0, 0.0 },                 // хозтовары: у значка
 	{ 0.0, 0.0, 0.0, 0.0 },                 // электроника: у значка
-	{ 0.0, 0.0, 0.0, 0.0 }                  // лотерея: у значка
+	{ 0.0, 0.0, 0.0, 0.0 },                 // лотерея: у значка
+	{ 286.15, -40.64, 1001.52, 0.0 }        // тир: зал Ammu-Nation со стрельбищем
 };
 
 // Что можно купить
@@ -85,7 +93,10 @@ enum
 	ITEM_FOOD,      // еда в баре сразу (value = +HP, value2 = +% сытости)
 	ITEM_INV,       // вещь в инвентарь (value = INV_* из needs.inc, value2 = штук)
 	ITEM_FSTYLE,    // стиль боя в спортзале (value = FIGHT_STYLE_*), bizplus.inc
-	ITEM_LOTTERY    // лотерейный билет (value = во сколько раз главный приз больше цены), bizplus.inc
+	ITEM_LOTTERY,   // лотерейный билет (value = во сколько раз главный приз больше цены), bizplus.inc
+	ITEM_TRAIN,     // тренировка в тире (value = группа оружия skills.inc, value2 = очков 0..999)
+	ITEM_SHOOTDOC,  // выписка из тира в сумку (skills.inc)
+	ITEM_RANGE      // подход на стрельбище: мишени на RANGE_SESSION_MIN минут (skills.inc)
 }
 
 enum E_BIZ_ITEM
@@ -173,7 +184,16 @@ static const gBizItems[][E_BIZ_ITEM] =
 	{ BIZ_ELECTRO, "Игральные кости",   25,   ITEM_INV,    INV_DICE, 1 },
 	{ BIZ_LOTTERY, "Билет «Мелочь»",    50,   ITEM_LOTTERY, 20, 0 },
 	{ BIZ_LOTTERY, "Билет «Удача»",     250,  ITEM_LOTTERY, 40, 0 },
-	{ BIZ_LOTTERY, "Билет «Джекпот»",   1000, ITEM_LOTTERY, 100, 0 }
+	{ BIZ_LOTTERY, "Билет «Джекпот»",   1000, ITEM_LOTTERY, 100, 0 },
+	{ BIZ_SHOOTRANGE, "Выписка из тира",   150,  ITEM_SHOOTDOC, 0, 0 },
+	{ BIZ_SHOOTRANGE, "Мишени (5 минут)",  500,  ITEM_RANGE, 0, 0 },
+	{ BIZ_SHOOTRANGE, "Курс: пистолеты +5%",    300, ITEM_TRAIN, 0, 50 },
+	{ BIZ_SHOOTRANGE, "Курс: Desert Eagle +5%", 400, ITEM_TRAIN, 1, 50 },
+	{ BIZ_SHOOTRANGE, "Курс: дробовики +5%",    400, ITEM_TRAIN, 2, 50 },
+	{ BIZ_SHOOTRANGE, "Курс: обрез +5%",        400, ITEM_TRAIN, 3, 50 },
+	{ BIZ_SHOOTRANGE, "Курс: ПП +5%",           500, ITEM_TRAIN, 4, 50 },
+	{ BIZ_SHOOTRANGE, "Курс: автоматы +5%",     600, ITEM_TRAIN, 5, 50 },
+	{ BIZ_SHOOTRANGE, "Курс: винтовки +5%",     600, ITEM_TRAIN, 6, 50 }
 };
 
 stock Biz_ItemType(item)  { return gBizItems[item][biType]; }
@@ -201,7 +221,12 @@ enum E_BIZ
 	bOWorld,                    // и мир (как в базе: дом хранится как BIZ_HOUSE_W + номер дома)
 	bMarkup,                    // цены владельца, % от базовых (bizplus.inc)
 	bStock,                     // товар на складе, $ по закупочной цене (bizplus.inc)
-	bEarned                     // сколько бизнес принёс в кассу за всё время
+	bEarned,                    // сколько бизнес принёс в кассу за всё время
+	bTaxDebt,                   // долг по налогу, $ (bizwork.inc)
+	bTaxPD,                     // сколько PayDay подряд долг не погашен
+	bUpg,                       // купленные улучшения, биты UPG_* (bizwork.inc)
+	bSellMin,                   // мин. цена у продавцов, % от базовой
+	bComm                       // процент продавцу с продажи
 }
 new Biz[MAX_BUSINESSES][E_BIZ];
 new gBizCount = 0;
@@ -606,28 +631,9 @@ stock Business_PayDay()
 	}
 }
 
-// Окно покупки (из OnDialogResponse)
-stock Business_OnDialog(playerid, dialogid, response, listitem)
+// Можно ли игроку купить товар item в бизнесе b (сумка, лицензия, уровень). Сообщение пишет само.
+stock bool:Biz_CanBuy(playerid, b, item)
 {
-	if (dialogid != DIALOG_BIZ_BUY) return 0;
-	if (!response || listitem < 0 || listitem >= sizeof (gBuyList[])) return 1;
-
-	new b = gBuyBiz[playerid];
-	if (b < 0 || b >= gBizCount || Biz_GetNearby(playerid) != b)
-	{
-		SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от магазина.");
-		return 1;
-	}
-	new item = gBuyList[playerid][listitem];
-	if (item < 0 || item >= sizeof (gBizItems) || gBizItems[item][biType] != Biz[b][bType]) return 1;
-
-	new price = BizX_Price(b, gBizItems[item][biPrice]);    // с наценкой владельца
-	if (GetMoney(playerid) < price)
-	{
-		SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", price);
-		return 1;
-	}
-
 	switch (gBizItems[item][biKind])
 	{
 		case ITEM_PHONE:
@@ -635,7 +641,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 			if (Player[playerid][pPhone] != 0)
 			{
 				SendClientMessage(playerid, COLOR_GREY, "У тебя уже есть телефон (номер %d).", Player[playerid][pPhone]);
-				return 1;
+				return false;
 			}
 		}
 		case ITEM_SKIN:
@@ -643,7 +649,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 			if (Outfit_FreeSlots(playerid) == 0)
 			{
 				SendClientMessage(playerid, COLOR_GREY, "В сумке нет места для одежды. Выброси или передай старую (/inv).");
-				return 1;
+				return false;
 			}
 		}
 		case ITEM_INV:
@@ -651,7 +657,7 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 			if (Inv_Count(playerid, gBizItems[item][biValue]) + gBizItems[item][biValue2] > Inv_GetMax(gBizItems[item][biValue]))
 			{
 				SendClientMessage(playerid, COLOR_GREY, "В сумке нет места: больше %d штук не унести (/inv).", Inv_GetMax(gBizItems[item][biValue]));
-				return 1;
+				return false;
 			}
 		}
 		case ITEM_FSTYLE:
@@ -659,7 +665,16 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 			if (BizX_GetStyle(playerid) == gBizItems[item][biValue])
 			{
 				SendClientMessage(playerid, COLOR_GREY, "Ты уже дерёшься в этом стиле.");
-				return 1;
+				return false;
+			}
+		}
+		case ITEM_TRAIN:
+		{
+			new why[96];
+			if (!Skills_CanTrain(playerid, gBizItems[item][biValue], why, sizeof why))
+			{
+				SendClientMessage(playerid, COLOR_GREY, "%s", why);
+				return false;
 			}
 		}
 		case ITEM_WEAPON, ITEM_ARMOUR:
@@ -667,17 +682,22 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 			if (Biz[b][bType] == BIZ_GUNS && gBizItems[item][biKind] == ITEM_WEAPON && !Licenses_Has(playerid, LIC_GUN))
 			{
 				SendClientMessage(playerid, COLOR_GREY, "Оружие продают только с лицензией. Сдать на неё можно в автошколе у мэрии.");
-				return 1;
+				return false;
 			}
 			if (Biz[b][bType] == BIZ_GUNS && Player[playerid][pLevel] < GUNS_MIN_LEVEL)
 			{
 				SendClientMessage(playerid, COLOR_GREY, "Оружие продают с %d уровня.", GUNS_MIN_LEVEL);
-				return 1;
+				return false;
 			}
 		}
 	}
 
-	GiveMoney(playerid, -price);
+	return true;
+}
+
+// Выдать купленный товар (деньги уже сняты)
+stock Biz_GiveItem(playerid, item, price)
+{
 	switch (gBizItems[item][biKind])
 	{
 		case ITEM_PHONE:
@@ -696,6 +716,9 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 		case ITEM_WEAPON: GivePlayerWeapon(playerid, WEAPON:gBizItems[item][biValue], gBizItems[item][biValue2]);
 		case ITEM_FSTYLE: BizX_SetStyle(playerid, gBizItems[item][biValue]);
 		case ITEM_LOTTERY: BizX_Lottery(playerid, price, gBizItems[item][biValue]);
+		case ITEM_TRAIN: Skills_Train(playerid, gBizItems[item][biValue], gBizItems[item][biValue2]);
+		case ITEM_SHOOTDOC: Skills_IssueRecord(playerid);
+		case ITEM_RANGE: Skills_StartRange(playerid);
 		case ITEM_ARMOUR: SetPlayerArmour(playerid, float(gBizItems[item][biValue]));
 		case ITEM_INV:
 		{
@@ -720,6 +743,45 @@ stock Business_OnDialog(playerid, dialogid, response, listitem)
 		}
 	}
 
+}
+
+stock Biz_ItemCount() { return sizeof (gBizItems); }
+stock Biz_ItemBase(item) { return gBizItems[item][biPrice]; }
+stock Biz_ItemName(item)
+{
+	new name[24];
+	format(name, sizeof name, "%s", gBizItems[item][biName]);
+	return name;
+}
+
+// Окно покупки (из OnDialogResponse)
+stock Business_OnDialog(playerid, dialogid, response, listitem)
+{
+	if (dialogid != DIALOG_BIZ_BUY) return 0;
+	if (!response || listitem < 0 || listitem >= sizeof (gBuyList[])) return 1;
+
+	new b = gBuyBiz[playerid];
+	if (b < 0 || b >= gBizCount || Biz_GetNearby(playerid) != b)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от магазина.");
+		return 1;
+	}
+	new item = gBuyList[playerid][listitem];
+	if (item < 0 || item >= sizeof (gBizItems) || gBizItems[item][biType] != Biz[b][bType]) return 1;
+
+	if (BizW_Closed(b)) { SendClientMessage(playerid, COLOR_GREY, "Бизнес закрыт за неуплату налогов."); return 1; }
+	new price = BizX_Price(b, gBizItems[item][biPrice]);    // с наценкой владельца
+	if (GetMoney(playerid) < price)
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", price);
+		return 1;
+	}
+
+	if (!Biz_CanBuy(playerid, b, item)) return 1;
+
+	GiveMoney(playerid, -price);
+	Biz_GiveItem(playerid, item, price);
+
 	BizX_Sale(b, price, gBizItems[item][biPrice]);    // касса и склад (bizplus.inc)
 	Account_Save(playerid);
 	SendClientMessage(playerid, COLOR_GREEN, "Ты купил: %s за $%d.", gBizItems[item][biName], price);
@@ -734,6 +796,7 @@ stock bool:Cmd_Buy(playerid)
 	new b = Biz_GetNearby(playerid);
 	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "Подойди к значку магазина (буква i).");
 	if (Biz[b][bInt] != 0 && !Biz_IsInside(playerid, b)) return SendClientMessage(playerid, COLOR_GREY, "Торгуют внутри. Войти: ALT или /enter у значка.");
+	if (BizW_Closed(b)) return SendClientMessage(playerid, COLOR_GREY, "«%s» закрыт: владелец не платит налоги.", Biz[b][bName]);
 	if (Biz[b][bType] == BIZ_CASINO) return Casino_Show(playerid, b);     // игры (casino.inc)
 
 	new list[1024] = "Товар\tЦена\n", line[64], n = 0;
@@ -778,6 +841,11 @@ stock bool:Cmd_SellBiz(playerid)
 	if (Biz_GetNearby(playerid) != b) return SendClientMessage(playerid, COLOR_GREY, "Подойди к своему бизнесу.");
 
 	new refund = Biz[b][bPrice] / 2 + Biz[b][bTill];
+	new debt = Biz[b][bTaxDebt];
+	if (debt > refund) debt = refund;
+	refund -= debt;
+	Econ_ToTreasury(debt);
+	BizW_Reset(b);
 	GiveMoney(playerid, refund, "продажа бизнеса");
 	Biz[b][bOwner] = 0;
 	Biz[b][bOwnerName][0] = '\0';
@@ -785,7 +853,8 @@ stock bool:Cmd_SellBiz(playerid)
 	Biz_Save(b);
 	Biz_Refresh(b);
 	Account_Save(playerid);
-	SendClientMessage(playerid, COLOR_GREEN, "Ты продал бизнес государству. Получено $%d (половина цены + касса).", refund);
+	if (debt > 0) SendClientMessage(playerid, COLOR_GREEN, "Ты продал бизнес государству. Получено $%d (половина цены + касса минус долг по налогу $%d).", refund, debt);
+	else SendClientMessage(playerid, COLOR_GREEN, "Ты продал бизнес государству. Получено $%d (половина цены + касса).", refund);
 	return true;
 }
 

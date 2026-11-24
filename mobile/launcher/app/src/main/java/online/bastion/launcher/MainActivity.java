@@ -91,10 +91,10 @@ public class MainActivity extends Activity {
     }
 
     private void offerUpdate(final Remote.Update update) {
-        String text = "Вышла новая версия лаунчера (сборка " + update.versionCode + ", у тебя " + BuildConfig.VERSION_CODE + ").";
+        String text = "Вышла новая версия лаунчера Bastion.";
         if (update.notes.length() > 0) text += "\n\n" + update.notes;
-        text += "\n\nСкачай APK и установи поверх: игра и настройки останутся.";
-        notice("Обновление", text, "Скачать", new Runnable() {
+        text += "\n\nНажми «Установить»: скачается APK, открой его и поставь поверх. Игра и настройки останутся.";
+        notice("Доступно обновление", text, "Установить", new Runnable() {
             @Override public void run() {
                 try {
                     startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(update.url)));
