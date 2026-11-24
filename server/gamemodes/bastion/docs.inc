@@ -424,7 +424,9 @@ static Docs_PhotoStart(playerid, bool:paid)
 	SetPlayerCameraPos(playerid, cx, cy, hz + 0.05);
 	SetPlayerCameraLookAt(playerid, hx, hy, hz, CAMERA_CUT);
 	SendClientMessage(playerid, 0x33CCFFFF, "Фотограф: «Садись, смотри прямо в камеру... Не моргай!»");
-	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, "%s садится перед фотографом паспортного стола.", GetRPName(playerid));
+	new msg[96];
+	format(msg, sizeof msg, "%s садится перед фотографом паспортного стола.", GetRPName(playerid));
+	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
 	SetTimerEx("Docs_PhotoShot", 2500, false, "i", playerid);
 }
 
