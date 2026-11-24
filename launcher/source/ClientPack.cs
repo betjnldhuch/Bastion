@@ -12,6 +12,9 @@
 //
 //  url — полная https-ссылка или имя рядом с манифестом.
 //  name — запись внутри IMG-архива (только VER2), до 23 символов.
+//  texture — заплатка: url — одна текстура (RW Texture Native), лаунчер меняет
+//  в txd name только её, остальное в txd остаётся родным (значки оружия).
+//  sha256/size тогда — у самой текстуры.
 //  Оригиналы один раз сохраняются в _bastion_backup\ в папке игры.
 // =====================================================================
 using System;
@@ -33,7 +36,8 @@ namespace BastionLauncher
         public string Url = "";
         public long Size;
         public string Sha256 = "";
-        public string Key { get { return Name.Length > 0 ? Path + ":" + Name : Path; } }
+        public string Texture = ""; // заплатка одной текстуры внутри txd Name
+        public string Key { get { return (Name.Length > 0 ? Path + ":" + Name : Path) + (Texture.Length > 0 ? "/" + Texture : ""); } }
     }
 
     class PackManifest
@@ -50,6 +54,7 @@ namespace BastionLauncher
         const string BackupDir = "_bastion_backup";
         static readonly Regex SafePath = new Regex(@"^[A-Za-z0-9_.\-]+(/[A-Za-z0-9_.\-]+)*$");
         static readonly Regex SafeName = new Regex(@"^[A-Za-z0-9_.\-]{1,23}$");
+        static readonly Regex SafeTex = new Regex(@"^[A-Za-z0-9_\-]{1,31}$");
         static readonly Regex Hex64 = new Regex(@"^[0-9a-f]{64}$");
 
         // ---------- манифест ----------
@@ -71,6 +76,9 @@ namespace BastionLauncher
                 PackFile f = new PackFile();
                 f.Path = Str(d, "path").Replace('\\', '/');
                 f.Name = Str(d, "name");
+                f.Texture = Str(d, "texture");
+                if (f.Texture.Length > 0 && (!SafeTex.IsMatch(f.Texture) || !f.Name.EndsWith(".txd", StringComparison.OrdinalIgnoreCase)))
+                    throw new Exception("плохая заплатка текстуры: " + f.Key);
                 f.Sha256 = Str(d, "sha256").ToLowerInvariant();
                 f.Size = d.Contains("size") ? Convert.ToInt64(d["size"]) : -1;
                 string u = Str(d, "url");
@@ -132,7 +140,8 @@ namespace BastionLauncher
                     });
                     if (Sha256File(tmp) != f.Sha256) throw new Exception("файл " + f.Key + " скачался с ошибкой (SHA-256). Попробуй ещё раз.");
                     progress(head + "установка " + f.Key);
-                    if (f.Name.Length > 0) PutImgEntry(gta, f, tmp);
+                    if (f.Texture.Length > 0) PatchTexture(gta, f, tmp);
+                    else if (f.Name.Length > 0) PutImgEntry(gta, f, File.ReadAllBytes(tmp));
                     else PutFile(gta, f, tmp, cache);
                     done += f.Size;
                 }
@@ -155,6 +164,14 @@ namespace BastionLauncher
         static bool IsCurrent(string gta, PackFile f, HashCache cache)
         {
             string target = Target(gta, f);
+            if (f.Texture.Length > 0)
+            {
+                // нет архива, записи или такой текстуры в txd — ставить некуда, не качаем
+                byte[] txd = File.Exists(target) ? ReadWholeEntry(target, f.Name) : null;
+                int ts, te;
+                if (txd == null || !FindTexture(txd, f.Texture, out ts, out te)) return true;
+                return te - ts == f.Size && Sha256Bytes(Slice(txd, ts, te)) == f.Sha256;
+            }
             if (!File.Exists(target)) return false;
             if (f.Name.Length > 0)
             {
@@ -268,11 +285,69 @@ namespace BastionLauncher
 
         static uint SectorsFor(long len) { return (uint)((len + Sector - 1) / Sector); }
 
-        static void PutImgEntry(string gta, PackFile f, string tmp)
+        // ---------- заплатка текстуры в txd ----------
+        // TXD: chunk 0x16 { struct 0x01, texture native 0x15 ×N, extension 0x03 }, заголовок chunk — type, size, version.
+        static byte[] Slice(byte[] b, int s, int e) { byte[] r = new byte[e - s]; Buffer.BlockCopy(b, s, r, 0, r.Length); return r; }
+
+        static bool FindTexture(byte[] txd, string tex, out int start, out int end)
+        {
+            start = end = 0;
+            if (txd.Length < 12 || BitConverter.ToUInt32(txd, 0) != 0x16) return false;
+            long top = Math.Min(txd.Length, 12L + BitConverter.ToUInt32(txd, 4));
+            int p = 12;
+            while (p + 12 <= top)
+            {
+                uint type = BitConverter.ToUInt32(txd, p);
+                long next = p + 12L + BitConverter.ToUInt32(txd, p + 4);
+                if (next > top) return false;
+                // внутри 0x15 первым идёт struct: platform, filter, имя (32 байта)
+                if (type == 0x15 && p + 24 + 8 + 32 <= next && BitConverter.ToUInt32(txd, p + 12) == 0x01)
+                {
+                    byte[] nb = Slice(txd, p + 24 + 8, p + 24 + 8 + 32);
+                    int z = Array.IndexOf(nb, (byte)0);
+                    string name = Encoding.ASCII.GetString(nb, 0, z < 0 ? 32 : z);
+                    if (string.Equals(name, tex, StringComparison.OrdinalIgnoreCase)) { start = p; end = (int)next; return true; }
+                }
+                p = (int)next;
+            }
+            return false;
+        }
+
+        static void PatchTexture(string gta, PackFile f, string tmp)
+        {
+            string img = Target(gta, f);
+            byte[] txd = File.Exists(img) ? ReadWholeEntry(img, f.Name) : null;
+            int ts, te;
+            if (txd == null || !FindTexture(txd, f.Texture, out ts, out te)) return;
+            byte[] patch = File.ReadAllBytes(tmp);
+            int len = (int)Math.Min(txd.Length, 12L + BitConverter.ToUInt32(txd, 4));
+            byte[] res = new byte[len - (te - ts) + patch.Length];
+            Buffer.BlockCopy(txd, 0, res, 0, ts);
+            Buffer.BlockCopy(patch, 0, res, ts, patch.Length);
+            Buffer.BlockCopy(txd, te, res, ts + patch.Length, len - te);
+            BitConverter.GetBytes((uint)(res.Length - 12)).CopyTo(res, 4);
+            PutImgEntry(gta, f, res);
+        }
+
+        static byte[] ReadWholeEntry(string img, string name)
+        {
+            using (FileStream fs = new FileStream(img, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                int count;
+                ImgEntry e = FindEntry(ReadDir(fs, out count), name);
+                if (e == null || e.Sectors == 0) return null;
+                byte[] data = new byte[(long)e.Sectors * Sector];
+                fs.Position = (long)e.Offset * Sector;
+                int got = 0, n;
+                while (got < data.Length && (n = fs.Read(data, got, data.Length - got)) > 0) got += n;
+                return got == data.Length ? data : null;
+            }
+        }
+
+        static void PutImgEntry(string gta, PackFile f, byte[] data)
         {
             string img = Target(gta, f);
             if (!File.Exists(img)) throw new Exception("нет файла " + f.Path + " — переустанови игру.");
-            byte[] data = File.ReadAllBytes(tmp);
             uint need = SectorsFor(data.Length);
             if (need > 65535) throw new Exception("запись " + f.Name + " слишком большая для IMG.");
             using (FileStream fs = new FileStream(img, FileMode.Open, FileAccess.ReadWrite, FileShare.None))

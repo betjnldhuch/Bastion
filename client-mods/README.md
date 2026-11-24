@@ -136,6 +136,9 @@ bpd4_subway_tile, bpd4_concrete, bpd4_sign_cells, bpd4_sign_interrogation, bpd4_
 | 9 | radar_boatyard | Лодки |
 | 21 | radar_girlfriend | Вертолёты |
 
+Рамка мини-карты, север, стрелка игрока и кулак (`src/radardisc.png` — левая верхняя четверть кольца,
+`radar_north.png`, `radar_centre.png`, `fist.png`) — текстуры с теми же именами в hud.txd (`HUD_ART`).
+
 Сборка: `python client-mods/tools/build_radar.py <оригинальный models/hud.txd> <папка для результата>`,
 готовый `hud.txd` кладётся в `models/` игры. Значок на точку ставит админ в `/markers`.
 
@@ -196,3 +199,11 @@ bpd4_subway_tile, bpd4_concrete, bpd4_sign_cells, bpd4_sign_interrogation, bpd4_
 
 Удалены как худшие дубли: второй холодильник (реальные бренды), деревянный стеллаж, полки и стойка бара в перспективе,
 тёмный мрамор 3:2, кирпич v1, лишняя серая плитка, второй ковролин и второй терраццо.
+
+## weapons/ — значки оружия в HUD
+
+`src/<модель>.png` (128×128, нарезаны из листов ChatGPT). Оригинальных txd оружия у нас нет, поэтому
+`tools/build_weapons.py` кладёт в ПК-пак заплатки одной текстуры: `pack/models/gta3.img/<модель>.txd/<модель>icon.tex`.
+Лаунчер находит `<модель>icon` в txd игрока внутри gta3.img и меняет только её (`texture` в client-pack.json).
+На телефоне — `bastion-mods/tex/<модель>icon.btx` (`build_mobile.py`). Кулак — `fist` в hud.txd.
+Те же значки (96 px) лежат в `ui/weapons/` для окон (выписка из тира).

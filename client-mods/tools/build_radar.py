@@ -1,4 +1,5 @@
-# Собирает hud.txd с нашими значками фракций, бизнесов, работ и имущества на радаре и карте.
+# Собирает hud.txd с нашими значками фракций, бизнесов, работ и имущества на радаре и карте,
+# рамкой мини-карты, значком севера, стрелкой игрока и кулаком (HUD_ART).
 # Берёт оригинальный models/hud.txd игрока и заменяет в нём иконки на ../radar/src/*.png.
 #   python build_radar.py <оригинальный hud.txd> <папка для результата>
 # Оригинальные файлы GTA в репозиторий не кладём.
@@ -28,12 +29,18 @@ MAP = [
     (16, 'radar_CRASH1', 'prop_garage'), (43, 'radar_triads', 'prop_car'), (9, 'radar_boatyard', 'prop_boat'),
     (21, 'radar_girlfriend', 'prop_heli'),
 ]
+# рамка мини-карты (левая верхняя четверть кольца, игра рисует её 4 раза зеркально), «N», стрелка игрока, кулак
+HUD_ART = [('radardisc', 'radardisc'), ('radar_north', 'radar_north'), ('radar_centre', 'radar_centre'), ('fist', 'fist')]
 def main():
     src, out_dir = sys.argv[1], sys.argv[2]
     names = [t[0] for t in rw.txd_list(open(src, 'rb').read())]
     real = {n.lower(): n for n in names}
     repl = {}
     for icon, tex, key in MAP:
+        n = real.get(tex.lower())
+        if not n: sys.exit('в hud.txd нет текстуры ' + tex)
+        repl[n] = Image.open(os.path.join(S, key + '.png')).convert('RGBA')
+    for tex, key in HUD_ART:
         n = real.get(tex.lower())
         if not n: sys.exit('в hud.txd нет текстуры ' + tex)
         repl[n] = Image.open(os.path.join(S, key + '.png')).convert('RGBA')
