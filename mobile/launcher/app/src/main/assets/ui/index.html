@@ -343,7 +343,8 @@ button { font: inherit; cursor: pointer; }
   .doc-photo, .doc-chart { width: 78px; height: 98px; } .doc-fields { gap: 5px 12px; grid-template-columns: 1fr 1fr 1fr; } .doc-fields .v { font-size: 13px; } .doc-fields .v.big { font-size: 15px; }
   .doc-mrz { display: none; } .doc-foot { padding: 8px 16px 10px; } .doc-foot .btn { height: 38px; } }
 @media (max-width: 440px) { .doc-body { flex-direction: column; align-items: center; } .doc-fields { width: 100%; } }
-/* --- HUD: панель справа сверху, сразу под значком оружия (BastionUI.hud, данные — hud.inc) --- */
+/* --- HUD: панель справа сверху (BastionUI.hud, данные — hud.inc). Телефон: сразу под стандартным значком оружия
+   (он же кнопка смены оружия). ПК: значок и патроны рисуем в самой панели (BastionUI.weapon), стандартные спрятаны --- */
 #hud { position: fixed; top: 14.5vh; right: 1.6vw; width: 196px; display: none; pointer-events: none;
   background: linear-gradient(180deg, rgba(27,30,35,.88), rgba(20,22,26,.86)); border: 1px solid var(--line);
   border-radius: 12px; padding: 9px 11px 10px; box-shadow: 0 8px 24px rgba(0,0,0,.45); overflow: hidden; }
@@ -364,6 +365,11 @@ button { font: inherit; cursor: pointer; }
 #hud .money.cash { color: var(--green); }
 #hud .money.neg { color: var(--red); }
 #hud .money small { font-family: system-ui, sans-serif; font-size: 10px; color: var(--muted); margin-right: 4px; letter-spacing: 0; }
+#hud .ln.wpn { display: none; height: 34px; margin-bottom: 4px; }
+#hud .ln.wpn.on { display: flex; }
+#hud .ln.wpn img { width: 52px; height: 52px; margin: -9px 0 -9px -4px; object-fit: contain; filter: drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
+#hud .ln.wpn .am { flex: 1; text-align: right; font-family: "Russo One", sans-serif; font-size: 17px; color: var(--text); white-space: nowrap; }
+#hud .ln.wpn .am small { font-size: 12px; color: var(--muted); margin-left: 3px; }
 #hud .sep { height: 1px; background: var(--line); margin: 5px 0; }
 #hud .ln.arm.off { display: none; }
 #hud.warn .ln.food .ico { animation: pulse 1s ease-in-out infinite; }
@@ -487,6 +493,7 @@ button { font: inherit; cursor: pointer; }
 <div id="root"></div>
 <div id="hud">
   <div class="hd"><span class="brand">BASTION RP</span><span class="who">ID <b id="h-id">0</b> · ур. <b id="h-lvl">1</b></span></div>
+  <div class="ln wpn"><img id="h-wimg" alt=""><span class="am" id="h-wam"></span></div>
   <div class="ln hp"><span class="ico" data-k="hp"></span><span class="bar"><i id="h-hp"></i></span><span class="v" id="h-hpv">0</span></div>
   <div class="ln arm"><span class="ico" data-k="armor"></span><span class="bar"><i id="h-arm"></i></span><span class="v" id="h-armv">0</span></div>
   <div class="ln breath"><span class="ico" data-k="breath"></span><span class="bar"><i id="h-breath"></i></span><span class="v" id="h-breathv">0</span></div>
@@ -1495,6 +1502,28 @@ function vipImg(level, cls) {
     hud.classList.add('on');
   };
 
+  // Оружие в руках (только ПК, bastion_ui.asi): BastionUI.weapon(тип, в обойме, всего), -1 — убрать строку.
+  // Значки — ui/weapons/<модель>.png, те же, что в HUD игры и в выписке тира.
+  var WPN = ['fist', 'brassknuckle', 'golfclub', 'nitestick', 'knifecur', 'bat', 'shovel', 'poolcue', 'katana', 'chnsaw',
+    'gun_dildo1', 'gun_dildo2', 'gun_vibe1', 'gun_vibe2', 'flowera', 'gun_cane', 'grenade', 'teargas', 'molotov', '', '', '',
+    'colt45', 'silenced', 'desert_eagle', 'chromegun', 'sawnoff', 'shotgspa', 'micro_uzi', 'mp5lng', 'ak47', 'm4', 'tec9',
+    'cuntgun', 'sniper', 'rocketla', 'heatseek', 'flame', 'minigun', 'satchel', 'bomb', 'spraycan', 'fire_ex', 'camera',
+    'nvgoggles', 'irgoggles', 'gun_para'];
+  var wpnLn = hud.querySelector('.ln.wpn'), wpnImg = document.getElementById('h-wimg'), wpnType = -2;
+  wpnImg.onerror = function () { wpnLn.classList.remove('on'); };
+  window.BastionUI.weapon = function (t, clip, total) {
+    t = +t; clip = +clip || 0; total = +total || 0;
+    var m = t >= 0 ? WPN[t] : '';
+    if (!m) { wpnType = -2; wpnLn.classList.remove('on'); return; }
+    if (t !== wpnType) { wpnType = t; wpnImg.src = 'weapons/' + m + '.png'; }
+    // Холодное, детонатор, очки и парашют — без патронов, как в стандартном HUD
+    var noAmmo = t <= 15 || t === 40 || t >= 44;
+    var am = noAmmo ? '' : clip > 0 && total > clip ? clip + '<small>/ ' + (total - clip) + '</small>' : String(total);
+    var el = document.getElementById('h-wam');
+    if (el.innerHTML !== am) el.innerHTML = am;
+    wpnLn.classList.add('on');
+  };
+
   // Кислород под водой: клиент сам читает его из игры и шлёт BastionUI.breath(0..100), -1 — убрать полоску
   var breathLn = hud.querySelector('.ln.breath');
   window.BastionUI.breath = function (p) {
@@ -1545,6 +1574,7 @@ function vipImg(level, cls) {
   if (!window.BastionNative && location.hash === '#hud') {
     BastionUI.hud({ id: 12, lvl: 7, hp: 74, arm: 40, food: 18, cash: 15400, bank: 1250000 });
     BastionUI.breath(63);
+    BastionUI.weapon(31, 30, 180);
     document.body.style.background = '#2b3440';
   } else if (!window.BastionNative && mh) {
     BastionUI.open({ window: 'samp', button1: 'Выбрать', button2: +mh[1] ? 'Отмена' : '',
