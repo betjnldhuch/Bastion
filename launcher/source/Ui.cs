@@ -1,4 +1,4 @@
-// =====================================================================
+﻿// =====================================================================
 //  Bastion Online Launcher — окно (дизайн v2)
 //  Тёмный минимализм, оранжевый только на акцентах.
 //  Фон: случайная сцена по времени суток (LoadScreens.cs).
@@ -592,7 +592,16 @@ namespace BastionLauncher
             refresh.Interval = 10000;
             refresh.Tick += delegate { RefreshAll(); };
             refresh.Start();
-            Shown += delegate { RefreshAll(); ActiveControl = play; CheckUpdate(); CheckGameUpdate(); };
+            Shown += delegate
+            {
+                RefreshAll(); ActiveControl = play; CheckUpdate(); CheckGameUpdate();
+                // Первый запуск без игры — сразу предложить установку (один раз)
+                if (!GameFound() && cfg.EffectiveGameUrl.Length > 0 && Samp.GetValue("BastionAutoInstallAsked").Length == 0)
+                {
+                    try { Samp.SetValue("BastionAutoInstallAsked", "1"); } catch (Exception) { }
+                    BeginInvoke(new MethodInvoker(delegate { if (!installing && !GameFound()) InstallGame(); }));
+                }
+            };
             if (Environment.GetCommandLineArgs().Length > 1 && Environment.GetCommandLineArgs()[1] == "--settings") ToggleSettings();
         }
 
@@ -1376,19 +1385,29 @@ namespace BastionLauncher
                 if (r == DialogResult.Yes) { StartInstall(pending); return; }
             }
 
-            string baseDir;
-            using (FolderBrowserDialog d = new FolderBrowserDialog())
+            // По умолчанию — своя папка Bastion Online в профиле: права на запись есть всегда,
+            // ничего выбирать не нужно. «Нет» — выбрать другую папку.
+            string dest = Home.GameDir;
+            DialogResult where = MessageBox.Show(this, "Установить игру в папку\r\n" + dest + " ?\r\n\r\n" +
+                "«Да» — ставить сюда (рекомендуется).\r\n«Нет» — выбрать другую папку или диск.",
+                cfg.Title, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+            if (where == DialogResult.Cancel) return;
+            if (where == DialogResult.No)
             {
-                d.Description = "Куда установить игру? Внутри появится папка «Bastion Online». " +
-                                "Не выбирай Program Files — там игре не хватит прав.";
-                d.ShowNewFolderButton = true;
-                string games = Path.Combine(Path.GetPathRoot(Environment.SystemDirectory), "Games");
-                d.SelectedPath = Directory.Exists(games) ? games : Path.GetPathRoot(Environment.SystemDirectory);
-                if (d.ShowDialog(this) != DialogResult.OK) return;
-                baseDir = d.SelectedPath;
+                string baseDir;
+                using (FolderBrowserDialog d = new FolderBrowserDialog())
+                {
+                    d.Description = "Куда установить игру? Внутри появится папка «Bastion Online». " +
+                                    "Не выбирай Program Files — там игре не хватит прав.";
+                    d.ShowNewFolderButton = true;
+                    string games = Path.Combine(Path.GetPathRoot(Environment.SystemDirectory), "Games");
+                    d.SelectedPath = Directory.Exists(games) ? games : Path.GetPathRoot(Environment.SystemDirectory);
+                    if (d.ShowDialog(this) != DialogResult.OK) return;
+                    baseDir = d.SelectedPath;
+                }
+                dest = Path.Combine(baseDir, "Bastion Online");
+                if (File.Exists(Path.Combine(baseDir, "gta_sa.exe"))) dest = baseDir; // выбрали уже готовую игру
             }
-            string dest = Path.Combine(baseDir, "Bastion Online");
-            if (File.Exists(Path.Combine(baseDir, "gta_sa.exe"))) dest = baseDir; // выбрали уже готовую игру
             if (File.Exists(Path.Combine(dest, "gta_sa.exe")))
             {
                 gtaPath.Text = dest;
@@ -1822,6 +1841,7 @@ namespace BastionLauncher
             catch (Exception) { }
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            if (Home.Relocate()) return;    // запущен не из своей папки — переехали туда (Home.cs)
             Updater.CleanOld();     // следы прошлого обновления
             try
             {
