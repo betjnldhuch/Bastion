@@ -7,6 +7,7 @@
 //  /number         Ч мой номер (или /number [id] Ч номер игрока р€дом)
 //  /call [номер]   Ч позвонить     /p Ч ответить     /h Ч положить трубку
 //  /sms [номер] [текст] Ч сообщение ($SMS_PRICE)
+//  /phone или N Ч телефон с приложени€ми (phoneapp.inc)
 //  /911 [что случилось] Ч вызов полиции и медиков
 //  ¬о врем€ разговора обычный чат слышит и собеседник.
 // =====================================================================
@@ -79,6 +80,7 @@ stock Phone_HangUp(playerid, bool:notify = true)
 		Player[other][pCallWith] = INVALID_PLAYER_ID;
 		Player[other][pCallState] = CALL_NONE;
 		if (notify) SendClientMessage(other, COLOR_GREY, "—обеседник положил трубку.");
+		PhoneApp_OnCallChange(other);
 	}
 }
 
@@ -143,6 +145,7 @@ stock bool:Cmd_Call(playerid, const params[])
 	SendNearbyMessage(target, CHAT_RADIUS, COLOR_PURPLE, msg);
 	SendClientMessage(target, COLOR_YELLOW, "¬ход€щий звонок с номера %d. Y Ч ответить, N Ч сбросить", Player[playerid][pPhone]);
 	SendClientMessage(playerid, COLOR_WHITE, "»дут гудки... ѕоложить трубку: /h");
+	PhoneApp_OnCallStart(playerid, target);     // журнал звонков, экран звонка (phoneapp.inc)
 	return true;
 }
 
@@ -162,6 +165,7 @@ stock bool:Cmd_PickUp(playerid)
 	SendClientMessage(playerid, COLOR_GREEN, "“ы ответил на звонок. √овори в обычный чат. ѕоложить трубку: /h");
 	SendClientMessage(caller, COLOR_GREEN, "јбонент ответил. √овори в обычный чат. ѕоложить трубку: /h");
 	Fbi_OnCallStart(caller, playerid);
+	PhoneApp_OnAnswer(caller, playerid);
 	return true;
 }
 
@@ -179,15 +183,7 @@ stock bool:Cmd_Sms(playerid, const params[])
 	new pos = 0, number, text[100];
 	if (!NextIntParam(params, pos, number) || !RestParam(params, pos, text))
 		return SendClientMessage(playerid, COLOR_GREY, "»спользование: /sms [номер] [текст]");
-	if (GetMoney(playerid) < SMS_PRICE) return SendClientMessage(playerid, COLOR_GREY, "Ќе хватает денег на SMS ($%d).", SMS_PRICE);
-
-	new target = Phone_FindByNumber(number);
-	if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "јбонент недоступен.");
-
-	GiveMoney(playerid, -SMS_PRICE);
-	SendClientMessage(target, COLOR_YELLOW, "SMS от %d: %s", Player[playerid][pPhone], text);
-	SendClientMessage(playerid, COLOR_YELLOW, "SMS на %d: %s ($%d)", number, text, SMS_PRICE);
-	Fbi_OnSms(playerid, target, text);
+	PhoneApp_SendSms(playerid, number, text);    // хранит переписку, доходит и тем, кто не в сети
 	return true;
 }
 

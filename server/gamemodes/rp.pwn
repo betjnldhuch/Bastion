@@ -110,6 +110,7 @@
 #include "bastion/fps.inc"
 #include "bastion/hud.inc"        // свой HUD: панель статуса и спидометр
 #include "bastion/docs.inc"       // документы в сумке: паспорт, медкарта, лицензии
+#include "bastion/phoneapp.inc"   // телефон с приложениями: /phone, N
 #include "bastion/skills.inc"     // навыки оружия с прокачкой: /skills
 #include "bastion/help.inc"       // /help: разделы со всеми командами
 #include "bastion/commands.inc"
@@ -179,6 +180,7 @@ public OnGameModeInit()
 	Marriage_Init();
 	Donate_Init();
 	Quest_Init();          // поля квеста новичка в accounts (quest.inc)
+	PhoneApp_Init();       // SMS, контакты, звонки (phoneapp.inc)
 	Rental_Init();         // точки проката мопедов (rental.inc)
 	AC_Init();            // античит (anticheat.inc)
 	Social_Init();        // таблицы для ботов ВК/Telegram (social.inc)
@@ -252,6 +254,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Jobs_OnDisconnect(playerid);
 	Licenses_Abort(playerid);
 	Phone_HangUp(playerid);
+	PhoneApp_OnDisconnect(playerid);
 	Skills_OnDisconnect(playerid);      // навыки оружия (skills.inc)
 	Account_Save(playerid);
 	Vehicles_UnloadForPlayer(playerid);
@@ -478,6 +481,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Donate_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Rental_OnDialog(playerid, dialogid, response)) return 1;
 	if (Quest_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (PhoneApp_OnDialog(playerid, dialogid, response, inputtext)) return 1;
 	return 0;
 }
 

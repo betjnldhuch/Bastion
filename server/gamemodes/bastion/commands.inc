@@ -394,6 +394,8 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/h", true))           { Cmd_HangUp(playerid); return 1; }
 	if (!strcmp(cmd, "/sms", true))         { Cmd_Sms(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/911", true))         { Cmd_911(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/phone", true) || !strcmp(cmd, "/tel", true)) { Cmd_Phone(playerid); return 1; }
+	if (!strcmp(cmd, "/ad", true))          { Cmd_Ad(playerid, cmdtext[pos]); return 1; }
 
 	// --- бизнесы (business.inc) ---
 	if (!strcmp(cmd, "/buy", true))         { Cmd_Buy(playerid); return 1; }

@@ -296,6 +296,7 @@ stock Account_FinishLogin(playerid)
 	FPerm_OnLogin(playerid);            // личные права во фракции (fmanage.inc)
 	Markers_SyncPlayer(playerid);       // точки, которые видит только своя фракция (markers.inc)
 	Quest_OnLogin(playerid);            // квест новичка (quest.inc)
+	PhoneApp_OnLogin(playerid);         // непрочитанные SMS (phoneapp.inc)
 
 	Account_SetNormalSpawn(playerid);
 	TogglePlayerSpectating(playerid, false);  // выход из режима наблюдения = спавн
