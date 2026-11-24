@@ -22,10 +22,9 @@ permissions:
   contents: write
 
 env:
-  # Сборки Wine для macOS: https://github.com/Gcenx/macOS_Wine_builds (LGPL)
-  WINE_URL: https://github.com/Gcenx/macOS_Wine_builds/releases/download/crossover-wine-23.7.1-1/wine-crossover-23.7.1-1-osx64.tar.xz
-  # wine-mono под Wine 8.0 (CrossOver 23): .NET для лаунчера
-  MONO_URL: https://dl.winehq.org/wine/wine-mono/7.4.0/wine-mono-7.4.0-x86.msi
+  # Сборки Wine для macOS: https://github.com/Gcenx/macOS_Wine_builds (LGPL).
+  # Берётся последняя сборка CrossOver Wine (osx64); закрепить — переменная MAC_WINE_TAG.
+  WINE_REPO: Gcenx/macOS_Wine_builds
   # wine-mono под Wine 9.0 из Ubuntu 24.04 — только для проверки на Linux
   TEST_MONO_URL: https://dl.winehq.org/wine/wine-mono/8.1.0/wine-mono-8.1.0-x86.msi
   APP: dist/Bastion Online.app
@@ -37,6 +36,26 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # wine-mono под версию Wine: CrossOver 23 = Wine 8.0, 24 = 9.0, 25 = 10.0
+      - name: Pick Wine build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAC_WINE_TAG: ${{ vars.MAC_WINE_TAG }}
+        run: |
+          set -e
+          gh api "repos/$WINE_REPO/releases?per_page=60" > rels.json
+          jq -r '.[] | .tag_name + "  " + ([.assets[].name] | join(", "))' rels.json | head -25
+          URL=$(jq -r --arg t "$MAC_WINE_TAG" '[.[] | select($t == "" or .tag_name == $t) | .assets[]
+                 | select(.name | test("^wine-crossover-.*osx64\\.tar\\.xz$"))][0].browser_download_url' rels.json)
+          test -n "$URL" && test "$URL" != null
+          CX=$(echo "$URL" | sed -E 's/.*wine-crossover-([0-9]+)\..*/\1/')
+          case "$CX" in
+            22) MONO=7.3.0 ;; 23) MONO=7.4.0 ;; 24) MONO=8.1.0 ;; 25) MONO=9.4.0 ;; *) MONO=10.0.0 ;;
+          esac
+          echo "Wine: $URL (CrossOver $CX), wine-mono $MONO"
+          echo "WINE_URL=$URL" >> "$GITHUB_ENV"
+          echo "MONO_URL=https://dl.winehq.org/wine/wine-mono/$MONO/wine-mono-$MONO-x86.msi" >> "$GITHUB_ENV"
 
       - name: Cache Wine
         id: cache
