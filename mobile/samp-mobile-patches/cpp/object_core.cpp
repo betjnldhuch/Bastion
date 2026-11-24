@@ -58,6 +58,14 @@ CObject::CObject(int iModel, CVector vecPos, CVector vecRot, float fDrawDistance
 			return;
 		}
 	}
+	// create_object reads the model's collision bounds (CEntity::GetDistanceFrom-
+	// CentreOfMassToBaseOfModel); a model without collision in this client crashed
+	// the game right after connecting (SIGSEGV at 0x8).
+	if (CModelInfo::GetModelInfo(iModel)->GetColModel() == nullptr)
+	{
+		Log("[Bastion] object model %d has no collision in this client, skipped", iModel);
+		return;
+	}
 
 	ScriptCommand(&create_object, iModel, vecPos.x, vecPos.y, vecPos.z, &m_dwGTAId);
 	if (!m_dwGTAId) return;
