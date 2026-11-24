@@ -262,7 +262,7 @@ stock bool:Cmd_GiveDonate(playerid, const params[])
 	if (bonus > 0) Admin_Log(playerid, "givedonate", target, "бонус за пополнение", bonus);
 	SendClientMessage(target, 0xFFD700FF, "%s монет: %d. Баланс: %d. Магазин: /donate", (coins > 0) ? "Зачислено" : "Списано", (coins > 0) ? coins : -coins, gDonate[target]);
 	if (bonus > 0) SendClientMessage(target, 0xFFD700FF, "Бонус за пополнение: +%d монет.", bonus);
-	SendClientMessage(playerid, COLOR_ADMIN, "%s: %+d монет (бонус %d), теперь %d.", GetRPName(target), coins, bonus, gDonate[target]);
+	SendClientMessage(playerid, COLOR_ADMIN, "%s: %s%d монет (бонус +%d), теперь %d.", GetRPName(target), (coins >= 0) ? "+" : "", coins, bonus, gDonate[target]);   // %+d в Pawn нет
 	return true;
 }
 
