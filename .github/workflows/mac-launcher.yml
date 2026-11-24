@@ -1,6 +1,6 @@
 name: Build Bastion Mac app
 
-# Bastion Online.app для macOS (Apple Silicon и Intel): Wine (CrossOver от Gcenx) + wine-mono
+# Bastion Online.app для macOS (Apple Silicon и Intel): Wine для macOS (Gcenx) + wine-mono
 # + ПК-лаунчер BastionLauncher.exe из релиза builds. Упаковывается в Bastion-Mac.zip.
 # Собирается на Linux (раннеры macOS у репозитория не запускаются). Проверка:
 # структура .app и Wine для Mac, плюс тот же лаунчер под Wine + wine-mono на Linux
@@ -37,32 +37,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # wine-mono под версию Wine: CrossOver 23 = Wine 8.0, 24 = 9.0, 25 = 10.0
+      # Последний wine-stable для macOS (WoW64: 32-битные игры без 32-битных библиотек macOS)
       - name: Pick Wine build
         env:
           GH_TOKEN: ${{ github.token }}
           MAC_WINE_TAG: ${{ vars.MAC_WINE_TAG }}
         run: |
           set -e
-          gh api "repos/$WINE_REPO/releases?per_page=60" > rels.json
-          jq -r '.[] | .tag_name + "  " + ([.assets[].name] | join(", "))' rels.json | head -25
-          URL=$(jq -r --arg t "$MAC_WINE_TAG" '[.[] | select($t == "" or .tag_name == $t) | .assets[]
-                 | select(.name | test("^wine-crossover-.*osx64\\.tar\\.xz$"))][0].browser_download_url' rels.json)
-          test -n "$URL" && test "$URL" != null
-          CX=$(echo "$URL" | sed -E 's/.*wine-crossover-([0-9]+)\..*/\1/')
-          case "$CX" in
-            22) MONO=7.3.0 ;; 23) MONO=7.4.0 ;; 24) MONO=8.1.0 ;; 25) MONO=9.4.0 ;; *) MONO=10.0.0 ;;
-          esac
-          echo "Wine: $URL (CrossOver $CX), wine-mono $MONO"
+          gh api "repos/$WINE_REPO/releases?per_page=100" > rels.json
+          jq -r '.[] | .tag_name + "  " + ([.assets[].name] | join(", "))' rels.json | head -8
+          pick() { jq -r --arg t "$MAC_WINE_TAG" --arg re "$1" '[.[] | select($t == "" or .tag_name == $t) | .assets[]
+                   | select(.name | test($re))][0].browser_download_url // empty' rels.json; }
+          URL=$(pick '^wine-stable-.*osx64[.]tar[.]xz$')
+          [ -n "$URL" ] || URL=$(pick '^wine-(devel|staging)-.*osx64[.]tar[.]xz$')
+          test -n "$URL"
+          echo "Wine: $URL"
           echo "WINE_URL=$URL" >> "$GITHUB_ENV"
-          echo "MONO_URL=https://dl.winehq.org/wine/wine-mono/$MONO/wine-mono-$MONO-x86.msi" >> "$GITHUB_ENV"
 
       - name: Cache Wine
         id: cache
         uses: actions/cache@v4
         with:
           path: cache
-          key: mac-runtime-${{ env.WINE_URL }}-${{ env.MONO_URL }}-${{ env.TEST_MONO_URL }}
+          key: mac-runtime-${{ env.WINE_URL }}-${{ env.TEST_MONO_URL }}
 
       - name: Download Wine and wine-mono
         if: steps.cache.outputs.cache-hit != 'true'
@@ -70,7 +67,6 @@ jobs:
           set -e
           mkdir -p cache
           curl -fL --retry 4 -o cache/wine.tar.xz "$WINE_URL"
-          curl -fL --retry 4 -o cache/wine-mono.msi "$MONO_URL"
           curl -fL --retry 4 -o cache/test-mono.msi "$TEST_MONO_URL"
           ls -l cache
           sha256sum cache/*
@@ -100,15 +96,20 @@ jobs:
 
           # Wine: из архива берём папку wine (bin, lib, share)
           mkdir -p wx && tar -xJf cache/wine.tar.xz -C wx
-          W=$(dirname "$(dirname "$(find wx -path '*/bin/wine64' | head -1)")")
+          W=$(dirname "$(dirname "$(find wx -path '*/bin/wineserver' | head -1)")")
           echo "Wine: $W"; ls -l "$W/bin"
           cp -a "$W" "$C/Resources/wine"
           rm -rf "$C/Resources/wine/include" "$C/Resources/wine/share/man" "$C/Resources/wine/share/applications"
           file -L "$C/Resources/wine/bin/wine64" "$C/Resources/wine/bin/wineserver" "$C/Resources/wine/bin/wine" || true
-          file -L "$C/Resources/wine/bin/wine64" | grep -q "Mach-O 64-bit x86_64"
+          WB="$C/Resources/wine/bin/wine64"; [ -e "$WB" ] || WB="$C/Resources/wine/bin/wine"
+          file -L "$WB" | grep -q "Mach-O 64-bit x86_64"
           test -x "$C/Resources/wine/bin/wineserver"
           ls "$C/Resources/wine/lib/wine" | head
-          cp cache/wine-mono.msi "$C/Resources/wine-mono.msi"
+          # wine-mono той версии, которую ждёт этот Wine (написано в appwiz.cpl)
+          MSI=$(grep -aohE 'wine-mono-[0-9.]+-x86[.]msi' $(find "$C/Resources/wine/lib" -name appwiz.cpl) | sort -u | head -1)
+          echo "wine-mono: $MSI"; test -n "$MSI"
+          MV=$(echo "$MSI" | sed -E 's/wine-mono-([0-9.]+)-x86.msi/\1/')
+          curl -fL --retry 4 -o "$C/Resources/wine-mono.msi" "https://dl.winehq.org/wine/wine-mono/$MV/$MSI"
 
           mkdir -p "$C/Resources/BastionLauncher"
           (cd pc/BastionLauncher && cp -R BastionLauncher.exe launcher.ini news.txt fonts fps "$GITHUB_WORKSPACE/$C/Resources/BastionLauncher/")

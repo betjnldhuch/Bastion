@@ -1,6 +1,6 @@
 #!/bin/bash
 # Bastion Online для macOS (исполняемый файл .app: Contents/MacOS/Bastion Online).
-# Внутри .app: Wine (сборка CrossOver от Gcenx), wine-mono и ПК-лаунчер BastionLauncher.exe.
+# Внутри .app: Wine для macOS (сборка Gcenx), wine-mono и ПК-лаунчер BastionLauncher.exe.
 # Своё Windows-окружение (префикс) — в ~/Library/Application Support/Bastion Online/prefix,
 # игру GTA SA игрок указывает свою. Логи — ~/Library/Logs/Bastion Online/bastion.log.
 #

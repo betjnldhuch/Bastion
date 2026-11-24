@@ -2,7 +2,7 @@ BASTION ONLINE ДЛЯ MAC
 ======================
 
 Работает на Mac с процессором Apple (M1–M4) и Intel, macOS 11 и новее.
-Внутри — Wine (как в CrossOver) и обычный лаунчер Bastion для ПК.
+Внутри — Wine (на нём же работает CrossOver) и обычный лаунчер Bastion для ПК.
 
 УСТАНОВКА
 1. Открой скачанный Bastion-Mac.zip (распакуется сам) и перетащи «Bastion Online»
