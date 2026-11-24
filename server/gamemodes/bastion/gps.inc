@@ -26,7 +26,7 @@
 
 static const gMkTypeNames[MK_TYPES][] =
 {
-	"Своё место", "Вход", "Дом", "Бизнес", "Банкомат", "АЗС", "СТО", "Фракция", "Работа", "Автосалон", "Автошкола", "Точка систем", "Прокат"
+	"Своё место", "Вход", "Дом", "Бизнес", "Банкомат", "АЗС", "СТО", "Фракция", "Работа", "Автосалон", "Автошкола", "Точка систем", "Прокат", "Подвал банды"
 };
 
 static const gGpsCatNames[GPS_CATS][] =
@@ -553,12 +553,12 @@ stock bool:Cmd_Gps(playerid)
 	return true;
 }
 
-static Gps_ShowCat(playerid, cat)
+// Места раздела cat по расстоянию -> gGpsList[playerid], возвращает количество
+static Gps_FillCat(playerid, cat, Float:dist[GPS_LIST_MAX])
 {
 	new Float:px, Float:py, Float:pz;
 	GetPlayerPos(playerid, px, py, pz);
 	new n = 0;
-	new Float:dist[GPS_LIST_MAX];
 	for (new m = 0; m < MAX_MARKERS && n < GPS_LIST_MAX; m++)
 	{
 		if (!gMarker[m][mkUsed] || gMarker[m][mkGps] != cat || !Marker_VisibleTo(playerid, m)) continue;
@@ -575,6 +575,14 @@ static Gps_ShowCat(playerid, cat)
 		gGpsList[playerid][j] = m;
 		n++;
 	}
+	gGpsListCount[playerid] = n;
+	return n;
+}
+
+static Gps_ShowCat(playerid, cat)
+{
+	new Float:dist[GPS_LIST_MAX];
+	new n = Gps_FillCat(playerid, cat, dist);
 	if (n == 0)
 	{
 		SendClientMessage(playerid, COLOR_GREY, "В этом разделе пока нет мест.");
@@ -657,7 +665,12 @@ public Gps_OnSecond()
 static Gps_OnMain(playerid, listitem)
 {
 	if (listitem < 0 || listitem >= gGpsMenuCount[playerid]) return;
-	new act = gGpsMenu[playerid][listitem];
+	Gps_DoAct(playerid, gGpsMenu[playerid][listitem]);
+}
+
+// -1 убрать метку, -2 моя машина, -3 мой дом, 1.. раздел мест
+static Gps_DoAct(playerid, act)
+{
 	switch (act)
 	{
 		case -1:
@@ -852,4 +865,74 @@ stock Markers_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 		}
 	}
 	return 1;
+}
+
+// ---------------------------------------------------------------------
+//  Для приложения «Карта» в телефоне (phoneapp.inc)
+// ---------------------------------------------------------------------
+stock Gps_IsOn(playerid)
+{
+	return gGpsOn[playerid] ? 1 : 0;
+}
+
+// Разделы с местами: [[номер,"название",мест],...]
+stock Gps_PhoneCats(playerid, dest[], size)
+{
+	new count[GPS_CATS], part[64];
+	for (new m = 0; m < MAX_MARKERS; m++)
+	{
+		if (gMarker[m][mkUsed] && gMarker[m][mkGps] > 0 && gMarker[m][mkGps] < GPS_CATS && Marker_VisibleTo(playerid, m)) count[gMarker[m][mkGps]]++;
+	}
+	dest[0] = '\0';
+	strcat(dest, "[", size);
+	new n = 0;
+	for (new c = 1; c < GPS_CATS; c++)
+	{
+		if (count[c] == 0) continue;
+		format(part, sizeof part, "%s[%d,\"%s\",%d]", n ? "," : "", c, gGpsCatNames[c], count[c]);
+		strcat(dest, part, size);
+		n++;
+	}
+	strcat(dest, "]", size);
+}
+
+// Места раздела по расстоянию: [["название","1.2 км"],...]; номер в списке потом в Gps_PhonePick
+stock Gps_PhoneList(playerid, cat, dest[], size, max = 30)
+{
+	new Float:dist[GPS_LIST_MAX], part[112], name[80];
+	dest[0] = '\0';
+	strcat(dest, "[", size);
+	new n = (cat > 0 && cat < GPS_CATS) ? Gps_FillCat(playerid, cat, dist) : 0;
+	if (n > max) { n = max; gGpsListCount[playerid] = max; }
+	for (new i = 0; i < n; i++)
+	{
+		UI_JsonEscape(name, gMarker[gGpsList[playerid][i]][mkName]);
+		format(part, sizeof part, "%s[\"%s\",\"%s\"]", i ? "," : "", name, Gps_DistText(dist[i]));
+		if (strlen(dest) + strlen(part) + 2 >= size) { gGpsListCount[playerid] = i; break; }
+		strcat(dest, part, size);
+	}
+	strcat(dest, "]", size);
+}
+
+stock Gps_CatName(cat)
+{
+	new s[32];
+	if (cat > 0 && cat < GPS_CATS) strcat(s, gGpsCatNames[cat]);
+	return s;
+}
+
+// Метка на место из последнего Gps_PhoneList
+stock Gps_PhonePick(playerid, idx)
+{
+	if (idx < 0 || idx >= gGpsListCount[playerid]) return 0;
+	new m = gGpsList[playerid][idx];
+	if (!Marker_IsValid(m)) return 0;
+	Gps_Set(playerid, gMarker[m][mkX], gMarker[m][mkY], gMarker[m][mkZ], gMarker[m][mkName]);
+	return 1;
+}
+
+// -1 убрать метку, -2 моя машина, -3 мой дом
+stock Gps_PhoneAct(playerid, act)
+{
+	if (act < 0) Gps_DoAct(playerid, act);
 }

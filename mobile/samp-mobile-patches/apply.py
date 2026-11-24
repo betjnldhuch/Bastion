@@ -553,7 +553,7 @@ replace_exact(samp_java, """                if (pause) {
 #    (empty constructor/destructor/Process) and the object RPC handlers, so the
 #    phone never showed any server object. Bodies come from cpp/*.cpp; a model the
 #    client lacks is skipped, objects are visible in every interior like on PC.
-#    Attachments and SetObjectMaterial are not supported yet.
+#    Attachments are not supported yet; SetObjectMaterial: section 8b.
 # ---------------------------------------------------------------------------
 patch_dir = Path(__file__).resolve().parent / "cpp"
 object_cpp = cpp / "game/object.cpp"
@@ -605,6 +605,35 @@ for name in ("ScrSetObjectPos", "ScrSetObjectRotation", "ScrMoveObject", "ScrSto
     m = re.search(r"^void " + name + r"\(RPCParameters\* rpcParams\)\n\{.*?\n\}\n", rpc, re.S | re.M)
     text = text.replace(stub, m.group(0))
 write(script_rpc, text)
+
+# ---------------------------------------------------------------------------
+# 8b. SetObjectMaterial (textures and colours; text is not drawn yet). Upstream
+#     kept the RPC commented out, destroyed texdb textures in SetMaterial and its
+#     render hook left the texture on the shared model geometry (every copy of the
+#     model got it). Textures are found by name in texdb (GTA ones and our bst_*).
+# ---------------------------------------------------------------------------
+text = read(script_rpc)
+start = text.find("void ScrSetObjectMaterial(RPCParameters* rpcParams)")
+end = text.find("*/\n}\n", start)
+if start < 0 or end < 0 or "/*" not in text[start:end]:
+    raise SystemExit("scriptrpc.cpp: commented ScrSetObjectMaterial not found")
+text = text[:start] + rpc[rpc.find("void ScrSetObjectMaterial"):] + text[end + len("*/\n}\n"):]
+write(script_rpc, text)
+
+text = read(object_cpp)
+start = text.find("void CObject::SetMaterial(int iModel")
+end = text.find("void CObject::SetMaterialText(")
+if start < 0 or end < start:
+    raise SystemExit("object.cpp: CObject::SetMaterial not found")
+write(object_cpp, text[:start] + read(patch_dir / "object_material.cpp") + text[end:])
+
+hooks_render = cpp / "game/hooks.cpp"
+text = read(hooks_render)
+start = text.find("void (*CObject_Render)(CObjectGta* thiz);")
+end = text.find("/*((void (*)(void))(g_libGTASA + 0x5D1F48")
+if start < 0 or end < start:
+    raise SystemExit("hooks.cpp: CObject_Render_hook not found")
+write(hooks_render, text[:start] + read(patch_dir / "object_render.cpp") + text[end:])
 
 # ---------------------------------------------------------------------------
 # 9. 3D text labels (text over markers, houses, doors). Upstream receives them
@@ -1023,6 +1052,29 @@ replace_exact(cpp / "net/netrpc.cpp", """	if (!strcmp(szTitle, "[bastion:rec]"))
 	}
 	if (!strcmp(szTitle, "[bastion:rec]"))
 """)
+replace_exact(jni_h, "\tbool ShowSystemInput();\n", "\tbool ShowSystemInput();\n\tvoid SetBreath(int pct);\n\tjmethodID s_bastionBreath = nullptr;\n")
+replace_exact(jni_cpp, """    if (env->ExceptionCheck()) { env->ExceptionClear(); s_showSystemInput = nullptr; }
+""", """    if (env->ExceptionCheck()) { env->ExceptionClear(); s_showSystemInput = nullptr; }
+    s_bastionBreath = env->GetMethodID(clas, "bastionBreath", "(I)V");
+    if (env->ExceptionCheck()) { env->ExceptionClear(); s_bastionBreath = nullptr; }
+""")
+write(jni_cpp, read(jni_cpp) + """
+// Bastion: air under water for the HUD page (BastionUI.breath), -1 hides it.
+void CJavaWrapper::SetBreath(int pct)
+{
+    if (!s_bastionBreath) return;
+    JNIEnv* env = GetEnv();
+    if (!env) return;
+    env->CallVoidMethod(activity, s_bastionBreath, pct);
+    if (env->ExceptionCheck()) env->ExceptionClear();
+}
+""")
+replace_exact(samp_java, """    /** Bastion: called from native Keyboard::show.""", """    /** Bastion: called from native CWidgetPlayerInfo (breath bar under water), -1 hides it. */
+    public void bastionBreath(int pct) {
+        runOnUiThread(() -> mWebUi.breath(pct));
+    }
+
+    /** Bastion: called from native Keyboard::show.""")
 replace_exact(samp_java, """            if (BastionWebUi.wants(caption)) {""", """            if (BastionWebUi.isHud(caption)) {
                 this.mWebUi.hud(content);   // HUD data, not a window: the open dialog stays
                 return;

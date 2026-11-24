@@ -51,6 +51,57 @@ stock Chat_Name(playerid)
 	return name;
 }
 
+// ---------------------------------------------------------------------
+//  Команды в русской раскладке. В ЙЦУКЕН клавиша «/» печатает «.», а буквы
+//  получаются русскими: «.ыефеы» = «/stats», «/ыефеы» = «/stats».
+//  Меняем раскладку только у имени команды, параметры (текст /me и т.п.) не трогаем.
+// ---------------------------------------------------------------------
+static stock bool:Chat_IsLetter(c)
+{
+	c &= 0xFF;
+	return (('a' <= c <= 'z') || ('A' <= c <= 'Z') || c >= 0xC0 || c == 0xA8 || c == 0xB8);
+}
+
+// Буквы cp1251 а..я / А..Я (0xC0..0xFF) и ё/Ё -> клавиши QWERTY на тех же местах
+static stock Chat_FixLayout(str[], start, end)
+{
+	static const layout[] = "f,dult;pbqrkvyjghcnea[wxio]sm'.z";
+	for (new i = start; i < end && str[i] != '\0'; i++)
+	{
+		new c = str[i] & 0xFF;
+		if (c >= 0xC0) str[i] = layout[(c - 0xC0) & 31];
+		else if (c == 0xA8 || c == 0xB8) str[i] = '`';
+	}
+}
+
+// true — text похож на команду, набранную не в той раскладке; out = исправленная «/команда параметры»
+stock bool:Chat_CmdFromLayout(const text[], out[], size = sizeof (out))
+{
+	new end = 1;
+	while (text[end] != '\0' && text[end] != ' ') end++;
+	if (text[0] == '.')
+	{
+		if (!Chat_IsLetter(text[1])) return false;   // «...», «. » — обычный текст
+	}
+	else if (text[0] == '/')
+	{
+		new bool:ru = false;
+		for (new i = 1; i < end; i++)
+		{
+			new c = text[i] & 0xFF;
+			if (c >= 0xC0 || c == 0xA8 || c == 0xB8) { ru = true; break; }
+		}
+		if (!ru) return false;
+	}
+	else return false;
+
+	out[0] = '\0';
+	strcat(out, text, size);
+	out[0] = '/';
+	Chat_FixLayout(out, 1, end);
+	return true;
+}
+
 // Из OnPlayerText
 stock Chat_OnText(playerid, const text[])
 {

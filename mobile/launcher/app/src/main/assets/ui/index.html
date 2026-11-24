@@ -107,7 +107,7 @@ button { font: inherit; cursor: pointer; }
 .st-rows dt { color: var(--muted); }
 .st-rows dd { margin: 0; color: var(--text); }
 .bank-sum { transition: filter .15s; }
-.bank-sum.blur, #h-bank.blur { filter: blur(6px); }
+.bank-sum.blur { letter-spacing: 1px; opacity: .75; }
 .eye-btn { background: none; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: 12px; padding: 0 6px; margin-left: 6px; cursor: pointer; vertical-align: 1px; }
 @media (max-height: 420px) { .st-badge { width: 44px; height: 44px; } .st-head { margin: 0 0 6px; } .st-rows { gap: 2px 14px; font-size: 12.5px; } }
 .vbadge { width: 22px; height: 22px; flex: none; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
@@ -360,8 +360,118 @@ button { font: inherit; cursor: pointer; }
 #hud .sep { height: 1px; background: var(--line); margin: 5px 0; }
 #hud .ln.arm.off { display: none; }
 #hud.warn .ln.food .ico { animation: pulse 1s ease-in-out infinite; }
+#hud .ln.breath { display: none; }
+#hud .ln.breath.on { display: flex; animation: fade .2s ease-out; }
+#hud .ln.breath.low .ico, #hud .ln.breath.low .v { animation: pulse .6s ease-in-out infinite; }
+#hud .ln.breath.low .v { color: var(--red); }
 @keyframes pulse { 50% { opacity: .35 } }
 @media (max-height: 420px) { #hud { top: 24vh; width: 170px; padding: 7px 9px 8px; } #hud .ln { height: 19px; } #hud .money { font-size: 13px; } }
+/* ---- Телефон (/phone, phoneapp.inc). Графика: ui/phone/*.png (frame, app_*, wall_*), нет файла — CSS и эмодзи ---- */
+#root.phone-mode { background: radial-gradient(ellipse at 80% 60%, rgba(8,9,12,.25), rgba(8,9,12,.05)); justify-content: flex-end; padding: 12px 6vw 12px 12px; }
+@media (max-aspect-ratio: 1/1) { #root.phone-mode { justify-content: center; padding: 12px; } }
+/* телефон в альбомной ориентации: экран низкий — телефон во всю высоту и крупнее текст */
+@media (max-height: 520px) { #root.phone-mode { padding: 6px 4vw 6px 6px; } .ph { --h: calc(100vh - 12px); width: calc(var(--h) * .53); font-size: calc(var(--h) * .027); } }
+.ph { --h: min(640px, calc(100vh - 24px)); height: var(--h); width: calc(var(--h) * .49); position: relative; flex: none;
+  border-radius: calc(var(--h) * .075); background: #111317; padding: calc(var(--h) * .022);
+  box-shadow: 0 0 0 2px #3a3e46, 0 0 0 4px #15171b, 0 24px 70px rgba(0,0,0,.6); animation: rise .22s ease-out; font-size: calc(var(--h) * .022); }
+.ph.again { animation: none; }
+.ph.img { background: none; box-shadow: none; }
+.ph > .frame { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+.ph .scr { position: relative; height: 100%; border-radius: calc(var(--h) * .055); overflow: hidden; z-index: 1;
+  background: #0d0f13 linear-gradient(160deg, #2b1a3d 0%, #b4492b 55%, #f0a04b 100%); background-size: cover; background-position: center;
+  display: flex; flex-direction: column; }
+.ph.busy .scr::after { content: ''; position: absolute; inset: 0; background: rgba(0,0,0,.25); }
+.ph .sb { display: flex; justify-content: space-between; align-items: center; padding: .7em 1.4em .3em; font-size: 1em; font-weight: 600;
+  color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); flex: none; }
+.ph .sb .notch { width: 5.5em; height: 1.4em; border-radius: 1em; background: #000; }
+.ph .body { flex: 1 1 auto; overflow: auto; display: flex; flex-direction: column; min-height: 0; }
+.ph .nav { flex: none; display: flex; justify-content: center; padding: .4em 0 .7em; }
+.ph .nav button { width: 9em; height: .5em; border-radius: 1em; border: 0; background: rgba(255,255,255,.75); padding: 0; }
+.ph .nav button::before { content: ''; display: block; height: 1.6em; margin-top: -.55em; }
+/* домашний экран */
+.ph .clock { text-align: center; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.5); margin: .8em 0 1em; }
+.ph .clock b { display: block; font-family: "Russo One", sans-serif; font-weight: 400; font-size: 4em; line-height: 1; }
+.ph .clock span { font-size: 1.05em; opacity: .85; }
+.ph .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.1em .3em; padding: 0 .8em; }
+.ph .app { border: 0; background: none; color: #fff; display: flex; flex-direction: column; align-items: center; gap: .35em;
+  font-size: .82em; text-shadow: 0 1px 2px rgba(0,0,0,.8); padding: 0; position: relative; min-width: 0; white-space: nowrap; overflow: visible; }
+.ph .app > b { font-weight: 400; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.ph .ico { width: 4.2em; height: 4.2em; border-radius: 1.1em; display: flex; align-items: center; justify-content: center; font-size: 1.15em;
+  box-shadow: 0 3px 8px rgba(0,0,0,.35); overflow: hidden; }
+.ph .ico span { font-size: 2.1em; line-height: 1; }
+.ph .ico img { width: 100%; height: 100%; display: block; }
+.ph .ico.has-img { background: none !important; box-shadow: none; }
+.ph .app:active .ico { transform: scale(.92); }
+.ph .badge { position: absolute; top: -.4em; right: .5em; min-width: 1.7em; height: 1.7em; border-radius: 1em; background: var(--red); color: #fff;
+  font-size: .85em; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 .4em; text-shadow: none; }
+.ph .banner { margin: auto .9em .8em; border-radius: 1.2em; background: rgba(20,22,26,.8); color: #fff; padding: .8em 1em; display: flex;
+  align-items: center; gap: .7em; border: 0; font-size: 1em; text-align: left; }
+.ph .banner .dot { width: .8em; height: .8em; border-radius: 50%; background: var(--green); animation: pulse 1s infinite alternate; }
+@keyframes pulse { to { opacity: .3 } }
+/* экраны приложений */
+.ph .page { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; background: rgba(13,15,19,.94); color: var(--text); }
+.ph .hd { flex: none; display: flex; align-items: center; gap: .5em; padding: .4em .8em .6em; border-bottom: 1px solid var(--line); }
+.ph .hd h2 { margin: 0; font-family: "Russo One", sans-serif; font-weight: 400; font-size: 1.35em; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph .hd small { display: block; font-family: system-ui, sans-serif; font-size: .62em; color: var(--muted); }
+.ph .back, .ph .hbtn { border: 0; background: none; color: var(--accent); font-size: 1.5em; width: 1.6em; height: 1.6em; padding: 0; flex: none; }
+.ph .cnt { flex: 1 1 auto; overflow: auto; padding: .7em .8em; min-height: 0; }
+.ph .lst { list-style: none; margin: 0; padding: 0; }
+.ph .lst li { display: flex; align-items: center; gap: .7em; padding: .65em .3em; border-bottom: 1px solid rgba(255,255,255,.06); cursor: pointer; }
+.ph .lst li:active { background: rgba(255,255,255,.05); }
+.ph .lst .av { width: 2.6em; height: 2.6em; border-radius: 50%; background: #2a2f38; display: flex; align-items: center; justify-content: center; flex: none; font-weight: 700; color: #cfd3da; }
+.ph .lst .tx { flex: 1; min-width: 0; }
+.ph .lst .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph .lst .s { font-size: .85em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph .lst .r { font-size: .8em; color: var(--dim); text-align: right; flex: none; }
+.ph .lst .miss .t { color: var(--red); }
+.ph .un { background: var(--accent); color: #fff; border-radius: 1em; padding: 0 .5em; font-size: .8em; font-weight: 700; }
+.ph .empty { color: var(--dim); text-align: center; padding: 2em .5em; }
+.ph input, .ph textarea { height: 2.9em; font-size: 1.05em; padding: 0 .8em; border-radius: .8em; margin-bottom: .6em; }
+.ph textarea { width: 100%; height: 5.5em; padding: .6em .8em; resize: none; background: var(--well); color: var(--text); border: 1px solid var(--line); font: inherit; outline: none; user-select: text; }
+.ph .btn { height: 2.9em; font-size: 1em; border-radius: .8em; width: 100%; flex: none; display: block; margin-bottom: .6em; }
+.ph .btn.ok { background: linear-gradient(180deg, #4cd07d, #2c9c57); color: #fff; border-color: transparent; }
+.ph .btn.bad { background: linear-gradient(180deg, #e5484d, #b0262b); color: #fff; border-color: transparent; }
+.ph .note { margin: 0 0 .6em; padding: .5em .8em; border-radius: .7em; font-size: .9em; }
+.ph .note.ok { background: rgba(76,208,125,.14); color: #8ee6ad; } .ph .note.bad { background: rgba(229,72,77,.14); color: #ff9a9d; }
+.ph .tabs { display: flex; gap: .4em; margin-bottom: .7em; }
+.ph .tabs button { flex: 1; height: 2.3em; border-radius: .7em; border: 1px solid var(--line); background: var(--panel-hi); color: var(--muted); font-size: .95em; }
+.ph .tabs button.on { color: #fff; border-color: var(--accent); background: rgba(255,122,26,.12); }
+/* клавиатура */
+.ph .dial { text-align: center; font-size: 2em; font-weight: 600; letter-spacing: .08em; min-height: 1.5em; margin: .2em 0 .4em; color: #fff; overflow: hidden; }
+.ph .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6em; padding: 0 1em; }
+.ph .pad button { height: 3.6em; border-radius: 50%; border: 0; background: rgba(255,255,255,.08); color: #fff; font-size: 1.5em; width: 3.6em; justify-self: center; font-size: 1.35em; }
+.ph .pad button:active { background: rgba(255,255,255,.2); }
+.ph .pad .go { background: var(--green); }
+/* звонок */
+.ph .callscr { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 2.5em 1em 2em;
+  background: linear-gradient(180deg, rgba(20,30,45,.95), rgba(8,10,14,.97)); color: #fff; text-align: center; }
+.ph .callscr .big { width: 6em; height: 6em; border-radius: 50%; background: #2a2f38; display: flex; align-items: center; justify-content: center; font-size: 2.2em; margin: 0 auto .5em; }
+.ph .callscr h3 { margin: 0; font-size: 1.6em; font-weight: 600; }
+.ph .callscr p { margin: .3em 0 0; color: var(--muted); }
+.ph .rnd { display: flex; gap: 3em; }
+.ph .rnd button { width: 4.4em; height: 4.4em; border-radius: 50%; border: 0; font-size: 1.6em; color: #fff; }
+.ph .rnd .ans { background: var(--green); } .ph .rnd .end { background: var(--red); }
+/* SMS */
+.ph .msgs { flex: 1; overflow: auto; padding: .7em .8em; display: flex; flex-direction: column; gap: .4em; min-height: 0; }
+.ph .bub { max-width: 80%; padding: .5em .8em; border-radius: 1.1em; background: #262a31; align-self: flex-start; word-wrap: break-word; user-select: text; }
+.ph .bub.me { background: linear-gradient(180deg, var(--accent), var(--accent-dark)); align-self: flex-end; color: #fff; }
+.ph .bub i { display: block; font-style: normal; font-size: .72em; opacity: .65; margin-top: .15em; text-align: right; }
+.ph .send { flex: none; display: flex; gap: .4em; padding: .5em .6em; border-top: 1px solid var(--line); }
+.ph .send input { margin: 0; flex: 1; }
+.ph .send button { width: 2.9em; height: 2.9em; border-radius: 50%; border: 0; background: var(--accent); color: #fff; font-size: 1.1em; flex: none; }
+/* банк */
+.ph .bcard { border-radius: 1.1em; padding: 1em 1.1em; margin-bottom: .8em; color: #fff; background: linear-gradient(135deg, #1f3d7a, #0d1a36 60%, #6b5413); box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+.ph .bcard small { opacity: .7; } .ph .bcard b { display: block; font-size: 1.8em; font-family: "Russo One", sans-serif; font-weight: 400; margin: .1em 0 .3em; }
+.ph .sum { color: var(--green); font-weight: 600; } .ph .sum.neg { color: var(--red); }
+.ph h4 { margin: .8em 0 .4em; font-size: .85em; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.ph .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: .6em; }
+.ph .tile { border-radius: 1em; border: 1px solid var(--line); background: var(--panel-hi); color: var(--text); padding: 1em .5em; display: flex; flex-direction: column; align-items: center; gap: .4em; font-size: .95em; }
+.ph .tile span { font-size: 2em; } .ph .tile[disabled] { opacity: .35; }
+.ph .walls { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5em; }
+.ph .walls button { aspect-ratio: 9 / 16; border-radius: .7em; border: 2px solid transparent; background-size: cover; background-position: center; }
+.ph .walls button.on { border-color: var(--accent); }
+.ph .kv { display: flex; justify-content: space-between; padding: .5em 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+.ph .kv span { color: var(--muted); }
 </style>
 </head>
 <body>
@@ -370,6 +480,7 @@ button { font: inherit; cursor: pointer; }
   <div class="hd"><span class="brand">BASTION RP</span><span class="who">ID <b id="h-id">0</b> · ур. <b id="h-lvl">1</b></span></div>
   <div class="ln hp"><span class="ico" data-k="hp"></span><span class="bar"><i id="h-hp"></i></span><span class="v" id="h-hpv">0</span></div>
   <div class="ln arm"><span class="ico" data-k="armor"></span><span class="bar"><i id="h-arm"></i></span><span class="v" id="h-armv">0</span></div>
+  <div class="ln breath"><span class="ico" data-k="breath"></span><span class="bar"><i id="h-breath"></i></span><span class="v" id="h-breathv">0</span></div>
   <div class="ln food"><span class="ico" data-k="food"></span><span class="bar"><i id="h-food"></i></span><span class="v" id="h-foodv">0</span></div>
   <div class="sep"></div>
   <div class="ln"><span class="ico" data-k="cash"></span><span class="money cash" id="h-cash">$0</span></div>
@@ -494,13 +605,18 @@ function vipImg(level, cls) {
     setTimeout(function () { pw.focus(); }, 50);
   }
 
-  // Скрыть сумку в банке (размытие): переключается в /stats, запоминается и действует на HUD
+  // Скрыть сумму в банке (маска): переключается в /stats, запоминается и действует на HUD
   function bankHidden() { try { return localStorage.getItem('bastion.hideBank') === '1'; } catch (e) { return false; } }
   function setBankHidden(on) { try { localStorage.setItem('bastion.hideBank', on ? '1' : '0'); } catch (e) {} applyBankBlur(); }
+  // Скрытая сумма заменяется маской фиксированной длины, чтобы не было видно, сколько в ней цифр
+  var BANK_MASK = '$•••••••';
+  function bankSum(text) { return '<span class="bank-sum" data-v="' + esc(text) + '">' + esc(text) + '</span>'; }
   function applyBankBlur() {
     var on = bankHidden();
-    Array.prototype.forEach.call(document.querySelectorAll('.bank-sum'), function (el) { el.classList.toggle('blur', on); });
-    var hb = document.getElementById('h-bank'); if (hb) hb.classList.toggle('blur', on);
+    Array.prototype.forEach.call(document.querySelectorAll('.bank-sum'), function (el) {
+      el.textContent = on ? BANK_MASK : (el.getAttribute('data-v') || '');
+      el.classList.toggle('blur', on);
+    });
   }
 
   // Выписка из тира (skills.inc): [["Пистолеты", 30, "любитель"], ...], проценты 0..100
@@ -570,8 +686,221 @@ function vipImg(level, cls) {
     document.getElementById('b1').onclick = document.getElementById('x').onclick = function () { respond(1, -1, ''); };
   }
 
+  // ---- Телефон с приложениями (phoneapp.inc). Ответ: respond(1, 0, "команда аргументы"), окно остаётся до нового кадра от сервера ----
+  var PH_APPS = [
+    ['calls', 'Телефон', '📞', '#3ccf6e,#1c9a48'], ['sms', 'SMS', '💬', '#38d6a0,#1b9e8a'], ['contacts', 'Контакты', '👤', '#6b7280,#3b4049'],
+    ['bank', 'Банк', '💳', '#2753a8,#13254d'], ['map', 'Карта', '📍', '#1fb5c9,#127a8c'], ['taxi', 'Такси', '🚕', '#ffcc33,#f08c1a'],
+    ['news', 'Объявления', '📰', '#ff7a45,#d23a1f'], ['911', '911', '🚨', '#ff4d4f,#a8071a'], ['jobs', 'Работы', '💼', '#c27a3a,#7a4515'],
+    ['property', 'Имущество', '🏠', '#8b5cf6,#5b21b6'], ['docs', 'Документы', '🪪', '#9b2335,#5c0f1c'], ['settings', 'Настройки', '⚙️', '#c9ced6,#7d838c']
+  ];
+  var PH_TITLE = {}; PH_APPS.forEach(function (a) { PH_TITLE[a[0]] = a[1]; });
+  var PH_WALLS = ['', 'wall_1', 'wall_2', 'wall_3'];
+  var BANK_T = ['-', 'Пополнение', 'Снятие', 'Перевод', 'Получен перевод', 'Зарплата', 'Проценты', 'Комиссия', 'На доп. счёт', 'С доп. счёта'];
+  var phTimer = null, phTab = 'pad', phDial = '';
+  function phLS(k, v) { try { if (v === undefined) return localStorage.getItem('bastion.phone.' + k); localStorage.setItem('bastion.phone.' + k, v); } catch (e) { return null; } }
+  function phMoney(n) { n = +n || 0; return (n < 0 ? '-$' : '$') + String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+  function phIco(a) {
+    return '<span class="ico" style="background:linear-gradient(160deg,' + a[3] + ')"><img src="phone/app_' + a[0] + '.png" alt="" draggable="false" ' +
+      'onload="this.parentNode.classList.add(\'has-img\')" onerror="this.outerHTML=\'<span>' + a[2] + '</span>\'"></span>';
+  }
+  // отправить серверу; окно ждёт новый кадр (если не пришёл — закрывается)
+  function phSend(text, closeNow) {
+    if (!current) return;
+    if (closeNow) { respond(1, 0, text); return; }
+    current = null;
+    var ph = root.querySelector('.ph'); if (ph) ph.classList.add('busy');
+    clearTimeout(phTimer);
+    phTimer = setTimeout(function () { if (!current) { root.classList.remove('on', 'phone-mode'); root.innerHTML = ''; } }, 2500);
+    if (window.BastionNative) BastionNative.respond(1, 0, text);
+    else console.log('respond', 1, 0, text);
+  }
+  function phoneWindow(d, m) {
+    clearTimeout(phTimer);
+    var app = d.app || 'home', again = !!root.querySelector('.ph');
+    var wall = PH_WALLS[+phLS('wall') || 0];
+    var frame = new Image(); frame.src = 'phone/frame.png';
+    function who(num, name) { return name ? esc(name) : String(num); }
+    function initials(name, num) { return name ? esc(plain(name).charAt(0).toUpperCase()) : '#'; }
+    function noteHtml() { return d.note ? '<div class="note ' + (d.ok ? 'ok' : 'bad') + '">' + esc(d.note) + '</div>' : ''; }
+    function page(title, sub, inner, backTo, extra) {
+      return '<div class="page"><div class="hd"><button class="back" data-go="' + (backTo || 'home') + '">‹</button><h2>' + esc(title) +
+        (sub ? '<small>' + sub + '</small>' : '') + '</h2>' + (extra || '') + '</div>' + inner + '</div>';
+    }
+    var body = '';
+    if (app === 'home') {
+      var t = String(d.time || '').split(':');
+      body = '<div class="clock"><b>' + esc(d.time || '') + '</b><span>Bastion · ' + esc(d.num) + '</span></div><div class="grid">' +
+        PH_APPS.map(function (a) {
+          var b = a[0] === 'sms' && d.unread > 0 ? '<span class="badge">' + d.unread + '</span>' : '';
+          return '<button class="app" data-open="' + a[0] + '">' + phIco(a) + '<b>' + esc(a[1]) + '</b>' + b + '</button>';
+        }).join('') + '</div>' +
+        (d.cs > 0 ? '<button class="banner" data-open="call"><span class="dot"></span>Звонок: ' + who(d.cn, d.cname) + '</button>' : '');
+    } else if (app === 'call') {
+      var st = { 1: 'Вызов...', 2: 'Входящий звонок', 3: 'Разговор · говори в чат' }[d.cs] || 'Звонок завершён';
+      body = '<div class="callscr"><div><div class="big">' + (d.cname ? initials(d.cname) : '📞') + '</div><h3>' + who(d.cn, d.cname) + '</h3>' +
+        (d.cname ? '<p>' + esc(d.cn) + '</p>' : '') + '<p>' + st + '</p></div>' +
+        '<div class="rnd">' + (d.cs === 2 ? '<button class="ans" data-cmd="answer">📞</button>' : '') +
+        (d.cs > 0 ? '<button class="end" data-cmd="hang">✕</button>' : '<button class="end" data-go="calls">‹</button>') + '</div>' +
+        '<p style="font-size:.85em">Телефон можно убрать (Esc), разговор продолжится. Положить трубку: N</p></div>';
+    } else if (app === 'calls') {
+      var rec = (d.rec || []).map(function (r) {
+        return '<li class="' + (r[3] && !r[4] ? 'miss' : '') + '" data-call="' + r[0] + '"><span class="av">' + (r[3] ? '↙' : '↗') + '</span><div class="tx"><div class="t">' +
+          who(r[0], r[1]) + '</div><div class="s">' + (r[3] ? (r[4] ? 'входящий' : 'пропущенный') : (r[4] ? 'исходящий' : 'без ответа')) + '</div></div><div class="r">' + esc(r[2]) + '</div></li>';
+      }).join('');
+      var padHtml = '<div class="dial" id="dial">' + esc(phDial) + '</div><div class="pad">' +
+        ['1', '2', '3', '4', '5', '6', '7', '8', '9', '⌫', '0', '📞'].map(function (k) {
+          return '<button data-k="' + k + '"' + (k === '📞' ? ' class="go"' : '') + '>' + k + '</button>';
+        }).join('') + '</div>';
+      body = page('Телефон', 'мой номер ' + esc(d.num), '<div class="cnt">' + noteHtml() + '<div class="tabs"><button data-tab="pad"' + (phTab === 'pad' ? ' class="on"' : '') +
+        '>Клавиатура</button><button data-tab="rec"' + (phTab === 'rec' ? ' class="on"' : '') + '>Недавние</button></div>' +
+        (phTab === 'pad' ? padHtml : (rec ? '<ul class="lst">' + rec + '</ul>' : '<div class="empty">Звонков пока не было</div>')) + '</div>');
+    } else if (app === 'sms') {
+      var conv = (d.conv || []).map(function (c) {
+        return '<li data-chat="' + c[0] + '"><span class="av">' + initials(c[1]) + '</span><div class="tx"><div class="t">' + who(c[0], c[1]) +
+          '</div><div class="s">' + esc(c[2]) + '</div></div><div class="r">' + esc(c[3]) + (c[4] ? '<br><span class="un">' + c[4] + '</span>' : '') + '</div></li>';
+      }).join('');
+      body = page('Сообщения', '', '<div class="cnt">' + noteHtml() + '<input id="nn" inputmode="numeric" placeholder="Номер для нового SMS"><button class="btn primary" id="nb">Написать</button>' +
+        (conv ? '<ul class="lst">' + conv + '</ul>' : '<div class="empty">Переписок пока нет</div>') + '</div>');
+    } else if (app === 'chat') {
+      var msgs = (d.msgs || []).slice().reverse().map(function (x) {
+        return '<div class="bub' + (x[0] ? ' me' : '') + '">' + esc(x[1]) + '<i>' + esc(x[2]) + '</i></div>';
+      }).join('');
+      body = page(d.pname || String(d.peer), (d.pname ? esc(d.peer) + ' · ' : '') + (d.online ? 'в сети' : 'не в сети') + ' · SMS $' + (d.price | 0),
+        noteHtml().replace('class="note', 'style="margin:.5em .8em 0" class="note') + '<div class="msgs" id="msgs">' + (msgs || '<div class="empty">Напиши первое сообщение</div>') + '</div>' +
+        '<div class="send"><input id="mt" maxlength="90" placeholder="Сообщение"><button id="ms">➤</button></div>', 'sms',
+        '<button class="hbtn" data-call="' + d.peer + '">📞</button>');
+    } else if (app === 'contacts') {
+      var cont = (d.cont || []).map(function (c) {
+        return '<li data-pick="' + c[0] + '" data-name="' + esc(c[1]) + '"><span class="av">' + initials(c[1]) + '</span><div class="tx"><div class="t">' + esc(c[1]) +
+          '</div><div class="s">' + c[0] + '</div></div><div class="r">›</div></li>';
+      }).join('');
+      body = page('Контакты', '', '<div class="cnt">' + noteHtml() + '<div id="sheet"></div><input id="cn" inputmode="numeric" placeholder="Номер"><input id="cm" maxlength="24" placeholder="Имя">' +
+        '<button class="btn primary" id="ca">Сохранить контакт</button>' + (cont ? '<ul class="lst">' + cont + '</ul>' : '<div class="empty">Контактов пока нет</div>') + '</div>');
+    } else if (app === 'bank') {
+      var hist = (d.hist || []).map(function (h) {
+        var minus = h[0] === 2 || h[0] === 3 || h[0] === 7 || h[0] === 8;
+        return '<li><div class="tx"><div class="t">' + esc(BANK_T[h[0]] || '-') + '</div><div class="s">' + esc(h[2]) + '</div></div><div class="r"><span class="sum' +
+          (minus ? ' neg' : '') + '">' + (minus ? '-' : '+') + phMoney(h[1]) + '</span><br>' + esc(h[3]) + '</div></li>';
+      }).join('');
+      body = page('Bastion Bank', 'счёт №' + (d.acc | 0), '<div class="cnt"><div class="bcard"><small>На счёте</small><b>' + phMoney(d.bank) + '</b><small>Наличные: ' + phMoney(d.cash) +
+        '</small></div>' + noteHtml() + '<h4>Перевод по номеру телефона</h4><input id="pn" inputmode="numeric" placeholder="Номер телефона"><input id="pa" inputmode="numeric" placeholder="Сумма, $">' +
+        '<button class="btn primary" id="pb">Перевести' + (d.fee ? ' (комиссия ' + d.fee + '%)' : '') + '</button><h4>Последние операции</h4>' +
+        (hist ? '<ul class="lst">' + hist + '</ul>' : '<div class="empty">Операций нет</div>') + '</div>');
+    } else if (app === 'map' || app === 'places' || app === 'jobs') {
+      var inner = noteHtml();
+      if (app === 'map') {
+        inner += (d.gps ? '<button class="btn bad" data-gact="-1">Убрать метку GPS</button>' : '') +
+          '<div class="tiles" style="margin-bottom:.6em"><button class="tile" data-gact="-2"><span>🚗</span>Моя машина</button><button class="tile" data-gact="-3"><span>🏠</span>Мой дом</button></div>' +
+          '<ul class="lst">' + (d.cats || []).map(function (c) {
+            return '<li data-gcat="' + c[0] + '"><div class="tx"><div class="t">' + esc(c[1]) + '</div></div><div class="r">' + c[2] + ' ›</div></li>';
+          }).join('') + '</ul>';
+      } else {
+        if (app === 'jobs') inner += '<div class="kv"><span>Работа</span><b>' + (d.job ? esc(d.job) : 'нет') + '</b></div>' +
+          (d.job ? '<div class="kv"><span>Смена</span><b>' + (d.working ? 'идёт' : 'не начата') + '</b></div><button class="btn" style="margin-top:.6em" data-cmd="cmd quitjob">Уволиться</button>' : '') +
+          '<h4>Где устроиться (метка на карте)</h4>';
+        var pl = (d.places || []).map(function (p, i) {
+          return '<li data-gpick="' + i + '"><span class="av">📍</span><div class="tx"><div class="t">' + esc(p[0]) + '</div></div><div class="r">' + esc(p[1]) + '</div></li>';
+        }).join('');
+        inner += pl ? '<ul class="lst">' + pl + '</ul>' : '<div class="empty">Мест нет</div>';
+      }
+      body = page(app === 'places' ? (d.cname || 'Места') : PH_TITLE[app], app === 'jobs' ? '' : 'метка ставится на карту и радар', '<div class="cnt">' + inner + '</div>', app === 'places' ? 'map' : 'home');
+    } else if (app === 'taxi') {
+      body = page('Такси', 'Los Santos Cab', '<div class="cnt">' + noteHtml() + '<div class="tiles" style="grid-template-columns:1fr"><div class="tile"><span>🚕</span>Таксистов на смене: <b>' +
+        (d.taxis | 0) + '</b></div></div><p style="color:var(--muted)">Водитель увидит тебя на карте. Посадка $' + (d.fare | 0) + ', дальше по счётчику.</p>' +
+        '<button class="btn primary" data-cmd="taxi"' + (d.taxis ? '' : ' disabled') + '>Вызвать такси</button></div>');
+    } else if (app === 'news') {
+      var ads = (d.ads || []).map(function (a) {
+        return '<li data-call="' + a[2] + '"><div class="tx"><div class="t" style="white-space:normal">' + esc(a[0]) + '</div><div class="s">' + esc(a[1]) + ' · ' + a[2] +
+          '</div></div><div class="r">' + (a[3] < 1 ? 'сейчас' : a[3] < 60 ? a[3] + ' мин' : Math.floor(a[3] / 60) + ' ч') + '<br>📞</div></li>';
+      }).join('');
+      body = page('Объявления', 'увидят все в городе', '<div class="cnt">' + noteHtml() + '<textarea id="at" maxlength="90" placeholder="Продам, куплю, ищу..."></textarea>' +
+        '<button class="btn primary" id="ab">Подать за ' + phMoney(d.price) + '</button>' + (ads ? '<ul class="lst">' + ads + '</ul>' : '<div class="empty">Объявлений пока нет</div>') + '</div>');
+    } else if (app === '911') {
+      body = page('Экстренный вызов', 'полиция и медики на смене', '<div class="cnt">' + noteHtml() + '<textarea id="et" maxlength="90" placeholder="Что случилось и где?"></textarea>' +
+        '<button class="btn bad" id="eb">Вызвать 911</button></div>');
+    } else if (app === 'property') {
+      body = page('Имущество', '', '<div class="cnt">' + noteHtml() +
+        '<div class="kv"><span>Жильё</span><b>' + (d.house ? (d.rent ? 'аренда, дом №' : 'дом №') + d.house : 'нет') + '</b></div>' +
+        '<div class="kv"><span>Машина</span><b>' + (d.car ? 'есть' : 'нет') + '</b></div><div class="tiles" style="margin-top:.8em">' +
+        '<button class="tile" data-gact="-3"' + (d.house ? '' : ' disabled') + '><span>🏠</span>Дом на карте</button><button class="tile" data-gact="-2"' + (d.car ? '' : ' disabled') + '><span>🚗</span>Машина на карте</button>' +
+        '<button class="tile" data-cmdc="cmd houses"><span>🔑</span>Мои дома</button><button class="tile" data-cmdc="cmd cars"><span>🚘</span>Мой транспорт</button></div></div>');
+    } else if (app === 'docs') {
+      var dk = d.docs || [];
+      body = page('Документы', 'достать и посмотреть', '<div class="cnt">' + noteHtml() + '<div class="tiles">' +
+        [['🛂', 'Паспорт'], ['🩺', 'Медкарта'], ['🪪', 'Лицензии'], ['🎯', 'Тир']].map(function (x, i) {
+          return '<button class="tile" data-cmdc="doc ' + i + '"' + (dk[i] ? '' : ' disabled') + '><span>' + x[0] + '</span>' + x[1] + '</button>';
+        }).join('') + '</div></div>');
+    } else if (app === 'settings') {
+      body = page('Настройки', '', '<div class="cnt"><div class="kv"><span>Мой номер</span><b>' + esc(d.num) + '</b></div><h4>Обои</h4><div class="walls">' +
+        PH_WALLS.map(function (w, i) {
+          return '<button data-wall="' + i + '" class="' + (wall === w ? 'on' : '') + '" style="background-image:' + (w ? 'url(phone/' + w + '.png),' : '') +
+            'linear-gradient(160deg,#2b1a3d,#b4492b 55%,#f0a04b)"></button>';
+        }).join('') + '</div></div>');
+    }
+    root.classList.add('phone-mode');
+    root.innerHTML = '<div class="ph' + (again ? ' again' : '') + '" id="ph"><div class="scr" id="scr"><div class="sb"><span>' + esc(d.time || '') + '</span><span class="notch"></span><span>' +
+      (d.cs > 0 ? '📞 ' : '') + (d.gps ? '📍 ' : '') + '▮▮▮</span></div><div class="body">' + body + '</div><div class="nav"><button data-go="home" aria-label="Домой"></button></div></div></div>';
+    var ph = document.getElementById('ph'), scr = document.getElementById('scr');
+    if (wall) scr.style.backgroundImage = 'url(phone/' + wall + '.png), linear-gradient(160deg, #2b1a3d 0%, #b4492b 55%, #f0a04b 100%)';
+    frame.onload = function () { ph.classList.add('img'); var f = new Image(); f.className = 'frame'; f.src = frame.src; f.alt = ''; ph.appendChild(f); };
+    var msgsEl = document.getElementById('msgs'); if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+    function val(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
+    function digits(s) { return String(s).replace(/\D/g, ''); }
+    ph.onclick = function (e) {
+      var el = e.target.closest ? e.target.closest('[data-go],[data-open],[data-cmd],[data-cmdc],[data-call],[data-chat],[data-pick],[data-tab],[data-k],[data-gact],[data-gcat],[data-gpick],[data-wall],[data-sheet]') : null;
+      if (!el || el.disabled) return;
+      var a = function (n) { return el.getAttribute(n); };
+      if (a('data-go') !== null) { if (a('data-go') === 'home') { d.app = 'home'; d.note = ''; phoneWindow(d, m); } else phSend('open ' + a('data-go')); }
+      else if (a('data-open') !== null) {
+        var o = a('data-open');
+        if (o === 'settings' || o === '911') { d.app = o; d.note = ''; phoneWindow(d, m); }
+        else phSend('open ' + o);
+      }
+      else if (a('data-cmd') !== null) phSend(a('data-cmd'));
+      else if (a('data-cmdc') !== null) phSend(a('data-cmdc'), true);
+      else if (a('data-call') !== null) phSend('call ' + a('data-call'));
+      else if (a('data-chat') !== null) phSend('chat ' + a('data-chat'));
+      else if (a('data-gcat') !== null) phSend('gcat ' + a('data-gcat'));
+      else if (a('data-gpick') !== null) phSend('gpick ' + a('data-gpick'), true);
+      else if (a('data-gact') !== null) phSend('gact ' + a('data-gact'), a('data-gact') !== '-1');
+      else if (a('data-tab') !== null) { phTab = a('data-tab'); phoneWindow(d, m); }
+      else if (a('data-wall') !== null) { phLS('wall', a('data-wall')); phoneWindow(d, m); }
+      else if (a('data-k') !== null) {
+        var k = a('data-k');
+        if (k === '⌫') phDial = phDial.slice(0, -1);
+        else if (k === '📞') { if (phDial) { var n = phDial; phDial = ''; phSend(n === '911' ? 'open 911' : 'call ' + n); } return; }
+        else if (phDial.length < 7) phDial += k;
+        document.getElementById('dial').textContent = phDial;
+      }
+      else if (a('data-pick') !== null) {
+        var num = a('data-pick'), sh = document.getElementById('sheet');
+        sh.innerHTML = '<div class="note ok" style="color:var(--text)"><b>' + a('data-name') + '</b> · ' + num + '</div><div class="tiles" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:.6em">' +
+          '<button class="tile" data-call="' + num + '"><span>📞</span>Звонок</button><button class="tile" data-chat="' + num + '"><span>💬</span>SMS</button>' +
+          '<button class="tile" data-cmd="cdel ' + num + '"><span>🗑️</span>Удалить</button></div>';
+        sh.scrollIntoView();
+      }
+    };
+    var on = function (id, fn) { var e = document.getElementById(id); if (e) e.onclick = fn; };
+    var enter = function (id, fn) { var e = document.getElementById(id); if (e) e.onkeydown = function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); fn(); } }; };
+    function sendSms() { var t = val('mt'); if (t) phSend('sms ' + d.peer + ' ' + t); }
+    on('ms', sendSms); enter('mt', sendSms);
+    on('nb', function () { var n = digits(val('nn')); if (n) phSend('chat ' + n); });
+    on('ca', function () { var n = digits(val('cn')), nm = val('cm'); if (n && nm) phSend('cadd ' + n + ' ' + nm); });
+    on('pb', function () { var n = digits(val('pn')), s = digits(val('pa')); if (n && s) phSend('pay ' + n + ' ' + s); });
+    on('ab', function () { var t = val('at'); if (t.length >= 5) phSend('ad ' + t.replace(/\s+/g, ' ')); });
+    on('eb', function () { var t = val('et'); if (t) phSend('911 ' + t.replace(/\s+/g, ' ')); });
+    keyHandler = function (e) {
+      if (app === 'calls' && phTab === 'pad' && document.activeElement === document.body) {
+        if (/^[0-9]$/.test(e.key) && phDial.length < 7) { phDial += e.key; document.getElementById('dial').textContent = phDial; }
+        else if (e.key === 'Backspace') { phDial = phDial.slice(0, -1); document.getElementById('dial').textContent = phDial; }
+        else if (e.key === 'Enter' && phDial) { var n = phDial; phDial = ''; phSend('call ' + n); }
+      }
+    };
+  }
+
   var WINDOWS = {
     document: docWindow,
+    phone: phoneWindow,
     login: function (d, m) {
       passwordForm({ title: 'С возвращением', sub: 'Аккаунт <b>' + esc(d.name) + '</b>. Введи пароль, чтобы войти.',
         button1: m.button1, button2: m.button2, error: d.error });
@@ -620,7 +949,7 @@ function vipImg(level, cls) {
       var rows = [
         ['Уровень', (d.level | 0) + ' <span class="mut">(опыт ' + (d.exp | 0) + '/' + (d.expMax | 0) + ')</span>'],
         ['Наличные', money(d.money)],
-        ['Банк', '<span class="bank-sum">' + money(d.bank) + '</span> <button class="eye-btn" id="bk" title="Скрыть или показать сумму">👁</button>'],
+        ['Банк', bankSum(money(d.bank)) + ' <button class="eye-btn" id="bk" title="Скрыть или показать сумму">👁</button>'],
         ['Долг штату', money(d.debt)], ['Телефон', esc(d.phone)], ['Работа', esc(d.job)],
         ['Фракция', esc(d.faction) + (d.rank ? ' <span class="mut">(' + esc(d.rank) + ')</span>' : '')],
         ['Семья', esc(d.family)], ['Дом', esc(d.house)], ['Розыск', (d.wanted | 0) + ' зв.'],
@@ -1102,18 +1431,19 @@ function vipImg(level, cls) {
       var fn = WINDOWS[msg.window] || WINDOWS.message;
       current = msg.window;
       keyHandler = null;
+      if (msg.window !== 'phone') root.classList.remove('phone-mode');
       fn(data, msg);
       root.classList.add('on');
     },
     close: function () { respond(0, -1, ''); },
     // Сервер закрыл диалог сам — убрать окно без ответа
-    hide: function () { current = null; keyHandler = null; root.classList.remove('on'); root.innerHTML = ''; }
+    hide: function () { current = null; keyHandler = null; root.classList.remove('on', 'phone-mode'); root.innerHTML = ''; }
   };
   addEventListener('keydown', function (e) { if (current && keyHandler) keyHandler(e); });
 
   // --- HUD: ХП, броня, сытость, наличные, банк. Иконки — ui/hud/*.png (если файла нет — эмодзи) ---
   var hud = document.getElementById('hud');
-  var HUD_ICONS = { hp: '❤️', armor: '🛡️', food: '🍔', cash: '💵', bank: '🏦' };
+  var HUD_ICONS = { hp: '❤️', armor: '🛡️', food: '🍔', breath: '🫧', cash: '💵', bank: '🏦' };
   Array.prototype.forEach.call(hud.querySelectorAll('.ico'), function (el) {
     var k = el.getAttribute('data-k'), img = new Image();
     img.onload = function () { el.textContent = ''; el.appendChild(img); };
@@ -1143,9 +1473,19 @@ function vipImg(level, cls) {
     hud.classList.toggle('warn', d.food <= 20);
     var c = document.getElementById('h-cash');
     setText('h-cash', hudMoney(d.cash)); c.classList.toggle('neg', d.cash < 0); c.classList.toggle('cash', d.cash >= 0);
-    document.getElementById('h-bank').innerHTML = '<small>банк</small>' + hudMoney(d.bank);
+    document.getElementById('h-bank').innerHTML = '<small>банк</small>' + bankSum(hudMoney(d.bank));
     applyBankBlur();
     hud.classList.add('on');
+  };
+
+  // Кислород под водой: клиент сам читает его из игры и шлёт BastionUI.breath(0..100), -1 — убрать полоску
+  var breathLn = hud.querySelector('.ln.breath');
+  window.BastionUI.breath = function (p) {
+    p = Math.round(+p);
+    if (!(p >= 0)) { breathLn.classList.remove('on', 'low'); return; }
+    hudBar('h-breath', p, 100, p <= 20 ? 'var(--red)' : '#4fc3f7'); setText('h-breathv', p + '%');
+    breathLn.classList.toggle('low', p <= 20);
+    breathLn.classList.add('on');
   };
 
   // ПК (bastion_ui.asi): крупнее на больших экранах, Esc закрывает окно
@@ -1187,6 +1527,7 @@ function vipImg(level, cls) {
   var mh = /^#samp([0-9]|1[0-4])$/.exec(location.hash);
   if (!window.BastionNative && location.hash === '#hud') {
     BastionUI.hud({ id: 12, lvl: 7, hp: 74, arm: 40, food: 18, cash: 15400, bank: 1250000 });
+    BastionUI.breath(63);
     document.body.style.background = '#2b3440';
   } else if (!window.BastionNative && mh) {
     BastionUI.open({ window: 'samp', button1: 'Выбрать', button2: +mh[1] ? 'Отмена' : '',

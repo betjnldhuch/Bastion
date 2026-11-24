@@ -95,6 +95,7 @@
 #include "bastion/orgs.inc"       // /orgs Ч панель владельца по всем организаци€м, спец-выговоры
 #include "bastion/wounded.inc"    // ранение вместо смерти, /revive, /aid
 #include "bastion/admin_give.inc" // админ: /givegun /aheal /setarmour /disarm /healall /takemoney
+#include "bastion/kidnap.inc"     // подвал банды: /tie, /hold, выкуп
 #include "bastion/robbery.inc"    // /rob Ч ограбление магазинов
 #include "bastion/drugs.inc"      // наркотики: кусты, торговец, эффекты, ломка
 #include "bastion/worklife.inc"   // работы: рыбак, фермер, инкассатор, мусорщик
@@ -110,6 +111,7 @@
 #include "bastion/fps.inc"
 #include "bastion/hud.inc"        // свой HUD: панель статуса и спидометр
 #include "bastion/docs.inc"       // документы в сумке: паспорт, медкарта, лицензии
+#include "bastion/phoneapp.inc"   // телефон с приложени€ми: /phone, N
 #include "bastion/skills.inc"     // навыки оружи€ с прокачкой: /skills
 #include "bastion/help.inc"       // /help: разделы со всеми командами
 #include "bastion/commands.inc"
@@ -170,6 +172,7 @@ public OnGameModeInit()
 	Fuel_Init();          // после всех машин: им выдаЄтс€ бензин
 	Wound_Init();
 	Robbery_Init();
+	Kidnap_Init();        // подвалы банд (после Factions_Init)
 	Places_Init();        // точки новых систем (places.inc)
 	Drugs_Init();
 	WorkLife_Init();      // после Places_Init: машины работ сто€т в точках
@@ -179,6 +182,7 @@ public OnGameModeInit()
 	Marriage_Init();
 	Donate_Init();
 	Quest_Init();          // пол€ квеста новичка в accounts (quest.inc)
+	PhoneApp_Init();       // SMS, контакты, звонки (phoneapp.inc)
 	Rental_Init();         // точки проката мопедов (rental.inc)
 	AC_Init();            // античит (anticheat.inc)
 	Social_Init();        // таблицы дл€ ботов ¬ /Telegram (social.inc)
@@ -252,6 +256,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Jobs_OnDisconnect(playerid);
 	Licenses_Abort(playerid);
 	Phone_HangUp(playerid);
+	PhoneApp_OnDisconnect(playerid);
 	Skills_OnDisconnect(playerid);      // навыки оружи€ (skills.inc)
 	Account_Save(playerid);
 	Vehicles_UnloadForPlayer(playerid);
@@ -263,6 +268,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Wound_Reset(playerid);
 	Fbi_OnDisconnect(playerid);         // ‘Ѕ–: маскировка, прослушка, слежка
 	Rob_OnDisconnect(playerid);
+	Kidnap_OnDisconnect(playerid);
 	Rental_OnDisconnect(playerid);
 	Player[playerid][pLogged] = false;
 	return 1;
@@ -359,6 +365,7 @@ public OnPlayerSpawn(playerid)
 	Hud_OnSpawn(playerid);              // панель статуса (hud.inc)
 	BizX_OnSpawn(playerid);             // стиль бо€ из спортзала (bizplus.inc)
 	Skills_OnSpawn(playerid);           // навыки оружи€ (skills.inc)
+	Kidnap_OnSpawn(playerid);           // последним: заложник возвращаетс€ в подвал
 	return 1;
 }
 
@@ -410,6 +417,13 @@ public OnPlayerText(playerid, text[])
 	// »гроки не могут красить текст кодами {RRGGBB}: так подделывают системные сообщени€
 	if (Player[playerid][pAdmin] < 1) StripColorCodes(text);
 	if (text[0] == '\0') return 0;
+	// Ђ.ыефеыї / Ђ.statsї Ч команда, набранна€ в русской раскладке (chat.inc).
+	// Ќеизвестна€ команда уходит в чат как обычный текст.
+	new fixed[145];
+	if (text[0] == '.' && Chat_CmdFromLayout(text, fixed))
+	{
+		if (Commands_Process(playerid, fixed, true)) { Log_OnCommand(playerid, fixed); return 0; }
+	}
 	Log_OnText(playerid, text);
 	Chat_OnText(playerid, text);
 	return 0;   // 0 = не отправл€ть стандартный глобальный чат
@@ -424,6 +438,9 @@ public OnPlayerCommandText(playerid, cmdtext[])
 		if (Chat_IsFlood(playerid, true)) return 1;   // антифлуд (chat.inc)
 		Log_OnCommand(playerid, cmdtext);
 	}
+	// Ђ/ыефеыї Ч им€ команды в русской раскладке -> Ђ/statsї (chat.inc)
+	new fixed[145];
+	if (Chat_CmdFromLayout(cmdtext, fixed)) return Commands_Process(playerid, fixed);
 	return Commands_Process(playerid, cmdtext);
 }
 
@@ -478,6 +495,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Donate_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Rental_OnDialog(playerid, dialogid, response)) return 1;
 	if (Quest_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (PhoneApp_OnDialog(playerid, dialogid, response, inputtext)) return 1;
 	return 0;
 }
 

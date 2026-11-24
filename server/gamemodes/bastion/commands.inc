@@ -125,7 +125,7 @@ static bool:Commands_IsAction(const cmd[])
 		"/tune", "/unimpound", "/bank", "/atm", "/pay", "/fbank", "/fstorage",
 		"/buybiz", "/sellbiz", "/bizcash", "/bizmenu", "/biz", "/sell", "/inv", "/i", "/invlist", "/pickup",
 		"/aid", "/carry", "/fish", "/robvan", "/pwork", "/escape", "/marry", "/divorce",
-		"/sbank", "/selldrugs"
+		"/sbank", "/selldrugs", "/tie", "/lead", "/gcar", "/hold", "/hideout", "/handsup"
 	};
 	for (new i = 0; i < sizeof (list); i++)
 	{
@@ -138,7 +138,9 @@ static bool:Commands_IsAction(const cmd[])
 //  Главный разбор команд. Вызывается из OnPlayerCommandText.
 //  Возвращает 1 — команда найдена, 0 — неизвестная команда.
 // ---------------------------------------------------------------------
-stock Commands_Process(playerid, const input[])
+//  quiet = true: неизвестная команда не пишет ошибку, а возвращает 0
+//  (так команда в русской раскладке «.ыефеы» уходит обычным текстом в чат).
+stock Commands_Process(playerid, const input[], bool:quiet = false)
 {
 	if (!Player[playerid][pLogged])
 	{
@@ -394,10 +396,25 @@ stock Commands_Process(playerid, const input[])
 	if (!strcmp(cmd, "/h", true))           { Cmd_HangUp(playerid); return 1; }
 	if (!strcmp(cmd, "/sms", true))         { Cmd_Sms(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/911", true))         { Cmd_911(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/phone", true) || !strcmp(cmd, "/tel", true)) { Cmd_Phone(playerid); return 1; }
+	if (!strcmp(cmd, "/ad", true))          { Cmd_Ad(playerid, cmdtext[pos]); return 1; }
 
 	// --- бизнесы (business.inc) ---
 	if (!strcmp(cmd, "/buy", true))         { Cmd_Buy(playerid); return 1; }
 	if (!strcmp(cmd, "/rob", true))         { Cmd_Rob(playerid); return 1; }
+	// --- похищения (kidnap.inc) ---
+	if (!strcmp(cmd, "/tie", true))         { Cmd_Tie(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/untie", true))       { Cmd_Untie(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/lead", true))        { Cmd_Lead(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/gcar", true))        { Cmd_GCar(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/hold", true))        { Cmd_Hold(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/hideout", true))     { Cmd_Hideout(playerid); return 1; }
+	if (!strcmp(cmd, "/sethideout", true))  { Cmd_SetHideout(playerid); return 1; }
+	if (!strcmp(cmd, "/ransom", true))      { Cmd_Ransom(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/payransom", true))   { Cmd_PayRansom(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/release", true))     { Cmd_Release(playerid, cmdtext[pos]); return 1; }
+	if (!strcmp(cmd, "/hostages", true))    { Cmd_Hostages(playerid); return 1; }
+	if (!strcmp(cmd, "/handsup", true) || !strcmp(cmd, "/hu", true)) { Cmd_HandsUp(playerid); return 1; }
 	if (!strcmp(cmd, "/buybiz", true))      { Cmd_BuyBiz(playerid); return 1; }
 	if (!strcmp(cmd, "/sellbiz", true))     { Cmd_SellBiz(playerid); return 1; }
 	if (!strcmp(cmd, "/bizinfo", true))     { Cmd_BizInfo(playerid); return 1; }
@@ -449,6 +466,7 @@ stock Commands_Process(playerid, const input[])
 		return 1;
 	}
 
+	if (quiet) return 0;
 	SendClientMessage(playerid, COLOR_GREY, "Неизвестная команда. Список команд: /help");
 	return 1;
 }

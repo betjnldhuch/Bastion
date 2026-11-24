@@ -7,7 +7,7 @@
 //          Если рядом ничего нет, но перед тобой игрок — меню взаимодействия.
 //          Если держишь игрока на прицеле (правая кнопка мыши) — меню для него.
 //    Y   — принять предложение / ответить на звонок
-//    N   — отказаться / сбросить звонок
+//    N   — отказаться / сбросить звонок, иначе достать телефон
 //  В машине (за рулём):
 //    2   — двигатель
 //    H   — на АЗС заправка, на СТО меню СТО, иначе шлагбаум или ворота своей фракции
@@ -28,9 +28,12 @@ enum
 	ACT_CUFF,
 	ACT_UNCUFF,
 	ACT_FRISK,
-	ACT_HEAL
+	ACT_HEAL,
+	ACT_TIE,
+	ACT_UNTIE,
+	ACT_LEAD
 }
-#define MAX_ACTS            8
+#define MAX_ACTS            10
 
 static gInteractTarget[MAX_PLAYERS] = { INVALID_PLAYER_ID, ... };
 static gInteractTargetDb[MAX_PLAYERS];
@@ -100,6 +103,16 @@ stock Keys_ShowInteract(playerid, target)
 	{
 		gInteractActs[playerid][n++] = ACT_HEAL; strcat(list, "{FF8080}Предложить лечение\n");
 	}
+	if (Faction_IsGang(f) && Player[target][pFaction] != f)
+	{
+		if (Kidnap_IsTiedBy(target, f))
+		{
+			gInteractActs[playerid][n++] = ACT_LEAD;  strcat(list, "{C0A060}Вести за собой / отпустить\n");
+			gInteractActs[playerid][n++] = ACT_UNTIE; strcat(list, "{C0A060}Развязать\n");
+		}
+		else if (!Player[target][pCuffed]) { gInteractActs[playerid][n++] = ACT_TIE; strcat(list, "{C0A060}Связать\n"); }
+	}
+	else if (Kidnap_IsTied(target)) { gInteractActs[playerid][n++] = ACT_UNTIE; strcat(list, "Развязать\n"); }
 	for (new i = n; i < MAX_ACTS; i++) gInteractActs[playerid][i] = -1;
 
 	gInteractTarget[playerid] = target;
@@ -191,6 +204,9 @@ stock Keys_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 				case ACT_UNCUFF:    Cmd_Uncuff(playerid, params);
 				case ACT_FRISK:     Cmd_Frisk(playerid, params);
 				case ACT_HEAL:      Cmd_Heal(playerid, params);
+				case ACT_TIE:       Cmd_Tie(playerid, params);
+				case ACT_UNTIE:     Cmd_Untie(playerid, params);
+				case ACT_LEAD:      Cmd_Lead(playerid, params);
 			}
 			return 1;
 		}
@@ -215,6 +231,7 @@ stock Keys_Interact(playerid)
 	if (Hospital_TryAlt(playerid)) return;
 	if (Marriage_TryAlt(playerid)) return;
 	if (Prison_TryAlt(playerid)) return;
+	if (Kidnap_TryAlt(playerid)) return;       // подвал банды (kidnap.inc)
 	// 0б. Прокат мопедов (rental.inc)
 	if (Rental_TryAlt(playerid)) return;
 
@@ -346,6 +363,7 @@ stock Keys_OnKeyStateChange(playerid, newkeys, oldkeys)
 	{
 		if (Player[playerid][pCallState] != CALL_NONE) Cmd_HangUp(playerid);
 		else if (Player[playerid][pOfferType] != OFFER_NONE) Cmd_Deny(playerid);
+		else if (Player[playerid][pPhone] != 0 && UI_Has(playerid) && !Wound_IsWounded(playerid)) Cmd_Phone(playerid);   // N — телефон (phoneapp.inc)
 		return 1;
 	}
 	return 0;

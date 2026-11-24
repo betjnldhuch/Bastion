@@ -278,5 +278,8 @@ enum
 	// --- Квест новичка (quest.inc)
 	DIALOG_QUEST,
 	DIALOG_QUEST_INTRO,
-	DIALOG_QUEST_MORE
+	DIALOG_QUEST_MORE,
+
+	// --- Телефон с приложениями (phoneapp.inc)
+	DIALOG_PHONE
 }
