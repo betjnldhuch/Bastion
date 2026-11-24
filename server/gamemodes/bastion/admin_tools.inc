@@ -14,6 +14,8 @@
 //
 //  »нструменты:
 //    /aduty Ч дежурство (бессмертие, розовый ник, видно в /admins)
+//    /god [id] Ч бессмертие вкл/выкл (себе с 1 ур., другому с 3 ур.;
+//               есть в /amenu, пишетс€ в лог)
 //    /ao Ч объ€вление от администрации всем
 //    /fixveh /flip Ч починить / перевернуть машину
 //    /respawncars Ч вернуть пустые машины на места
@@ -27,6 +29,7 @@
 #define MAX_TELEPORTS           60
 #define ADMIN_DUTY_COLOR        0xFF66FFFF
 #define ADMIN_DUTY_HEALTH       100000.0
+#define ADMIN_GOD_LEVEL_OTHER   3       // с какого уровн€ /god другому игроку
 
 enum E_TELEPORT
 {
@@ -54,6 +57,7 @@ static gBackWorld[MAX_PLAYERS];
 static bool:gMapTpOff[MAX_PLAYERS];             // админ выключил телепорт по метке
 static gMapTpVeh[MAX_PLAYERS];                  // машина, которую ставим под админа после метки
 static bool:gADuty[MAX_PLAYERS];
+static bool:gGod[MAX_PLAYERS];                 // бессмертие (/god)
 static bool:gJetpackFlag[MAX_PLAYERS];
 
 // =====================================================================
@@ -136,6 +140,7 @@ stock AdminTools_OnConnect(playerid)
 	gMapTpOff[playerid] = false;
 	gMapTpVeh[playerid] = INVALID_VEHICLE_ID;
 	gADuty[playerid] = false;
+	gGod[playerid] = false;
 	gJetpackFlag[playerid] = false;
 	gTpSendTarget[playerid] = INVALID_PLAYER_ID;
 }
@@ -147,11 +152,19 @@ stock AdminTools_OnSpawn(playerid)
 		SetPlayerHealth(playerid, ADMIN_DUTY_HEALTH);
 		SetPlayerColor(playerid, ADMIN_DUTY_COLOR);
 	}
+	else if (gGod[playerid]) SetPlayerHealth(playerid, ADMIN_DUTY_HEALTH);
 }
 
 // »з OnPlayerUpdate Ч только дешЄвые проверки
 stock AdminTools_OnUpdate(playerid)
 {
+	// Ѕессмертие: если что-то сбило здоровье (лечение, голод, урон) Ч вернуть
+	if (gGod[playerid])
+	{
+		new Float:hp;
+		GetPlayerHealth(playerid, hp);
+		if (hp > 0.0 && hp < ADMIN_DUTY_HEALTH - 1000.0) SetPlayerHealth(playerid, ADMIN_DUTY_HEALTH);
+	}
 	if (gJetpackFlag[playerid] || Player[playerid][pAdmin] > 0) return;
 	if (!Player[playerid][pLogged]) return;
 	if (GetPlayerSpecialAction(playerid) == SPECIAL_ACTION_USEJETPACK)
@@ -220,6 +233,19 @@ public MapTp_PlaceVehicle(playerid, vehicleid)
 stock bool:Admin_IsOnDuty(playerid)
 {
 	return gADuty[playerid];
+}
+
+stock bool:Admin_IsGod(playerid)
+{
+	return gGod[playerid];
+}
+
+// ¬ключить / выключить бессмертие (без проверки прав)
+stock Admin_SetGod(playerid, bool:on)
+{
+	gGod[playerid] = on;
+	if (on) SetPlayerHealth(playerid, ADMIN_DUTY_HEALTH);
+	else if (!gADuty[playerid]) SetPlayerHealth(playerid, 100.0);
 }
 
 // =====================================================================
@@ -513,6 +539,32 @@ stock bool:Cmd_ADuty(playerid)
 	return true;
 }
 
+// /god Ч себе; /god [id] Ч другому (с ADMIN_GOD_LEVEL_OTHER)
+stock bool:Cmd_God(playerid, const params[])
+{
+	if (!Admin_Check(playerid, 1)) return true;
+	new target = playerid;
+	if (params[0] != '\0')
+	{
+		new pos = 0;
+		target = NextPlayerParam(params, pos);
+		if (target == INVALID_PLAYER_ID) return SendClientMessage(playerid, COLOR_GREY, "»спользование: /god Ч себе, /god [id] Ч игроку");
+		if (target != playerid && !Admin_Check(playerid, ADMIN_GOD_LEVEL_OTHER)) return true;
+	}
+	if (!Player[target][pLogged]) return SendClientMessage(playerid, COLOR_GREY, "»грок ещЄ не вошЄл.");
+	new bool:on = !gGod[target];
+	Admin_SetGod(target, on);
+	Admin_Log(playerid, on ? ("god on") : ("god off"), target);
+	if (target == playerid)
+		SendClientMessage(playerid, COLOR_ADMIN, on ? ("Ѕессмертие включено. ¬ыключить: /god") : ("Ѕессмертие выключено."));
+	else
+	{
+		SendClientMessage(playerid, COLOR_ADMIN, "%s: бессмертие %s.", GetRPName(target), on ? ("включено") : ("выключено"));
+		SendClientMessage(target, COLOR_ADMIN, "јдминистратор %s %s тебе бессмертие.", GetRPName(playerid), on ? ("включил") : ("выключил"));
+	}
+	return true;
+}
+
 stock bool:Cmd_AO(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 3)) return true;
@@ -645,6 +697,7 @@ stock AdminTools_OnCommand(playerid, const cmd[], const params[])
 	if (!strcmp(cmd, "/sendto", true))      { Cmd_SendTo(playerid, params); return 1; }
 	if (!strcmp(cmd, "/maptp", true))       { Cmd_MapTp(playerid); return 1; }
 	if (!strcmp(cmd, "/aduty", true))       { Cmd_ADuty(playerid); return 1; }
+	if (!strcmp(cmd, "/god", true))         { Cmd_God(playerid, params); return 1; }
 	if (!strcmp(cmd, "/ao", true))          { Cmd_AO(playerid, params); return 1; }
 	if (!strcmp(cmd, "/fixveh", true))      { Cmd_FixVeh(playerid, params); return 1; }
 	if (!strcmp(cmd, "/flip", true))        { Cmd_Flip(playerid, params); return 1; }

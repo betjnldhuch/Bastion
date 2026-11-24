@@ -30,6 +30,8 @@
 #define ADMIN_IPBAN_LEVEL       6       // с какого уровня /banip и /unbanip
 
 forward bool:Admin_IsOnDuty(playerid);   // admin_tools.inc
+forward bool:Admin_IsGod(playerid);      // admin_tools.inc
+forward bool:Cmd_God(playerid, const params[]);
 forward bool:Cmd_Backup(playerid);       // backup.inc
 forward bool:AdminAuth_HasPassword(playerid);   // admin_auth.inc
 forward AdminGive_OnCommand(playerid, const cmd[], const params[]);   // admin_give.inc
@@ -70,7 +72,8 @@ enum
 	AMENU_HEAL,
 	AMENU_ARMOUR,
 	AMENU_DISARM,
-	AMENU_GIVEGUN
+	AMENU_GIVEGUN,
+	AMENU_GOD
 }
 
 static gMuteUntil[MAX_PLAYERS];         // unix-время конца мута (0 = нет)
@@ -1488,7 +1491,7 @@ static AMenu_ShowActions(playerid)
 	new target = gAMenuTarget[playerid], title[48];
 	format(title, sizeof title, "%s [%d]", GetRPName(target), target);
 	ShowPlayerDialog(playerid, DIALOG_AMENU_ACT, DIALOG_STYLE_LIST, title,
-		"Телепорт к игроку\nТелепорт к себе\nСледить\nПроверить\nЗаморозить / разморозить\nПодкинуть\nКикнуть\nМут\nПредупреждение\nДеморган\nБан\nВылечить\nБроня 100\nЗабрать оружие\nВыдать оружие",
+		"Телепорт к игроку\nТелепорт к себе\nСледить\nПроверить\nЗаморозить / разморозить\nПодкинуть\nКикнуть\nМут\nПредупреждение\nДеморган\nБан\nВылечить\nБроня 100\nЗабрать оружие\nВыдать оружие\nБессмертие (вкл/выкл)",
 		"Выбрать", "Назад");
 }
 
@@ -1617,6 +1620,7 @@ stock Admin_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 				case AMENU_SLAP:    Cmd_Slap(playerid, params);
 				case AMENU_HEAL:    Cmd_AHeal(playerid, params);
 				case AMENU_DISARM:  Cmd_Disarm(playerid, params);
+				case AMENU_GOD:     { Cmd_God(playerid, params); AMenu_ShowActions(playerid); }
 				case AMENU_ARMOUR:
 				{
 					new p[16];
@@ -1675,7 +1679,7 @@ stock bool:Cmd_AHelp(playerid)
 	new text[3800];
 	strcat(text, "{FF66FF}Вход\n{FFFFFF}/alogin — включить админку (админ-пароль)   /alogout — выйти из админки   /apass — сменить пароль\n/astats — твоя статистика (часы, репорты, наказания)\n\n");
 	strcat(text, "{FF66FF}1 — Хелпер\n{FFFFFF}/a — админ-чат   /amenu — панель (удобно с телефона)   /reports /ans — репорты\n");
-	strcat(text, "/check /spec /specoff /specnext /specprev /goto /kick /mute /unmute /admins /aduty\n");
+	strcat(text, "/check /spec /specoff /specnext /specprev /goto /kick /mute /unmute /admins /aduty /god\n");
 	strcat(text, "Телепорт: метка на карте (выкл. /maptp), /tp — список точек, /back — назад\n\n");
 	strcat(text, "{FF66FF}2 — Модератор\n{FFFFFF}/warn /ajail /unajail /freeze /unfreeze /slap /gethere /spawn /sethp /setskin /jail /unjail\n/sendto /gotocar /fixveh /flip   /aheal — вылечить   /setarmour — броня   /disarm — забрать оружие\n\n");
 	strcat(text, "{FF66FF}3 — Администратор\n{FFFFFF}/ban [id] [дни] [причина]   /offban [ник] [дни] [причина]   /unwarn /alog /moneylog /dveh\n/veh — меню машин, /veh infernus — по названию, /veh 411 — по номеру\n/ao /gotocoord /respawncars /setweather\n/givelic — выдать лицензию   /setfuel — заправить машину\n/givegun [id] [оружие] [патроны] — выдать оружие (тяжёлое с 6 ур.)\n\n");

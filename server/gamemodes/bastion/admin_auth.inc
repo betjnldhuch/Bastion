@@ -243,6 +243,7 @@ static AdminAuth_Drop(playerid)
 {
 	if (Admin_IsSpectating(playerid)) Admin_StopSpec(playerid);
 	if (Admin_IsOnDuty(playerid)) Cmd_ADuty(playerid);
+	if (Admin_IsGod(playerid)) { Admin_SetGod(playerid, false); Admin_Log(INVALID_PLAYER_ID, "god off", playerid, "выход из админки"); }
 }
 
 // Сообщение старшим (ADMIN_IP_ALERT_LEVEL+)
