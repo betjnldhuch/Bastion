@@ -300,6 +300,10 @@ enum
 	DIALOG_COURT_CASES,
 	DIALOG_COURT_VERDICT,
 
+	// --- Аукцион домов (auction.inc)
+	DIALOG_AUCTION_LIST,
+	DIALOG_AUCTION_ONE,
+
 	// --- Телефон с приложениями (phoneapp.inc)
 	DIALOG_PHONE,
 	DIALOG_PASS_RETAKE       // паспортный стол: переснять фото (docs.inc)

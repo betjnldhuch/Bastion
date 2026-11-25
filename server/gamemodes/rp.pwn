@@ -109,6 +109,7 @@
 #include "bastion/season.inc"     // сезонный пропуск: /season
 #include "bastion/famwar.inc"     // войны семей по расписанию: /famwar
 #include "bastion/court.inc"      // суд и адвокаты: /lawyer, /free, /appeal, /cases
+#include "bastion/auction.inc"    // аукцион домов: /auction, /bid
 #include "bastion/rental.inc"     // аренда мопедов: /addmoped, ALT у точки
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
@@ -191,6 +192,7 @@ public OnGameModeInit()
 	Season_Init();         // сезонный пропуск (season.inc)
 	FamWar_Init();         // войны семей (famwar.inc), после Families_Init
 	Court_Init();          // суд и адвокаты (court.inc)
+	Auction_Init();        // аукцион домов (auction.inc), после Houses_Load
 	PhoneApp_Init();       // SMS, контакты, звонки (phoneapp.inc)
 	Rental_Init();         // точки проката мопедов (rental.inc)
 	AC_Init();            // античит (anticheat.inc)
@@ -511,6 +513,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Daily_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Season_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Court_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Auction_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (PhoneApp_OnDialog(playerid, dialogid, response, inputtext)) return 1;
 	if (Docs_OnDialog(playerid, dialogid, response)) return 1;
 	return 0;
@@ -580,6 +583,7 @@ public OnMinuteTimer()
 	// диск трогаем один раз, и сервер не подвисает, когда игроков много
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "BEGIN"));
 	FamWar_OnMinute();      // войны семей по расписанию (famwar.inc)
+	Auction_OnMinute();     // аукцион домов (auction.inc)
 	Needs_OnMinute();       // голод
 	Factions_OnMinute();    // тюремные сроки
 	Admin_OnMinute();       // деморган и муты
