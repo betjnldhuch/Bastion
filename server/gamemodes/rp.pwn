@@ -107,6 +107,7 @@
 #include "bastion/quest.inc"      // квест новичка «Первые шаги»: /quest
 #include "bastion/daily.inc"      // ежедневные задания: /daily
 #include "bastion/season.inc"     // сезонный пропуск: /season
+#include "bastion/famwar.inc"     // войны семей по расписанию: /famwar
 #include "bastion/rental.inc"     // аренда мопедов: /addmoped, ALT у точки
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
@@ -187,6 +188,7 @@ public OnGameModeInit()
 	Quest_Init();          // поля квеста новичка в accounts (quest.inc)
 	Daily_Init();          // поля ежедневных заданий в accounts (daily.inc)
 	Season_Init();         // сезонный пропуск (season.inc)
+	FamWar_Init();         // войны семей (famwar.inc), после Families_Init
 	PhoneApp_Init();       // SMS, контакты, звонки (phoneapp.inc)
 	Rental_Init();         // точки проката мопедов (rental.inc)
 	AC_Init();            // античит (anticheat.inc)
@@ -391,7 +393,7 @@ public OnPlayerTakeDamage(playerid, issuerid, Float:amount, WEAPON:weaponid, bod
 	Wound_OnDamage(playerid, amount);
 	Log_OnDamage(playerid, issuerid, amount, weaponid, bodypart, !was && Wound_IsWounded(playerid));
 	// Упал раненым от чужой пули — в войне за район это считается убийством (turfs.inc)
-	if (!was && Wound_IsWounded(playerid)) Turfs_OnDeath(playerid, issuerid);
+	if (!was && Wound_IsWounded(playerid)) { Turfs_OnDeath(playerid, issuerid); FamWar_OnKill(playerid, issuerid); }
 	return 1;
 }
 
@@ -405,7 +407,7 @@ public OnPlayerDeath(playerid, killerid, WEAPON:reason)
 	Phone_HangUp(playerid);
 	Inv_ResetMask(playerid);            // маска слетает (needs.inc)
 	Drugs_OnDeath(playerid);            // эффект наркотиков проходит
-	if (!Wound_IsWounded(playerid)) Turfs_OnDeath(playerid, killerid);   // раненого засчитали, когда он упал
+	if (!Wound_IsWounded(playerid)) { Turfs_OnDeath(playerid, killerid); FamWar_OnKill(playerid, killerid); }   // раненого засчитали, когда он упал
 
 	if (Wound_OnDeath(playerid)) return 1;  // появится раненым на месте (wounded.inc)
 
@@ -573,6 +575,7 @@ public OnMinuteTimer()
 	// Все записи этой минуты (автосохранение, PayDay, журналы) идут в базу одной пачкой:
 	// диск трогаем один раз, и сервер не подвисает, когда игроков много
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "BEGIN"));
+	FamWar_OnMinute();      // войны семей по расписанию (famwar.inc)
 	Needs_OnMinute();       // голод
 	Factions_OnMinute();    // тюремные сроки
 	Admin_OnMinute();       // деморган и муты

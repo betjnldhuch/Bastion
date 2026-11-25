@@ -193,6 +193,7 @@ stock Commands_Process(playerid, const input[], bool:quiet = false)
 	if (!strcmp(cmd, "/quest", true) || !strcmp(cmd, "/quests", true)) { Cmd_Quest(playerid); return 1; }
 	if (Daily_OnCommand(playerid, cmd)) return 1;                   // /daily (daily.inc)
 	if (Season_OnCommand(playerid, cmd, cmdtext[pos])) return 1;   // /season, /newseason, /seasonxp (season.inc)
+	if (FamWar_OnCommand(playerid, cmd, cmdtext[pos])) return 1;   // /famwar, /famwars, /famtop (famwar.inc)
 
 	// --- чат (chat.inc) ---
 	if (!strcmp(cmd, "/me", true))          { Cmd_Me(playerid, cmdtext[pos]); return 1; }
