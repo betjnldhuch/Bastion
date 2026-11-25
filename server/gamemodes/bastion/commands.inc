@@ -191,6 +191,7 @@ stock Commands_Process(playerid, const input[], bool:quiet = false)
 	if (!strcmp(cmd, "/markers", true) || !strcmp(cmd, "/mk", true)) { Cmd_Markers(playerid); return 1; }
 	if (!strcmp(cmd, "/gps", true))         { Cmd_Gps(playerid); return 1; }
 	if (!strcmp(cmd, "/quest", true) || !strcmp(cmd, "/quests", true)) { Cmd_Quest(playerid); return 1; }
+	if (Daily_OnCommand(playerid, cmd)) return 1;                   // /daily (daily.inc)
 
 	// --- чат (chat.inc) ---
 	if (!strcmp(cmd, "/me", true))          { Cmd_Me(playerid, cmdtext[pos]); return 1; }
@@ -218,6 +219,7 @@ stock Commands_Process(playerid, const input[], bool:quiet = false)
 	// --- работа (jobs.inc) ---
 	if (!strcmp(cmd, "/getjob", true))      { Cmd_GetJob(playerid); return 1; }
 	if (!strcmp(cmd, "/quitjob", true))     { Cmd_QuitJob(playerid); return 1; }
+	if (!strcmp(cmd, "/jobstat", true) || !strcmp(cmd, "/jobs", true)) { Cmd_JobStat(playerid); return 1; }
 	if (!strcmp(cmd, "/taxi", true))        { Cmd_Taxi(playerid); return 1; }
 	if (!strcmp(cmd, "/inv", true) || !strcmp(cmd, "/i", true)) { Cmd_Inv(playerid); return 1; }
 	if (!strcmp(cmd, "/invlist", true))     { Inv_ShowList(playerid); return 1; }

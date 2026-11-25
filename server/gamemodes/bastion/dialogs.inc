@@ -119,6 +119,7 @@ enum
 
 	// --- Работы (jobs.inc)
 	DIALOG_JOB_OFFER,           // предложение механика игроку
+	DIALOG_JOB_STAT,            // /jobstat — уровни профессий (jobs.inc)
 	DIALOG_JOB_HIRE,            // устройство на работу (ALT у значка, /getjob)
 
 	// --- Сумка (needs.inc): от DIALOG_INVENTORY до DIALOG_INV_UI
@@ -280,6 +281,11 @@ enum
 	DIALOG_QUEST_INTRO,
 	DIALOG_QUEST_MORE,
 	DIALOG_QUEST_UI,
+
+	// --- Ежедневные задания (daily.inc)
+	DIALOG_DAILY,
+	DIALOG_DAILY_UI,
+	DIALOG_DAILY_SWAP,
 
 	// --- Телефон с приложениями (phoneapp.inc)
 	DIALOG_PHONE,

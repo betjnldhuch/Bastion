@@ -419,6 +419,7 @@ stock Fuel_OnDialog(playerid, dialogid, response, const inputtext[])
 	}
 	GiveMoney(playerid, -cost);
 	BizX_FuelSale(playerid, cost);         // доля владельцу АЗС рядом (bizplus.inc)
+	Daily_OnFuel(playerid, liters);        // ежедневные задания (daily.inc)
 	Fuel_Set(v, Fuel_Get(v) + float(liters));
 	if (v == gPlayerVeh[playerid]) Fuel_SavePersonal(playerid);
 	Account_Save(playerid);

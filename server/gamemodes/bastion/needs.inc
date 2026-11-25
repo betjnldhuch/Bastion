@@ -480,6 +480,7 @@ static Inv_Use(playerid, item)
 			else if (item == INV_PIZZA) feed = 60;
 			Needs_Feed(playerid, feed);
 			Quest_OnEat(playerid);          // квест новичка (quest.inc)
+			Daily_OnEat(playerid);          // ежедневные задания (daily.inc)
 			ApplyAnimation(playerid, "FOOD", "EAT_Burger", 4.1, false, false, false, false, 0);
 			format(msg, sizeof msg, "%s ест: %s.", GetRPName(playerid), gInvNames[item]);
 		}

@@ -105,6 +105,7 @@
 #include "bastion/marriage.inc"   // свадьба, общий дом и семейный счЄт
 #include "bastion/donate.inc"     // донат-меню: монеты, VIP
 #include "bastion/quest.inc"      // квест новичка Ђѕервые шагиї: /quest
+#include "bastion/daily.inc"      // ежедневные задани€: /daily
 #include "bastion/rental.inc"     // аренда мопедов: /addmoped, ALT у точки
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
@@ -183,6 +184,7 @@ public OnGameModeInit()
 	Marriage_Init();
 	Donate_Init();
 	Quest_Init();          // пол€ квеста новичка в accounts (quest.inc)
+	Daily_Init();          // пол€ ежедневных заданий в accounts (daily.inc)
 	PhoneApp_Init();       // SMS, контакты, звонки (phoneapp.inc)
 	Rental_Init();         // точки проката мопедов (rental.inc)
 	AC_Init();            // античит (anticheat.inc)
@@ -255,6 +257,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Admin_OnDisconnect(playerid);
 	Job_Stop(playerid);
 	Jobs_OnDisconnect(playerid);
+	Daily_OnDisconnect(playerid);
 	Licenses_Abort(playerid);
 	Docs_OnDisconnect(playerid);
 	Phone_HangUp(playerid);
@@ -497,6 +500,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Donate_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Rental_OnDialog(playerid, dialogid, response)) return 1;
 	if (Quest_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Daily_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (PhoneApp_OnDialog(playerid, dialogid, response, inputtext)) return 1;
 	if (Docs_OnDialog(playerid, dialogid, response)) return 1;
 	return 0;
@@ -624,6 +628,8 @@ stock PayDay()
 		Donate_PayDay(i);       // VIP: прибавка и двойной опыт (donate.inc)
 		Bank_PayDay(i);         // проценты по счЄту и баланс (bank.inc)
 		Quest_OnPayDay(i);      // квест новичка: перва€ зарплата, +опыт (quest.inc)
+		Daily_HourCheck(i);     // новый день Ч новые ежедневные задани€ (daily.inc)
+		Daily_OnPayDay(i);
 
 		if (Player[i][pExp] >= Player[i][pLevel] * EXP_PER_LEVEL)
 		{
