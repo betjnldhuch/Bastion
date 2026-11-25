@@ -698,6 +698,7 @@ stock bool:Biz_CanBuy(playerid, b, item)
 // Выдать купленный товар (деньги уже сняты)
 stock Biz_GiveItem(playerid, item, price)
 {
+	Daily_OnSpend(playerid, price);     // ежедневные задания (daily.inc)
 	switch (gBizItems[item][biKind])
 	{
 		case ITEM_PHONE:
@@ -735,6 +736,7 @@ stock Biz_GiveItem(playerid, item, price)
 			Needs_Feed(playerid, gBizItems[item][biValue2]);
 			SendClientMessage(playerid, COLOR_WHITE, "Сытость: %d%%.", Needs_GetHunger(playerid));
 			Quest_OnEat(playerid);          // квест новичка (quest.inc)
+			Daily_OnEat(playerid);          // ежедневные задания (daily.inc)
 		}
 		case ITEM_SKIN:
 		{

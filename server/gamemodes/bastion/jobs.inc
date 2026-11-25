@@ -14,9 +14,13 @@
 //  /taxi   — вызвать такси (любой игрок)
 //  Механику: /repair [id], /refill [id] — предложить ремонт / бензин игроку в машине.
 //
-//  Стаж: каждое выполненное задание +1. За каждые JOB_SKILL_STEP заданий
-//  оплата растёт на 5%, максимум на JOB_SKILL_MAX_BONUS%. При смене работы
-//  стаж обнуляется. Хранится в accounts.job_exp.
+//  Уровни профессии: каждое выполненное задание +1 к стажу. Уровни
+//  (gJobLvlNeed): Новичок > Работник > Опытный > Мастер > Профи. Каждый
+//  уровень — надбавка к оплате (gJobLvlBonus) и разовая премия при повышении.
+//  С уровня JOB_PREMIUM_LEVEL иногда (JOB_PREMIUM_CHANCE%) за задание платят вдвое.
+//  Стаж у каждой профессии свой и не теряется при смене работы:
+//  вернулся на старую работу — уровень на месте. /jobstat — все уровни.
+//  Хранится в accounts.job_exps ("стаж0,стаж1,..."), текущий — ещё и в job_exp.
 //
 //  Для такси, автобуса, грузовика и эвакуатора нужны права (licenses.inc).
 //  Рабочие машины водят только работники этой профессии; бак у них всегда
@@ -94,10 +98,16 @@
 #define MECH_FUEL_PRICE     150
 #define MECH_CALL_PAY       100         // вызов диспетчера
 
-// Стаж
-#define JOB_SKILL_STEP      20          // каждые 20 заданий...
+// Уровни профессии
+#define JOB_TYPES           (JOB_GARBAGE + 1)
+#define JOB_LEVELS          5
+#define JOB_PREMIUM_LEVEL   3           // с «Опытного» бывает двойная оплата
+#define JOB_PREMIUM_CHANCE  10          // %
 #define JOB_MAX_SPEED       70.0        // м/с по прямой до точки задания; быстрее не доехать — значит телепорт
-#define JOB_SKILL_MAX_BONUS 50          // ...+5% к оплате, максимум +50%
+static const gJobLvlNeed[JOB_LEVELS]  = { 0, 25, 75, 175, 350 };          // стаж (заданий) для уровня
+static const gJobLvlBonus[JOB_LEVELS] = { 0, 10, 20, 35, 50 };            // надбавка к оплате, %
+static const gJobLvlPrize[JOB_LEVELS] = { 0, 1000, 2500, 5000, 10000 };   // премия при получении уровня, $
+static const gJobLvlName[JOB_LEVELS][] = { "Новичок", "Работник", "Опытный", "Мастер", "Профи" };
 
 #define JOB_OBJECT_SLOT     9           // слот прикреплённого объекта (ящик)
 
@@ -158,7 +168,8 @@ static gPizzaTarget[MAX_PLAYERS];
 static gJobTarget[MAX_PLAYERS];                 // номер точки задания
 static Float:gJobFromX[MAX_PLAYERS];            // откуда начался рейс (для оплаты по расстоянию)
 static Float:gJobFromY[MAX_PLAYERS];
-static gJobExp[MAX_PLAYERS];                    // стаж (accounts.job_exp)
+static gJobExp[MAX_PLAYERS];                    // стаж на текущей работе (accounts.job_exp)
+static gJobExps[MAX_PLAYERS][JOB_TYPES];        // стаж по всем профессиям (accounts.job_exps)
 static gJobCpTick[MAX_PLAYERS];                 // когда поставлена текущая точка задания (GetTickCount)
 static Float:gJobCpDist[MAX_PLAYERS];           // сколько метров до неё было в тот момент
 static gVehJob[MAX_VEHICLES];                   // рабочая машина какой профессии (JOB_*)
@@ -200,6 +211,7 @@ static Jobs_AddHQ(job, Float:x, Float:y, Float:z, const title[], const hint[])
 stock Jobs_Init()
 {
 	DB_AddColumn("accounts", "job_exp", "INTEGER DEFAULT 0");
+	DB_AddColumn("accounts", "job_exps", "TEXT DEFAULT ''");
 
 	Jobs_AddHQ(JOB_LOADER, LOADER_JOB_X, LOADER_JOB_Y, LOADER_JOB_Z, "Грузчик", "/work — начать смену");
 	Jobs_AddHQ(JOB_PIZZA, PIZZA_JOB_X, PIZZA_JOB_Y, PIZZA_JOB_Z, "Развозчик пиццы", "Сядь на мопед и введи /work");
@@ -260,36 +272,120 @@ stock Jobs_LoadPlayer(playerid)
 	gTaxiPaidBy[playerid] = INVALID_PLAYER_ID;
 	gTaxiCaller[playerid] = INVALID_PLAYER_ID;
 	gMechOfferFrom[playerid] = INVALID_PLAYER_ID;
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT job_exp FROM accounts WHERE id = %d", Player[playerid][pDbId]);
+	for (new j = 0; j < JOB_TYPES; j++) gJobExps[playerid][j] = 0;
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT job_exp, job_exps FROM accounts WHERE id = %d", Player[playerid][pDbId]);
 	if (r == DBResult:0) return;
-	if (DB_GetRowCount(r) > 0) gJobExp[playerid] = DB_GetFieldInt(r, 0);
+	new list[128];
+	if (DB_GetRowCount(r) > 0)
+	{
+		gJobExp[playerid] = DB_GetFieldInt(r, 0);
+		DB_GetFieldString(r, 1, list, sizeof list);
+	}
 	DB_FreeResultSet(r);
+	// "a,b,c,..." по номерам JOB_*
+	new j = 0, val = 0, bool:any = false;
+	for (new i = 0; j < JOB_TYPES; i++)
+	{
+		new c = list[i];
+		if (c >= '0' && c <= '9') { val = val * 10 + (c - '0'); any = true; continue; }
+		if (any) gJobExps[playerid][j] = val;
+		if (c == '\0') break;
+		val = 0; any = false; j++;
+	}
+	// Старые аккаунты: стаж был только у текущей работы
+	new job = Player[playerid][pJob];
+	if (job > JOB_NONE && job < JOB_TYPES)
+	{
+		if (gJobExps[playerid][job] < gJobExp[playerid]) gJobExps[playerid][job] = gJobExp[playerid];
+		gJobExp[playerid] = gJobExps[playerid][job];
+	}
+	else gJobExp[playerid] = 0;
 }
 
 static Jobs_SaveExp(playerid)
 {
 	if (Player[playerid][pDbId] == 0) return;
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET job_exp = %d WHERE id = %d", gJobExp[playerid], Player[playerid][pDbId]));
+	new job = Player[playerid][pJob];
+	if (job > JOB_NONE && job < JOB_TYPES) gJobExps[playerid][job] = gJobExp[playerid];
+	new list[128], part[12];
+	for (new j = 0; j < JOB_TYPES; j++)
+	{
+		format(part, sizeof part, "%s%d", j ? "," : "", gJobExps[playerid][j]);
+		strcat(list, part);
+	}
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE accounts SET job_exp = %d, job_exps = '%s' WHERE id = %d", gJobExp[playerid], list, Player[playerid][pDbId]));
 }
+
+// Уровень профессии по стажу (0..JOB_LEVELS-1)
+stock Job_LevelOf(exp)
+{
+	for (new l = JOB_LEVELS - 1; l > 0; l--) if (exp >= gJobLvlNeed[l]) return l;
+	return 0;
+}
+
+stock Job_GetLevel(playerid) { return Job_LevelOf(gJobExp[playerid]); }
 
 stock Job_GetBonus(playerid)
 {
-	new bonus = (gJobExp[playerid] / JOB_SKILL_STEP) * 5;
-	if (bonus > JOB_SKILL_MAX_BONUS) bonus = JOB_SKILL_MAX_BONUS;
-	return bonus;
+	return gJobLvlBonus[Job_GetLevel(playerid)];
 }
 
-// Заплатить за выполненное задание с учётом стажа. Возвращает сумму.
+// Заплатить за выполненное задание с учётом уровня профессии. Возвращает сумму.
 stock Job_Pay(playerid, base)
 {
-	new pay = base + base * Job_GetBonus(playerid) / 100;
+	new lvl = Job_GetLevel(playerid);
+	new pay = base + base * gJobLvlBonus[lvl] / 100;
+	if (lvl + 1 >= JOB_PREMIUM_LEVEL && random(100) < JOB_PREMIUM_CHANCE)
+	{
+		pay *= 2;
+		SendClientMessage(playerid, COLOR_GREEN, "[Работа] Клиент доволен: двойная оплата, $%d.", pay);
+	}
 	GiveMoney(playerid, pay);
 	gJobExp[playerid]++;
 	Jobs_SaveExp(playerid);
 	Quest_OnJobTask(playerid);          // квест новичка (quest.inc)
-	if (gJobExp[playerid] % JOB_SKILL_STEP == 0 && Job_GetBonus(playerid) <= JOB_SKILL_MAX_BONUS)
-		SendClientMessage(playerid, COLOR_GREEN, "Стаж растёт: %d заданий. Надбавка к оплате теперь %d%%.", gJobExp[playerid], Job_GetBonus(playerid));
+	Daily_OnJobTask(playerid, pay);     // ежедневные задания (daily.inc)
+	new now = Job_GetLevel(playerid);
+	if (now > lvl)
+	{
+		GiveMoney(playerid, gJobLvlPrize[now], "работа: новый уровень профессии");
+		PlayerPlaySound(playerid, 1183, 0.0, 0.0, 0.0);
+		GameTextForPlayer(playerid, "~y~Job level up~n~~w~%d/%d", 4000, 1, now + 1, JOB_LEVELS);
+		SendClientMessage(playerid, COLOR_GREEN, "[Работа] Новый уровень профессии «%s»: %s (%d/%d). Надбавка к оплате +%d%%, премия $%d.",
+			Job_GetName(Player[playerid][pJob]), gJobLvlName[now], now + 1, JOB_LEVELS, gJobLvlBonus[now], gJobLvlPrize[now]);
+		if (now + 1 == JOB_PREMIUM_LEVEL)
+			SendClientMessage(playerid, COLOR_GREEN, "[Работа] Теперь иногда (%d%%) за задание будут платить вдвое.", JOB_PREMIUM_CHANCE);
+	}
 	return pay;
+}
+
+// Строка «Работник (2/5), до следующего 12 заданий»
+static Job_LevelText(dest[], size, exp)
+{
+	new l = Job_LevelOf(exp);
+	if (l + 1 < JOB_LEVELS)
+		format(dest, size, "%s (%d/%d), стаж %d, до уровня «%s» ещё %d", gJobLvlName[l], l + 1, JOB_LEVELS, exp, gJobLvlName[l + 1], gJobLvlNeed[l + 1] - exp);
+	else
+		format(dest, size, "%s (%d/%d), стаж %d — максимум", gJobLvlName[l], l + 1, JOB_LEVELS, exp);
+}
+
+// /jobstat — уровни всех профессий
+stock bool:Cmd_JobStat(playerid)
+{
+	new text[1600], line[160], lt[100];
+	strcat(text, "Профессия\tУровень\tНадбавка\n");
+	for (new j = JOB_LOADER; j < JOB_TYPES; j++)
+	{
+		new exp = (j == Player[playerid][pJob]) ? gJobExp[playerid] : gJobExps[playerid][j];
+		new l = Job_LevelOf(exp);
+		if (l + 1 < JOB_LEVELS) format(lt, sizeof lt, "%s %d/%d · стаж %d/%d", gJobLvlName[l], l + 1, JOB_LEVELS, exp, gJobLvlNeed[l + 1]);
+		else format(lt, sizeof lt, "%s %d/%d · стаж %d", gJobLvlName[l], l + 1, JOB_LEVELS, exp);
+		format(line, sizeof line, "%s%s\t%s%s\t+%d%%\n", (j == Player[playerid][pJob]) ? "{FF9900}" : "{FFFFFF}", Job_GetName(j),
+			exp > 0 ? "{FFFFFF}" : "{AAAAAA}", lt, gJobLvlBonus[l]);
+		strcat(text, line);
+	}
+	ShowPlayerDialog(playerid, DIALOG_JOB_STAT, DIALOG_STYLE_TABLIST_HEADERS, "Уровни профессий", "%s", "Закрыть", "", text);
+	return true;
 }
 
 static Float:Jobs_Distance(Float:x1, Float:y1, Float:x2, Float:y2)
@@ -430,8 +526,9 @@ static Job_Desc(job)
 static Jobs_Hire(playerid, job)
 {
 	Job_Stop(playerid);
+	Jobs_SaveExp(playerid);                 // стаж старой работы — в её ячейку
 	Player[playerid][pJob] = job;
-	gJobExp[playerid] = 0;
+	gJobExp[playerid] = (job > JOB_NONE && job < JOB_TYPES) ? gJobExps[playerid][job] : 0;
 	Jobs_SaveExp(playerid);
 	Account_Save(playerid);
 	SendClientMessage(playerid, COLOR_GREEN, "Ты устроился на работу: %s. Начать смену: /work", Job_GetName(job));
@@ -452,10 +549,11 @@ stock bool:Cmd_GetJob(playerid)
 
 	// Окно устройства на работу со значком работы (ui/jobs), само устройство — в Jobs_OnDialog
 	gHireJob[playerid] = job;
-	new text[512], cur[80];
-	if (Player[playerid][pJob] != JOB_NONE) format(cur, sizeof cur, "\n{FF6347}Сейчас работаешь: %s, стаж обнулится.", Job_GetName(Player[playerid][pJob]));
-	format(text, sizeof text, "{FFFFFF}Работа: {FF9900}%s\n\n{FFFFFF}%s\n\n{AAAAAA}Стаж: каждые %d заданий +5%% к оплате (до +%d%%).%s\n\n{FFFFFF}Устроиться?",
-		Job_GetName(job), Job_Desc(job), JOB_SKILL_STEP, JOB_SKILL_MAX_BONUS, cur);
+	new text[640], cur[100], lt[120];
+	if (Player[playerid][pJob] != JOB_NONE) format(cur, sizeof cur, "\n{AAAAAA}Сейчас работаешь: %s. Уровень там сохранится.", Job_GetName(Player[playerid][pJob]));
+	Job_LevelText(lt, sizeof lt, (job < JOB_TYPES) ? gJobExps[playerid][job] : 0);
+	format(text, sizeof text, "{FFFFFF}Работа: {FF9900}%s\n\n{FFFFFF}%s\n\n{FFFFFF}Твой уровень: {FFFF00}%s\n{AAAAAA}Уровни: %s > %s > %s > %s > %s. Надбавка до +%d%%, премии за уровень.%s\n\n{FFFFFF}Устроиться?",
+		Job_GetName(job), Job_Desc(job), lt, gJobLvlName[0], gJobLvlName[1], gJobLvlName[2], gJobLvlName[3], gJobLvlName[4], gJobLvlBonus[JOB_LEVELS - 1], cur);
 	ShowPlayerDialog(playerid, DIALOG_JOB_HIRE, DIALOG_STYLE_MSGBOX, Job_IconCaption(job, "Устройство на работу"), "%s", "Устроиться", "Отмена", text);
 	return true;
 }
@@ -464,6 +562,7 @@ stock bool:Cmd_QuitJob(playerid)
 {
 	if (Player[playerid][pJob] == JOB_NONE) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет работы.");
 	Job_Stop(playerid);
+	Jobs_SaveExp(playerid);                 // стаж остаётся в ячейке этой профессии
 	Player[playerid][pJob] = JOB_NONE;
 	gJobExp[playerid] = 0;
 	Jobs_SaveExp(playerid);

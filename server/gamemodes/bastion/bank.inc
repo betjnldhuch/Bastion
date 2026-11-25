@@ -594,6 +594,7 @@ stock Bank_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			Account_Save(playerid);
 			SendClientMessage(playerid, COLOR_GREEN, "Ты положил $%d. На счёте: $%d.", amount, Player[playerid][pBank]);
 			Quest_OnDeposit(playerid);      // квест новичка (quest.inc)
+			Daily_OnDeposit(playerid, amount);  // ежедневные задания (daily.inc)
 		}
 		case DIALOG_BANK_WITHDRAW:
 		{

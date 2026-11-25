@@ -538,6 +538,29 @@ button { font: inherit; cursor: pointer; }
   .qs-meta { margin-bottom: 8px; } .qs-links { margin-top: 6px; }
 }
 .qs-ask { padding: 12px; border-radius: 10px; border: 1px solid rgba(229,72,77,.35); background: rgba(229,72,77,.08); margin-bottom: 10px; font-size: 14px; }
+/* Ежедневные задания (daily.inc): карточки заданий ui/daily/<key>.png, серия дней, бонус */
+.dl-streak { display: flex; gap: 6px; margin: 4px 0 12px; }
+.dl-streak i { flex: 1; height: 30px; border-radius: 8px; background: var(--well); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center;
+  font-style: normal; font-size: 12px; color: var(--muted); }
+.dl-streak i.on { background: linear-gradient(135deg, var(--accent-dark), var(--accent)); color: #fff; border-color: transparent; }
+.dl-streak i.today { border-color: var(--accent); color: var(--text); }
+.dl-streak i.coin-day::after { content: ' 🪙'; }
+.dl-task { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--well); margin-bottom: 8px; }
+.dl-task .qs-ico { width: 48px; height: 48px; font-size: 30px; }
+.dl-task .b { flex: 1; min-width: 0; }
+.dl-task .t { font-weight: 600; font-size: 14px; }
+.dl-task .h { color: var(--muted); font-size: 12px; margin: 2px 0 6px; }
+.dl-task .qs-bar { margin: 0; height: 6px; }
+.dl-task .r { text-align: right; font-size: 13px; color: var(--gold); font-weight: 600; white-space: nowrap; }
+.dl-task .r small { display: block; color: var(--muted); font-weight: 400; }
+.dl-task .r a { display: block; margin-top: 4px; color: var(--muted); font-weight: 400; font-size: 12px; text-decoration: underline; cursor: pointer; }
+.dl-task.done { opacity: .65; } .dl-task.done .r { color: var(--green); }
+.dl-bonus { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-radius: 12px; margin: 4px 0 12px;
+  background: linear-gradient(135deg, rgba(255,201,64,.16), rgba(255,201,64,.04)); border: 1px solid rgba(255,201,64,.35); font-size: 14px; }
+.dl-bonus b { font-family: "Russo One", sans-serif; font-weight: 400; color: var(--gold); font-size: 17px; }
+.dl-bonus.got b { color: var(--green); }
+@media (max-height: 520px) { .dl-task { padding: 5px 10px; margin-bottom: 5px; } .dl-task .h, .dl-streak, .dl-bonus small { display: none; } .dl-task .qs-ico { width: 32px; height: 32px; font-size: 22px; }
+  .dl-task .r a { display: inline; margin: 0 0 0 6px; } .dl-task .r small { display: inline; margin-left: 6px; } .dl-bonus { padding: 6px 12px; margin: 2px 0 6px; } .dl-bonus br { display: none; } }
 </style>
 </head>
 <body>
@@ -1592,6 +1615,49 @@ function vipImg(level, cls) {
       document.getElementById('qskip').onclick = function () { ask('Пропустить «' + esc(plain(st[1])) + '»? Награду за него ты не получишь.', 1, 'Пропустить'); };
       document.getElementById('qquit').onclick = function () { ask('Отказаться от всех заданий? Вернуться к квесту будет нельзя.', 2, 'Отказаться'); };
       keyHandler = function (e) { if (e.key === 'Escape') close(); else if (e.key === 'Enter') respond(1, 0, ''); };
+    },
+    // Ежедневные задания (daily.inc). d.tasks: [ключ, название, подсказка, прогресс, нужно, награда, выполнено].
+    // Ответ (стиль LIST): 1/(10+i) — заменить задание i; 0 — закрыть.
+    daily: function (d, m) {
+      var DL_EMO = { job: '📦', money: '💵', payday: '💰', food: '🍔', bank: '🏦', fuel: '⛽', shop: '🛍️' };
+      function money(n) { return '$' + String(n | 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+      function ico(k) {
+        var e = DL_EMO[k] || '⭐';
+        return '<span class="qs-ico"><img src="daily/' + esc(k) + '.png" alt="" draggable="false" onerror="this.parentNode.replaceChild(document.createTextNode(\'' + e + '\'), this)"></span>';
+      }
+      var tasks = d.tasks || [], max = d.max | 0 || 7, done = 0;
+      var list = tasks.map(function (t, i) {
+        var ok = (t[6] | 0) === 1, need = t[4] | 0 || 1, pr = Math.min(t[3] | 0, need), pct = Math.round(pr * 100 / need);
+        if (ok) done++;
+        var cnt = (t[0] === 'money' || t[0] === 'bank' || t[0] === 'shop') ? money(pr) + ' / ' + money(need) : pr + ' / ' + need;
+        return '<div class="dl-task' + (ok ? ' done' : '') + '">' + ico(t[0]) + '<div class="b"><div class="t">' + esc(plain(t[1])) + '</div>' +
+          '<div class="h">' + esc(plain(t[2])) + '</div><div class="qs-bar"><i style="width:' + pct + '%"></i></div></div>' +
+          '<div class="r">' + (ok ? '✓ ' : '') + money(t[5]) + '<small>' + (ok ? 'готово' : cnt) + '</small>' +
+          (!ok && d.swap ? '<a data-i="' + i + '">заменить</a>' : '') + '</div></div>';
+      }).join('');
+      var cur = d.got ? (d.streak | 0) : (d.next | 0) - 1, days = '';
+      for (var i = 1; i <= max; i++) {
+        var on = i <= cur, today = !d.got && i === (d.next | 0);
+        days += '<i class="' + (on ? 'on' : '') + (today ? ' today' : '') + (i === max ? ' coin-day' : '') + '">' + i + '</i>';
+      }
+      root.innerHTML = '<div class="card wide">' + closeBtn() + '<div class="brand">BASTION ONLINE · КАЖДЫЙ ДЕНЬ</div><h1>Ежедневные задания</h1>' +
+        '<div class="qs-meta"><span>Выполнено ' + done + ' из ' + tasks.length + '</span><span>Новые через <b>' + esc(d.left) + '</b></span></div>' +
+        list +
+        '<div class="dl-bonus' + (d.got ? ' got' : '') + '"><span>' + (d.got ? 'Бонус дня получен' : 'Бонус за все задания') + '<br><small class="sub">Серия ' + (d.got ? d.streak : Math.max(0, (d.next | 0) - 1)) + ' дн. · на ' + max + '-й день +' + (d.coins | 0) + ' монет</small></span><b>' + (d.got ? '✓ ' : '') + money(d.bonus) + '</b></div>' +
+        '<div class="dl-streak">' + days + '</div>' +
+        '<div id="qa"></div><div class="row" id="qr"><button class="btn primary" id="b1">' + esc(m.button1 || 'Понятно') + '</button></div></div>';
+      function close() { respond(0, -1, ''); }
+      document.getElementById('x').onclick = document.getElementById('b1').onclick = close;
+      Array.prototype.forEach.call(root.querySelectorAll('.dl-task a[data-i]'), function (a) {
+        a.onclick = function () {
+          var i = a.getAttribute('data-i') | 0;
+          document.getElementById('qa').innerHTML = '<div class="qs-ask">Заменить «' + esc(plain(tasks[i][1])) + '» на другое задание за ' + money(d.swapPrice) + '? Менять можно одно задание в день.</div>';
+          document.getElementById('qr').innerHTML = '<button class="btn" id="qn">Отмена</button><button class="btn primary" id="qy">Заменить</button>';
+          document.getElementById('qn').onclick = function () { WINDOWS.daily(d, m); };
+          document.getElementById('qy').onclick = function () { respond(1, 10 + i, ''); };
+        };
+      });
+      keyHandler = function (e) { if (e.key === 'Escape' || e.key === 'Enter') close(); };
     },
     // Запасное окно: заголовок + текст + кнопки
     message: function (d, m) {
