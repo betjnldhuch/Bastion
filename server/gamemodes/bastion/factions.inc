@@ -47,15 +47,15 @@
 #define FACTION_VEH_RESPAWN     300     // через сколько секунд брошенная машина фракции вернётся
 #define FACTION_BASE_RANGE      10.0    // как близко к раздевалке работают /fbank и /fstorage
 
-#define FACTION_STATE_BUDGET    15000   // в общак полиции и больницы каждый PayDay
-#define FACTION_TURF_BANK       300     // в общак банды за каждый её район каждый PayDay
+#define FACTION_STATE_BUDGET    Cfg(CFG_FSTATE_BUDGET) // в общак полиции и больницы каждый PayDay (по умолчанию 15000, /srvset)
+#define FACTION_TURF_BANK       Cfg(CFG_TURF_BANK) // в общак банды за каждый её район каждый PayDay (по умолчанию 300, /srvset)
 #define FACTION_START_BANK      30000   // стартовый общак госструктур (только при первом запуске)
 #define FACTION_BANK_MAX        100000000
 #define FACTION_MAX_WARNS       3       // столько выговоров — и игрок уволен
 #define FACTION_BL_SHOW         8       // сколько записей ЧС показывать в /blacklist
-#define FACTION_MAX_SALARY      20000   // максимальная зарплата ранга, которую может поставить лидер
+#define FACTION_MAX_SALARY      Cfg(CFG_FMAX_SALARY) // максимальная зарплата ранга, которую может поставить лидер (по умолчанию 20000, /srvset)
 // Общак полиции и больницы пополняет штат (FACTION_STATE_BUDGET), это не личные деньги лидера:
-#define FACTION_STATE_MAX_SALARY 3000   // потолок зарплаты ранга в госструктуре
+#define FACTION_STATE_MAX_SALARY Cfg(CFG_FSTATE_MAX_SALARY) // потолок зарплаты ранга в госструктуре (по умолчанию 3000, /srvset)
 #define FACTION_STATE_WITHDRAW  0       // может ли лидер госструктуры снимать общак наличными
 #define FACTION_LOG_SHOW        25      // сколько последних записей журнала показывать
 #define FACTION_LIST_MAX        40      // сколько членов фракции показывать в /lmenu
@@ -80,19 +80,20 @@ enum
 	FTYPE_ARMY,         // армия: возит материалы
 	FTYPE_PRISON,       // охрана тюрьмы (prison.inc)
 	FTYPE_FBI,          // спецслужба: права полиции + спецсредства ФБР (fbi.inc), смена в штатском
-	FTYPE_GOV           // правительство: бюджет штата, /gov — объявления, лидер меняет налоги (/settax)
+	FTYPE_GOV,          // правительство: бюджет штата, /gov — объявления, лидер меняет налоги (/settax)
+	FTYPE_FIRE          // пожарные: тушат пожары (fire.inc)
 }
 
 // Материалы: армия возит их с базы снабжения на свой склад, а оттуда — госструктурам
 #define SUPPLY_REF              200     // ref маркеров точек снабжения (MK_FACTION): 200 + SP_*
 #define SUPPLY_RANGE            15.0    // как близко подъехать к заводу или складу
 #define SUPPLY_TRUCK_CAP        1000    // сколько материалов входит в одну машину армии
-#define SUPPLY_PAY_HAUL         30      // водителю за каждые 100 материалов, привезённых с завода на склад армии
-#define SUPPLY_PAY_DELIVER      50      // водителю за каждые 100 материалов, доставленных другой фракции
+#define SUPPLY_PAY_HAUL         Cfg(CFG_SUPPLY_HAUL) // водителю за каждые 100 материалов, привезённых с завода на склад армии (по умолчанию 30, /srvset)
+#define SUPPLY_PAY_DELIVER      Cfg(CFG_SUPPLY_DELIVER) // водителю за каждые 100 материалов, доставленных другой фракции (по умолчанию 50, /srvset)
 // Расчёт: смена бойца (бронежилет + Desert Eagle + MP5) = 110 материалов; 10 активных бойцов по два
 // комплекта в час тратят около 2200. Один рабочий делает ящик (50) примерно за 40 секунд, то есть
 // около 4500 в час: одного-двух рабочих хватает на все госструктуры. Цифры завода — в конце файла.
-#define STEAL_MIN_ARMY          2       // склад грабят, только когда в сети столько военных
+#define STEAL_MIN_ARMY          Cfg(CFG_STEAL_MIN_ARMY) // склад грабят, только когда в сети столько военных (по умолчанию 2, /srvset)
 #define BM_RANGE                4.0     // как близко подойти к торговцу чёрного рынка
 #define BM_SKIN                 28      // скин торговца
 #define BM_MAT_PRICE            2       // сколько торговец платит за 1 материал (меняется: /bmprice 0)
@@ -214,7 +215,7 @@ static const gFactionDefSkin[FACTION_BUILTIN][MAX_RANK] =
 };
 
 // Названия рангов: 0 — полиция, 1 — медики, 2 — банды, 3 — ФБР, 4 — армия, 5 — гос. организация
-static const gDefRankNames[7][MAX_RANK][24] =
+static const gDefRankNames[8][MAX_RANK][24] =
 {
 	{ "Кадет", "Офицер", "Сержант", "Лейтенант", "Ст. лейтенант", "Капитан", "Майор", "Подполковник", "Зам. шефа", "Шеф полиции" },
 	{ "Интерн", "Фельдшер", "Врач", "Хирург", "Ст. хирург", "Зав. отделением", "Нач. смены", "Консультант", "Зам. главврача", "Главврач" },
@@ -222,7 +223,8 @@ static const gDefRankNames[7][MAX_RANK][24] =
 	{ "Стажёр", "Мл. агент", "Агент", "Ст. агент", "Спец. агент", "Ст. спец. агент", "Нач. отдела", "Инспектор", "Зам. директора", "Директор ФБР" },
 	{ "Рядовой", "Ефрейтор", "Сержант", "Ст. сержант", "Прапорщик", "Лейтенант", "Капитан", "Майор", "Полковник", "Генерал" },
 	{ "Стажёр", "Мл. сотрудник", "Сотрудник", "Ст. сотрудник", "Специалист", "Вед. специалист", "Нач. отдела", "Советник", "Заместитель", "Руководитель" },
-	{ "Курсант", "Мл. надзиратель", "Надзиратель", "Ст. надзиратель", "Нач. смены", "Нач. блока", "Нач. охраны", "Зам. начальника", "Заместитель", "Начальник тюрьмы" }
+	{ "Курсант", "Мл. надзиратель", "Надзиратель", "Ст. надзиратель", "Нач. смены", "Нач. блока", "Нач. охраны", "Зам. начальника", "Заместитель", "Начальник тюрьмы" },
+	{ "Курсант", "Пожарный", "Ст. пожарный", "Командир отделения", "Пом. нач. караула", "Нач. караула", "Нач. части", "Нач. отряда", "Зам. начальника", "Начальник пожарных" }
 };
 
 // Базы по умолчанию: спавн (x, y, z, угол) и раздевалка /duty (x, y, z).
@@ -319,6 +321,16 @@ new bool:gStealing[MAX_PLAYERS];    // стоит на складе армии и крадёт материалы
 new gStealTotal[MAX_PLAYERS];       // сколько украл за этот заход
 new gCrate[MAX_PLAYERS];            // ящик в руках: 0 — нет, 1 — только что сделан на заводе, 2 — взят со склада
 #define CRATE_MATS              50      // материалов в одном ящике
+// Откуда пожар (fire.inc)
+enum
+{
+	FIRE_SRC_NONE,
+	FIRE_SRC_FACTORY,       // ref — номер завода в массиве
+	FIRE_SRC_BIZ,           // ref — номер бизнеса в массиве
+	FIRE_SRC_ADMIN
+}
+forward bool:Faction_IsFire(f);    // fire.inc
+
 // Что делает завод. Номер хранится в базе: новые — только в конец.
 enum
 {
@@ -416,6 +428,7 @@ stock Faction_RankSet(f)
 		case FTYPE_ARMY: return 4;
 		case FTYPE_CIVIL: return 5;
 		case FTYPE_PRISON: return 6;
+		case FTYPE_FIRE: return 7;
 	}
 	return 2;
 }
@@ -1028,7 +1041,7 @@ stock Factions_Init()
 		for (new i = 0; i < trows; i++)
 		{
 			new f = DB_GetFieldInt(tr, 0), type = DB_GetFieldInt(tr, 1);
-			if (f >= FACTION_BUILTIN && f < MAX_FACTIONS && type >= FTYPE_LAW && type <= FTYPE_GOV && type != FTYPE_ARMY) Faction[f][fType] = type;
+			if (f >= FACTION_BUILTIN && f < MAX_FACTIONS && type >= FTYPE_LAW && type <= FTYPE_FIRE && type != FTYPE_ARMY) Faction[f][fType] = type;
 			DB_SelectNextRow(tr);
 		}
 		DB_FreeResultSet(tr);
@@ -1554,6 +1567,11 @@ stock bool:Cmd_Duty(playerid, bool:plain = false)
 	// Оружие и броню на смене не выдаём: их берут со склада фракции (/fstorage).
 	// Силовикам остаётся только дубинка.
 	if (Faction_IsLaw(f)) GivePlayerWeapon(playerid, WEAPON_NITESTICK, 1);
+	if (Faction_IsFire(f))
+	{
+		GivePlayerWeapon(playerid, WEAPON:42, 5000);
+		SendClientMessage(playerid, COLOR_WHITE, "Огнетушитель выдан. Где горит: /fires. Тушить: зажми огонь и смотри на очаг.");
+	}
 	Faction_UpdateColor(playerid);
 	format(msg, sizeof msg, "%s переодевается в форму.", GetRPName(playerid));
 	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
@@ -3027,22 +3045,22 @@ stock bool:Cmd_FIntLock(playerid, const params[])
 //  Дальше фракция настраивается как обычная: /setfspawn, /setfduty, /setfint,
 //  /addfcar, /fcolor, /fedit, /makeleader; ранги, скины и зарплаты — лидер в /lmenu.
 // =====================================================================
-static const gFTypeName[9][24] =
+static const gFTypeName[10][24] =
 {
-	"нет", "силовая структура", "медики", "банда", "гос. организация", "армия", "тюрьма", "спецслужба", "правительство"
+	"нет", "силовая структура", "медики", "банда", "гос. организация", "армия", "тюрьма", "спецслужба", "правительство", "пожарные"
 };
-static const gFTypeColor[9] = { 0xFFFFFFFF, 0x3A6EFFFF, 0xFF8080FF, 0xE0A030FF, 0xC8C8C8FF, 0x6B8E23FF, 0xD2691EFF, 0x2F4F7FFF, 0xE8E8E8FF };
-static const gFTypeSkin[9]  = { 0, 280, 274, 21, 17, 287, 71, 286, 147 };
+static const gFTypeColor[10] = { 0xFFFFFFFF, 0x3A6EFFFF, 0xFF8080FF, 0xE0A030FF, 0xC8C8C8FF, 0x6B8E23FF, 0xD2691EFF, 0x2F4F7FFF, 0xE8E8E8FF, 0xD2301EFF };
+static const gFTypeSkin[10]  = { 0, 280, 274, 21, 17, 287, 71, 286, 147, 277 };
 
 stock bool:Cmd_CreateFaction(playerid, const params[])
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new pos = 0, type, name[32];
-	if (!NextIntParam(params, pos, type) || type < FTYPE_LAW || type > FTYPE_GOV || type == FTYPE_ARMY || !RestParam(params, pos, name))
+	if (!NextIntParam(params, pos, type) || type < FTYPE_LAW || type > FTYPE_FIRE || type == FTYPE_ARMY || !RestParam(params, pos, name))
 	{
 		SendClientMessage(playerid, COLOR_GREY, "Использование: /createfaction [тип] [название]");
 		SendClientMessage(playerid, COLOR_GREY, "Типы: 1 — силовая (права полиции), 2 — медики, 3 — банда, 4 — гос. организация без особых прав, 6 — тюрьма (охрана),");
-		SendClientMessage(playerid, COLOR_GREY, "7 — спецслужба (как ФБР: маскировка, прослушка, слежка, штатское), 8 — правительство (/gov, налоги). Сменить тип: /setftype");
+		SendClientMessage(playerid, COLOR_GREY, "7 — спецслужба (как ФБР: маскировка, прослушка, слежка, штатское), 8 — правительство (/gov, налоги), 9 — пожарные. Сменить тип: /setftype");
 		return true;
 	}
 	if (!Faction_IsGoodName(name, 2, 31)) return SendClientMessage(playerid, COLOR_GREY, "Название: от 2 до 31 символа, без фигурных скобок и знака процента.");
@@ -3226,9 +3244,11 @@ stock bool:Cmd_FList(playerid)
 //    водителю из кассы платят goods_pay за ящик. /contracts — кому нужен товар, /market — рынок.
 //    Закупка «из воздуха» в меню бизнеса дороже на biz_air% (bizplus.inc).
 //
-//  Саботаж: ранг из /orgs (по умолчанию лидер и заместитель) чужой фракции, которой это разрешено,
-//    жмёт ALT у станка (или /sabotage) и стоит fac_sab_time секунд. Владельцу сразу тревога.
-//    Получилось — завод стоит fac_sab_down минут. Все цифры: /srvset, права по фракциям: /orgs.
+//  Саботаж (поджог): ранг из /orgs (по умолчанию лидер и заместитель) чужой фракции, которой это
+//    разрешено, жмёт ALT на складе завода (или /sabotage) и стоит fac_sab_time секунд. Владельцу
+//    сразу тревога. Получилось — склад горит (fire.inc): завод стоит, ящики сгорают, пожарным тревога.
+//    Потушили — завод стоит fac_repair минут, догорел — fac_sab_down минут и склад пуст.
+//    Военные заводы тоже можно поджечь, если fac_sab_mil = 1. Все цифры: /srvset, права: /orgs.
 //
 //  Чёрный рынок: торговцы (/addbm, /delbm), ALT или /bm рядом. Цены: /bmprice.
 //  /d — общий чат госструктур, /gd — общий чат банд.
@@ -3471,14 +3491,14 @@ stock Factory_Label(i, p)
 			new line[48];
 			format(line, sizeof line, "\n{FFFFFF}Делает: %s", gProdName[Factory[i][fcProd]]);
 			strcat(text, line);
-			if (Factory_Sabotaged(i)) strcat(text, "\n{FF6347}Станок сломан (саботаж)");
+			if (Factory_Sabotaged(i)) strcat(text, (Factory_DownMinutes(i) == 0) ? ("\n{FF6347}ПОЖАР НА СКЛАДЕ") : ("\n{FF6347}Стоит после поджога"));
 			if (Factory[i][fcKind] == FKIND_MILITARY) strcat(text, "\n{AFAFAF}Военный завод");
 			else strcat(text, "\n{AFAFAF}ALT — меню / захват");
 		}
 		case FP_RAW: strcat(text, "Сырьё\n{FFFFFF}ALT — взять");
 		case FP_BENCH:
 		{
-			if (Factory_Sabotaged(i)) strcat(text, "Станок\n{FF6347}Сломан: саботаж");
+			if (Factory_Sabotaged(i)) strcat(text, "Станок\n{FF6347}Не работает: поджог");
 			else strcat(text, "Станок\n{FFFFFF}ALT — сделать ящик");
 		}
 		default:
@@ -3773,7 +3793,42 @@ stock Cargo_IsBehind(playerid, v)
 // Станок сломан после саботажа
 stock Factory_Sabotaged(i)
 {
-	return (Factory[i][fcSabUntil] > gettime()) ? 1 : 0;
+	return (Factory[i][fcSabUntil] > gettime() || Fire_Find(FIRE_SRC_FACTORY, i) != -1) ? 1 : 0;
+}
+
+// Сколько минут ещё стоит (горит — 0)
+stock Factory_DownMinutes(i)
+{
+	new left = Factory[i][fcSabUntil] - gettime();
+	return (left > 0) ? (left / 60 + 1) : 0;
+}
+
+// Пожар на складе завода кончился (fire.inc)
+stock Factory_OnFireEnd(i, bool:putOut)
+{
+	if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed]) return;
+	new msg[144], owner = Factory[i][fcOwner];
+	Factory[i][fcSabUntil] = gettime() + (putOut ? Cfg(CFG_FAC_REPAIR) : Cfg(CFG_FAC_SAB_DOWN)) * 60;
+	if (!putOut) Factory[i][fcStock] = 0;
+	Factory_Save(i);
+	for (new p = 0; p < MAX_FPOINTS; p++) Factory_Label(i, p);
+	if (Factory[i][fcClosed]) Factory_BuildPoint(i, FP_STORE);
+	if (Faction_IsValid(owner))
+	{
+		if (putOut) format(msg, sizeof msg, "[Фракция] Пожар на заводе «%s» потушен. Ремонт: %d мин.", Factory[i][fcName], Cfg(CFG_FAC_REPAIR));
+		else format(msg, sizeof msg, "[Фракция] Склад завода «%s» сгорел. Завод стоит %d мин.", Factory[i][fcName], Cfg(CFG_FAC_SAB_DOWN));
+		Faction_Message(owner, COLOR_RED, msg);
+		Faction_Log(owner, msg[10]);
+	}
+}
+
+// Горит склад: пропадает ящик (fire.inc)
+stock Factory_FireLoss(i)
+{
+	if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed] || Factory[i][fcStock] < CRATE_MATS) return;
+	Factory[i][fcStock] -= CRATE_MATS;
+	Factory_Save(i);
+	Factory_Label(i, FP_STORE);
 }
 
 // Может ли игрок работать на заводе. Причину пишет, если не silent.
@@ -3784,7 +3839,11 @@ stock Factory_CanWork(playerid, i, bool:silent = false)
 	if (!Faction_IsValid(owner)) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "У завода нет владельца, он не работает."); return 0; }
 	if (Factory_Sabotaged(i))
 	{
-		if (!silent) SendClientMessage(playerid, COLOR_GREY, "Станок сломан после саботажа. Завод заработает через %d мин.", (Factory[i][fcSabUntil] - gettime()) / 60 + 1);
+		if (!silent)
+		{
+			if (Factory_DownMinutes(i) == 0) SendClientMessage(playerid, COLOR_GREY, "На заводе пожар! Работать нельзя, пока не потушат.");
+			else SendClientMessage(playerid, COLOR_GREY, "Завод восстанавливают после поджога. Заработает через %d мин.", Factory_DownMinutes(i));
+		}
 		return 0;
 	}
 	if (Factory[i][fcKind] == FKIND_MILITARY || !Faction_IsState(owner))
@@ -3906,7 +3965,11 @@ stock Factory_OwnerAlt(playerid, i)
 {
 	new owner = Factory[i][fcOwner], f = Player[playerid][pFaction], msg[144];
 	SendClientMessage(playerid, COLOR_WHITE, "Завод «%s» делает: %s. На складе ящиков: %d.", Factory[i][fcName], gProdName[Factory[i][fcProd]], Factory[i][fcStock] / CRATE_MATS);
-	if (Factory_Sabotaged(i)) SendClientMessage(playerid, COLOR_GREY, "Станок сломан после саботажа: ещё %d мин.", (Factory[i][fcSabUntil] - gettime()) / 60 + 1);
+	if (Factory_Sabotaged(i))
+	{
+		if (Factory_DownMinutes(i) == 0) SendClientMessage(playerid, COLOR_RED, "На складе завода пожар! Вызывайте пожарных.");
+		else SendClientMessage(playerid, COLOR_GREY, "Завод стоит после поджога: ещё %d мин.", Factory_DownMinutes(i));
+	}
 	if (!Faction_IsValid(f)) return;
 	if (f == owner)
 	{
@@ -4015,12 +4078,12 @@ stock Sabotage_Can(playerid, i, bool:silent)
 	new f = Player[playerid][pFaction], owner = Factory[i][fcOwner];
 	if (!Faction_IsValid(f) || !Org_FcCanSabotage(f)) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Ваша организация не может саботировать заводы."); return 0; }
 	if (Player[playerid][pRank] < Org_FcSabRank(f)) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Саботаж — с ранга %d.", Org_FcSabRank(f)); return 0; }
-	if (Factory[i][fcKind] == FKIND_MILITARY) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Военный завод не саботировать."); return 0; }
+	if (Factory[i][fcKind] == FKIND_MILITARY && !Cfg(CFG_FAC_SAB_MIL)) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Военные заводы сейчас поджигать нельзя."); return 0; }
 	if (Factory[i][fcClosed] || !Faction_IsValid(owner)) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Завод и так не работает."); return 0; }
 	if (owner == f) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Это ваш завод."); return 0; }
 	if (Faction_IsState(f) && Faction_IsState(owner)) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Завод у государства. Госструктуры его не саботируют."); return 0; }
 	if (Faction_IsState(f) && !Player[playerid][pDuty]) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Сначала заступи на смену: /duty."); return 0; }
-	if (Factory_Sabotaged(i)) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Станок уже сломан."); return 0; }
+	if (Factory_Sabotaged(i)) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Завод и так стоит: горит или его восстанавливают."); return 0; }
 	new now = gettime(), pause = Cfg(CFG_FAC_SAB_PAUSE) * 60;
 	if (Factory[i][fcLastSab] != 0 && now - Factory[i][fcLastSab] < pause)
 	{
@@ -4035,23 +4098,23 @@ stock Sabotage_Ask(playerid, i)
 {
 	if (!Sabotage_Can(playerid, i, false)) return;
 	gFcSel[playerid] = i;
-	ShowPlayerDialog(playerid, DIALOG_FSAB, DIALOG_STYLE_MSGBOX, "Саботаж",
-		"{FFFFFF}Вывести из строя станок завода «%s» (%s)?\n\nНужно простоять у станка {FFFF00}%d сек{FFFFFF}. Владельцы сразу получат тревогу.\nПолучится — завод встанет на {FFFF00}%d мин{FFFFFF}.",
-		"Начать", "Отмена", Factory[i][fcName], Faction_GetName(Factory[i][fcOwner]), Cfg(CFG_FAC_SAB_TIME), Cfg(CFG_FAC_SAB_DOWN));
+	SendClientMessage(playerid, COLOR_YELLOW, "Поджог склада «%s» (%s): стоять %d сек, владельцы сразу получат тревогу. Не потушат за %d мин — склад сгорит, завод встанет на %d мин.",
+		Factory[i][fcName], Faction_GetName(Factory[i][fcOwner]), Cfg(CFG_FAC_SAB_TIME), Cfg(CFG_FIRE_BURN), Cfg(CFG_FAC_SAB_DOWN));
+	ShowPlayerDialog(playerid, DIALOG_FSAB, DIALOG_STYLE_LIST, "Склад завода", "{FF6347}Поджечь склад\n{FFFFFF}Взять ящик", "Выбрать", "Отмена");
 }
 
 stock Sabotage_Start(playerid, i)
 {
 	if (gSabFc[playerid] != -1) { SendClientMessage(playerid, COLOR_GREY, "Ты уже этим занят."); return; }
-	if (!Factory_At(playerid, i, FP_BENCH, 4.0) || GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) { SendClientMessage(playerid, COLOR_GREY, "Встань у станка."); return; }
+	if (!Factory_At(playerid, i, FP_STORE, 4.0) || GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) { SendClientMessage(playerid, COLOR_GREY, "Встань на склад завода."); return; }
 	if (!Sabotage_Can(playerid, i, false)) return;
 	gSabFc[playerid] = i;
 	gSabLeft[playerid] = Cfg(CFG_FAC_SAB_TIME);
 	Factory[i][fcSabBy] = playerid;
 	ApplyAnimation(playerid, "BOMBER", "BOM_Plant_Loop", 4.1, true, false, false, false, 0);
-	SendClientMessage(playerid, COLOR_YELLOW, "Саботаж начат. Стой у станка %d сек.", gSabLeft[playerid]);
+	SendClientMessage(playerid, COLOR_YELLOW, "Поджог начат. Стой на складе %d сек.", gSabLeft[playerid]);
 	new msg[144];
-	format(msg, sizeof msg, "[Тревога] На заводе «%s» кто-то ломает станок! Осталось %d сек.", Factory[i][fcName], gSabLeft[playerid]);
+	format(msg, sizeof msg, "[Тревога] На заводе «%s» кто-то поджигает склад! Осталось %d сек.", Factory[i][fcName], gSabLeft[playerid]);
 	Faction_Message(Factory[i][fcOwner], COLOR_RED, msg);
 }
 
@@ -4059,26 +4122,29 @@ stock Sabotage_Tick(playerid)
 {
 	new i = gSabFc[playerid];
 	if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed] || Factory[i][fcClosed]) { Sabotage_Stop(playerid); return; }
-	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT || Wound_IsWounded(playerid) || Player[playerid][pCuffed] || !Factory_At(playerid, i, FP_BENCH, 4.0))
+	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT || Wound_IsWounded(playerid) || Player[playerid][pCuffed] || !Factory_At(playerid, i, FP_STORE, 4.0))
 	{
 		Sabotage_Stop(playerid);
 		ClearAnimations(playerid);
-		SendClientMessage(playerid, COLOR_RED, "Саботаж сорван: ты отошёл от станка.");
+		SendClientMessage(playerid, COLOR_RED, "Поджог сорван: ты ушёл со склада.");
 		return;
 	}
 	gSabLeft[playerid]--;
 	if (gSabLeft[playerid] > 0)
 	{
 		new buf[48];
-		format(buf, sizeof buf, "~r~Sabotage~n~~w~%d s", gSabLeft[playerid]);
+		format(buf, sizeof buf, "~r~Arson~n~~w~%d s", gSabLeft[playerid]);
 		GameTextForPlayer(playerid, buf, 1100, 3);
 		return;
 	}
 	Sabotage_Stop(playerid);
 	ClearAnimations(playerid);
-	new now = gettime(), f = Player[playerid][pFaction], owner = Factory[i][fcOwner], msg[144];
-	Factory[i][fcSabUntil] = now + Cfg(CFG_FAC_SAB_DOWN) * 60;
+	new now = gettime(), f = Player[playerid][pFaction], owner = Factory[i][fcOwner], msg[144], fname[48];
 	Factory[i][fcLastSab] = now;
+	format(fname, sizeof fname, "склад завода «%s»", Factory[i][fcName]);
+	// склад загорается; если пожаров уже слишком много — завод просто встаёт
+	if (Fire_Start(FIRE_SRC_FACTORY, i, gFcX[i][FP_STORE], gFcY[i][FP_STORE], gFcZ[i][FP_STORE], fname) == -1)
+		Factory[i][fcSabUntil] = now + Cfg(CFG_FAC_SAB_DOWN) * 60;
 	Factory_Save(i);
 	for (new p = 0; p < MAX_FPOINTS; p++) Factory_Label(i, p);
 	// кто сейчас у станка — сырьё пропадает
@@ -4087,12 +4153,12 @@ stock Sabotage_Tick(playerid)
 		if (IsPlayerConnected(k) && gWorkFc[k] == i && gWorkStage[k] != 0) gWorkStage[k] = 0;
 	}
 	GameTextForPlayer(playerid, "~g~Done", 2500, 3);
-	format(msg, sizeof msg, "[Фракция] %s вывел из строя завод «%s» на %d мин.", GetRPName(playerid), Factory[i][fcName], Cfg(CFG_FAC_SAB_DOWN));
+	format(msg, sizeof msg, "[Фракция] %s поджёг склад завода «%s».", GetRPName(playerid), Factory[i][fcName]);
 	Faction_Message(f, Faction_GetColor(f), msg);
 	Faction_Log(f, msg[10]);
 	if (Faction_IsValid(owner))
 	{
-		format(msg, sizeof msg, "[Фракция] Завод «%s» саботирован (%s). Он стоит %d мин.", Factory[i][fcName], Faction_GetName(f), Cfg(CFG_FAC_SAB_DOWN));
+		format(msg, sizeof msg, "[Фракция] Склад завода «%s» горит (поджог: %s)! Пожарные уже едут, вывозите ящики.", Factory[i][fcName], Faction_GetName(f));
 		Faction_Message(owner, COLOR_RED, msg);
 		Faction_Log(owner, msg[10]);
 	}
@@ -4102,9 +4168,9 @@ stock bool:Cmd_Sabotage(playerid)
 {
 	for (new i = 0; i < MAX_FACTORIES; i++)
 	{
-		if (Factory[i][fcUsed] && Factory_At(playerid, i, FP_BENCH, 4.0)) { Sabotage_Ask(playerid, i); return true; }
+		if (Factory[i][fcUsed] && Factory_At(playerid, i, FP_STORE, 4.0)) { Sabotage_Ask(playerid, i); return true; }
 	}
-	return SendClientMessage(playerid, COLOR_GREY, "Саботаж делают у станка чужого завода.");
+	return SendClientMessage(playerid, COLOR_GREY, "Поджигают склад чужого завода: встань на него.");
 }
 
 // ---------------------------------------------------------------------
@@ -4294,14 +4360,14 @@ stock Factory_TryAlt(playerid)
 	{
 		if (!Factory[i][fcUsed]) continue;
 		if (Factory_At(playerid, i, FP_RAW, FACTORY_POINT_RANGE))   { Factory_TakeRaw(playerid, i); return 1; }
-		if (Factory_At(playerid, i, FP_BENCH, FACTORY_POINT_RANGE))
+		if (Factory_At(playerid, i, FP_BENCH, FACTORY_POINT_RANGE)) { Factory_UseBench(playerid, i); return 1; }
+		if (Factory_At(playerid, i, FP_STORE, FACTORY_POINT_RANGE))
 		{
-			// чужой лидер или заместитель, которому тут не работать, — саботаж
-			if (!Factory_CanWork(playerid, i, true) && Sabotage_Can(playerid, i, true)) Sabotage_Ask(playerid, i);
-			else Factory_UseBench(playerid, i);
+			// чужой лидер или заместитель — может поджечь склад
+			if (Sabotage_Can(playerid, i, true)) Sabotage_Ask(playerid, i);
+			else Factory_TakeCrate(playerid, i);
 			return 1;
 		}
-		if (Factory_At(playerid, i, FP_STORE, FACTORY_POINT_RANGE)) { Factory_TakeCrate(playerid, i); return 1; }
 		if (Factory_At(playerid, i, FP_OWNER, FACTORY_POINT_RANGE)) { Factory_OwnerAlt(playerid, i); return 1; }
 	}
 
@@ -4547,6 +4613,7 @@ stock Factory_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			if (!response) return 1;
 			new i = gFcSel[playerid];
 			if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed]) return 1;
+			if (listitem == 1) { if (Factory_At(playerid, i, FP_STORE, 4.0)) Factory_TakeCrate(playerid, i); return 1; }
 			Sabotage_Start(playerid, i);
 		}
 		case DIALOG_FTRANSFER:
@@ -5639,8 +5706,8 @@ stock bool:Cmd_SetFType(playerid, const params[])
 	if (!Admin_Check(playerid, ADMIN_MAX_LEVEL)) return true;
 	new pos = 0, f, type;
 	if (!NextIntParam(params, pos, f) || !NextIntParam(params, pos, type) || !Faction_IsValid(f) || f < FACTION_BUILTIN
-		|| type < FTYPE_LAW || type > FTYPE_GOV || type == FTYPE_ARMY)
-		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setftype [№ фракции 8+] [тип: 1 силовая, 2 медики, 3 банда, 4 гос., 6 тюрьма, 7 спецслужба, 8 правительство]");
+		|| type < FTYPE_LAW || type > FTYPE_FIRE || type == FTYPE_ARMY)
+		return SendClientMessage(playerid, COLOR_GREY, "Использование: /setftype [№ фракции 8+] [тип: 1 силовая, 2 медики, 3 банда, 4 гос., 6 тюрьма, 7 спецслужба, 8 правительство, 9 пожарные]");
 	for (new i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (IsPlayerConnected(i) && Player[i][pLogged] && Player[i][pFaction] == f) Faction_EndDuty(i);

@@ -85,7 +85,8 @@
 #include "bastion/business.inc"
 #include "bastion/bizstat.inc"    // финансовая выписка бизнеса, /showbiz, /checkbiz
 #include "bastion/bizwork.inc"    // сотрудники бизнеса, налог, улучшения, /sell
-#include "bastion/bizplus.inc"    // новые виды бизнесов: склад, наценка, меню владельца
+#include "bastion/bizplus.inc"
+#include "bastion/fire.inc"       // пожары и пожарные: /fires, тушение, поджоги складов    // новые виды бизнесов: склад, наценка, меню владельца
 #include "bastion/garage.inc"
 #include "bastion/dealers.inc"    // автосалоны и авиасалон, /cars — несколько машин у игрока
 #include "bastion/property.inc"   // лимиты домов и транспорта (в том числе по VIP), /myhouses
@@ -161,6 +162,7 @@ public OnGameModeInit()
 	Bank_Init();
 	Business_Init();
 	BizX_Init();
+	Fire_Init();           // пожары (fire.inc)
 	Gates_Init();
 	Fps_Init();
 	Licenses_Init();
@@ -487,6 +489,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Business_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (BizX_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Market_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Fire_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (BizW_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Keys_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Fuel_OnDialog(playerid, dialogid, response, inputtext)) return 1;

@@ -28,11 +28,11 @@
 #define BIZ_SALE_TAX        Cfg(CFG_BIZ_TAX)    // налог с каждой продажи, % (/srvset)
 #define CONTRACT_ROWS       40          // строк в /contracts
 #define DELIVER_RANGE       25.0        // как близко ко входу бизнеса разгружать товар
-#define BIZ_MARKUP_MIN      70          // границы цен владельца, % от базовых
-#define BIZ_MARKUP_MAX      150
-#define BIZ_START_STOCK     2000        // товар на складе при покупке бизнеса у штата, $
+#define BIZ_MARKUP_MIN      Cfg(CFG_BIZ_MARKUP_MIN) // границы цен владельца, % от базовых (по умолчанию 70, /srvset)
+#define BIZ_MARKUP_MAX      Cfg(CFG_BIZ_MARKUP_MAX) // по умолчанию 150, /srvset
+#define BIZ_START_STOCK     Cfg(CFG_BIZ_START_STOCK) // товар на складе при покупке бизнеса у штата, $ (по умолчанию 2000, /srvset)
 #define BIZ_SERVICE_RANGE   80.0        // в каком радиусе АЗС / СТО считаются «своими» для бизнеса
-#define BIZ_RENAME_PRICE    1000        // смена названия
+#define BIZ_RENAME_PRICE    Cfg(CFG_BIZ_RENAME) // смена названия (по умолчанию 1000, /srvset)
 #define BIZ_SELLTO_RANGE    5.0         // как близко должен стоять покупатель бизнеса
 #define BIZ_SELLTO_MAX      100000000   // потолок цены при продаже игроку
 

@@ -20,8 +20,8 @@
 #define TAX_CAR_DEFAULT     1       // Й от цены машины в час
 #define TAX_INCOME_MAX      50
 #define TAX_CAR_MAX         20
-#define TAX_CAR_MIN_SUM     10      // налог на машину не меньше $10 в час
-#define TAX_CAR_MAX_SUM     500     // налог на машину не больше $500 в час (вертолЄты, люкс)
+#define TAX_CAR_MIN_SUM     Cfg(CFG_TAX_CAR_MIN) // налог на машину не меньше $10 в час (по умолчанию 10, /srvset)
+#define TAX_CAR_MAX_SUM     Cfg(CFG_TAX_CAR_MAX) // налог на машину не больше $500 в час (вертолЄты, люкс) (по умолчанию 500, /srvset)
 
 static gTreasury = 0;
 static gTaxIncome = TAX_INCOME_DEFAULT;

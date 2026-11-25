@@ -9,8 +9,8 @@
 // Название сервера в списке задаётся в config.json ("name").
 
 // Захват районов банд разрешён с CAPTURE_HOUR_FROM:00 до CAPTURE_HOUR_TO:00
-#define CAPTURE_HOUR_FROM   16
-#define CAPTURE_HOUR_TO     24
+#define CAPTURE_HOUR_FROM   Cfg(CFG_CAPTURE_FROM) // по умолчанию 16, /srvset
+#define CAPTURE_HOUR_TO     Cfg(CFG_CAPTURE_TO) // по умолчанию 24, /srvset
 #define DATABASE_FILE       "rp.db"          // лежит в папке scriptfiles
 
 // Требовать ник формата Имя_Фамилия (true / false)
@@ -24,11 +24,11 @@
 // Деньги и прогресс
 #define START_MONEY_DEF     5000             // деньги новичка (меняется в /srvset)
 #define START_MONEY         Cfg(CFG_START_MONEY)
-#define REFERRAL_REWARD     5000             // пригласившему за новичка (referral.inc)
-#define REFERRAL_LEVEL      3                // ...когда новичок дойдёт до этого уровня
+#define REFERRAL_REWARD     Cfg(CFG_REFERRAL_REWARD) // пригласившему за новичка (referral.inc) (по умолчанию 5000, /srvset)
+#define REFERRAL_LEVEL      Cfg(CFG_REFERRAL_LEVEL) // ...когда новичок дойдёт до этого уровня (по умолчанию 3, /srvset)
 #define PAYDAY_SALARY_DEF   500              // зарплата каждый час (в :00), меняется в /srvset
 #define PAYDAY_SALARY       Cfg(CFG_PAYDAY)
-#define EXP_PER_LEVEL       4                // опыта на уровень = уровень * это число
+#define EXP_PER_LEVEL       Cfg(CFG_EXP_PER_LEVEL) // опыта на уровень = уровень * это число (по умолчанию 4, /srvset)
 
 // Безопасность входа
 #define MIN_PASSWORD_LEN    6
@@ -43,15 +43,15 @@
 
 // Топливо (fuel.inc)
 #define FUEL_TANK           60               // литров в баке любой машины
-#define FUEL_PRICE          5                // цена литра на новых АЗС (у каждой АЗС можно своя: /addfuel)
-#define FUEL_CANISTER       20               // литров в канистре
+#define FUEL_PRICE          Cfg(CFG_FUEL_PRICE) // цена литра на новых АЗС (у каждой АЗС можно своя: /addfuel) (по умолчанию 5, /srvset)
+#define FUEL_CANISTER       Cfg(CFG_FUEL_CANISTER) // литров в канистре (по умолчанию 20, /srvset)
 
 // Лицензии и автошкола (licenses.inc)
-#define LIC_PRICE_CAR       1500
-#define LIC_PRICE_MOTO      1000
-#define LIC_PRICE_BOAT      2000
-#define LIC_PRICE_GUN       5000
-#define LIC_GUN_MIN_LEVEL   2                // с какого уровня можно сдать на оружие
+#define LIC_PRICE_CAR       Cfg(CFG_LIC_CAR) // по умолчанию 1500, /srvset
+#define LIC_PRICE_MOTO      Cfg(CFG_LIC_MOTO) // по умолчанию 1000, /srvset
+#define LIC_PRICE_BOAT      Cfg(CFG_LIC_BOAT) // по умолчанию 2000, /srvset
+#define LIC_PRICE_GUN       Cfg(CFG_LIC_GUN) // по умолчанию 5000, /srvset
+#define LIC_GUN_MIN_LEVEL   Cfg(CFG_LIC_GUN_LEVEL) // с какого уровня можно сдать на оружие (по умолчанию 2, /srvset)
 #define LIC_TAKE_MIN_RANK   2                // с какого ранга полиция забирает лицензии (/takelic)
 #define LIC_SCHOOL_X        1481.0           // автошкола — у мэрии Лос-Сантоса
 #define LIC_SCHOOL_Y        -1771.3
@@ -64,34 +64,34 @@
 #define LIC_MOTO_MODEL      461              // PCJ-600
 
 // Фракции (factions.inc)
-#define FACTION_SALARY_BASE 300              // зарплата полиции и медиков на PayDay...
-#define FACTION_SALARY_RANK 100              // ...плюс столько за каждый ранг
-#define HEAL_PRICE          200              // цена лечения у медика (/heal)
+#define FACTION_SALARY_BASE Cfg(CFG_FSAL_BASE) // зарплата полиции и медиков на PayDay... (по умолчанию 300, /srvset)
+#define FACTION_SALARY_RANK Cfg(CFG_FSAL_RANK) // ...плюс столько за каждый ранг (по умолчанию 100, /srvset)
+#define HEAL_PRICE          Cfg(CFG_HEAL_PRICE) // цена лечения у медика (/heal) (по умолчанию 200, /srvset)
 #define DEBT_TAX            0                // счёт долга: налоги (debts.inc)
 #define DEBT_FINE           1                // счёт долга: штрафы
-#define JAIL_MIN_PER_STAR   5                // минут тюрьмы за одну звезду розыска
-#define ARREST_REWARD       150              // премия полицейскому за одну звезду при аресте
+#define JAIL_MIN_PER_STAR   Cfg(CFG_JAIL_PER_STAR) // минут тюрьмы за одну звезду розыска (по умолчанию 5, /srvset)
+#define ARREST_REWARD       Cfg(CFG_ARREST_REWARD) // премия полицейскому за одну звезду при аресте (по умолчанию 150, /srvset)
 
 // Войны банд (turfs.inc)
-#define TURF_CAPTURE_TIME   300              // сколько секунд длится захват района
-#define TURF_COOLDOWN       1800             // через сколько секунд район можно атаковать снова
-#define TURF_MIN_RANK       3                // с какого ранга можно начать захват (/capture)
-#define TURF_INCOME         150              // доход на PayDay каждому члену банды онлайн — за каждый район
+#define TURF_CAPTURE_TIME   Cfg(CFG_TURF_TIME) // сколько секунд длится захват района (по умолчанию 300, /srvset)
+#define TURF_COOLDOWN       Cfg(CFG_TURF_COOLDOWN) // через сколько секунд район можно атаковать снова (по умолчанию 1800, /srvset)
+#define TURF_MIN_RANK       Cfg(CFG_TURF_RANK) // с какого ранга можно начать захват (/capture) (по умолчанию 3, /srvset)
+#define TURF_INCOME         Cfg(CFG_TURF_INCOME) // доход на PayDay каждому члену банды онлайн — за каждый район (по умолчанию 150, /srvset)
 
 // Банк (bank.inc)
-#define BANK_MAX_TRANSFER   1000000          // максимум за один перевод
+#define BANK_MAX_TRANSFER   Cfg(CFG_BANK_MAX_TRANSFER) // максимум за один перевод (по умолчанию 1000000, /srvset)
 #define BANK_MAX_BALANCE    2000000000       // максимум денег на одном счёте
 #define BANK_MAX_EXTRA      5                // сколько дополнительных счетов можно открыть
-#define BANK_OPEN_COST      10000            // цена открытия доп. счёта (списывается с основного)
-#define BANK_ATM_FEE_PCT    1                // комиссия за снятие в банкомате, % (0 — без комиссии)
-#define BANK_TRANSFER_FEE_PCT 1              // комиссия за перевод, % (0 — без комиссии)
-#define BANK_INTEREST_PERMILLE 1             // проценты на остаток каждый PayDay, в десятых долях % (1 = 0.1%)
-#define BANK_INTEREST_MAX   100              // максимум процентов за один PayDay
+#define BANK_OPEN_COST      Cfg(CFG_BANK_OPEN_COST) // цена открытия доп. счёта (списывается с основного) (по умолчанию 10000, /srvset)
+#define BANK_ATM_FEE_PCT    Cfg(CFG_BANK_ATM_FEE) // комиссия за снятие в банкомате, % (0 — без комиссии) (по умолчанию 1, /srvset)
+#define BANK_TRANSFER_FEE_PCT Cfg(CFG_BANK_TRANSFER_FEE) // комиссия за перевод, % (0 — без комиссии) (по умолчанию 1, /srvset)
+#define BANK_INTEREST_PERMILLE Cfg(CFG_BANK_INTEREST) // проценты на остаток каждый PayDay, в десятых долях % (1 = 0.1%) (по умолчанию 1, /srvset)
+#define BANK_INTEREST_MAX   Cfg(CFG_BANK_INTEREST_MAX) // максимум процентов за один PayDay (по умолчанию 100, /srvset)
 #define PAYDAY_TO_BANK      true             // зарплата на счёт (true) или наличными (false)
 
 // Телефон (phone.inc)
 #define PHONE_PRICE         500              // цена телефона в магазине 24/7
-#define SMS_PRICE           5                // цена одного SMS
+#define SMS_PRICE           Cfg(CFG_SMS_PRICE) // цена одного SMS (по умолчанию 5, /srvset)
 
 // Бизнесы (business.inc)
 #define MAX_BUSINESSES      100
@@ -125,7 +125,7 @@
 #define HOSPITAL_X          1178.0
 #define HOSPITAL_Y          -1323.5
 #define HOSPITAL_Z          14.1
-#define HOSPITAL_FEE        100
+#define HOSPITAL_FEE        Cfg(CFG_HOSPITAL_FEE) // по умолчанию 100, /srvset
 
 // Скины по умолчанию для регистрации
 #define SKIN_MALE           60
