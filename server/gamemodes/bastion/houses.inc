@@ -59,6 +59,8 @@ forward bool:Doors_Try(playerid);     // doors.inc подключён позже
 forward bool:Biz_TryDoor(playerid);
 forward bool:House_AtStore(playerid, h);
 forward bool:House_IsInside(playerid, h);   // business.inc: вход и выход из интерьера бизнеса
+forward bool:Auction_IsOnSale(h);           // дом на торгах (auction.inc, подключён позже)
+forward Auction_StateHouse(h);              // дом отобрали за долг — на торги от штата
 new gHouseCount = 0;
 
 static gRentHouse[MAX_PLAYERS] = { -1, ... };          // какой дом снимает игрок (-1 = нет)
@@ -413,6 +415,29 @@ static House_EmptyInside(h)
 	}
 }
 
+// Дом по номеру в базе, -1 — нет
+stock House_SlotByDbId(dbid)
+{
+	if (dbid <= 0) return -1;
+	for (new h = 0; h < gHouseCount; h++) if (House[h][hDbId] == dbid) return h;
+	return -1;
+}
+
+// Отдать дом аккаунту (аукцион): прежние жильцы выселяются, счёт и сейф обнуляются
+stock House_GiveToAccount(h, accountId, const name[])
+{
+	House_EvictAll(h, "дом сменил владельца.");
+	House[h][hOwner] = accountId;
+	House[h][hOwnerName][0] = '\0';
+	strcat(House[h][hOwnerName], name, MAX_PLAYER_NAME);
+	House[h][hLocked] = false;
+	House[h][hRent] = 0;
+	House[h][hBalance] = 0;
+	House[h][hSafe] = 0;
+	House_Save(h);
+	House_Refresh(h);
+}
+
 stock House_Save(h)
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE houses SET owner = %d, locked = %d, rent = %d, balance = %d, safe = %d WHERE id = %d",
@@ -535,6 +560,7 @@ stock Houses_PayDay()
 				SendClientMessage(owner, COLOR_RED, "Долг по налогу на дом №%d слишком большой. Дом забрало государство.", House[h][hDbId]);
 			printf("[Houses] House %d seized for tax debt (owner %d).", House[h][hDbId], House[h][hOwner]);
 			House_Free(h);
+			Auction_StateHouse(h);          // штат выставляет дом на торги (auction.inc)
 			if (owner != INVALID_PLAYER_ID) Account_SetNormalSpawn(owner);
 			continue;
 		}
@@ -587,6 +613,7 @@ stock bool:Cmd_SellHouse(playerid)
 	new h = House_GetOwned(playerid);
 	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
 	if (House_GetNearby(playerid) != h) return SendClientMessage(playerid, COLOR_GREY, "Подойди к своему дому.");
+	if (Auction_IsOnSale(h)) return SendClientMessage(playerid, COLOR_GREY, "Дом на торгах. Снять с торгов: /unauction");
 
 	// половина цены + сейф + остаток на счёте (или минус долг по налогу)
 	new refund = House[h][hPrice] / 2 + House[h][hSafe] + House[h][hBalance];
@@ -708,6 +735,10 @@ stock bool:Cmd_HousePay(playerid, const params[])
 
 stock bool:Cmd_SetRent(playerid, const params[])
 {
+	{
+		new hh = House_GetOwned(playerid);
+		if (hh != -1 && Auction_IsOnSale(hh)) return SendClientMessage(playerid, COLOR_GREY, "Дом на торгах: аренду менять нельзя.");
+	}
 	new h = House_GetOwned(playerid);
 	if (h == -1) return SendClientMessage(playerid, COLOR_GREY, "У тебя нет дома.");
 	new pos = 0, price;
