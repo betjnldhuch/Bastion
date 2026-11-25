@@ -263,12 +263,14 @@ stock AC_OnStateChange(playerid, PLAYER_STATE:newstate)
 // ---------------------------------------------------------------------
 //  Сообщения и наказания
 // ---------------------------------------------------------------------
+forward AdminPlus_OnAntiCheat(playerid, const what[]);   // admin_plus.inc: лента /acheck
 static AC_Report(playerid, const what[])
 {
 	new now = gettime();
 	if (now - gAcReportAt[playerid] < AC_REPORT_COOLDOWN) return;
 	gAcReportAt[playerid] = now;
 	Log_OnAntiCheat(playerid, what);
+	AdminPlus_OnAntiCheat(playerid, what);
 
 	new msg[144];
 	format(msg, sizeof msg, "[Античит] %s[%d]%s: %s", GetRPName(playerid), playerid, IsPlayerMobile[playerid] ? (" (телефон)") : (""), what);

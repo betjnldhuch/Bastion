@@ -178,6 +178,9 @@ enum
 	DIALOG_REPORTS,             // список репортов
 	DIALOG_REPORT_ACT,          // действия с репортом
 	DIALOG_REPORT_ANSWER,       // ввод ответа
+	DIALOG_REPORT_CAT,          // /report: выбор категории
+	DIALOG_REPORT_RATE,         // ответ на репорт + «Оценить»
+	DIALOG_REPORT_RATE2,        // помог / не помог
 	DIALOG_REPORT_NEW,          // игрок пишет репорт
 
 	// --- Вход в админку (admin_auth.inc)
@@ -324,5 +327,21 @@ enum
 	DIALOG_FSAB,
 	DIALOG_MARKET,
 	DIALOG_CONTRACTS,
-	DIALOG_FIRES             // /fires (fire.inc)
+	DIALOG_FIRES,            // /fires (fire.inc)
+
+	// --- Админ-панель, наказания по правилам, античит-лента, рейтинг, МП (admin_plus.inc)
+	DIALOG_APLUS_HUB,
+	DIALOG_APLUS_TARGET,
+	DIALOG_APLUS_PUNISH,
+	DIALOG_APLUS_HIST,
+	DIALOG_APLUS_CHECK,
+	DIALOG_APLUS_AC,
+	DIALOG_APLUS_AC_ACT,
+	DIALOG_APLUS_TOP,
+	DIALOG_APLUS_EVENT,
+	DIALOG_APLUS_EV_NEW,
+	DIALOG_APLUS_EV_PL,
+	DIALOG_APLUS_EV_PA,
+	DIALOG_APLUS_ANN,
+	DIALOG_APLUS_RULES
 }
