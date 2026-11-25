@@ -43,7 +43,7 @@ jobs:
             /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll `
             /win32icon:..\..\launcher\source\bastion.ico `
             /resource:..\..\launcher\source\logo-shield.png,logo-shield.png /resource:sqlite3.dll,sqlite3.dll `
-            /out:BastionServer.exe Starter.cs Logs.cs
+            /out:BastionServer.exe Starter.cs Logs.cs Telegram.cs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           New-Item -ItemType Directory -Force ..\..\dist\BastionServer | Out-Null
           Copy-Item BastionServer.exe, README.txt ..\..\dist\BastionServer
