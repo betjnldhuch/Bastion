@@ -253,6 +253,36 @@ static Family_Message(s, const message[])
 	}
 }
 
+// --- Для других модулей (famwar.inc) ---
+stock Family_Slot(playerid) { return gFam[playerid]; }
+stock Family_Rank(playerid) { return (gFam[playerid] == -1) ? 0 : gFamRank[playerid]; }
+stock Family_SlotByDb(dbid) { return Family_FindByDb(dbid); }
+stock Family_DbOf(s) { return (s >= 0 && s < MAX_FAMILIES) ? Family[s][famDb] : 0; }
+stock Family_BankOf(s) { return (s >= 0 && s < MAX_FAMILIES) ? Family[s][famBank] : 0; }
+stock Family_Msg(s, const message[]) { if (s >= 0 && s < MAX_FAMILIES && Family[s][famDb]) Family_Message(s, message); }
+stock Family_NameOf(s)
+{
+	new name[32];
+	if (s >= 0 && s < MAX_FAMILIES) strcat(name, Family[s][famName]);
+	return name;
+}
+// Пополнить (или списать, amount < 0) общак семьи
+stock Family_BankAdd(s, amount)
+{
+	if (s < 0 || s >= MAX_FAMILIES || Family[s][famDb] == 0) return;
+	Family[s][famBank] += amount;
+	if (Family[s][famBank] > FAMILY_BANK_MAX) Family[s][famBank] = FAMILY_BANK_MAX;
+	if (Family[s][famBank] < 0) Family[s][famBank] = 0;
+	Family_SaveInfo(s);
+}
+// Семья по названию (без учёта регистра), -1 — нет
+stock Family_FindByName(const name[])
+{
+	for (new s = 0; s < MAX_FAMILIES; s++)
+		if (Family[s][famDb] && !strcmp(Family[s][famName], name, true)) return s;
+	return -1;
+}
+
 // Игрок в семье? Если нужен ранг и его нет — пишет почему
 static bool:Family_Need(playerid, rank)
 {

@@ -291,6 +291,7 @@ enum
 	DIALOG_SEASON,
 	DIALOG_SEASON_UI,
 	DIALOG_SEASON_BUY,
+	DIALOG_FAMWARS,          // /famwars, /famtop (famwar.inc)
 
 	// --- Телефон с приложениями (phoneapp.inc)
 	DIALOG_PHONE,
