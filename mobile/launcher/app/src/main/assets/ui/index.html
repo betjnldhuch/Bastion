@@ -538,6 +538,28 @@ button { font: inherit; cursor: pointer; }
   .qs-meta { margin-bottom: 8px; } .qs-links { margin-top: 6px; }
 }
 .qs-ask { padding: 12px; border-radius: 10px; border: 1px solid rgba(229,72,77,.35); background: rgba(229,72,77,.08); margin-bottom: 10px; font-size: 14px; }
+/* Сезонный пропуск (season.inc): дорожка уровней, сверху бесплатные награды, снизу премиум; картинки ui/season/<вид>.png */
+.ss-top { display: flex; gap: 14px; align-items: center; margin-bottom: 10px; }
+.ss-lvl { flex: none; width: 64px; height: 64px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--accent-dark), var(--accent)); font-family: "Russo One", sans-serif; font-size: 26px; line-height: 1; color: #fff; }
+.ss-lvl small { font-family: inherit; font-size: 10px; opacity: .85; margin-top: 3px; }
+.ss-top .b { flex: 1; min-width: 0; }
+.ss-prem { padding: 10px 14px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;
+  background: linear-gradient(135deg, rgba(255,201,64,.18), rgba(255,201,64,.04)); border: 1px solid rgba(255,201,64,.4); font-size: 13px; }
+.ss-prem b { color: var(--gold); } .ss-prem em { font-style: normal; }
+.ss-track { position: relative; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 8px; scroll-snap-type: x proximity; }
+.ss-col { flex: none; width: 92px; display: flex; flex-direction: column; gap: 5px; scroll-snap-align: start; }
+.ss-col .n { text-align: center; font-size: 12px; color: var(--muted); font-weight: 600; }
+.ss-col.done .n { color: var(--green); } .ss-col.cur .n { color: var(--accent); }
+.ss-rw { height: 86px; border-radius: 10px; border: 1px solid var(--line); background: var(--well); display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; padding: 4px; text-align: center; font-size: 11px; line-height: 1.2; position: relative; }
+.ss-rw .qs-ico { width: 36px; height: 36px; font-size: 24px; }
+.ss-rw.p { border-color: rgba(255,201,64,.35); background: rgba(255,201,64,.06); }
+.ss-rw.p.lock { opacity: .55; } .ss-rw.p.lock::after { content: '🔒'; position: absolute; top: 3px; right: 5px; font-size: 11px; }
+.ss-col.done .ss-rw:not(.lock)::before { content: '✓'; position: absolute; top: 3px; left: 6px; color: var(--green); font-size: 12px; font-weight: 700; }
+.ss-col.cur .ss-rw { border-color: var(--accent); }
+.ss-src { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+@media (max-height: 520px) { .ss-lvl { width: 48px; height: 48px; font-size: 20px; } .ss-rw { height: 64px; } .ss-rw .qs-ico { width: 26px; height: 26px; font-size: 18px; } .ss-src, .ss-more, .ss-top h1 { display: none; } .ss-top .qs-bar { margin-top: 4px; } .ss-rw { height: 56px; font-size: 10px; } .ss-col .n { font-size: 11px; } .ss-track { gap: 5px; margin-bottom: 4px; } .ss-col { gap: 3px; } .ss-top { margin-bottom: 6px; } .ss-prem { padding: 6px 12px; margin-bottom: 6px; } }
 /* Ежедневные задания (daily.inc): карточки заданий ui/daily/<key>.png, серия дней, бонус */
 .dl-streak { display: flex; gap: 6px; margin: 4px 0 12px; }
 .dl-streak i { flex: 1; height: 30px; border-radius: 8px; background: var(--well); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center;
@@ -1615,6 +1637,47 @@ function vipImg(level, cls) {
       document.getElementById('qskip').onclick = function () { ask('Пропустить «' + esc(plain(st[1])) + '»? Награду за него ты не получишь.', 1, 'Пропустить'); };
       document.getElementById('qquit').onclick = function () { ask('Отказаться от всех заданий? Вернуться к квесту будет нельзя.', 2, 'Отказаться'); };
       keyHandler = function (e) { if (e.key === 'Escape') close(); else if (e.key === 'Enter') respond(1, 0, ''); };
+    },
+    // Сезонный пропуск (season.inc). d.levels: [вид бесплатной, текст, вид премиум, текст]; d.lvl — пройдено уровней.
+    // Ответ (стиль LIST): 1/1 — купить премиум; 0 — закрыть.
+    season: function (d, m) {
+      var SS_EMO = { money: '💵', exp: '⭐', coins: '🪙', item: '🎁', vip: '👑' };
+      function ico(k) {
+        var e = SS_EMO[k] || '🎁';
+        return '<span class="qs-ico"><img src="season/' + esc(k) + '.png" alt="" draggable="false" onerror="this.parentNode.replaceChild(document.createTextNode(\'' + e + '\'), this)"></span>';
+      }
+      var lv = d.levels || [], lvl = d.lvl | 0, max = d.max | 0 || lv.length, per = d.per | 0 || 1, src = d.src || [];
+      var pct = lvl >= max ? 100 : Math.round((d.xp | 0) * 100 / per);
+      var track = lv.map(function (r, i) {
+        var cls = i < lvl ? 'done' : i === lvl ? 'cur' : '';
+        return '<div class="ss-col ' + cls + '"><div class="n">' + (i + 1) + '</div>' +
+          '<div class="ss-rw">' + ico(r[0]) + '<span>' + esc(plain(r[1])) + '</span></div>' +
+          '<div class="ss-rw p' + (d.prem ? '' : ' lock') + '">' + ico(r[2]) + '<span>' + esc(plain(r[3])) + '</span></div></div>';
+      }).join('');
+      root.innerHTML = '<div class="card wide">' + closeBtn() + '<div class="brand">BASTION ONLINE · СЕЗОН ' + (d.id | 0) + '</div>' +
+        '<div class="ss-top"><div class="ss-lvl">' + lvl + '<small>из ' + max + '</small></div><div class="b"><h1 style="margin:0 0 6px">Сезонный пропуск</h1>' +
+        '<div class="qs-bar"><i style="width:' + pct + '%"></i></div><div class="qs-meta" style="margin:0"><span>' + (lvl >= max ? 'Максимальный уровень' : (d.xp | 0) + ' / ' + per + ' очков до уровня ' + (lvl + 1)) + '</span>' +
+        '<span>До конца сезона <b>' + (d.days | 0) + ' дн.</b></span></div></div></div>' +
+        (d.prem ? '<div class="ss-prem"><span>👑 <b>Премиум-пропуск активен</b>: награды нижней дорожки выдаются сами.</span></div>'
+          : '<div class="ss-prem"><span>👑 <b>Премиум</b>: вторая дорожка наград (VIP, монеты, деньги).<em class="ss-more"> Награды за уже пройденные уровни выдадутся сразу.</em></span>' +
+            '<button class="btn primary" id="sb" style="flex:none">' + (d.price | 0) + ' 🪙</button></div>') +
+        '<div class="ss-track">' + track + '</div>' +
+        '<div class="ss-src">Очки: PayDay +' + (src[0] | 0) + ' · задание на работе +' + (src[1] | 0) + ' · ежедневное задание +' + (src[2] | 0) + ' · все ежедневные +' + (src[3] | 0) + '</div>' +
+        '<div id="qa"></div><div class="row" id="qr"><button class="btn primary" id="b1">' + esc(m.button1 || 'Понятно') + '</button></div></div>';
+      var cur = root.querySelector('.ss-col.cur') || root.querySelector('.ss-col:last-child');
+      if (cur) setTimeout(function () { var tr = root.querySelector('.ss-track'); if (tr) tr.scrollLeft = Math.max(0, cur.offsetLeft - 200); }, 30);
+      function close() { respond(0, -1, ''); }
+      document.getElementById('x').onclick = document.getElementById('b1').onclick = close;
+      var sb = document.getElementById('sb');
+      if (sb) sb.onclick = function () {
+        var enough = (d.coins | 0) >= (d.price | 0);
+        document.getElementById('qa').innerHTML = '<div class="qs-ask">' + (enough ? 'Купить премиум-пропуск за ' + (d.price | 0) + ' монет? У тебя ' + (d.coins | 0) + '.'
+          : 'Не хватает монет: нужно ' + (d.price | 0) + ', у тебя ' + (d.coins | 0) + '. Пополнить: /donate') + '</div>';
+        document.getElementById('qr').innerHTML = '<button class="btn" id="qn">Отмена</button>' + (enough ? '<button class="btn primary" id="qy">Купить</button>' : '');
+        document.getElementById('qn').onclick = function () { WINDOWS.season(d, m); };
+        if (enough) document.getElementById('qy').onclick = function () { respond(1, 1, ''); };
+      };
+      keyHandler = function (e) { if (e.key === 'Escape' || e.key === 'Enter') close(); };
     },
     // Ежедневные задания (daily.inc). d.tasks: [ключ, название, подсказка, прогресс, нужно, награда, выполнено].
     // Ответ (стиль LIST): 1/(10+i) — заменить задание i; 0 — закрыть.

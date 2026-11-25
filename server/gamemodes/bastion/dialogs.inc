@@ -287,6 +287,11 @@ enum
 	DIALOG_DAILY_UI,
 	DIALOG_DAILY_SWAP,
 
+	// --- Сезонный пропуск (season.inc)
+	DIALOG_SEASON,
+	DIALOG_SEASON_UI,
+	DIALOG_SEASON_BUY,
+
 	// --- Телефон с приложениями (phoneapp.inc)
 	DIALOG_PHONE,
 	DIALOG_PASS_RETAKE       // паспортный стол: переснять фото (docs.inc)

@@ -345,6 +345,7 @@ stock Job_Pay(playerid, base)
 	Jobs_SaveExp(playerid);
 	Quest_OnJobTask(playerid);          // квест новичка (quest.inc)
 	Daily_OnJobTask(playerid, pay);     // ежедневные задания (daily.inc)
+	Season_OnJobTask(playerid);         // сезонный пропуск (season.inc)
 	new now = Job_GetLevel(playerid);
 	if (now > lvl)
 	{
