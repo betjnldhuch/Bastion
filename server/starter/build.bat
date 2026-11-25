@@ -8,5 +8,5 @@ set CSC=%WINDIR%\Microsoft.NET\Framework\v4.0.30319\csc.exe
   /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll ^
   /win32icon:..\..\launcher\source\bastion.ico ^
   /resource:..\..\launcher\source\logo-shield.png,logo-shield.png /resource:sqlite3.dll,sqlite3.dll ^
-  /out:BastionServer.exe Starter.cs Logs.cs
+  /out:BastionServer.exe Starter.cs Logs.cs Telegram.cs
 if errorlevel 1 pause

@@ -10,6 +10,7 @@
 //      компиляция rp.pwn компилятором Qawno, установка rp.amx из файла,
 //      откат на прошлый rp.amx (копии в gamemodes\backup);
 //    - правка главных полей config.json и бэкап базы scriptfiles\rp.db.
+//    - Telegram-бот: управление сервером с телефона (Telegram.cs).
 //
 //  Свои настройки стартер хранит в BastionServer.ini рядом с exe.
 //  Сборка: build.bat (компилятор .NET Framework 4, есть в каждой Windows).
@@ -479,6 +480,13 @@ namespace BastionServer
         System.Windows.Forms.Timer tick;
         volatile bool querying, busy;
 
+        // Telegram-бот
+        TgBot bot;
+        long echoChat;
+        DateTime echoUntil;
+        TextBox fTgToken, fTgIds;
+        Label lblTg;
+
         string ServerDir
         {
             get
@@ -553,6 +561,7 @@ namespace BastionServer
                     Say("Не найден " + ExeName + " в папке " + ServerDir + ". Укажи папку сервера во вкладке «Настройки».", T.Red);
                 else if (!Running && Cfg.On("autostart", false)) StartServer();
                 UpdateState();
+                StartBot();
             };
         }
 
@@ -787,6 +796,9 @@ namespace BastionServer
         {
             if (InvokeRequired) { BeginInvoke((MethodInvoker)delegate { Say(text, c); }); return; }
             Append("[" + DateTime.Now.ToString("HH:mm:ss") + "] » " + text, c);
+            // после команды из Telegram ход её выполнения уходит и в чат
+            if (bot != null && echoChat != 0 && DateTime.Now < echoUntil && c != T.Dim)
+                bot.SendAsync(echoChat, (c == T.Red ? "❌ " : c == T.Green ? "✅ " : "» ") + TgBot.Esc(text));
         }
         void Say(string text) { Say(text, T.Orange); }
 
@@ -1029,6 +1041,10 @@ namespace BastionServer
                 {
                     crashes++;
                     Say("Сервер закрылся сам (код " + code + ").", T.Red);
+                    if (bot != null)
+                        bot.Notify("⚠️ <b>Сервер упал</b> (код " + code + ")." + (!chkAutoRestart.Checked ? " Автоперезапуск выключен — жми ▶️ Старт." :
+                            ((DateTime.Now - startedAt).TotalSeconds < 20 && crashes >= 3) ? " Падает сразу после запуска " + crashes + " раза подряд, автоперезапуск остановлен. Смотри 📜 Лог." :
+                            " Перезапускаю через 5 секунд."));
                     if (chkAutoRestart.Checked)
                     {
                         if ((DateTime.Now - startedAt).TotalSeconds < 20 && crashes >= 3)
@@ -1633,6 +1649,129 @@ namespace BastionServer
             CheckBox chkWin = Check("Открывать стартер при входе в Windows", s, ref y);
             chkWin.Checked = AutorunOn();
             chkWin.CheckedChanged += delegate { SetAutorun(chkWin.Checked); };
+            y += 16;
+
+            H("TELEGRAM-БОТ (УПРАВЛЕНИЕ С ТЕЛЕФОНА)", s, ref y);
+            Line("1) В Telegram открой @BotFather → /newbot → скопируй токен сюда.  2) Нажми «Сохранить» и напиши своему боту /start —", s, ref y);
+            Line("он пришлёт твой ID. Впиши его в «ID владельцев» и сохрани ещё раз. Порты открывать не нужно.", s, ref y);
+            y += 6;
+            fTgToken = Field("Токен бота", s, ref y, 420);
+            fTgToken.UseSystemPasswordChar = true;
+            fTgToken.Text = Cfg.Get("tg_token", "");
+            Btn eye2 = new Btn("показать", 90);
+            eye2.Height = 26;
+            eye2.Location = new Point(640, fTgToken.Top);
+            eye2.Click += delegate { fTgToken.UseSystemPasswordChar = !fTgToken.UseSystemPasswordChar; };
+            s.Controls.Add(eye2);
+            fTgIds = Field("ID владельцев (через запятую)", s, ref y, 420);
+            fTgIds.Text = Cfg.Get("tg_admins", "");
+            Btn tgSave = new Btn("СОХРАНИТЬ И ПОДКЛЮЧИТЬ", 240); tgSave.Primary = true;
+            tgSave.Location = new Point(210, y);
+            tgSave.Click += delegate
+            {
+                Cfg.Set("tg_token", fTgToken.Text.Trim());
+                Cfg.Set("tg_admins", string.Join(",", TgBot.ParseIds(fTgIds.Text).ConvertAll<string>(delegate(long x) { return x.ToString(CultureInfo.InvariantCulture); }).ToArray()));
+                fTgIds.Text = Cfg.Get("tg_admins", "");
+                StartBot();
+            };
+            Btn tgOff = new Btn("Отключить", 120);
+            tgOff.Location = new Point(460, y);
+            tgOff.Click += delegate { Cfg.Set("tg_token", ""); fTgToken.Text = ""; StartBot(); };
+            s.Controls.Add(tgSave); s.Controls.Add(tgOff);
+            y += 44;
+            lblTg = Line("Бот: не настроен", s, ref y);
+            lblTg.ForeColor = T.Dim;
+        }
+
+        // ---------------- Telegram-бот ----------------
+        void StartBot()
+        {
+            if (bot != null) { bot.Stop(); bot = null; }
+            string token = Cfg.Get("tg_token", "");
+            if (token.Length == 0) { if (lblTg != null) { lblTg.Text = "Бот: не настроен"; lblTg.ForeColor = T.Dim; } return; }
+            TgBot b = new TgBot(token, TgBot.ParseIds(Cfg.Get("tg_admins", "")), Cfg.Get("tg_api", ""));
+            b.Ui = delegate(Func<object> f) { return Invoke(f); };
+            b.IsRunning = delegate { return Running; };
+            b.GetPort = delegate { return cachedPort; };
+            b.GetLogPath = delegate { return LogPath; };
+            b.GetStatus = BotStatus;
+            b.DoAction = BotAction;
+            b.SendConsole = BotConsole;
+            b.OnState = delegate(string st)
+            {
+                if (IsDisposed) return;
+                BeginInvoke((MethodInvoker)delegate
+                {
+                    if (bot != b) return;
+                    lblTg.Text = "Бот: " + st;
+                    lblTg.ForeColor = st.StartsWith("подключён") ? T.Green : T.Yellow;
+                });
+            };
+            lblTg.Text = "Бот: подключаюсь…";
+            lblTg.ForeColor = T.Yellow;
+            bot = b;
+            b.Start();
+        }
+
+        string BotStatus()
+        {
+            string st = stopping ? "🟡 <b>Останавливается…</b>" : Running ? "🟢 <b>Работает</b>" : "🔴 <b>Остановлен</b>";
+            StringBuilder b = new StringBuilder(st);
+            if (Running && !stopping)
+            {
+                TimeSpan up = DateTime.Now - startedAt;
+                b.Append(" · аптайм ").Append(up.TotalHours >= 1 ? ((int)up.TotalHours) + " ч " : "").Append(up.Minutes).Append(" мин");
+            }
+            if (busy) b.Append("\n⏳ Идёт обновление мода");
+            string amx = Path.Combine(GmDir, "rp.amx");
+            string tag = Cfg.Get("mod_version", "");
+            if (File.Exists(amx))
+                b.Append("\n🧩 Мод: rp.amx от ").Append(new FileInfo(amx).LastWriteTime.ToString("dd.MM HH:mm")).Append(tag.Length > 0 ? " (" + TgBot.Esc(tag) + ")" : "");
+            else b.Append("\n🧩 В gamemodes нет rp.amx");
+            b.Append("\n🖥 ").Append(TgBot.Esc(Environment.MachineName)).Append(" · порт ").Append(cachedPort);
+            return b.ToString();
+        }
+
+        string BotAction(string what, long chat)
+        {
+            if (busy) return "⏳ Стартер занят (идёт обновление мода), попробуй через минуту.";
+            echoChat = chat;
+            echoUntil = DateTime.Now.AddSeconds(what == "update" ? 240 : 60);
+            switch (what)
+            {
+                case "run":
+                    if (Running) return "Сервер уже работает.";
+                    StartServer();
+                    return null;
+                case "stop":
+                    if (!Running) return "Сервер и так остановлен.";
+                    StopServer(false);
+                    return null;
+                case "restart":
+                    if (stopping) return "Сервер уже останавливается.";
+                    RestartServer();
+                    return null;
+                case "update":
+                    DownloadMod();
+                    return chkRestartAfterUpdate.Checked || !Running ? null : "После обновления нажми 🔄 Рестарт (в стартере выключен автоперезапуск после обновления).";
+                case "backup":
+                    BackupDb(true);
+                    return null;
+            }
+            return "Неизвестное действие.";
+        }
+
+        string BotConsole(string cmd)
+        {
+            if (!Running || stdin == null) return "Сервер не запущен из стартера, команду отправить некуда.";
+            try
+            {
+                stdin.Write(cmd + "\n");
+                stdin.Flush();
+                Append("> " + cmd + "   (из Telegram)", T.OrangeHot);
+                return "Отправил в консоль: " + cmd;
+            }
+            catch (Exception ex) { return "Команда не отправлена: " + ex.Message; }
         }
 
         const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
