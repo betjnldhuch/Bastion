@@ -356,6 +356,10 @@ stock Commands_Process(playerid, const input[], bool:quiet = false)
 	if (!strcmp(cmd, "/setfstore", true))   { Cmd_SetFStore(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/dropcrate", true))   { Cmd_DropCrate(playerid); return 1; }
 	if (!strcmp(cmd, "/unload", true))      { Cmd_Supply(playerid); return 1; }
+	if (!strcmp(cmd, "/sabotage", true))    { Cmd_Sabotage(playerid); return 1; }
+	if (!strcmp(cmd, "/contracts", true))   { Cmd_Contracts(playerid); return 1; }
+	if (!strcmp(cmd, "/market", true))      { Cmd_Market(playerid); return 1; }
+	if (!strcmp(cmd, "/srvset", true))      { Cmd_SrvSet(playerid); return 1; }
 	if (!strcmp(cmd, "/setarmystore", true)) { Cmd_SetSPoint(playerid, SP_ARMY); return 1; }
 	if (!strcmp(cmd, "/setbm", true) || !strcmp(cmd, "/addbm", true)) { Cmd_AddBM(playerid); return 1; }
 	if (!strcmp(cmd, "/delbm", true))       { Cmd_DelBM(playerid); return 1; }

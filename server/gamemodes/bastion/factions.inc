@@ -318,7 +318,23 @@ new gBMMatPrice = BM_MAT_PRICE;     // сколько торговец платит за 1 припас
 new bool:gStealing[MAX_PLAYERS];    // стоит на складе армии и крадёт материалы
 new gStealTotal[MAX_PLAYERS];       // сколько украл за этот заход
 new gCrate[MAX_PLAYERS];            // ящик в руках: 0 — нет, 1 — только что сделан на заводе, 2 — взят со склада
+#define CRATE_MATS              50      // материалов в одном ящике
+// Что делает завод. Номер хранится в базе: новые — только в конец.
+enum
+{
+	PROD_MATS,          // материалы: склады фракций, оружие
+	PROD_FUEL,          // топливо: АЗС
+	PROD_FOOD,          // продукты: 24/7, бар, закусочная, клуб
+	PROD_PARTS,         // запчасти: автомастерская
+	PROD_GOODS,         // ширпотреб: одежда, аптека, хозтовары, электроника, спортзал, лотерея, оружейный
+	PROD_COUNT
+}
+new const gProdName[PROD_COUNT][16] = { "материалы", "топливо", "продукты", "запчасти", "ширпотреб" };
+
 new gCrateFc[MAX_PLAYERS];          // на каком заводе сделан ящик
+new gCrateProd[MAX_PLAYERS];        // что в ящике: PROD_*
+new gSabFc[MAX_PLAYERS] = { -1, ... };  // какой завод саботирует
+new gSabLeft[MAX_PLAYERS];
 new gWorkStage[MAX_PLAYERS];        // работа на заводе: 0 — нет, 1 — несёт сырьё, 2 — стоит у станка
 new gWorkFc[MAX_PLAYERS];
 new gCapFc[MAX_PLAYERS] = { -1, ... };  // какой завод захватывает
@@ -1400,7 +1416,8 @@ stock Factions_OnBecomeDriver(playerid)
 	// Машину с ящиками может угнать член другой организации (перехват груза)
 	if (gVehCargo[v] > 0 && Faction_IsValid(Player[playerid][pFaction]))
 	{
-		SendClientMessage(playerid, COLOR_YELLOW, "Чужая машина с грузом (%d материалов). Довези до склада своей организации и разгрузи: H.", gVehCargo[v]);
+		if (gVehCargoProd[v] == PROD_MATS) SendClientMessage(playerid, COLOR_YELLOW, "Чужая машина с грузом (%d материалов). Довези до склада своей организации и разгрузи: H.", gVehCargo[v]);
+		else SendClientMessage(playerid, COLOR_YELLOW, "Чужая машина с товаром (%s, ящиков: %d). Довези до бизнеса и разгрузи: H. Кому нужно: /contracts", gProdName[gVehCargoProd[v]], gVehCargo[v] / CRATE_MATS);
 		return 1;
 	}
 	RemovePlayerFromVehicle(playerid);
@@ -3200,6 +3217,19 @@ stock bool:Cmd_FList(playerid)
 //  (позже — ALT на маркере). Закрытый завод перестаёт быть заводом: точки пропадают, остаётся
 //  только склад, пока с него не вывезут ящики. Вернуть завод может админ: /setfowner.
 //
+//  Продукция. Владелец (право «завод») выбирает в меню завода (ALT на маркере), что делать:
+//    материалы (оружие), топливо (АЗС), продукты (24/7, бар, закусочная, клуб),
+//    запчасти (автомастерская), ширпотреб (одежда, аптека, хозтовары, электроника и др.).
+//    Военный завод делает только материалы. Ящики товара со склада завода берёт кто угодно:
+//    свои бесплатно, чужие платят goods_price в общак владельца. Товар везут в бизнес
+//    нужного типа и разгружают у входа (H или /unload): склад бизнеса пополняется на goods_value,
+//    водителю из кассы платят goods_pay за ящик. /contracts — кому нужен товар, /market — рынок.
+//    Закупка «из воздуха» в меню бизнеса дороже на biz_air% (bizplus.inc).
+//
+//  Саботаж: ранг из /orgs (по умолчанию лидер и заместитель) чужой фракции, которой это разрешено,
+//    жмёт ALT у станка (или /sabotage) и стоит fac_sab_time секунд. Владельцу сразу тревога.
+//    Получилось — завод стоит fac_sab_down минут. Все цифры: /srvset, права по фракциям: /orgs.
+//
 //  Чёрный рынок: торговцы (/addbm, /delbm), ALT или /bm рядом. Цены: /bmprice.
 //  /d — общий чат госструктур, /gd — общий чат банд.
 // =====================================================================
@@ -3208,24 +3238,23 @@ forward Factory_OnBenchDone(playerid);
 forward bool:Cmd_BM(playerid);
 forward bool:Wound_IsWounded(playerid);    // wounded.inc
 
-#define CRATE_MATS              50      // материалов в одном ящике
 #define CRATE_MODEL             1271
 #define CRATE_SLOT              8       // слот прикреплённого объекта (9 занят работами)
 #define CARGO_TRUCK             1000    // материалов в грузовик (20 ящиков)
 #define CARGO_VAN               300     // материалов в фургон или пикап (6 ящиков)
-#define FACTORY_PAY             15      // рабочему за ящик (один круг — около 40 секунд)
-#define FACTORY_BENCH_TIME      8       // секунд у станка
+#define FACTORY_PAY             Cfg(CFG_FAC_PAY)        // рабочему за ящик (/srvset)
+#define FACTORY_BENCH_TIME      Cfg(CFG_FAC_BENCH)      // секунд у станка
 #define FACTORY_STOCK_MAX       20000   // сколько материалов вмещает склад завода
 #define FACTORY_POINT_RANGE     2.5
-#define FACTORY_CLEAR_RANGE     60.0    // в этом радиусе от маркера не должно быть живых защитников
-#define FACTORY_CAPTURE_TIME    60      // секунд стоять на маркере
-#define FACTORY_CAPTURE_RANK    7
-#define FACTORY_CAPTURE_PAUSE   1800    // пауза между захватами одного завода, секунд
+#define FACTORY_CLEAR_RANGE     float(Cfg(CFG_FAC_CLEAR))   // в этом радиусе от маркера не должно быть живых защитников
+#define FACTORY_CAPTURE_TIME    Cfg(CFG_FAC_CAP_TIME)       // секунд стоять на маркере
+#define FACTORY_CAPTURE_PAUSE   (Cfg(CFG_FAC_CAP_PAUSE) * 60)   // пауза между захватами одного завода, секунд
 #define MAX_FACTORIES           30
 #define FKIND_MILITARY          1
 #define FKIND_COMMON            2
 #define STORE_REF               300     // ref маркера склада организации: 300 + фракция
 #define FACTORY_REF             400     // ref маркеров завода: 400 + номер завода * 4 + точка
+
 
 enum
 {
@@ -3245,7 +3274,11 @@ enum E_FACTORY
 	bool:fcClosed,      // оборудование уничтожено
 	fcStock,            // материалов на складе завода
 	fcLastCap,          // когда захватывали в последний раз
-	fcCapBy             // кто сейчас захватывает
+	fcCapBy,            // кто сейчас захватывает
+	fcProd,             // что делает: PROD_*
+	fcSabUntil,         // после саботажа стоит до этого времени
+	fcLastSab,          // когда саботировали в последний раз
+	fcSabBy             // кто сейчас саботирует
 }
 new Factory[MAX_FACTORIES][E_FACTORY];
 new bool:gFcSet[MAX_FACTORIES][MAX_FPOINTS];
@@ -3413,8 +3446,8 @@ stock Factory_Find(dbid)
 
 stock Factory_Save(i)
 {
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE factories SET name = '%q', kind = %d, owner = %d, closed = %d, stock = %d WHERE id = %d",
-		Factory[i][fcName], Factory[i][fcKind], Factory[i][fcOwner], Factory[i][fcClosed] ? 1 : 0, Factory[i][fcStock], Factory[i][fcDbId]));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "UPDATE factories SET name = '%q', kind = %d, owner = %d, closed = %d, stock = %d, prod = %d, sab_until = %d WHERE id = %d",
+		Factory[i][fcName], Factory[i][fcKind], Factory[i][fcOwner], Factory[i][fcClosed] ? 1 : 0, Factory[i][fcStock], Factory[i][fcProd], Factory[i][fcSabUntil], Factory[i][fcDbId]));
 }
 
 stock Factory_SavePoint(i, p)
@@ -3435,15 +3468,24 @@ stock Factory_Label(i, p)
 			if (Factory[i][fcOwner] != FACTION_NONE) format(text, sizeof text, "%s\n{FFFFFF}Владелец: %s", Factory[i][fcName], Faction_GetName(Factory[i][fcOwner]));
 			else format(text, sizeof text, "%s\n{FFFFFF}Владельца нет", Factory[i][fcName]);
 			if (Factory[i][fcClosed]) strcat(text, "\n{FF6347}Закрыт: оборудование уничтожено");
+			new line[48];
+			format(line, sizeof line, "\n{FFFFFF}Делает: %s", gProdName[Factory[i][fcProd]]);
+			strcat(text, line);
+			if (Factory_Sabotaged(i)) strcat(text, "\n{FF6347}Станок сломан (саботаж)");
 			if (Factory[i][fcKind] == FKIND_MILITARY) strcat(text, "\n{AFAFAF}Военный завод");
-			else strcat(text, "\n{AFAFAF}ALT — захват (ранг 7+)");
+			else strcat(text, "\n{AFAFAF}ALT — меню / захват");
 		}
 		case FP_RAW: strcat(text, "Сырьё\n{FFFFFF}ALT — взять");
-		case FP_BENCH: strcat(text, "Станок\n{FFFFFF}ALT — сделать ящик");
+		case FP_BENCH:
+		{
+			if (Factory_Sabotaged(i)) strcat(text, "Станок\n{FF6347}Сломан: саботаж");
+			else strcat(text, "Станок\n{FFFFFF}ALT — сделать ящик");
+		}
 		default:
 		{
-			if (Factory[i][fcClosed]) format(text, sizeof text, "Склад закрытого завода\n{FFFFFF}Осталось ящиков: %d\nALT — забрать ящик", Factory[i][fcStock] / CRATE_MATS);
-			else format(text, sizeof text, "Склад завода\n{FFFFFF}Ящиков: %d\nALT — сдать или взять ящик", Factory[i][fcStock] / CRATE_MATS);
+			if (Factory[i][fcClosed]) format(text, sizeof text, "Склад закрытого завода\n{FFFFFF}Осталось ящиков: %d (%s)\nALT — забрать ящик", Factory[i][fcStock] / CRATE_MATS, gProdName[Factory[i][fcProd]]);
+			else if (Factory[i][fcProd] == PROD_MATS) format(text, sizeof text, "Склад завода\n{FFFFFF}Ящиков: %d (%s)\nALT — сдать или взять ящик", Factory[i][fcStock] / CRATE_MATS, gProdName[Factory[i][fcProd]]);
+			else format(text, sizeof text, "Склад завода\n{FFFFFF}Ящиков: %d (%s)\nALT — купить ящик за $%d", Factory[i][fcStock] / CRATE_MATS, gProdName[Factory[i][fcProd]], Cfg(CFG_GOODS_PRICE));
 		}
 	}
 	Marker_SetLabel(gFcMk[i][p], text, 0xE0A030FF);
@@ -3494,6 +3536,8 @@ stock Factory_OnMarkerMoved(ref, Float:x, Float:y, Float:z)
 stock Factories_Load()
 {
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS factories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, kind INTEGER DEFAULT 2, owner INTEGER DEFAULT 0, closed INTEGER DEFAULT 0, stock INTEGER DEFAULT 0)"));
+	DB_AddColumn("factories", "prod", "INTEGER DEFAULT 0");
+	DB_AddColumn("factories", "sab_until", "INTEGER DEFAULT 0");
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS factory_points (factory INTEGER NOT NULL, point INTEGER NOT NULL, x REAL DEFAULT 0, y REAL DEFAULT 0, z REAL DEFAULT 0, world INTEGER DEFAULT 0, interior INTEGER DEFAULT 0, PRIMARY KEY (factory, point))"));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "CREATE TABLE IF NOT EXISTS faction_stores (faction INTEGER PRIMARY KEY, x REAL DEFAULT 0, y REAL DEFAULT 0, z REAL DEFAULT 0, world INTEGER DEFAULT 0, interior INTEGER DEFAULT 0)"));
 
@@ -3501,6 +3545,7 @@ stock Factories_Load()
 	{
 		Factory[i][fcUsed] = false;
 		Factory[i][fcCapBy] = INVALID_PLAYER_ID;
+		Factory[i][fcSabBy] = INVALID_PLAYER_ID;
 		for (new p = 0; p < MAX_FPOINTS; p++)
 		{
 			gFcSet[i][p] = false;
@@ -3514,7 +3559,7 @@ stock Factories_Load()
 	}
 
 	new n = 0;
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, name, kind, owner, closed, stock FROM factories");
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT id, name, kind, owner, closed, stock, prod, sab_until FROM factories");
 	if (r != DBResult:0)
 	{
 		new rows = DB_GetRowCount(r);
@@ -3529,6 +3574,10 @@ stock Factories_Load()
 			Factory[n][fcClosed] = DB_GetFieldInt(r, 4) != 0;
 			Factory[n][fcStock] = DB_GetFieldInt(r, 5);
 			Factory[n][fcLastCap] = 0;
+			Factory[n][fcProd] = DB_GetFieldInt(r, 6);
+			if (Factory[n][fcProd] < 0 || Factory[n][fcProd] >= PROD_COUNT || Factory[n][fcKind] == FKIND_MILITARY) Factory[n][fcProd] = PROD_MATS;
+			Factory[n][fcSabUntil] = DB_GetFieldInt(r, 7);
+			Factory[n][fcLastSab] = 0;
 			n++;
 			DB_SelectNextRow(r);
 		}
@@ -3658,6 +3707,7 @@ stock Crate_Give(playerid, kind, fc)
 {
 	gCrate[playerid] = kind;
 	gCrateFc[playerid] = fc;
+	gCrateProd[playerid] = Factory[fc][fcProd];
 	SetPlayerAttachedObject(playerid, CRATE_SLOT, CRATE_MODEL, 1, 0.11, 0.36, 0.0, 0.0, 90.0, 0.0, 0.6, 0.6, 0.6);
 	SetPlayerSpecialAction(playerid, SPECIAL_ACTION_CARRY);
 }
@@ -3720,18 +3770,30 @@ stock Cargo_IsBehind(playerid, v)
 // ---------------------------------------------------------------------
 //  Работа на заводе
 // ---------------------------------------------------------------------
-stock Factory_CanWork(playerid, i)
+// Станок сломан после саботажа
+stock Factory_Sabotaged(i)
+{
+	return (Factory[i][fcSabUntil] > gettime()) ? 1 : 0;
+}
+
+// Может ли игрок работать на заводе. Причину пишет, если не silent.
+stock Factory_CanWork(playerid, i, bool:silent = false)
 {
 	new owner = Factory[i][fcOwner], f = Player[playerid][pFaction];
-	if (Factory[i][fcClosed]) { SendClientMessage(playerid, COLOR_GREY, "Завод закрыт: оборудование уничтожено."); return 0; }
-	if (!Faction_IsValid(owner)) { SendClientMessage(playerid, COLOR_GREY, "У завода нет владельца, он не работает."); return 0; }
+	if (Factory[i][fcClosed]) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Завод закрыт: оборудование уничтожено."); return 0; }
+	if (!Faction_IsValid(owner)) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "У завода нет владельца, он не работает."); return 0; }
+	if (Factory_Sabotaged(i))
+	{
+		if (!silent) SendClientMessage(playerid, COLOR_GREY, "Станок сломан после саботажа. Завод заработает через %d мин.", (Factory[i][fcSabUntil] - gettime()) / 60 + 1);
+		return 0;
+	}
 	if (Factory[i][fcKind] == FKIND_MILITARY || !Faction_IsState(owner))
 	{
-		if (f != owner) { SendClientMessage(playerid, COLOR_GREY, "Здесь работают только свои: %s.", Faction_GetName(owner)); return 0; }
+		if (f != owner) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Здесь работают только свои: %s.", Faction_GetName(owner)); return 0; }
 		return 1;
 	}
 	// обычный завод у госструктуры: работают простые люди
-	if (Faction_IsGang(f)) { SendClientMessage(playerid, COLOR_GREY, "Этот завод держит государство. Бандам тут работы нет."); return 0; }
+	if (Faction_IsGang(f)) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Этот завод держит государство. Бандам тут работы нет."); return 0; }
 	return 1;
 }
 
@@ -3768,6 +3830,11 @@ public Factory_OnBenchDone(playerid)
 		SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от станка. Сырьё испорчено.");
 		return 1;
 	}
+	if (Factory_Sabotaged(i) || Factory[i][fcClosed])
+	{
+		SendClientMessage(playerid, COLOR_GREY, "Станок сломался. Сырьё испорчено.");
+		return 1;
+	}
 	Crate_Give(playerid, 1, i);
 	SendClientMessage(playerid, COLOR_WHITE, "Ящик готов. Отнеси его на склад завода (ALT).");
 	return 1;
@@ -3776,6 +3843,27 @@ public Factory_OnBenchDone(playerid)
 stock Factory_TakeCrate(playerid, i)
 {
 	new owner = Factory[i][fcOwner], f = Player[playerid][pFaction];
+	if (Factory[i][fcProd] != PROD_MATS)
+	{
+		// товар: свои берут бесплатно, остальные покупают, деньги в общак владельца
+		if (Factory[i][fcStock] < CRATE_MATS) { SendClientMessage(playerid, COLOR_GREY, "На складе завода нет готовых ящиков."); return; }
+		new price = Cfg(CFG_GOODS_PRICE);
+		if (f == owner || !Faction_IsValid(owner)) price = 0;
+		if (price > 0)
+		{
+			if (GetMoney(playerid) < price) { SendClientMessage(playerid, COLOR_GREY, "Ящик стоит $%d, у тебя не хватает.", price); return; }
+			GiveMoney(playerid, -price, "покупка ящика на заводе");
+			Faction_AddBank(owner, price);
+		}
+		Factory[i][fcStock] -= CRATE_MATS;
+		Factory_Save(i);
+		Factory_Label(i, FP_STORE);
+		if (Factory[i][fcClosed] && Factory[i][fcStock] < CRATE_MATS) Factory_BuildPoint(i, FP_STORE);
+		Crate_Give(playerid, 2, i);
+		SendClientMessage(playerid, COLOR_WHITE, "Ты взял ящик: %s%s. Положи в грузовик или фургон (сзади, ALT) и вези в бизнес: /contracts.",
+			gProdName[Factory[i][fcProd]], (price > 0) ? (", оплачено") : (""));
+		return;
+	}
 	if (!Faction_IsValid(f) || (f != owner && !(Faction_IsState(owner) && Faction_IsArmy(f))))
 	{
 		SendClientMessage(playerid, COLOR_GREY, "Ящики отсюда берёт владелец завода, а с госзавода ещё и армия. Сюда их сдают рабочие.");
@@ -3817,7 +3905,8 @@ stock Capture_Stop(playerid)
 stock Factory_OwnerAlt(playerid, i)
 {
 	new owner = Factory[i][fcOwner], f = Player[playerid][pFaction], msg[144];
-	SendClientMessage(playerid, COLOR_WHITE, "Завод «%s». На складе материалов: %d (ящиков: %d).", Factory[i][fcName], Factory[i][fcStock], Factory[i][fcStock] / CRATE_MATS);
+	SendClientMessage(playerid, COLOR_WHITE, "Завод «%s» делает: %s. На складе ящиков: %d.", Factory[i][fcName], gProdName[Factory[i][fcProd]], Factory[i][fcStock] / CRATE_MATS);
+	if (Factory_Sabotaged(i)) SendClientMessage(playerid, COLOR_GREY, "Станок сломан после саботажа: ещё %d мин.", (Factory[i][fcSabUntil] - gettime()) / 60 + 1);
 	if (!Faction_IsValid(f)) return;
 	if (f == owner)
 	{
@@ -3825,15 +3914,16 @@ stock Factory_OwnerAlt(playerid, i)
 		if (!FPerm_Has(playerid, FP_FACTORY)) return;
 		gFcSel[playerid] = i;
 		if (Factory[i][fcKind] == FKIND_MILITARY) return;   // военный завод не закрывают и не передают
-		// лидер и заместитель: передать завод другой организации или закрыть
-		ShowPlayerDialog(playerid, DIALOG_FMANAGE, DIALOG_STYLE_LIST, Factory[i][fcName],
-			"Передать завод другой организации\nЗакрыть завод {AFAFAF}(уничтожить оборудование)", "Выбрать", "Отмена");
+		// лидер и заместитель: продукция, передать завод другой организации или закрыть
+		new list[192];
+		format(list, sizeof list, "Что производить: {FFFF00}%s\nПередать завод другой организации\nЗакрыть завод {AFAFAF}(уничтожить оборудование)", gProdName[Factory[i][fcProd]]);
+		ShowPlayerDialog(playerid, DIALOG_FMANAGE, DIALOG_STYLE_LIST, Factory[i][fcName], "%s", "Выбрать", "Отмена", list);
 		return;
 	}
 	if (Factory[i][fcKind] == FKIND_MILITARY) { SendClientMessage(playerid, COLOR_GREY, "Это завод на военной части. Его не захватить."); return; }
-	if (!Faction_IsGang(f) && !Faction_IsLaw(f) && !Faction_IsArmy(f)) { SendClientMessage(playerid, COLOR_GREY, "Захватывать заводы могут силовики, армия и банды."); return; }
+	if (!Org_FcCanCapture(f)) { SendClientMessage(playerid, COLOR_GREY, "Ваша организация не может захватывать заводы."); return; }
 	if (Faction_IsState(f) && Faction_IsState(owner)) { SendClientMessage(playerid, COLOR_GREY, "Завод уже у государства."); return; }
-	if (Player[playerid][pRank] < FACTORY_CAPTURE_RANK) { SendClientMessage(playerid, COLOR_GREY, "Захватить завод может ранг %d и выше.", FACTORY_CAPTURE_RANK); return; }
+	if (Player[playerid][pRank] < Org_FcCapRank(f)) { SendClientMessage(playerid, COLOR_GREY, "Захватить завод может ранг %d и выше.", Org_FcCapRank(f)); return; }
 	if (Faction_IsState(f) && !Player[playerid][pDuty]) { SendClientMessage(playerid, COLOR_GREY, "Сначала заступи на смену: /duty."); return; }
 	if (gCapFc[playerid] != -1) { SendClientMessage(playerid, COLOR_GREY, "Ты уже захватываешь. Стой на маркере."); return; }
 	if (Factory[i][fcCapBy] != INVALID_PLAYER_ID) { SendClientMessage(playerid, COLOR_GREY, "Этот завод уже захватывают."); return; }
@@ -3889,7 +3979,7 @@ stock Capture_Tick(playerid)
 	Factory_Save(i);
 	for (new p = 0; p < MAX_FPOINTS; p++) Factory_Label(i, p);
 	GameTextForPlayer(playerid, "~g~Captured", 2500, 3);
-	format(msg, sizeof msg, "[Фракция] %s захватил завод «%s». На складе материалов: %d.", GetRPName(playerid), Factory[i][fcName], Factory[i][fcStock]);
+	format(msg, sizeof msg, "[Фракция] %s захватил завод «%s» (%s). На складе ящиков: %d.", GetRPName(playerid), Factory[i][fcName], gProdName[Factory[i][fcProd]], Factory[i][fcStock] / CRATE_MATS);
 	Faction_Message(f, Faction_GetColor(f), msg);
 	Faction_Log(f, msg[10]);
 	if (Faction_IsValid(old))
@@ -3907,6 +3997,114 @@ stock Capture_Tick(playerid)
 	}
 	else
 		SendClientMessage(playerid, COLOR_WHITE, "Завод ваш и работает. Передать или закрыть его может тот, у кого есть право «завод»: ALT на маркере.");
+}
+
+// ---------------------------------------------------------------------
+//  Саботаж завода: лидеры и заместители (ранг из /orgs) чужих фракций
+// ---------------------------------------------------------------------
+stock Sabotage_Stop(playerid)
+{
+	new i = gSabFc[playerid];
+	gSabFc[playerid] = -1;
+	if (i >= 0 && i < MAX_FACTORIES && Factory[i][fcSabBy] == playerid) Factory[i][fcSabBy] = INVALID_PLAYER_ID;
+}
+
+// Можно ли игроку саботировать завод i. Причину пишет, если не silent.
+stock Sabotage_Can(playerid, i, bool:silent)
+{
+	new f = Player[playerid][pFaction], owner = Factory[i][fcOwner];
+	if (!Faction_IsValid(f) || !Org_FcCanSabotage(f)) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Ваша организация не может саботировать заводы."); return 0; }
+	if (Player[playerid][pRank] < Org_FcSabRank(f)) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Саботаж — с ранга %d.", Org_FcSabRank(f)); return 0; }
+	if (Factory[i][fcKind] == FKIND_MILITARY) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Военный завод не саботировать."); return 0; }
+	if (Factory[i][fcClosed] || !Faction_IsValid(owner)) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Завод и так не работает."); return 0; }
+	if (owner == f) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Это ваш завод."); return 0; }
+	if (Faction_IsState(f) && Faction_IsState(owner)) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Завод у государства. Госструктуры его не саботируют."); return 0; }
+	if (Faction_IsState(f) && !Player[playerid][pDuty]) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Сначала заступи на смену: /duty."); return 0; }
+	if (Factory_Sabotaged(i)) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Станок уже сломан."); return 0; }
+	new now = gettime(), pause = Cfg(CFG_FAC_SAB_PAUSE) * 60;
+	if (Factory[i][fcLastSab] != 0 && now - Factory[i][fcLastSab] < pause)
+	{
+		if (!silent) SendClientMessage(playerid, COLOR_GREY, "Завод недавно саботировали. Подожди ещё %d мин.", (pause - (now - Factory[i][fcLastSab])) / 60 + 1);
+		return 0;
+	}
+	if (Factory[i][fcSabBy] != INVALID_PLAYER_ID && Factory[i][fcSabBy] != playerid) { if (!silent) SendClientMessage(playerid, COLOR_GREY, "Тут уже кто-то возится со станком."); return 0; }
+	return 1;
+}
+
+stock Sabotage_Ask(playerid, i)
+{
+	if (!Sabotage_Can(playerid, i, false)) return;
+	gFcSel[playerid] = i;
+	ShowPlayerDialog(playerid, DIALOG_FSAB, DIALOG_STYLE_MSGBOX, "Саботаж",
+		"{FFFFFF}Вывести из строя станок завода «%s» (%s)?\n\nНужно простоять у станка {FFFF00}%d сек{FFFFFF}. Владельцы сразу получат тревогу.\nПолучится — завод встанет на {FFFF00}%d мин{FFFFFF}.",
+		"Начать", "Отмена", Factory[i][fcName], Faction_GetName(Factory[i][fcOwner]), Cfg(CFG_FAC_SAB_TIME), Cfg(CFG_FAC_SAB_DOWN));
+}
+
+stock Sabotage_Start(playerid, i)
+{
+	if (gSabFc[playerid] != -1) { SendClientMessage(playerid, COLOR_GREY, "Ты уже этим занят."); return; }
+	if (!Factory_At(playerid, i, FP_BENCH, 4.0) || GetPlayerState(playerid) != PLAYER_STATE_ONFOOT) { SendClientMessage(playerid, COLOR_GREY, "Встань у станка."); return; }
+	if (!Sabotage_Can(playerid, i, false)) return;
+	gSabFc[playerid] = i;
+	gSabLeft[playerid] = Cfg(CFG_FAC_SAB_TIME);
+	Factory[i][fcSabBy] = playerid;
+	ApplyAnimation(playerid, "BOMBER", "BOM_Plant_Loop", 4.1, true, false, false, false, 0);
+	SendClientMessage(playerid, COLOR_YELLOW, "Саботаж начат. Стой у станка %d сек.", gSabLeft[playerid]);
+	new msg[144];
+	format(msg, sizeof msg, "[Тревога] На заводе «%s» кто-то ломает станок! Осталось %d сек.", Factory[i][fcName], gSabLeft[playerid]);
+	Faction_Message(Factory[i][fcOwner], COLOR_RED, msg);
+}
+
+stock Sabotage_Tick(playerid)
+{
+	new i = gSabFc[playerid];
+	if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed] || Factory[i][fcClosed]) { Sabotage_Stop(playerid); return; }
+	if (GetPlayerState(playerid) != PLAYER_STATE_ONFOOT || Wound_IsWounded(playerid) || Player[playerid][pCuffed] || !Factory_At(playerid, i, FP_BENCH, 4.0))
+	{
+		Sabotage_Stop(playerid);
+		ClearAnimations(playerid);
+		SendClientMessage(playerid, COLOR_RED, "Саботаж сорван: ты отошёл от станка.");
+		return;
+	}
+	gSabLeft[playerid]--;
+	if (gSabLeft[playerid] > 0)
+	{
+		new buf[48];
+		format(buf, sizeof buf, "~r~Sabotage~n~~w~%d s", gSabLeft[playerid]);
+		GameTextForPlayer(playerid, buf, 1100, 3);
+		return;
+	}
+	Sabotage_Stop(playerid);
+	ClearAnimations(playerid);
+	new now = gettime(), f = Player[playerid][pFaction], owner = Factory[i][fcOwner], msg[144];
+	Factory[i][fcSabUntil] = now + Cfg(CFG_FAC_SAB_DOWN) * 60;
+	Factory[i][fcLastSab] = now;
+	Factory_Save(i);
+	for (new p = 0; p < MAX_FPOINTS; p++) Factory_Label(i, p);
+	// кто сейчас у станка — сырьё пропадает
+	for (new k = 0; k < MAX_PLAYERS; k++)
+	{
+		if (IsPlayerConnected(k) && gWorkFc[k] == i && gWorkStage[k] != 0) gWorkStage[k] = 0;
+	}
+	GameTextForPlayer(playerid, "~g~Done", 2500, 3);
+	format(msg, sizeof msg, "[Фракция] %s вывел из строя завод «%s» на %d мин.", GetRPName(playerid), Factory[i][fcName], Cfg(CFG_FAC_SAB_DOWN));
+	Faction_Message(f, Faction_GetColor(f), msg);
+	Faction_Log(f, msg[10]);
+	if (Faction_IsValid(owner))
+	{
+		format(msg, sizeof msg, "[Фракция] Завод «%s» саботирован (%s). Он стоит %d мин.", Factory[i][fcName], Faction_GetName(f), Cfg(CFG_FAC_SAB_DOWN));
+		Faction_Message(owner, COLOR_RED, msg);
+		Faction_Log(owner, msg[10]);
+	}
+}
+
+stock bool:Cmd_Sabotage(playerid)
+{
+	for (new i = 0; i < MAX_FACTORIES; i++)
+	{
+		if (Factory[i][fcUsed] && Factory_At(playerid, i, FP_BENCH, 4.0)) { Sabotage_Ask(playerid, i); return true; }
+	}
+	return SendClientMessage(playerid, COLOR_GREY, "Саботаж делают у станка чужого завода.");
 }
 
 // ---------------------------------------------------------------------
@@ -3991,6 +4189,7 @@ stock Supply_ResetPlayer(playerid)
 {
 	if (gStealing[playerid]) Steal_Stop(playerid, "Кража сорвалась.");
 	if (gCapFc[playerid] != -1) Capture_Stop(playerid);
+	if (gSabFc[playerid] != -1) Sabotage_Stop(playerid);
 	Crate_Drop(playerid);
 	gWorkStage[playerid] = 0;
 }
@@ -4002,7 +4201,7 @@ public Supply_OnSecond()
 	{
 		if (!IsPlayerConnected(i))
 		{
-			if (gStealing[i] || gCapFc[i] != -1 || gCrate[i] != 0) Supply_ResetPlayer(i);
+			if (gStealing[i] || gCapFc[i] != -1 || gSabFc[i] != -1 || gCrate[i] != 0) Supply_ResetPlayer(i);
 			continue;
 		}
 		if (gCrate[i] != 0 && (GetPlayerState(i) != PLAYER_STATE_ONFOOT || Wound_IsWounded(i)))
@@ -4012,6 +4211,7 @@ public Supply_OnSecond()
 		}
 		if (gStealing[i]) Steal_Tick(i);
 		if (gCapFc[i] != -1) Capture_Tick(i);
+		if (gSabFc[i] != -1) Sabotage_Tick(i);
 	}
 	return 1;
 }
@@ -4044,6 +4244,7 @@ stock Factory_TryAlt(playerid)
 		{
 			if (!Factory[i][fcUsed] || !Factory_At(playerid, i, FP_STORE, FACTORY_POINT_RANGE)) continue;
 			if (Factory[i][fcClosed]) { SendClientMessage(playerid, COLOR_GREY, "Завод закрыт: ящики отсюда только вывозят."); return 1; }
+			if (gCrateProd[playerid] != Factory[i][fcProd]) { SendClientMessage(playerid, COLOR_GREY, "Этот завод делает другое (%s). Твой ящик сюда не сдать.", gProdName[Factory[i][fcProd]]); return 1; }
 			if (Factory[i][fcStock] + CRATE_MATS > FACTORY_STOCK_MAX) { SendClientMessage(playerid, COLOR_GREY, "Склад завода забит."); return 1; }
 			Factory[i][fcStock] += CRATE_MATS;
 			Factory_Save(i);
@@ -4057,7 +4258,7 @@ stock Factory_TryAlt(playerid)
 			Crate_Drop(playerid);
 			return 1;
 		}
-		if (Faction_IsValid(f) && FStore_At(playerid, f, 3.0))
+		if (Faction_IsValid(f) && FStore_At(playerid, f, 3.0) && gCrateProd[playerid] == PROD_MATS)
 		{
 			new cap = Faction_IsArmy(f) ? ARMY_MATS_MAX : FACTION_MATS_MAX;
 			if (Faction[f][fMats] + CRATE_MATS > cap) { SendClientMessage(playerid, COLOR_GREY, "Склад организации полон."); return 1; }
@@ -4074,14 +4275,17 @@ stock Factory_TryAlt(playerid)
 		{
 			new cap = Cargo_Cap(GetVehicleModel(v));
 			if (!Cargo_IsBehind(playerid, v)) { SendClientMessage(playerid, COLOR_GREY, "Встань сзади машины."); return 1; }
-			if (gVehCargo[v] + CRATE_MATS > cap) { SendClientMessage(playerid, COLOR_GREY, "Кузов полон (%d из %d).", gVehCargo[v], cap); return 1; }
+			if (gVehCargo[v] > 0 && gVehCargoProd[v] != gCrateProd[playerid]) { SendClientMessage(playerid, COLOR_GREY, "В кузове уже другой груз (%s). Разные товары вместе не возят.", gProdName[gVehCargoProd[v]]); return 1; }
+			if (gVehCargo[v] + CRATE_MATS > cap) { SendClientMessage(playerid, COLOR_GREY, "Кузов полон (%d из %d ящиков).", gVehCargo[v] / CRATE_MATS, cap / CRATE_MATS); return 1; }
 			gVehCargo[v] += CRATE_MATS;
+			gVehCargoProd[v] = gCrateProd[playerid];
 			Crate_Drop(playerid);
 			ApplyAnimation(playerid, "CARRY", "putdwn", 4.1, false, false, false, false, 0);
-			SendClientMessage(playerid, COLOR_GREEN, "Ящик в кузове: %d из %d материалов.", gVehCargo[v], cap);
+			SendClientMessage(playerid, COLOR_GREEN, "Ящик в кузове (%s): %d из %d ящиков.", gProdName[gVehCargoProd[v]], gVehCargo[v] / CRATE_MATS, cap / CRATE_MATS);
 			return 1;
 		}
-		SendClientMessage(playerid, COLOR_GREY, "Ящик кладут в грузовик или фургон (сзади), на склад завода или своей организации. Бросить: /dropcrate");
+		if (gCrateProd[playerid] != PROD_MATS) SendClientMessage(playerid, COLOR_GREY, "Товар кладут в грузовик или фургон (сзади) и везут в бизнес: /contracts. Бросить: /dropcrate");
+		else SendClientMessage(playerid, COLOR_GREY, "Ящик кладут в грузовик или фургон (сзади), на склад завода или своей организации. Бросить: /dropcrate");
 		return 1;
 	}
 
@@ -4090,7 +4294,13 @@ stock Factory_TryAlt(playerid)
 	{
 		if (!Factory[i][fcUsed]) continue;
 		if (Factory_At(playerid, i, FP_RAW, FACTORY_POINT_RANGE))   { Factory_TakeRaw(playerid, i); return 1; }
-		if (Factory_At(playerid, i, FP_BENCH, FACTORY_POINT_RANGE)) { Factory_UseBench(playerid, i); return 1; }
+		if (Factory_At(playerid, i, FP_BENCH, FACTORY_POINT_RANGE))
+		{
+			// чужой лидер или заместитель, которому тут не работать, — саботаж
+			if (!Factory_CanWork(playerid, i, true) && Sabotage_Can(playerid, i, true)) Sabotage_Ask(playerid, i);
+			else Factory_UseBench(playerid, i);
+			return 1;
+		}
 		if (Factory_At(playerid, i, FP_STORE, FACTORY_POINT_RANGE)) { Factory_TakeCrate(playerid, i); return 1; }
 		if (Factory_At(playerid, i, FP_OWNER, FACTORY_POINT_RANGE)) { Factory_OwnerAlt(playerid, i); return 1; }
 	}
@@ -4120,6 +4330,8 @@ stock Factory_TryUnload(playerid, bool:verbose)
 		if (verbose) SendClientMessage(playerid, COLOR_GREY, "В машине нет ящиков.");
 		return 0;
 	}
+	// товар — в бизнес (bizplus.inc)
+	if (gVehCargoProd[v] != PROD_MATS) return BizX_TryDeliver(playerid, v, verbose);
 	if (!Faction_IsValid(f))
 	{
 		if (verbose) SendClientMessage(playerid, COLOR_GREY, "Разгружать можно только на складе своей организации.");
@@ -4217,7 +4429,7 @@ stock Craft_Make(playerid, it, qty)
 // Окна заводов, складов и крафта. Вызывается из OnDialogResponse (rp.pwn). 1 — окно наше.
 stock Factory_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
-	if (dialogid < DIALOG_CRAFT || dialogid > DIALOG_LOCKER) return 0;
+	if ((dialogid < DIALOG_CRAFT || dialogid > DIALOG_LOCKER) && dialogid != DIALOG_FPROD && dialogid != DIALOG_FSAB) return 0;
 	new f = Player[playerid][pFaction], msg[144];
 	switch (dialogid)
 	{
@@ -4276,7 +4488,18 @@ stock Factory_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			new i = gFcSel[playerid];
 			if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed] || Factory[i][fcClosed] || Factory[i][fcOwner] != f || !FPerm_Has(playerid, FP_FACTORY)) return 1;
 			if (Factory[i][fcKind] == FKIND_MILITARY) return 1;
-			if (listitem == 1)
+			if (listitem == 0)
+			{
+				new body[256], line[64];
+				for (new p = 0; p < PROD_COUNT; p++)
+				{
+					format(line, sizeof line, "%s%s\n", (p == Factory[i][fcProd]) ? ("{FFFF00}") : ("{FFFFFF}"), gProdName[p]);
+					strcat(body, line);
+				}
+				ShowPlayerDialog(playerid, DIALOG_FPROD, DIALOG_STYLE_LIST, "Что производить", "%s", "Выбрать", "Отмена", body);
+				return 1;
+			}
+			if (listitem == 2)
 			{
 				ShowPlayerDialog(playerid, DIALOG_FCLOSE, DIALOG_STYLE_MSGBOX, "Закрыть завод",
 					"{FFFFFF}Закрыть завод «%s» и уничтожить оборудование?\n\nЭто больше не будет заводом: точки пропадут, работать и захватывать его будет нельзя.\nОставшиеся ящики можно вывезти со склада. Вернуть завод может только администратор.",
@@ -4295,6 +4518,37 @@ stock Factory_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			if (n == 0) { SendClientMessage(playerid, COLOR_GREY, "Передавать некому."); return 1; }
 			ShowPlayerDialog(playerid, DIALOG_FTRANSFER, DIALOG_STYLE_LIST, "Кому передать завод", "%s", "Передать", "Отмена", body);
 		}
+		case DIALOG_FPROD:
+		{
+			if (!response || listitem < 0 || listitem >= PROD_COUNT) return 1;
+			new i = gFcSel[playerid];
+			if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed] || Factory[i][fcClosed] || Factory[i][fcOwner] != f || !FPerm_Has(playerid, FP_FACTORY)) return 1;
+			if (Factory[i][fcKind] == FKIND_MILITARY || listitem == Factory[i][fcProd]) return 1;
+			if (!Factory_At(playerid, i, FP_OWNER, 6.0)) { SendClientMessage(playerid, COLOR_GREY, "Ты отошёл от маркера завода."); return 1; }
+			if (Factory[i][fcStock] >= CRATE_MATS)
+			{
+				SendClientMessage(playerid, COLOR_GREY, "Сначала вывезите со склада завода готовые ящики (%d шт.): на них уже старая продукция.", Factory[i][fcStock] / CRATE_MATS);
+				return 1;
+			}
+			Factory[i][fcProd] = listitem;
+			Factory[i][fcStock] = 0;
+			Factory_Save(i);
+			for (new p = 0; p < MAX_FPOINTS; p++) Factory_Label(i, p);
+			for (new k = 0; k < MAX_PLAYERS; k++)
+			{
+				if (IsPlayerConnected(k) && gWorkFc[k] == i && gWorkStage[k] != 0) gWorkStage[k] = 0;   // старое сырьё не годится
+			}
+			format(msg, sizeof msg, "[Фракция] %s перевёл завод «%s» на новую продукцию: %s.", GetRPName(playerid), Factory[i][fcName], gProdName[listitem]);
+			Faction_Message(f, Faction_GetColor(f), msg);
+			Faction_Log(f, msg[10]);
+		}
+		case DIALOG_FSAB:
+		{
+			if (!response) return 1;
+			new i = gFcSel[playerid];
+			if (i < 0 || i >= MAX_FACTORIES || !Factory[i][fcUsed]) return 1;
+			Sabotage_Start(playerid, i);
+		}
 		case DIALOG_FTRANSFER:
 		{
 			if (!response || listitem < 0 || listitem >= MAX_FACTIONS) return 1;
@@ -4309,7 +4563,7 @@ stock Factory_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			format(msg, sizeof msg, "[Фракция] %s передал завод «%s»: %s.", GetRPName(playerid), Factory[i][fcName], Faction_GetName(t));
 			Faction_Message(f, Faction_GetColor(f), msg);
 			Faction_Log(f, msg[10]);
-			format(msg, sizeof msg, "[Фракция] Организации передан завод «%s» (от: %s). Материалов на складе: %d.", Factory[i][fcName], Faction_GetName(f), Factory[i][fcStock]);
+			format(msg, sizeof msg, "[Фракция] Организации передан завод «%s» (от: %s). Делает: %s, ящиков на складе: %d.", Factory[i][fcName], Faction_GetName(f), gProdName[Factory[i][fcProd]], Factory[i][fcStock] / CRATE_MATS);
 			Faction_Message(t, Faction_GetColor(t), msg);
 			Faction_Log(t, msg[10]);
 		}
@@ -4323,6 +4577,7 @@ stock Factory_OnDialog(playerid, dialogid, response, listitem, const inputtext[]
 			Factory[i][fcClosed] = true;
 			Factory_Save(i);
 			if (Factory[i][fcCapBy] != INVALID_PLAYER_ID) Capture_Stop(Factory[i][fcCapBy]);
+			if (Factory[i][fcSabBy] != INVALID_PLAYER_ID) Sabotage_Stop(Factory[i][fcSabBy]);
 			for (new p = 0; p < MAX_FPOINTS; p++) Factory_BuildPoint(i, p);    // точки завода пропадают
 			format(msg, sizeof msg, "[Фракция] %s закрыл завод «%s»: оборудование уничтожено.", GetRPName(playerid), Factory[i][fcName]);
 			Faction_Message(f, Faction_GetColor(f), msg);
@@ -4365,6 +4620,10 @@ stock bool:Cmd_AddFactory(playerid, const params[])
 	Factory[i][fcStock] = 0;
 	Factory[i][fcLastCap] = 0;
 	Factory[i][fcCapBy] = INVALID_PLAYER_ID;
+	Factory[i][fcSabBy] = INVALID_PLAYER_ID;
+	Factory[i][fcProd] = PROD_MATS;
+	Factory[i][fcSabUntil] = 0;
+	Factory[i][fcLastSab] = 0;
 	for (new p = 0; p < MAX_FPOINTS; p++)
 	{
 		gFcSet[i][p] = false;
@@ -4380,7 +4639,7 @@ stock bool:Cmd_AddFactory(playerid, const params[])
 	new n = Factory[i][fcDbId];
 	SendClientMessage(playerid, COLOR_ADMIN, "Завод №%d «%s» создан, его маркер стоит здесь.", n, name);
 	SendClientMessage(playerid, COLOR_ADMIN, "Расставь точки: /setfpoint %d raw (сырьё), /setfpoint %d bench (станок), /setfpoint %d store (склад ящиков).", n, n, n);
-	if (kind == FKIND_COMMON) SendClientMessage(playerid, COLOR_ADMIN, "Владельца пока нет: /setfowner %d [фракция] или пусть завод захватят.", n);
+	if (kind == FKIND_COMMON) SendClientMessage(playerid, COLOR_ADMIN, "Владельца пока нет: /setfowner %d [фракция] или пусть завод захватят. Продукцию выбирает владелец (ALT на маркере).", n);
 	return true;
 }
 
@@ -4438,6 +4697,7 @@ stock bool:Cmd_DelFactory(playerid, const params[])
 		gFcSet[i][p] = false;
 	}
 	if (Factory[i][fcCapBy] != INVALID_PLAYER_ID) Capture_Stop(Factory[i][fcCapBy]);
+	if (Factory[i][fcSabBy] != INVALID_PLAYER_ID) Sabotage_Stop(Factory[i][fcSabBy]);
 	Factory[i][fcUsed] = false;
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM factories WHERE id = %d", n));
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "DELETE FROM factory_points WHERE factory = %d", n));
@@ -4449,13 +4709,13 @@ stock bool:Cmd_Factories(playerid)
 {
 	if (!Admin_Check(playerid, 4)) return true;
 	new count = 0;
-	SendClientMessage(playerid, COLOR_ADMIN, "Заводы (№ — название, вид, владелец, материалов на складе):");
+	SendClientMessage(playerid, COLOR_ADMIN, "Заводы (№ — название, вид, владелец, продукция, на складе):");
 	for (new i = 0; i < MAX_FACTORIES; i++)
 	{
 		if (!Factory[i][fcUsed]) continue;
 		count++;
-		SendClientMessage(playerid, COLOR_WHITE, " %d — %s, вид %d, %s, материалов %d, закрыт: %d, точек задано: %d из 4", Factory[i][fcDbId], Factory[i][fcName],
-			Factory[i][fcKind], Faction_GetName(Factory[i][fcOwner]), Factory[i][fcStock], Factory[i][fcClosed] ? 1 : 0,
+		SendClientMessage(playerid, COLOR_WHITE, " %d — %s, вид %d, %s, %s %d, закрыт: %d, точек задано: %d из 4", Factory[i][fcDbId], Factory[i][fcName],
+			Factory[i][fcKind], Faction_GetName(Factory[i][fcOwner]), gProdName[Factory[i][fcProd]], Factory[i][fcStock], Factory[i][fcClosed] ? 1 : 0,
 			(gFcSet[i][0] ? 1 : 0) + (gFcSet[i][1] ? 1 : 0) + (gFcSet[i][2] ? 1 : 0) + (gFcSet[i][3] ? 1 : 0));
 	}
 	if (count == 0) SendClientMessage(playerid, COLOR_GREY, " Заводов пока нет. Создать: /addfactory [вид] [название]");

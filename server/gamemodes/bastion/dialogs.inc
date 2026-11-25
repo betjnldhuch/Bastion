@@ -306,5 +306,20 @@ enum
 
 	// --- Телефон с приложениями (phoneapp.inc)
 	DIALOG_PHONE,
-	DIALOG_PASS_RETAKE       // паспортный стол: переснять фото (docs.inc)
+	DIALOG_PASS_RETAKE,      // паспортный стол: переснять фото (docs.inc)
+
+	// --- Настройки сервера /srvset (srvcfg.inc)
+	DIALOG_SRVCFG,
+	DIALOG_SRVCFG_CAT,
+	DIALOG_SRVCFG_EDIT,
+
+	// --- /orgs: заводы (orgs.inc)
+	DIALOG_ORGS_FCMODE,
+	DIALOG_ORGS_FCRANK,
+
+	// --- Заводы: продукция, саботаж, рынок, поставки (factions.inc)
+	DIALOG_FPROD,
+	DIALOG_FSAB,
+	DIALOG_MARKET,
+	DIALOG_CONTRACTS
 }

@@ -22,10 +22,12 @@
 #define FPS_MAX_ALLOWED     0
 
 // Деньги и прогресс
-#define START_MONEY         5000             // деньги новичка
+#define START_MONEY_DEF     5000             // деньги новичка (меняется в /srvset)
+#define START_MONEY         Cfg(CFG_START_MONEY)
 #define REFERRAL_REWARD     5000             // пригласившему за новичка (referral.inc)
 #define REFERRAL_LEVEL      3                // ...когда новичок дойдёт до этого уровня
-#define PAYDAY_SALARY       500              // зарплата каждый час (в :00)
+#define PAYDAY_SALARY_DEF   500              // зарплата каждый час (в :00), меняется в /srvset
+#define PAYDAY_SALARY       Cfg(CFG_PAYDAY)
 #define EXP_PER_LEVEL       4                // опыта на уровень = уровень * это число
 
 // Безопасность входа
