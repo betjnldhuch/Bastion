@@ -361,6 +361,7 @@ stock Commands_Process(playerid, const input[], bool:quiet = false)
 	if (!strcmp(cmd, "/market", true))      { Cmd_Market(playerid); return 1; }
 	if (!strcmp(cmd, "/srvset", true))      { Cmd_SrvSet(playerid); return 1; }
 	if (!strcmp(cmd, "/fires", true))       { Cmd_Fires(playerid); return 1; }
+	if (!strcmp(cmd, "/firecheck", true))   { Cmd_FireCheck(playerid); return 1; }
 	if (!strcmp(cmd, "/startfire", true))   { Cmd_StartFire(playerid); return 1; }
 	if (!strcmp(cmd, "/stopfire", true))    { Cmd_StopFire(playerid); return 1; }
 	if (!strcmp(cmd, "/setarmystore", true)) { Cmd_SetSPoint(playerid, SP_ARMY); return 1; }

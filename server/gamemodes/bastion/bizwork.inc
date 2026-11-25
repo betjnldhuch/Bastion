@@ -20,7 +20,9 @@
 //  Улучшения (только владелец, остаются у бизнеса при продаже):
 //    рекламное агентство — доход за PayDay +UPG_ADS_PCT%;
 //    налоговый консультант — налог вдвое ниже;
-//    большой склад — склад вдвое больше.
+//    большой склад — склад вдвое больше;
+//    пожарная сигнализация — пожар начинается с одного очага и растёт вдвое медленнее,
+//      случайные пожары реже, пожарная проверка проходит без штрафа (fire.inc).
 // =====================================================================
 
 #define BW_SELLER           1
@@ -41,13 +43,14 @@
 #define UPG_ADS             1
 #define UPG_TAX             2
 #define UPG_STOCK           4
-#define UPG_COUNT           3
+#define UPG_FIREALARM       8
+#define UPG_COUNT           4
 #define UPG_ADS_PCT         50
 
-static const gUpgBit[UPG_COUNT] = { UPG_ADS, UPG_TAX, UPG_STOCK };
-static const gUpgPct[UPG_COUNT] = { 30, 20, 15 };          // цена, % от цены бизнеса
-static const gUpgName[UPG_COUNT][32] = { "Рекламное агентство", "Налоговый консультант", "Большой склад" };
-static const gUpgDesc[UPG_COUNT][40] = { "доход за PayDay +50%", "налог вдвое ниже", "склад вдвое больше" };
+static const gUpgBit[UPG_COUNT] = { UPG_ADS, UPG_TAX, UPG_STOCK, UPG_FIREALARM };
+static const gUpgPct[UPG_COUNT] = { 30, 20, 15, 5 };       // цена, % от цены бизнеса
+static const gUpgName[UPG_COUNT][32] = { "Рекламное агентство", "Налоговый консультант", "Большой склад", "Пожарная сигнализация" };
+static const gUpgDesc[UPG_COUNT][48] = { "доход за PayDay +50%", "налог вдвое ниже", "склад вдвое больше", "пожар слабее, проверки без штрафа" };
 
 static gStaffAcc[MAX_PLAYERS][BIZW_MAX_SELLERS + BIZW_MAX_DEPUTIES];   // строка окна сотрудников -> аккаунт
 static gStaffPick[MAX_PLAYERS];                 // выбранный сотрудник
