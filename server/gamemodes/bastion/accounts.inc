@@ -299,6 +299,7 @@ stock Account_FinishLogin(playerid)
 	Quest_OnLogin(playerid);            // квест новичка (quest.inc)
 	Daily_OnLogin(playerid);            // ежедневные задания (daily.inc)
 	Season_OnLogin(playerid);           // сезонный пропуск (season.inc)
+	Court_OnLogin(playerid);            // адвокат и дела суда (court.inc)
 	PhoneApp_OnLogin(playerid);         // непрочитанные SMS (phoneapp.inc)
 
 	Account_SetNormalSpawn(playerid);

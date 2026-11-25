@@ -293,6 +293,13 @@ enum
 	DIALOG_SEASON_BUY,
 	DIALOG_FAMWARS,          // /famwars, /famtop (famwar.inc)
 
+	// --- Суд и адвокаты (court.inc)
+	DIALOG_LAWYER_INFO,
+	DIALOG_LAWYER_BUY,
+	DIALOG_LAWYER_OFFER,
+	DIALOG_COURT_CASES,
+	DIALOG_COURT_VERDICT,
+
 	// --- Телефон с приложениями (phoneapp.inc)
 	DIALOG_PHONE,
 	DIALOG_PASS_RETAKE       // паспортный стол: переснять фото (docs.inc)

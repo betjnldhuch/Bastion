@@ -108,6 +108,7 @@
 #include "bastion/daily.inc"      // ежедневные задания: /daily
 #include "bastion/season.inc"     // сезонный пропуск: /season
 #include "bastion/famwar.inc"     // войны семей по расписанию: /famwar
+#include "bastion/court.inc"      // суд и адвокаты: /lawyer, /free, /appeal, /cases
 #include "bastion/rental.inc"     // аренда мопедов: /addmoped, ALT у точки
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
@@ -189,6 +190,7 @@ public OnGameModeInit()
 	Daily_Init();          // поля ежедневных заданий в accounts (daily.inc)
 	Season_Init();         // сезонный пропуск (season.inc)
 	FamWar_Init();         // войны семей (famwar.inc), после Families_Init
+	Court_Init();          // суд и адвокаты (court.inc)
 	PhoneApp_Init();       // SMS, контакты, звонки (phoneapp.inc)
 	Rental_Init();         // точки проката мопедов (rental.inc)
 	AC_Init();            // античит (anticheat.inc)
@@ -263,6 +265,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Jobs_OnDisconnect(playerid);
 	Daily_OnDisconnect(playerid);
 	Season_OnDisconnect(playerid);
+	Court_OnDisconnect(playerid);
 	Licenses_Abort(playerid);
 	Docs_OnDisconnect(playerid);
 	Phone_HangUp(playerid);
@@ -507,6 +510,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Quest_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Daily_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Season_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Court_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (PhoneApp_OnDialog(playerid, dialogid, response, inputtext)) return 1;
 	if (Docs_OnDialog(playerid, dialogid, response)) return 1;
 	return 0;
