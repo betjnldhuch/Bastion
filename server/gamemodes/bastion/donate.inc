@@ -161,6 +161,12 @@ static bool:Donate_Spend(playerid, coins, const what[])
 	return true;
 }
 
+// —писать монеты из другого модул€ (сезонный пропуск). false Ч не хватает, игрок уже предупреждЄн
+stock bool:Donate_SpendCoins(playerid, coins, const what[])
+{
+	return Donate_Spend(playerid, coins, what);
+}
+
 static bool:Donate_HasAllLic(playerid)
 {
 	for (new l = 1; l < LIC_COUNT; l++) if (!Licenses_Has(playerid, l)) return false;

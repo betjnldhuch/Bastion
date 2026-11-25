@@ -106,6 +106,7 @@
 #include "bastion/donate.inc"     // донат-меню: монеты, VIP
 #include "bastion/quest.inc"      // квест новичка «Первые шаги»: /quest
 #include "bastion/daily.inc"      // ежедневные задания: /daily
+#include "bastion/season.inc"     // сезонный пропуск: /season
 #include "bastion/rental.inc"     // аренда мопедов: /addmoped, ALT у точки
 #include "bastion/gates.inc"
 #include "bastion/keys.inc"
@@ -185,6 +186,7 @@ public OnGameModeInit()
 	Donate_Init();
 	Quest_Init();          // поля квеста новичка в accounts (quest.inc)
 	Daily_Init();          // поля ежедневных заданий в accounts (daily.inc)
+	Season_Init();         // сезонный пропуск (season.inc)
 	PhoneApp_Init();       // SMS, контакты, звонки (phoneapp.inc)
 	Rental_Init();         // точки проката мопедов (rental.inc)
 	AC_Init();            // античит (anticheat.inc)
@@ -258,6 +260,7 @@ public OnPlayerDisconnect(playerid, reason)
 	Job_Stop(playerid);
 	Jobs_OnDisconnect(playerid);
 	Daily_OnDisconnect(playerid);
+	Season_OnDisconnect(playerid);
 	Licenses_Abort(playerid);
 	Docs_OnDisconnect(playerid);
 	Phone_HangUp(playerid);
@@ -501,6 +504,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Rental_OnDialog(playerid, dialogid, response)) return 1;
 	if (Quest_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Daily_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Season_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (PhoneApp_OnDialog(playerid, dialogid, response, inputtext)) return 1;
 	if (Docs_OnDialog(playerid, dialogid, response)) return 1;
 	return 0;
@@ -598,6 +602,7 @@ public OnMinuteTimer()
 
 stock PayDay()
 {
+	Season_HourCheck();     // сезон кончился — новый (season.inc)
 	Business_PayDay();      // доход в кассы бизнесов
 	Houses_PayDay();        // аренда комнат и налог на дома
 	for (new i = 0; i < MAX_PLAYERS; i++)
@@ -630,6 +635,7 @@ stock PayDay()
 		Quest_OnPayDay(i);      // квест новичка: первая зарплата, +опыт (quest.inc)
 		Daily_HourCheck(i);     // новый день — новые ежедневные задания (daily.inc)
 		Daily_OnPayDay(i);
+		Season_OnPayDay(i);     // очки сезонного пропуска (season.inc)
 
 		if (Player[i][pExp] >= Player[i][pLevel] * EXP_PER_LEVEL)
 		{

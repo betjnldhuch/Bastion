@@ -298,6 +298,7 @@ stock Account_FinishLogin(playerid)
 	Markers_SyncPlayer(playerid);       // точки, которые видит только своя фракция (markers.inc)
 	Quest_OnLogin(playerid);            // квест новичка (quest.inc)
 	Daily_OnLogin(playerid);            // ежедневные задания (daily.inc)
+	Season_OnLogin(playerid);           // сезонный пропуск (season.inc)
 	PhoneApp_OnLogin(playerid);         // непрочитанные SMS (phoneapp.inc)
 
 	Account_SetNormalSpawn(playerid);

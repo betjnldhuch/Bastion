@@ -225,6 +225,7 @@ static Daily_AllDone(playerid)
 		SendClientMessage(playerid, COLOR_WHITE, "Заходи завтра: бонус вырастет ещё на %d%%. На %d-й день подряд — донат-монеты.", DAILY_STREAK_PCT, DAILY_STREAK_MAX);
 	GameTextForPlayer(playerid, "~g~Daily bonus +$%d", 4000, 1, money);
 	PlayerPlaySound(playerid, 1183, 0.0, 0.0, 0.0);
+	Season_OnDailyAll(playerid);   // сезонный пропуск (season.inc)
 }
 
 // Прогресс по заданию типа type: +add
@@ -246,6 +247,7 @@ static Daily_Progress(playerid, type, add, bool:quiet = false)
 			GiveMoney(playerid, money, "ежедневное задание");
 			PlayerPlaySound(playerid, 1058, 0.0, 0.0, 0.0);
 			SendClientMessage(playerid, COLOR_GREEN, "[Ежедневно] Выполнено: %s. Награда: $%d. Готово %d/%d.", title, money, Daily_DoneCount(playerid), DAILY_TASKS);
+			Season_OnDaily(playerid);   // сезонный пропуск (season.inc)
 			if (Daily_DoneCount(playerid) == DAILY_TASKS && !(gDailyFlags[playerid] & DAILY_F_BONUS)) Daily_AllDone(playerid);
 		}
 		else if (!quiet)
