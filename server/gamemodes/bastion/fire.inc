@@ -18,6 +18,12 @@
 //  Откуда пожары: поджог склада завода (саботаж, factions.inc), случайные
 //  пожары в бизнесах раз в fire_random минут (если на смене хватает пожарных),
 //  админ: /startfire, /stopfire. Список пожаров и GPS: /fires.
+//
+//  Пожарная сигнализация — улучшение бизнеса (bizwork.inc): пожар с одного очага,
+//  растёт вдвое медленнее, случайный пожар выбирает такой бизнес в 3 раза реже.
+//  Пожарная проверка (/firecheck у входа в бизнес, пожарный на смене): нет
+//  сигнализации — штраф fire_fine из кассы владельца в казну (не хватило — в долг
+//  по налогу), проверяющему fire_check_pay. Один бизнес проверяют раз в fire_check_hours часов.
 //  Все цифры — /srvset, раздел «Пожары».
 // =====================================================================
 
@@ -45,6 +51,7 @@ enum E_FIRE
 	frStart,
 	frLastSpread,
 	frLastLoss,
+	bool:frAlarm,           // у бизнеса пожарная сигнализация
 	frName[48]
 }
 static gFire[MAX_FIRES][E_FIRE];
@@ -55,6 +62,7 @@ static Float:gFlameY[MAX_FIRES][FIRE_FLAMES];
 static Float:gFlameZ[MAX_FIRES][FIRE_FLAMES];
 static gFireMap[MAX_PLAYERS][FIRE_ROWS];
 static gFireNextRandom = 0;
+static gBizChecked[MAX_BUSINESSES];     // когда бизнес проверяли пожарные
 
 forward Fire_OnTick();
 
@@ -157,9 +165,10 @@ stock Fire_Start(src, ref, Float:x, Float:y, Float:z, const name[])
 	gFire[i][frLastLoss] = now;
 	gFire[i][frName][0] = '\0';
 	strcat(gFire[i][frName], name, 48);
-	for (new k = 0; k < FIRE_START_FLAMES; k++) Fire_AddFlame(i);
+	gFire[i][frAlarm] = (src == FIRE_SRC_BIZ && ref >= 0 && ref < gBizCount && BizW_HasUpg(ref, UPG_FIREALARM));
+	for (new k = 0, n = gFire[i][frAlarm] ? 1 : FIRE_START_FLAMES; k < n; k++) Fire_AddFlame(i);
 	new msg[144];
-	format(msg, sizeof msg, "[Пожар] Горит: %s! Все на выезд. Список и GPS: /fires", name);
+	format(msg, sizeof msg, "[Пожар] Горит: %s!%s Все на выезд. Список и GPS: /fires", name, gFire[i][frAlarm] ? (" Сработала сигнализация.") : (""));
 	Fire_Alarm(msg);
 	return i;
 }
@@ -265,7 +274,7 @@ public Fire_OnTick()
 		if (Fire_Flames(i) == 0) { Fire_End(i, true); continue; }
 		if (tick % 2 != 0) continue;   // дальше раз в секунду
 		if (now - gFire[i][frStart] >= Cfg(CFG_FIRE_BURN) * 60) { Fire_End(i, false); continue; }
-		if (now - gFire[i][frLastSpread] >= Cfg(CFG_FIRE_SPREAD))
+		if (now - gFire[i][frLastSpread] >= Cfg(CFG_FIRE_SPREAD) * (gFire[i][frAlarm] ? 2 : 1))
 		{
 			gFire[i][frLastSpread] = now;
 			Fire_AddFlame(i);
@@ -291,6 +300,7 @@ static Fire_RandomTick()
 	{
 		new b = random(gBizCount);
 		if (Biz[b][bOwner] == 0 || Biz[b][bOInt] != 0 || Biz[b][bOWorld] != 0 || Fire_Find(FIRE_SRC_BIZ, b) != -1) continue;
+		if (BizW_HasUpg(b, UPG_FIREALARM) && random(3) != 0) continue;     // с сигнализацией горят реже
 		new name[48];
 		format(name, sizeof name, "бизнес «%s»", Biz[b][bName]);
 		Fire_Start(FIRE_SRC_BIZ, b, Biz[b][bX] + 2.0, Biz[b][bY] + 2.0, Biz[b][bZ], name);
@@ -346,4 +356,40 @@ stock bool:Cmd_StopFire(playerid)
 	new n = 0;
 	for (new i = 0; i < MAX_FIRES; i++) if (gFire[i][frUsed]) { Fire_End(i, true); n++; }
 	return SendClientMessage(playerid, COLOR_ADMIN, "Потушено пожаров: %d.", n);
+}
+
+// /firecheck — пожарная проверка бизнеса (пожарный на смене у входа)
+stock bool:Cmd_FireCheck(playerid)
+{
+	if (!Fire_IsFireman(playerid)) return SendClientMessage(playerid, COLOR_GREY, "Проверки делают пожарные на смене.");
+	new b = Biz_GetNearby(playerid);
+	if (b == -1) return SendClientMessage(playerid, COLOR_GREY, "Подойди ко входу в бизнес.");
+	if (Biz[b][bOwner] == 0) return SendClientMessage(playerid, COLOR_GREY, "У бизнеса нет владельца: проверять некого.");
+	new now = gettime(), every = Cfg(CFG_FIRE_CHECK_HOURS) * 3600;
+	if (gBizChecked[b] != 0 && now - gBizChecked[b] < every)
+		return SendClientMessage(playerid, COLOR_GREY, "«%s» уже проверяли. Следующая проверка через %d мин.", Biz[b][bName], (every - (now - gBizChecked[b])) / 60 + 1);
+	gBizChecked[b] = now;
+	new pay = Cfg(CFG_FIRE_CHECK_PAY), msg[144];
+	if (pay > 0) GiveMoney(playerid, pay, "пожарная проверка");
+	if (BizW_HasUpg(b, UPG_FIREALARM))
+	{
+		SendClientMessage(playerid, COLOR_GREEN, "Проверка «%s»: сигнализация на месте, нарушений нет. Оплата: $%d.", Biz[b][bName], pay);
+		format(msg, sizeof msg, "%s провёл пожарную проверку «%s»: нарушений нет.", GetRPName(playerid), Biz[b][bName]);
+		SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
+		return true;
+	}
+	new fine = Cfg(CFG_FIRE_FINE), fromTill = (Biz[b][bTill] >= fine) ? fine : Biz[b][bTill];
+	Biz[b][bTill] -= fromTill;
+	Biz[b][bTaxDebt] += fine - fromTill;
+	Econ_ToTreasury(fromTill);
+	BizX_Save(b);
+	SendClientMessage(playerid, COLOR_YELLOW, "Проверка «%s»: нет пожарной сигнализации. Штраф $%d владельцу. Оплата тебе: $%d.", Biz[b][bName], fine, pay);
+	format(msg, sizeof msg, "%s выписал «%s» штраф за отсутствие пожарной сигнализации.", GetRPName(playerid), Biz[b][bName]);
+	SendNearbyMessage(playerid, CHAT_RADIUS, COLOR_PURPLE, msg);
+	for (new p = 0; p < MAX_PLAYERS; p++)
+	{
+		if (IsPlayerConnected(p) && Player[p][pLogged] && Player[p][pDbId] == Biz[b][bOwner])
+			SendClientMessage(p, COLOR_RED, "Пожарные оштрафовали «%s» на $%d: нет сигнализации. Купить: меню бизнеса > Улучшения.", Biz[b][bName], fine);
+	}
+	return true;
 }
