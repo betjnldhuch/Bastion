@@ -264,15 +264,13 @@ stock Bank_Salary(playerid, amount)
 // Проценты на остаток (из PayDay, после зарплаты)
 stock Bank_PayDay(playerid)
 {
-#if BANK_INTEREST_PERMILLE > 0
-	if (Player[playerid][pBank] > 0)
+	if (BANK_INTEREST_PERMILLE > 0 && Player[playerid][pBank] > 0)
 	{
 		new interest = Player[playerid][pBank] / 1000 * BANK_INTEREST_PERMILLE;
 		if (interest > BANK_INTEREST_MAX) interest = BANK_INTEREST_MAX;
 		if (interest > 0 && Bank_Credit(playerid, interest, BANKLOG_INTEREST))
 			SendClientMessage(playerid, COLOR_WHITE, "Проценты по счёту: $%d.", interest);
 	}
-#endif
 #if PAYDAY_TO_BANK
 	SendClientMessage(playerid, COLOR_WHITE, "Зарплата зачислена на счёт. Баланс: $%d.", Player[playerid][pBank]);
 #endif
@@ -358,12 +356,13 @@ static Bank_OpenExtra(playerid)
 		return SendClientMessage(playerid, COLOR_GREY, "Можно открыть не больше %d доп. счетов.", BANK_MAX_EXTRA);
 	if (Player[playerid][pBank] < BANK_OPEN_COST)
 		return SendClientMessage(playerid, COLOR_GREY, "Открытие счёта стоит $%d, на основном счёте $%d.", BANK_OPEN_COST, Player[playerid][pBank]);
-#if BANK_OPEN_COST > 0
+	if (BANK_OPEN_COST > 0)
+	{
 	Player[playerid][pBank] -= BANK_OPEN_COST;
 	Bank_Log(Player[playerid][pDbId], BANKLOG_FEE, BANK_OPEN_COST);
 	Bank_MoneyLog(Player[playerid][pDbId], -BANK_OPEN_COST, Player[playerid][pMoney], "открытие доп. счёта");
 	Account_Save(playerid);
-#endif
+	}
 	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT INTO bank_accounts (owner, balance, created) VALUES (%d, 0, %d)", Player[playerid][pDbId], gettime()));
 	SendClientMessage(playerid, COLOR_GREEN, "Ты открыл доп. счёт (%d из %d). На каждом можно хранить до $%d.", count + 1, BANK_MAX_EXTRA, BANK_MAX_BALANCE);
 	return 1;

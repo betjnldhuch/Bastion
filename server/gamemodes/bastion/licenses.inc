@@ -38,7 +38,18 @@ enum
 
 static const gLicNames[LIC_COUNT][] = { "", "Авто", "Мото", "Лодки", "Оружие" };
 static const gLicColumns[LIC_COUNT][] = { "", "lic_car", "lic_moto", "lic_boat", "lic_gun" };
-static const gLicPrices[LIC_COUNT] = { 0, LIC_PRICE_CAR, LIC_PRICE_MOTO, LIC_PRICE_BOAT, LIC_PRICE_GUN };
+// Цена экзамена (меняется в /srvset)
+static Lic_Price(l)
+{
+	switch (l)
+	{
+		case 1: return LIC_PRICE_CAR;
+		case 2: return LIC_PRICE_MOTO;
+		case 3: return LIC_PRICE_BOAT;
+		case 4: return LIC_PRICE_GUN;
+	}
+	return 0;
+}
 
 static bool:gLic[MAX_PLAYERS][LIC_COUNT];
 static gSchoolMk = -1;                  // маркер автошколы (двигается в игре: /markers)
@@ -224,8 +235,8 @@ stock bool:Cmd_Exam(playerid)
 	new list[256] = "Лицензия\tЦена\tСтатус\n", line[64];
 	for (new l = 1; l < LIC_COUNT; l++)
 	{
-		if (gLic[playerid][l]) format(line, sizeof line, "%s\t$%d\t{33AA33}есть\n", gLicNames[l], gLicPrices[l]);
-		else format(line, sizeof line, "%s\t$%d\t{AFAFAF}нет\n", gLicNames[l], gLicPrices[l]);
+		if (gLic[playerid][l]) format(line, sizeof line, "%s\t$%d\t{33AA33}есть\n", gLicNames[l], Lic_Price(l));
+		else format(line, sizeof line, "%s\t$%d\t{AFAFAF}нет\n", gLicNames[l], Lic_Price(l));
 		strcat(list, line);
 	}
 	ShowPlayerDialog(playerid, DIALOG_LIC_MENU, DIALOG_STYLE_TABLIST_HEADERS, "Автошкола", "%s", "Сдавать", "Закрыть", list);
@@ -267,7 +278,7 @@ static Licenses_StartPractice(playerid)
 	if (v == INVALID_VEHICLE_ID)
 	{
 		SendClientMessage(playerid, COLOR_RED, "Нет свободной учебной машины, попробуй позже. Деньги возвращены.");
-		GiveMoney(playerid, gLicPrices[gExamType[playerid]], "возврат за экзамен");
+		GiveMoney(playerid, Lic_Price(gExamType[playerid]), "возврат за экзамен");
 		gExamType[playerid] = 0;
 		return;
 	}
@@ -341,13 +352,13 @@ stock Licenses_OnDialog(playerid, dialogid, response, listitem)
 			SendClientMessage(playerid, COLOR_GREY, "Для лицензии на оружие нужна медкарта: регистратура больницы (/gps) или медик.");
 			return 1;
 		}
-		if (GetMoney(playerid) < gLicPrices[lic])
+		if (GetMoney(playerid) < Lic_Price(lic))
 		{
-			SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", gLicPrices[lic]);
+			SendClientMessage(playerid, COLOR_GREY, "Не хватает денег. Нужно $%d.", Lic_Price(lic));
 			return 1;
 		}
-		GiveMoney(playerid, -gLicPrices[lic], "экзамен в автошколе");
-		Econ_ToTreasury(gLicPrices[lic]);
+		GiveMoney(playerid, -Lic_Price(lic), "экзамен в автошколе");
+		Econ_ToTreasury(Lic_Price(lic));
 		Account_Save(playerid);
 		Licenses_StartTheory(playerid, lic);
 		return 1;
