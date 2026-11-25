@@ -194,6 +194,7 @@ stock Commands_Process(playerid, const input[], bool:quiet = false)
 	if (Daily_OnCommand(playerid, cmd)) return 1;                   // /daily (daily.inc)
 	if (Season_OnCommand(playerid, cmd, cmdtext[pos])) return 1;   // /season, /newseason, /seasonxp (season.inc)
 	if (FamWar_OnCommand(playerid, cmd, cmdtext[pos])) return 1;   // /famwar, /famwars, /famtop (famwar.inc)
+	if (Court_OnCommand(playerid, cmd, cmdtext[pos])) return 1;    // /lawyer, /free, /appeal, /cases (court.inc)
 
 	// --- чат (chat.inc) ---
 	if (!strcmp(cmd, "/me", true))          { Cmd_Me(playerid, cmdtext[pos]); return 1; }
