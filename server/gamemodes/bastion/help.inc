@@ -4,6 +4,7 @@
 //  Окно со списком разделов (листается колесиком), в разделе — список
 //  «команда — что делает». Пока видны все разделы, в том числе админские.
 //  Новая команда — строчка в gHelp ниже: { раздел, "команда", "что делает" }.
+//  Первая строка списка — поиск по всем командам (/help [слово]).
 // =====================================================================
 
 #define HELP_PAGE_LINES     10
@@ -509,7 +510,7 @@ static const gHelp[][E_HELP] =
 
 stock bool:Help_Show(playerid)
 {
-	new text[1800], line[96];
+	new text[1800] = "{66CCFF}Поиск по командам", line[96];
 	for (new t = 0; t < HT_COUNT; t++)
 	{
 		new count = 0;
@@ -517,7 +518,7 @@ stock bool:Help_Show(playerid)
 		{
 			if (gHelp[i][hpTopic] == t) count++;
 		}
-		if (t > 0) strcat(text, "\n");
+		strcat(text, "\n");
 		if (t >= HT_ADMIN1 && t <= HT_DEV) format(line, sizeof line, "{FF66FF}%s{AAAAAA}  (%d)", gHelpTopics[t], count);
 		else format(line, sizeof line, "%s{AAAAAA}  (%d)", gHelpTopics[t], count);
 		strcat(text, line);
@@ -560,11 +561,214 @@ static Help_ShowTopic(playerid, t, page = 0)
 	else ShowPlayerDialog(playerid, DIALOG_HELP_TOPIC, DIALOG_STYLE_MSGBOX, title, "%s", "К списку", "Закрыть", text);
 }
 
-stock Help_OnDialog(playerid, dialogid, response, listitem)
+// ---------------------------------------------------------------------
+//  Поиск по справке: /help [слово] или «Поиск» в списке разделов.
+//  Ищет в командах, описаниях и названиях разделов, без регистра.
+//  Понимает транслит и неверную раскладку: «bank», «банк», «,fyr»,
+//  «ифтл» найдут /bank. Несколько слов — должны найтись все.
+// ---------------------------------------------------------------------
+#define HELP_HITS_MAX   30
+
+static gHelpHits[MAX_PLAYERS][HELP_HITS_MAX], gHelpHitCount[MAX_PLAYERS];
+
+static stock Help_Lower(str[])
+{
+	for (new i = 0; str[i] != '\0'; i++) str[i] = Dlg_Lower(str[i]);
+}
+
+// Русские буквы на английской раскладке: ф -> a ... я -> z
+static stock Help_RuToEnKeys(const src[], dst[], size)
+{
+	static const keys[] = "f,dult;pbqrkvyjghcnea[wxio]sm'.z";
+	new n = 0;
+	for (new i = 0; src[i] != '\0' && n < size - 1; i++)
+	{
+		new c = src[i] & 0xFF;
+		if (c >= 0xE0) dst[n++] = keys[c - 0xE0];
+		else dst[n++] = c;
+	}
+	dst[n] = '\0';
+}
+
+// Английские буквы, набранные вместо русских: f -> а, , -> б ...
+static stock Help_EnToRuKeys(const src[], dst[], size)
+{
+	static const keys[] = "f,dult;pbqrkvyjghcnea[wxio]sm'.z";
+	new n = 0;
+	for (new i = 0; src[i] != '\0' && n < size - 1; i++)
+	{
+		new c = src[i], r = c;
+		if (c == '`') r = 0xE5;
+		else
+		{
+			for (new k = 0; k < 32; k++) if (keys[k] == c) { r = 0xE0 + k; break; }
+		}
+		dst[n++] = r;
+	}
+	dst[n] = '\0';
+}
+
+// Транслит: латиница -> кириллица («bank» -> «банк»)
+static stock Help_LatToCyr(const src[], dst[], size)
+{
+	static const one[] = "абкдефгхийклмнопкрстуввкыз";   // a..z
+	new n = 0, i = 0;
+	while (src[i] != '\0' && n < size - 1)
+	{
+		new c = src[i], d = src[i + 1], r = 0;
+		if (d == 'h' && (c == 's' || c == 'c' || c == 'z' || c == 'k'))
+		{
+			r = (c == 's') ? 0xF8 : (c == 'c') ? 0xF7 : (c == 'z') ? 0xE6 : 0xF5;   // ш ч ж х
+			i += 2;
+		}
+		else if (c == 't' && d == 's') { r = 0xF6; i += 2; }      // ц
+		else if (c == 'y' && d == 'a') { r = 0xFF; i += 2; }      // я
+		else if (c == 'y' && d == 'u') { r = 0xFE; i += 2; }      // ю
+		else if (c == 'y' && d == 'o') { r = 0xE5; i += 2; }      // ё -> е
+		else
+		{
+			if (c >= 'a' && c <= 'z') r = one[c - 'a'] & 0xFF;
+			else r = c;
+			i++;
+		}
+		dst[n++] = r;
+	}
+	dst[n] = '\0';
+}
+
+// Транслит: кириллица -> латиница («банк» -> «bank»)
+static stock Help_CyrToLat(const src[], dst[], size)
+{
+	static const lat[32][] =
+	{
+		"a", "b", "v", "g", "d", "e", "zh", "z", "i", "y", "k", "l", "m", "n", "o", "p",
+		"r", "s", "t", "u", "f", "h", "ts", "ch", "sh", "sch", "", "y", "", "e", "yu", "ya"
+	};
+	new n = 0;
+	dst[0] = '\0';
+	for (new i = 0; src[i] != '\0' && n < size - 4; i++)
+	{
+		new c = src[i] & 0xFF;
+		if (c >= 0xE0)
+		{
+			for (new k = 0; lat[c - 0xE0][k] != '\0'; k++) dst[n++] = lat[c - 0xE0][k];
+		}
+		else dst[n++] = c;
+	}
+	dst[n] = '\0';
+}
+
+static stock bool:Help_HasWord(const hay[], const word[])
+{
+	if (word[0] == '\0') return true;
+	if (strfind(hay, word) != -1) return true;
+	new v[64];
+	Help_RuToEnKeys(word, v, sizeof v);
+	if (strcmp(v, word) && strfind(hay, v) != -1) return true;
+	Help_EnToRuKeys(word, v, sizeof v);
+	if (strcmp(v, word) && strfind(hay, v) != -1) return true;
+	Help_LatToCyr(word, v, sizeof v);
+	if (strcmp(v, word) && strfind(hay, v) != -1) return true;
+	Help_CyrToLat(word, v, sizeof v);
+	if (strcmp(v, word) && v[0] != '\0' && strfind(hay, v) != -1) return true;
+	return false;
+}
+
+static stock Help_AskSearch(playerid, const note[] = "")
+{
+	new text[300];
+	format(text, sizeof text, "%s{FFFFFF}Напиши слово: команду или что нужно сделать.\nНапример: {FFFF00}банк{FFFFFF}, {FFFF00}машина{FFFFFF}, {FFFF00}/gps{FFFFFF}, {FFFF00}bank\n\n{AAAAAA}Можно транслитом и в другой раскладке. Быстро: /help [слово]", note);
+	ShowPlayerDialog(playerid, DIALOG_HELP_SEARCH, DIALOG_STYLE_INPUT, "Помощь — поиск", "%s", "Найти", "Назад", text);
+}
+
+stock bool:Help_Search(playerid, const query[])
+{
+	new q[64];
+	new i0 = 0;
+	while (query[i0] == ' ') i0++;
+	strcat(q, query[i0]);
+	StripColorCodes(q);
+	Help_Lower(q);
+	if (q[0] == '/' && q[1] != '\0') strdel(q, 0, 1);   // «/bank» ищем как «bank»
+	if (q[0] == '\0')
+	{
+		Help_AskSearch(playerid);
+		return true;
+	}
+
+	// Слова запроса
+	new words[4][32], wc = 0, pos = 0, len = strlen(q);
+	while (pos < len && wc < sizeof words)
+	{
+		while (pos < len && q[pos] == ' ') pos++;
+		new n = 0;
+		while (pos < len && q[pos] != ' ' && n < 31) words[wc][n++] = q[pos++];
+		words[wc][n] = '\0';
+		if (n > 0) wc++;
+		while (pos < len && q[pos] != ' ') pos++;
+	}
+
+	new hits = 0, more = 0, text[4000], line[180], hay[200];
+	for (new i = 0; i < sizeof gHelp; i++)
+	{
+		format(hay, sizeof hay, "%s %s %s", gHelp[i][hpCmd], gHelp[i][hpDesc], gHelpTopics[gHelp[i][hpTopic]]);
+		Help_Lower(hay);
+		new bool:ok = true;
+		for (new w = 0; w < wc && ok; w++) ok = Help_HasWord(hay, words[w]);
+		if (!ok) continue;
+		if (hits >= HELP_HITS_MAX) { more++; continue; }
+		format(line, sizeof line, "{FFFF00}%s{FFFFFF} - %s", gHelp[i][hpCmd], gHelp[i][hpDesc]);
+		if (strlen(text) + strlen(line) + 2 >= sizeof text) { more++; continue; }
+		if (hits > 0) strcat(text, "\n");
+		strcat(text, line);
+		gHelpHits[playerid][hits++] = i;
+	}
+	gHelpHitCount[playerid] = hits;
+
+	if (hits == 0)
+	{
+		new note[120];
+		format(note, sizeof note, "{FF6347}По «%s» ничего не нашлось.\n\n", q);
+		Help_AskSearch(playerid, note);
+		return true;
+	}
+	new title[96];
+	if (more > 0) format(title, sizeof title, "Поиск: %s {AAAAAA}(%d, ещё %d — уточни)", q, hits, more);
+	else format(title, sizeof title, "Поиск: %s {AAAAAA}(%d)", q, hits);
+	ShowPlayerDialog(playerid, DIALOG_HELP_RESULTS, DIALOG_STYLE_LIST, title, "%s", "Раздел", "Назад", text);
+	return true;
+}
+
+// Открыть раздел на странице, где стоит строчка gHelp[idx]
+static stock Help_ShowEntry(playerid, idx)
+{
+	new t = gHelp[idx][hpTopic], n = 0;
+	for (new i = 0; i < idx; i++)
+	{
+		if (gHelp[i][hpTopic] == t) n++;
+	}
+	Help_ShowTopic(playerid, t, n / HELP_PAGE_LINES);
+}
+
+stock Help_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
 	if (dialogid == DIALOG_HELP_TOPICS)
 	{
-		if (response && listitem >= 0 && listitem < HT_COUNT) Help_ShowTopic(playerid, listitem);
+		if (!response) return 1;
+		if (listitem == 0) Help_AskSearch(playerid);
+		else if (listitem >= 1 && listitem <= HT_COUNT) Help_ShowTopic(playerid, listitem - 1);
+		return 1;
+	}
+	if (dialogid == DIALOG_HELP_SEARCH)
+	{
+		if (response) Help_Search(playerid, inputtext);
+		else Help_Show(playerid);
+		return 1;
+	}
+	if (dialogid == DIALOG_HELP_RESULTS)
+	{
+		if (!response) Help_AskSearch(playerid);
+		else if (listitem >= 0 && listitem < gHelpHitCount[playerid]) Help_ShowEntry(playerid, gHelpHits[playerid][listitem]);
 		return 1;
 	}
 	if (dialogid == DIALOG_HELP_TOPIC)

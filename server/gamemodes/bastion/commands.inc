@@ -9,8 +9,9 @@
 // =====================================================================
 
 // Справка: разделы со всеми командами (help.inc)
-stock bool:Cmd_Help(playerid)
+stock bool:Cmd_Help(playerid, const params[] = "")
 {
+	if (params[0] != '\0') return Help_Search(playerid, params);
 	return Help_Show(playerid);
 }
 
@@ -169,7 +170,7 @@ stock Commands_Process(playerid, const input[], bool:quiet = false)
 	}
 
 	// --- общее ---
-	if (!strcmp(cmd, "/help", true))        { Cmd_Help(playerid); return 1; }
+	if (!strcmp(cmd, "/help", true))        { Cmd_Help(playerid, cmdtext[pos]); return 1; }
 	if (!strcmp(cmd, "/stats", true))       { Cmd_Stats(playerid); return 1; }
 	if (!strcmp(cmd, "/bot", true))         { Cmd_Bot(playerid); return 1; }
 	if (!strcmp(cmd, "/time", true))        { Cmd_Time(playerid); return 1; }

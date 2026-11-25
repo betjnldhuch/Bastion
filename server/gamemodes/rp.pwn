@@ -48,6 +48,7 @@
 #include "bastion/config.inc"
 #include "bastion/dialogs.inc"    // номера всех окон в одном месте
 #include "bastion/base.inc"
+#include "bastion/menumem.inc"    // меню помнят последний выбор; подменяет ShowPlayerDialog
 #include "bastion/ui.inc"         // HTML-окна в клиенте Bastion: UI_Show, UI_Has
 #include "bastion/platform.inc"   // ПК или телефон: IsPlayerMobile[playerid]
 #include "bastion/anticheat.inc"  // античит; подменяет SetPlayerPos, GivePlayerWeapon и др., поэтому стоит до модулей
@@ -228,6 +229,7 @@ public OnGameModeExit()
 // =====================================================================
 public OnPlayerConnect(playerid)
 {
+	Dlg_OnConnect(playerid);
 	Fps_Reset(playerid);
 	Platform_OnConnect(playerid);
 	UI_OnConnect(playerid);
@@ -477,6 +479,7 @@ public OnPlayerClickTextDraw(playerid, Text:clickedid)
 
 public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 {
+	Dlg_OnResponse(playerid, dialogid, response, listitem, inputtext);   // повтор последнего выбора (menumem.inc)
 	if (Hud_IsDialog(dialogid)) return 1;   // скрытая панель (hud.inc)
 	if (Account_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Spawns_OnDialog(playerid, dialogid, response, listitem)) return 1;
@@ -497,7 +500,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Tex_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Houses_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Garage_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
-	if (Help_OnDialog(playerid, dialogid, response, listitem)) return 1;
+	if (Help_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Wound_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Markers_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (FColor_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
