@@ -26,6 +26,7 @@ new bool:gVehLocked[MAX_VEHICLES];
 new bool:gVehAdmin[MAX_VEHICLES];   // создана админом через /veh
 new gVehFaction[MAX_VEHICLES];      // машина фракции (FACTION_*, 0 = не фракционна€)
 new gVehCargo[MAX_VEHICLES];        // припасы в кузове машины армии (factions.inc, /supply)
+new gVehCargoProd[MAX_VEHICLES];    // что в кузове: PROD_* (factions.inc)
 new gVehCargoSrc[MAX_VEHICLES];     // откуда груз: 1 Ч база снабжени€, 2 Ч склад армии
 new gPlayerVeh[MAX_PLAYERS] = { INVALID_VEHICLE_ID, ... };    // текуща€ лична€ машина игрока в игре
 new gPlayerVehDb[MAX_PLAYERS];                                // еЄ id в таблице vehicles (0 = нет)
@@ -141,6 +142,7 @@ stock Vehicle_Clear(vehicleid)
 	gVehFaction[vehicleid] = 0;
 	gVehCargo[vehicleid] = 0;
 	gVehCargoSrc[vehicleid] = 0;
+	gVehCargoProd[vehicleid] = 0;
 	Fuel_ResetVehicle(vehicleid);     // fuel.inc: нова€ машина Ч полный бак
 	Garage_ResetVehicle(vehicleid);   // garage.inc: без тюнинга
 }

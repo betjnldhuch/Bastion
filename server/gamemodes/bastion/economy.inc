@@ -169,6 +169,26 @@ stock bool:Cmd_Taxes(playerid)
 	return true;
 }
 
+// ƒл€ /srvset (srvcfg.inc): car = 0 Ч подоходный, 1 Ч на машину
+public Econ_GetTaxValue(car) { return car ? gTaxCar : gTaxIncome; }
+
+public Econ_SetTaxValue(car, value)
+{
+	if (car)
+	{
+		if (value < 0 || value > TAX_CAR_MAX) return 0;
+		gTaxCar = value;
+		Econ_SaveValue("tax_car", value);
+	}
+	else
+	{
+		if (value < 0 || value > TAX_INCOME_MAX) return 0;
+		gTaxIncome = value;
+		Econ_SaveValue("tax_income", value);
+	}
+	return 1;
+}
+
 stock bool:Cmd_SetTax(playerid, const params[])
 {
 	// налоги мен€ет главный админ или лидер и заместитель правительства

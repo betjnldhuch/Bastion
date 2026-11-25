@@ -10,6 +10,8 @@
 //    - каким фракциям она может менять лимиты выговоров (/flimit, номера через запятую);
 //    - отключённые возможности: право выключается для всей организации,
 //      даже у лидера (например, снимать деньги из общака).
+//    - заводы: может ли захватывать и саботировать (по типу / да / нет)
+//      и с какого ранга (по умолчанию захват с 7, саботаж — лидер и заместитель).
 //  Семьи: только отключённые возможности (families.inc, FamAdm_*).
 //
 //  Спец-выговор (/swarn [id] [причина]): выдаёт сотрудник другой организации,
@@ -27,6 +29,11 @@
 #define ORG_DEPT_READ       2       // только читает
 #define ORG_DEPT_NONE       3       // не видит
 #define ORG_LIST_MAX        (MAX_FACTIONS + 1)
+#define ORG_FC_AUTO         0       // заводы: по типу (силовики, армия и банды)
+#define ORG_FC_YES          1
+#define ORG_FC_NO           2
+#define ORG_FC_CAP_RANK     7       // захват завода по умолчанию: ранг 7+
+#define ORG_FC_SAB_RANK     (MAX_RANK - 1)  // саботаж по умолчанию: лидер и заместитель
 
 static gOrgSpec[MAX_FACTIONS][96];      // кому выдаёт спец-выговоры: «1,7»
 static gOrgSpecRank[MAX_FACTIONS];      // с какого ранга
@@ -38,6 +45,11 @@ static gOrgDeptCtl[MAX_FACTIONS][96];   // каким фракциям может менять доступ к 
 static gOrgLimCtl[MAX_FACTIONS][96];    // каким фракциям может менять лимиты выговоров
 static gOrgDeptOvr[MAX_FACTIONS];       // доступ к /d, выставленный другой фракцией (-1 — нет)
 static gOrgDeptOvrBy[MAX_FACTIONS];     // какая фракция выставила
+static gOrgFcCap[MAX_FACTIONS];         // захват заводов: ORG_FC_*
+static gOrgFcCapRank[MAX_FACTIONS];
+static gOrgFcSab[MAX_FACTIONS];         // саботаж заводов: ORG_FC_*
+static gOrgFcSabRank[MAX_FACTIONS];
+static gOrgFcEdit[MAX_PLAYERS];         // что меняем: 0 — захват, 1 — саботаж
 static gOrgSel[MAX_PLAYERS];            // выбранная фракция (или -(слот семьи + 1))
 static gOrgMap[MAX_PLAYERS][ORG_LIST_MAX];
 
@@ -53,6 +65,10 @@ static Org_Defaults(f)
 	gOrgLimCtl[f][0] = '\0';
 	gOrgDeptOvr[f] = -1;
 	gOrgDeptOvrBy[f] = 0;
+	gOrgFcCap[f] = ORG_FC_AUTO;
+	gOrgFcCapRank[f] = ORG_FC_CAP_RANK;
+	gOrgFcSab[f] = ORG_FC_AUTO;
+	gOrgFcSabRank[f] = ORG_FC_SAB_RANK;
 	if (f == FACTION_FBI) format(gOrgSpec[f], 96, "%d,%d", FACTION_POLICE, FACTION_ARMY);
 }
 
@@ -66,8 +82,12 @@ stock Orgs_Init()
 	DB_AddColumn("org_settings", "dept_ovr", "INTEGER DEFAULT -1");
 	DB_AddColumn("org_settings", "dept_ovr_by", "INTEGER DEFAULT 0");
 	DB_AddColumn("org_settings", "lim_ctl", "TEXT");
+	DB_AddColumn("org_settings", "fc_cap", "INTEGER DEFAULT 0");
+	DB_AddColumn("org_settings", "fc_cap_rank", "INTEGER DEFAULT 7");
+	DB_AddColumn("org_settings", "fc_sab", "INTEGER DEFAULT 0");
+	DB_AddColumn("org_settings", "fc_sab_rank", "INTEGER DEFAULT 9");
 	for (new f = 0; f < MAX_FACTIONS; f++) Org_Defaults(f);
-	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT faction, spec, spec_rank, dept, disabled, warn_limit, spec_limit, dept_ctl, dept_ovr, dept_ovr_by, lim_ctl FROM org_settings");
+	new DBResult:r = DB_ExecuteQuery(gDB, "SELECT faction, spec, spec_rank, dept, disabled, warn_limit, spec_limit, dept_ctl, dept_ovr, dept_ovr_by, lim_ctl, fc_cap, fc_cap_rank, fc_sab, fc_sab_rank FROM org_settings");
 	if (r != DBResult:0)
 	{
 		for (new i = 0, rows = DB_GetRowCount(r); i < rows; i++)
@@ -88,6 +108,14 @@ stock Orgs_Init()
 				gOrgDeptOvr[f] = DB_GetFieldInt(r, 8);
 				gOrgDeptOvrBy[f] = DB_GetFieldInt(r, 9);
 				DB_GetFieldString(r, 10, gOrgLimCtl[f], 96);
+				gOrgFcCap[f] = DB_GetFieldInt(r, 11);
+				gOrgFcCapRank[f] = DB_GetFieldInt(r, 12);
+				gOrgFcSab[f] = DB_GetFieldInt(r, 13);
+				gOrgFcSabRank[f] = DB_GetFieldInt(r, 14);
+				if (gOrgFcCap[f] < ORG_FC_AUTO || gOrgFcCap[f] > ORG_FC_NO) gOrgFcCap[f] = ORG_FC_AUTO;
+				if (gOrgFcSab[f] < ORG_FC_AUTO || gOrgFcSab[f] > ORG_FC_NO) gOrgFcSab[f] = ORG_FC_AUTO;
+				if (gOrgFcCapRank[f] < 1 || gOrgFcCapRank[f] > MAX_RANK) gOrgFcCapRank[f] = ORG_FC_CAP_RANK;
+				if (gOrgFcSabRank[f] < 1 || gOrgFcSabRank[f] > MAX_RANK) gOrgFcSabRank[f] = ORG_FC_SAB_RANK;
 				if (gOrgDept[f] < ORG_DEPT_AUTO || gOrgDept[f] > ORG_DEPT_NONE) gOrgDept[f] = ORG_DEPT_AUTO;
 				if (gOrgDeptOvr[f] < ORG_DEPT_RW || gOrgDeptOvr[f] > ORG_DEPT_NONE) gOrgDeptOvr[f] = -1;
 			}
@@ -99,8 +127,9 @@ stock Orgs_Init()
 
 static Org_Save(f)
 {
-	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO org_settings (faction, spec, spec_rank, dept, disabled, warn_limit, spec_limit, dept_ctl, dept_ovr, dept_ovr_by, lim_ctl) VALUES (%d, '%q', %d, %d, %d, %d, %d, '%q', %d, %d, '%q')",
-		f, gOrgSpec[f], gOrgSpecRank[f], gOrgDept[f], gOrgDisabled[f], gOrgWarnLimit[f], gOrgSpecLimit[f], gOrgDeptCtl[f], gOrgDeptOvr[f], gOrgDeptOvrBy[f], gOrgLimCtl[f]));
+	DB_FreeResultSet(DB_ExecuteQuery(gDB, "INSERT OR REPLACE INTO org_settings (faction, spec, spec_rank, dept, disabled, warn_limit, spec_limit, dept_ctl, dept_ovr, dept_ovr_by, lim_ctl, fc_cap, fc_cap_rank, fc_sab, fc_sab_rank) VALUES (%d, '%q', %d, %d, %d, %d, %d, '%q', %d, %d, '%q', %d, %d, %d, %d)",
+		f, gOrgSpec[f], gOrgSpecRank[f], gOrgDept[f], gOrgDisabled[f], gOrgWarnLimit[f], gOrgSpecLimit[f], gOrgDeptCtl[f], gOrgDeptOvr[f], gOrgDeptOvrBy[f], gOrgLimCtl[f],
+		gOrgFcCap[f], gOrgFcCapRank[f], gOrgFcSab[f], gOrgFcSabRank[f]));
 }
 
 // Фракцию удалили или создали заново: настройки по умолчанию
@@ -116,6 +145,37 @@ stock Org_Disabled(f)
 {
 	if (f <= 0 || f >= MAX_FACTIONS) return 0;
 	return gOrgDisabled[f];
+}
+
+// Заводы (factions.inc): может ли фракция захватывать / саботировать и с какого ранга
+static Org_FcAutoAllowed(f) { return (Faction_IsGang(f) || Faction_IsLaw(f) || Faction_IsArmy(f)) ? 1 : 0; }
+
+stock Org_FcCanCapture(f)
+{
+	if (f <= 0 || f >= MAX_FACTIONS) return 0;
+	if (gOrgFcCap[f] == ORG_FC_AUTO) return Org_FcAutoAllowed(f);
+	return (gOrgFcCap[f] == ORG_FC_YES) ? 1 : 0;
+}
+
+stock Org_FcCanSabotage(f)
+{
+	if (f <= 0 || f >= MAX_FACTIONS) return 0;
+	if (gOrgFcSab[f] == ORG_FC_AUTO) return Org_FcAutoAllowed(f);
+	return (gOrgFcSab[f] == ORG_FC_YES) ? 1 : 0;
+}
+
+stock Org_FcCapRank(f) { return (f > 0 && f < MAX_FACTIONS) ? gOrgFcCapRank[f] : ORG_FC_CAP_RANK; }
+stock Org_FcSabRank(f) { return (f > 0 && f < MAX_FACTIONS) ? gOrgFcSabRank[f] : ORG_FC_SAB_RANK; }
+
+static Org_FcModeName(m, dest[], size)
+{
+	dest[0] = '\0';
+	switch (m)
+	{
+		case ORG_FC_YES: strcat(dest, "{33AA33}можно", size);
+		case ORG_FC_NO: strcat(dest, "{FF6347}нельзя", size);
+		default: strcat(dest, "{FFFFFF}по типу", size);
+	}
 }
 
 // Лимиты выговоров
@@ -385,6 +445,17 @@ static Org_ShowFaction(playerid)
 	strcat(body, line);
 	format(line, sizeof line, "Отключённые возможности\t{FFFFFF}%d\n", FPerm_CountBits(gOrgDisabled[f]));
 	strcat(body, line);
+	new fm[24];
+	Org_FcModeName(gOrgFcCap[f], fm, sizeof fm);
+	format(line, sizeof line, "Заводы: захват\t%s {AFAFAF}(сейчас: %s)\n", fm, Org_FcCanCapture(f) ? ("да") : ("нет"));
+	strcat(body, line);
+	format(line, sizeof line, "Заводы: захват с ранга\t{FFFFFF}%d\n", gOrgFcCapRank[f]);
+	strcat(body, line);
+	Org_FcModeName(gOrgFcSab[f], fm, sizeof fm);
+	format(line, sizeof line, "Заводы: саботаж\t%s {AFAFAF}(сейчас: %s)\n", fm, Org_FcCanSabotage(f) ? ("да") : ("нет"));
+	strcat(body, line);
+	format(line, sizeof line, "Заводы: саботаж с ранга\t{FFFFFF}%d\n", gOrgFcSabRank[f]);
+	strcat(body, line);
 	strcat(body, "{FF6347}Сбросить настройки\t\n");
 	new title[64];
 	format(title, sizeof title, "%d. %s", f, Faction_GetName(f));
@@ -496,7 +567,7 @@ static Org_ShowFamDisabled(playerid)
 
 stock Orgs_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 {
-	if (dialogid < DIALOG_ORGS || dialogid > DIALOG_ORGS_FLCTL) return 0;
+	if ((dialogid < DIALOG_ORGS || dialogid > DIALOG_ORGS_FLCTL) && dialogid != DIALOG_ORGS_FCMODE && dialogid != DIALOG_ORGS_FCRANK) return 0;
 	if (Player[playerid][pAdmin] < ORGS_ADMIN_LEVEL) return 1;
 	new f = gOrgSel[playerid];
 	switch (dialogid)
@@ -533,7 +604,20 @@ stock Orgs_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 					"Номера фракций через запятую, которым «%s» может менять лимиты выговоров (/flimit).\nПусто или 0 — никому.\n\nСейчас: %s",
 					"Сохранить", "Назад", Faction_GetName(f), (gOrgLimCtl[f][0] != '\0') ? gOrgLimCtl[f] : ("никому"));
 				case 8: Org_ShowDisabled(playerid);
-				case 9:
+				case 9, 11:
+				{
+					gOrgFcEdit[playerid] = (listitem == 11) ? 1 : 0;
+					ShowPlayerDialog(playerid, DIALOG_ORGS_FCMODE, DIALOG_STYLE_LIST, (listitem == 11) ? ("Заводы: саботаж") : ("Заводы: захват"),
+						"По типу (силовики, армия и банды)\nМожно\nНельзя", "Выбрать", "Назад");
+				}
+				case 10, 12:
+				{
+					gOrgFcEdit[playerid] = (listitem == 12) ? 1 : 0;
+					ShowPlayerDialog(playerid, DIALOG_ORGS_FCRANK, DIALOG_STYLE_INPUT, (listitem == 12) ? ("Саботаж: с ранга") : ("Захват: с ранга"),
+						"С какого ранга «%s» %s заводы (1-%d)?\n%d — лидер, %d — заместитель.\nСейчас: %d", "Сохранить", "Назад", Faction_GetName(f),
+						(listitem == 12) ? ("саботирует") : ("захватывает"), MAX_RANK, MAX_RANK, MAX_RANK - 1, (listitem == 12) ? gOrgFcSabRank[f] : gOrgFcCapRank[f]);
+				}
+				case 13:
 				{
 					Org_Reset(f);
 					SendClientMessage(playerid, COLOR_ADMIN, "Настройки «%s» сброшены.", Faction_GetName(f));
@@ -595,6 +679,29 @@ stock Orgs_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			format(msg, sizeof msg, "Администрация %s для всей фракции: «%s».", ((gOrgDisabled[f] >> listitem) & 1) ? ("отключила") : ("включила"), FPerm_Name(listitem));
 			Faction_Log(f, msg, FLOG_PERM);
 			Org_ShowDisabled(playerid);
+		}
+		case DIALOG_ORGS_FCMODE:
+		{
+			if (response && Faction_IsValid(f) && listitem >= ORG_FC_AUTO && listitem <= ORG_FC_NO)
+			{
+				if (gOrgFcEdit[playerid]) gOrgFcSab[f] = listitem; else gOrgFcCap[f] = listitem;
+				Org_Save(f);
+			}
+			Org_ShowFaction(playerid);
+		}
+		case DIALOG_ORGS_FCRANK:
+		{
+			new rk;
+			if (response && Faction_IsValid(f))
+			{
+				if (!IsNumeric(inputtext) || (rk = strval(inputtext)) < 1 || rk > MAX_RANK) SendClientMessage(playerid, COLOR_GREY, "Ранг от 1 до %d.", MAX_RANK);
+				else
+				{
+					if (gOrgFcEdit[playerid]) gOrgFcSabRank[f] = rk; else gOrgFcCapRank[f] = rk;
+					Org_Save(f);
+				}
+			}
+			Org_ShowFaction(playerid);
 		}
 		case DIALOG_ORGS_FAMS:
 		{

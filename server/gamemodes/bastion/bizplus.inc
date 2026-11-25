@@ -13,6 +13,11 @@
 //  АЗС и автомастерская получают выручку с заправок / СТО в радиусе BIZ_SERVICE_RANGE.
 //  Спортзал учит стилям боя (стиль хранится в accounts.fstyle), лотерея продаёт билеты.
 //
+//  Поставки с заводов (factions.inc): ящик товара нужного вида пополняет склад на goods_value,
+//    водителю из кассы — goods_pay за ящик. Закупка в меню («из воздуха») дороже на biz_air%.
+//  Рынок: если на складах всех бизнесов одного товара меньше mkt_low%, цены у них выше на mkt_up%,
+//    если больше mkt_high% — ниже на mkt_down%. Все цифры — /srvset. Игрокам: /market, /contracts.
+//
 //  Игрокам:  /bizmenu (/biz) — меню своего бизнеса, /biztypes — виды бизнесов и цены.
 //  Меню: информация, касса, закупка товара, цены, название, вход, продажа игроку / штату.
 //
@@ -20,7 +25,9 @@
 // =====================================================================
 
 #define BIZ_WHOLESALE_PCT   50          // закупочная цена товара, % от базовой розничной
-#define BIZ_SALE_TAX        10          // налог с каждой продажи, %
+#define BIZ_SALE_TAX        Cfg(CFG_BIZ_TAX)    // налог с каждой продажи, % (/srvset)
+#define CONTRACT_ROWS       40          // строк в /contracts
+#define DELIVER_RANGE       25.0        // как близко ко входу бизнеса разгружать товар
 #define BIZ_MARKUP_MIN      70          // границы цен владельца, % от базовых
 #define BIZ_MARKUP_MAX      150
 #define BIZ_START_STOCK     2000        // товар на складе при покупке бизнеса у штата, $
@@ -87,6 +94,7 @@ static gStyleAcc[MAX_PLAYERS];                  // для какого аккаунта он загруж
 static gOfferSeller[MAX_PLAYERS];               // предложение купить бизнес: аккаунт продавца,
 static gOfferBiz[MAX_PLAYERS];                  // номер бизнеса в базе
 static gOfferPrice[MAX_PLAYERS];                // и цена
+static gCtrMap[MAX_PLAYERS][CONTRACT_ROWS];     // строка /contracts: бизнес или 1000 + завод
 
 enum
 {
@@ -120,11 +128,52 @@ stock bool:BizX_UsesStock(b)
 	return (t > BIZ_NONE && t < BIZ_TYPES && gBizCfg[t][bcStockMax] > 0);
 }
 
-// Цена товара в бизнесе b с наценкой владельца
+// Какой товар с заводов нужен бизнесу этого типа (-1 — никакой)
+stock Prod_OfBizType(t)
+{
+	switch (t)
+	{
+		case BIZ_FUEL: return PROD_FUEL;
+		case BIZ_SHOP, BIZ_BAR, BIZ_FASTFOOD, BIZ_CLUB: return PROD_FOOD;
+		case BIZ_STO: return PROD_PARTS;
+		case BIZ_CLOTHES, BIZ_GUNS, BIZ_PHARMACY, BIZ_GYM, BIZ_HARDWARE, BIZ_ELECTRO, BIZ_LOTTERY: return PROD_GOODS;
+	}
+	return -1;
+}
+
+// Сколько товара на складах всех бизнесов с владельцем, % от вместимости (-1 — таких бизнесов нет)
+stock Market_Fill(prod)
+{
+	new sum = 0, cap = 0;
+	for (new b = 0; b < gBizCount; b++)
+	{
+		if (Biz[b][bOwner] == 0 || !BizX_UsesStock(b) || Prod_OfBizType(Biz[b][bType]) != prod) continue;
+		sum += Biz[b][bStock];
+		cap += BizX_StockMax(b);
+	}
+	if (cap <= 0) return -1;
+	new unit = cap / 100;
+	return (sum >= cap) ? 100 : (sum / ((unit < 1) ? 1 : unit));
+}
+
+// Поправка цен от рынка, %: + дефицит, - избыток
+stock Market_PricePct(prod)
+{
+	if (prod < 0) return 0;
+	new fill = Market_Fill(prod);
+	if (fill < 0) return 0;
+	if (fill < Cfg(CFG_MKT_LOW)) return Cfg(CFG_MKT_UP);
+	if (fill > Cfg(CFG_MKT_HIGH)) return -Cfg(CFG_MKT_DOWN);
+	return 0;
+}
+
+// Цена товара в бизнесе b с наценкой владельца и поправкой рынка
 stock BizX_Price(b, base)
 {
-	if (Biz[b][bOwner] == 0 || Biz[b][bMarkup] == 100) return base;
-	new price = base * Biz[b][bMarkup] / 100;
+	new pct = (Biz[b][bOwner] == 0) ? 100 : Biz[b][bMarkup];
+	pct += Market_PricePct(Prod_OfBizType(Biz[b][bType]));
+	if (pct == 100) return base;
+	new price = base * pct / 100;
 	return (price < 1) ? 1 : price;
 }
 
@@ -444,6 +493,12 @@ static BizX_ShowInfo(playerid, b)
 		strcat(text, line);
 		format(line, sizeof line, "{AFAFAF}С каждой покупки в кассу идёт её цена минус налог %d%%,\nа со склада уходит %d%% обычной цены товара.\n", BIZ_SALE_TAX, BIZ_WHOLESALE_PCT);
 		strcat(text, line);
+		new pr = Prod_OfBizType(t);
+		if (pr >= 0)
+		{
+			format(line, sizeof line, "Товар с заводов: %s. Ящик даёт склада на $%d, водителю $%d из кассы.\n", gProdName[pr], Cfg(CFG_GOODS_VALUE), Cfg(CFG_GOODS_PAY));
+			strcat(text, line);
+		}
 		strcat(text, "Склад пуст — магазин работает, но ты ничего не получаешь,\nи дохода за PayDay тоже нет.\n");
 		if (t == BIZ_FUEL) strcat(text, "АЗС получает ещё и выручку с заправок рядом.\n");
 		if (t == BIZ_STO) strcat(text, "Мастерская получает ещё и выручку с СТО рядом.\n");
@@ -566,8 +621,8 @@ stock BizX_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 					new room = BizX_StockMax(b) - Biz[b][bStock];
 					if (room <= 0) { SendClientMessage(playerid, COLOR_GREY, "Склад полон."); return 1; }
 					ShowPlayerDialog(playerid, DIALOG_BIZX_STOCK, DIALOG_STYLE_INPUT, "Закупка товара",
-						"{FFFFFF}На складе товара на {FFFF00}$%d{FFFFFF}, поместится ещё на {FFFF00}$%d{FFFFFF}.\nТовар на $100 даёт продаж примерно на $%d.\nПлатишь наличными, у тебя: $%d\n\nНа какую сумму закупить?",
-						"Закупить", "Назад", Biz[b][bStock], room, 10000 / BIZ_WHOLESALE_PCT, GetMoney(playerid));
+						"{FFFFFF}На складе товара на {FFFF00}$%d{FFFFFF}, поместится ещё на {FFFF00}$%d{FFFFFF}.\nТовар на $100 даёт продаж примерно на $%d.\n{FF9900}У оптовиков дороже на %d%%: товар на $100 стоит $%d.\n{AFAFAF}Дешевле — поставки с заводов: водители везут их сами (/contracts).\n{FFFFFF}Платишь наличными, у тебя: $%d\n\nНа сколько товара закупить ($ на складе)?",
+						"Закупить", "Назад", Biz[b][bStock], room, 10000 / BIZ_WHOLESALE_PCT, Cfg(CFG_BIZ_AIR), 100 + Cfg(CFG_BIZ_AIR), GetMoney(playerid));
 				}
 				case BXA_MARKUP:
 				{
@@ -607,12 +662,13 @@ stock BizX_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 			new sum = strval(inputtext), room = BizX_StockMax(b) - Biz[b][bStock];
 			if (sum > room) sum = room;
 			if (sum < 1) { SendClientMessage(playerid, COLOR_GREY, "Склад полон или сумма слишком мала."); return 1; }
-			if (GetMoney(playerid) < sum) { SendClientMessage(playerid, COLOR_GREY, "Не хватает наличных. Нужно $%d.", sum); return 1; }
-			GiveMoney(playerid, -sum, "закупка товара для бизнеса");
+			new cost = sum + sum / 100 * Cfg(CFG_BIZ_AIR) + (sum % 100) * Cfg(CFG_BIZ_AIR) / 100;
+			if (GetMoney(playerid) < cost) { SendClientMessage(playerid, COLOR_GREY, "Не хватает наличных. Нужно $%d.", cost); return 1; }
+			GiveMoney(playerid, -cost, "закупка товара для бизнеса");
 			Biz[b][bStock] += sum;
 			BizX_Save(b);
 			Account_Save(playerid);
-			SendClientMessage(playerid, COLOR_GREEN, "Товар закуплен на $%d. На складе теперь на $%d.", sum, Biz[b][bStock]);
+			SendClientMessage(playerid, COLOR_GREEN, "Товар на $%d закуплен за $%d. На складе теперь на $%d.", sum, cost, Biz[b][bStock]);
 			Cmd_BizMenu(playerid);
 			return 1;
 		}
@@ -702,4 +758,131 @@ stock BizX_OnDialog(playerid, dialogid, response, listitem, const inputtext[])
 stock BizX_FuelSale(playerid, amount)
 {
 	BizX_ServiceSale(playerid, BIZ_FUEL, amount);
+}
+
+// ---------------------------------------------------------------------
+//  Поставки с заводов: разгрузка у бизнеса, /contracts, /market
+// ---------------------------------------------------------------------
+// За рулём с товаром у входа бизнеса (из Factory_TryUnload). 1 — сработало.
+stock BizX_TryDeliver(playerid, v, bool:verbose)
+{
+	new prod = gVehCargoProd[v], best = -1, Float:bestDist = DELIVER_RANGE, Float:d;
+	if (GetPlayerVirtualWorld(playerid) != 0 || GetPlayerInterior(playerid) != 0)
+	{
+		if (verbose) SendClientMessage(playerid, COLOR_GREY, "Товар разгружают на улице, у входа в бизнес.");
+		return 0;
+	}
+	for (new b = 0; b < gBizCount; b++)
+	{
+		if (Biz[b][bOInt] != 0 || Biz[b][bOWorld] != 0) continue;
+		d = GetPlayerDistanceFromPoint(playerid, Biz[b][bX], Biz[b][bY], Biz[b][bZ]);
+		if (d < bestDist) { bestDist = d; best = b; }
+	}
+	if (best == -1)
+	{
+		if (verbose) SendClientMessage(playerid, COLOR_GREY, "Рядом нет бизнеса. В кузове: %s, ящиков %d. Кому нужно: /contracts", gProdName[prod], gVehCargo[v] / CRATE_MATS);
+		return 0;
+	}
+	new b = best;
+	if (Prod_OfBizType(Biz[b][bType]) != prod || !BizX_UsesStock(b))
+	{
+		if (verbose) SendClientMessage(playerid, COLOR_GREY, "«%s» не берёт %s. Кому нужно: /contracts", Biz[b][bName], gProdName[prod]);
+		return verbose ? 1 : 0;
+	}
+	if (Biz[b][bOwner] == 0) { SendClientMessage(playerid, COLOR_GREY, "У «%s» нет владельца: товар принять некому.", Biz[b][bName]); return 1; }
+	new value = Cfg(CFG_GOODS_VALUE), pay = Cfg(CFG_GOODS_PAY);
+	new n = gVehCargo[v] / CRATE_MATS;
+	new room = (BizX_StockMax(b) - Biz[b][bStock]) / value;
+	if (room <= 0) { SendClientMessage(playerid, COLOR_GREY, "Склад «%s» полон.", Biz[b][bName]); return 1; }
+	if (n > room) n = room;
+	if (pay > 0 && n > Biz[b][bTill] / pay) n = Biz[b][bTill] / pay;
+	if (n <= 0) { SendClientMessage(playerid, COLOR_GREY, "В кассе «%s» не хватает денег заплатить за товар ($%d за ящик).", Biz[b][bName], pay); return 1; }
+	Biz[b][bStock] += n * value;
+	Biz[b][bTill] -= n * pay;
+	gVehCargo[v] -= n * CRATE_MATS;
+	BizX_Save(b);
+	if (n * pay > 0) GiveMoney(playerid, n * pay, "доставка товара в бизнес");
+	SendClientMessage(playerid, COLOR_GREEN, "Разгружено в «%s»: %d ящ. (%s). Оплата: $%d. В кузове осталось: %d.", Biz[b][bName], n, gProdName[prod], n * pay, gVehCargo[v] / CRATE_MATS);
+	return 1;
+}
+
+stock bool:Cmd_Contracts(playerid)
+{
+	new body[3600], line[128], n = 0, pay = Cfg(CFG_GOODS_PAY), value = Cfg(CFG_GOODS_VALUE);
+	strcat(body, "Куда\tТовар\tЯщиков\tЦена\n");
+	for (new b = 0; b < gBizCount && n < CONTRACT_ROWS; b++)
+	{
+		new pr = Prod_OfBizType(Biz[b][bType]);
+		if (pr < 0 || Biz[b][bOwner] == 0 || !BizX_UsesStock(b) || Biz[b][bOInt] != 0 || Biz[b][bOWorld] != 0) continue;
+		new need = (BizX_StockMax(b) - Biz[b][bStock]) / value;
+		if (pay > 0 && need > Biz[b][bTill] / pay) need = Biz[b][bTill] / pay;
+		if (need <= 0 || Biz[b][bStock] * 100 > BizX_StockMax(b) * 60) continue;     // берут, когда склад меньше 60%
+		format(line, sizeof line, "{FFFFFF}%s\t%s\t%d\t{33AA33}+$%d\n", Biz[b][bName], gProdName[pr], need, pay);
+		if (strlen(body) + strlen(line) >= sizeof body) break;
+		strcat(body, line);
+		gCtrMap[playerid][n++] = b;
+	}
+	new nb = n;
+	for (new i = 0; i < MAX_FACTORIES && n < CONTRACT_ROWS; i++)
+	{
+		if (!Factory[i][fcUsed] || Factory[i][fcProd] == PROD_MATS || Factory[i][fcStock] < CRATE_MATS) continue;
+		format(line, sizeof line, "{AFAFAF}Завод %s\t%s\t%d\t{FF9900}-$%d\n", Factory[i][fcName], gProdName[Factory[i][fcProd]], Factory[i][fcStock] / CRATE_MATS, Cfg(CFG_GOODS_PRICE));
+		if (strlen(body) + strlen(line) >= sizeof body) break;
+		strcat(body, line);
+		gCtrMap[playerid][n++] = 1000 + i;
+	}
+	for (new k = n; k < CONTRACT_ROWS; k++) gCtrMap[playerid][k] = -1;
+	if (n == 0) return SendClientMessage(playerid, COLOR_GREY, "Сейчас заказов нет: склады бизнесов полны, а на заводах нет товара.");
+	if (nb == 0) SendClientMessage(playerid, COLOR_GREY, "Бизнесам товар сейчас не нужен, но на заводах он есть.");
+	ShowPlayerDialog(playerid, DIALOG_CONTRACTS, DIALOG_STYLE_TABLIST_HEADERS, "Поставки: выбери точку для GPS", "%s", "GPS", "Закрыть", body);
+	return true;
+}
+
+stock bool:Cmd_Market(playerid)
+{
+	new body[1200], line[160];
+	strcat(body, "Товар\tНа складах\tЦены\tЗаводов\n");
+	for (new p = PROD_FUEL; p < PROD_COUNT; p++)
+	{
+		new fill = Market_Fill(p), pct = Market_PricePct(p), fc = 0;
+		for (new i = 0; i < MAX_FACTORIES; i++)
+		{
+			if (Factory[i][fcUsed] && !Factory[i][fcClosed] && Faction_IsValid(Factory[i][fcOwner]) && Factory[i][fcProd] == p) fc++;
+		}
+		new st[24], pr[24];
+		if (fill < 0) format(st, sizeof st, "{AFAFAF}-");
+		else format(st, sizeof st, "%s%d%%", (fill < Cfg(CFG_MKT_LOW)) ? ("{FF6347}") : ("{FFFFFF}"), fill);
+		if (pct > 0) format(pr, sizeof pr, "{FF6347}+%d%% дефицит", pct);
+		else if (pct < 0) format(pr, sizeof pr, "{33AA33}%d%% избыток", pct);
+		else format(pr, sizeof pr, "{FFFFFF}обычные");
+		format(line, sizeof line, "%s\t%s\t%s\t{FFFFFF}%d\n", gProdName[p], st, pr, fc);
+		strcat(body, line);
+	}
+	ShowPlayerDialog(playerid, DIALOG_MARKET, DIALOG_STYLE_TABLIST_HEADERS, "Рынок города", "%s", "Поставки", "Закрыть", body);
+	return true;
+}
+
+stock Market_OnDialog(playerid, dialogid, response, listitem)
+{
+	if (dialogid == DIALOG_MARKET)
+	{
+		if (response) Cmd_Contracts(playerid);
+		return 1;
+	}
+	if (dialogid != DIALOG_CONTRACTS) return 0;
+	if (!response || listitem < 0 || listitem >= CONTRACT_ROWS || gCtrMap[playerid][listitem] == -1) return 1;
+	new k = gCtrMap[playerid][listitem];
+	if (k >= 1000)
+	{
+		new i = k - 1000;
+		if (i >= MAX_FACTORIES || !Factory[i][fcUsed]) return 1;
+		new p = (gFcSet[i][FP_STORE] && gFcI[i][FP_STORE] == 0 && gFcW[i][FP_STORE] == 0) ? FP_STORE : FP_OWNER;
+		Gps_SetPoint(playerid, gFcX[i][p], gFcY[i][p], gFcZ[i][p], Factory[i][fcName]);
+		SendClientMessage(playerid, COLOR_WHITE, "GPS: завод «%s». Склад ящиков — ALT, ящик в грузовик или фургон сзади — ALT.", Factory[i][fcName]);
+		return 1;
+	}
+	if (k >= gBizCount) return 1;
+	Gps_SetPoint(playerid, Biz[k][bX], Biz[k][bY], Biz[k][bZ], Biz[k][bName]);
+	SendClientMessage(playerid, COLOR_WHITE, "GPS: «%s». Подъедь ко входу и разгрузи товар: H или /unload.", Biz[k][bName]);
+	return 1;
 }

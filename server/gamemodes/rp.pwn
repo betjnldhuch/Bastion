@@ -52,6 +52,7 @@
 #include "bastion/platform.inc"   // ПК или телефон: IsPlayerMobile[playerid]
 #include "bastion/anticheat.inc"  // античит; подменяет SetPlayerPos, GivePlayerWeapon и др., поэтому стоит до модулей
 #include "bastion/database.inc"
+#include "bastion/srvcfg.inc"     // /srvset: настройки сервера из игры
 #include "bastion/logs.inc"       // общий журнал всех событий: scriptfiles/logs.db, /logs
 #include "bastion/social.inc"     // боты ВК и Telegram: /bot, уведомления (папка bots/)
 #include "bastion/markers.inc"    // все маркеры (значки и надписи) в одном месте
@@ -141,6 +142,7 @@ public OnGameModeInit()
 	Factions_RunMoves();  // перенос фракций на другой номер (один раз, до загрузки всего)
 	Markers_Init();       // таблица markers: правки маркеров из игры
 	Admin_Init();         // таблицы admin_log, reports, сроки банов
+	Cfg_Init();           // настройки /srvset (srvcfg.inc)
 
 	ShowPlayerMarkers(PLAYER_MARKERS_MODE_STREAMED);
 	DisableInteriorEnterExits();        // убираем жёлтые маркеры входов из одиночной игры
@@ -484,6 +486,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Bank_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Business_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (BizX_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (Market_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (BizW_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Keys_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Fuel_OnDialog(playerid, dialogid, response, inputtext)) return 1;
@@ -503,6 +506,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 	if (Families_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (FrMenu_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Orgs_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
+	if (SrvCfg_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Factions_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
 	if (Drugs_OnDialog(playerid, dialogid, response, listitem)) return 1;
 	if (Casino_OnDialog(playerid, dialogid, response, listitem, inputtext)) return 1;
