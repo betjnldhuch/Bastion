@@ -65,6 +65,7 @@ HWND g_hwnd = nullptr;
 WNDPROC g_origWndProc = nullptr;
 bool g_cefTried = false;
 bool g_visible = false;  // окно открыто: перехватываем мышь и клавиатуру
+bool g_gameAltDown = false;
 int g_dialogId = -1;
 int g_dialogStyle = 0;
 int g_photoSkin = -1;    // "[bastion:photo]": снять кадр для паспорта на следующем Present    // стиль открытого диалога: у не-списков пункт в ответе всегда -1
@@ -297,6 +298,16 @@ void ToView(LPARAM lp, int& x, int& y) {
 }
 
 LRESULT CALLBACK HookWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    // If Alt opened the locker, GTA saw the press before CEF took focus.
+    // Deliver the matching release to GTA as well, or walking stays held.
+    if (wp == VK_MENU && (msg == WM_SYSKEYDOWN || msg == WM_KEYDOWN) && !g_visible)
+        g_gameAltDown = true;
+    if (wp == VK_MENU && (msg == WM_SYSKEYUP || msg == WM_KEYUP) && g_gameAltDown) {
+        g_gameAltDown = false;
+        if (g_visible) browser::KeyMessage(msg, wp, lp, !IsWindowUnicode(hwnd));
+        return CallWindowProcA(g_origWndProc, hwnd, msg, wp, lp);
+    }
+    if (msg == WM_KILLFOCUS) g_gameAltDown = false;
     if (g_visible) {
         int x, y;
         switch (msg) {

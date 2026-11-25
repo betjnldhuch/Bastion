@@ -1107,4 +1107,29 @@ replace_exact(cpp / "CMakeLists.txt", """target_link_libraries(samp
         z
 """)
 
+# Spawning and changing uniform both replace the RenderWare object of a live ped.
+# Delete it while its original model index still identifies its streaming reference.
+playerped = cpp / "game/playerped.cpp"
+replace_exact(playerped, """    if(!GamePool_Ped_GetAt(m_dwGTAId)) return;
+    if(!IsPedModel(uiModel))""", """    if (!m_pPed || GamePool_Ped_GetAt(m_dwGTAId) != m_pPed) return;
+    if(!IsPedModel(uiModel))""")
+replace_exact(playerped, """        if (!CStreaming::TryLoadModel(uiModel))
+            return;
+
+        // CEntity::DeleteRwObject();
+        m_pPed->m_nModelIndex = uiModel;
+
+        m_pPed->SetModelIndex(uiModel);
+
+        CStreaming::RemoveModelIfNoRefs(oldModelId);""", """        if (oldModelId == uiModel && m_pPed->m_pRwObject) return;
+        if (!CStreaming::TryLoadModel(uiModel)) return;
+        if (GamePool_Ped_GetAt(m_dwGTAId) != m_pPed) return;
+
+        if (m_pPed->m_pRwObject) m_pPed->DeleteRwObject();
+        m_pPed->SetModelIndex(uiModel);
+
+        if (oldModelId != uiModel && oldModelId < CModelInfo::NUM_MODEL_INFOS &&
+            CModelInfo::GetModelInfo(oldModelId))
+            CStreaming::RemoveModelIfNoRefs(oldModelId);""")
+
 print("SAMP-Mobile prepared for Bastion: library module, Bastion storage, :game process, no Firebase.")

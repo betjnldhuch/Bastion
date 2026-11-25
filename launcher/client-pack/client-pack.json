@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "product": "Bastion PC client pack",
   "files": [
     {
@@ -31,6 +31,13 @@
       "url": "pack/models/gta3.img/bigdollar.dff",
       "size": 5081,
       "sha256": "a7cd8b11316458fae05f1abcb419bcb2b47165efaba31aadd516e82d2b408314"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "bmymib.txd",
+      "url": "pack/models/gta3.img/bmymib.txd",
+      "size": 2796412,
+      "sha256": "432d1896be6c9fbcbb7677ca557fb3b697bcbb3192bff6a33b0f32e46376079b"
     },
     {
       "path": "models/gta3.img",
@@ -172,6 +179,13 @@
       "url": "pack/models/gta3.img/dyn_cash.txd",
       "size": 87576,
       "sha256": "16e939ef4255dfcf74fe17e3eb32008a6033b4abae85cd15272c8e4c962b328c"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "fbi.txd",
+      "url": "pack/models/gta3.img/fbi.txd",
+      "size": 2796412,
+      "sha256": "d8025e2598b462095b31402dd6d79b71581b1d68a098bf92bc900a1068e5dad9"
     },
     {
       "path": "models/gta3.img",
@@ -1646,6 +1660,13 @@
       "url": "pack/models/gta3.img/radar143.txd",
       "size": 88728,
       "sha256": "9eb182a292c6674f3567cc9383285999d1fbef6fc624694a8d596951a2bb25f7"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "wmomib.txd",
+      "url": "pack/models/gta3.img/wmomib.txd",
+      "size": 2796412,
+      "sha256": "0cd9d6185d1fc65e51f109da2826bfb718774002b6709642fa71f1a0440561b4"
     }
   ]
 }
