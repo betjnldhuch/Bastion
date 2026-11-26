@@ -18,8 +18,8 @@ import java.util.List;
  * Данные из сети: новости, список серверов и номер свежей версии.
  *
  * Лежат в папке launcher/ на сервере раздачи игры (cloud/download-worker):
- * news.txt, servers.ini, version.ini. Адрес выводится из адреса архива игры,
- * вшитого при сборке, поэтому отдельно его настраивать не нужно.
+ * news.txt. Адрес выводится из адреса архива игры, вшитого при сборке.
+ * Список серверов — launcher/remote/servers.ini на GitHub.
  * Скачанное сохраняется в памяти приложения: без сети лаунчер показывает
  * последнее скачанное, а если и его нет — файлы из assets.
  *
@@ -34,6 +34,8 @@ import java.util.List;
 public final class Remote {
     private static final int LIMIT = 256 * 1024;
     private static final int TIMEOUT = 6000;
+    private static final String SERVERS_BASE =
+            "https://raw.githubusercontent.com/betjnldhuch/Bastion/main/launcher/remote/";
     static final String UPDATE_URL =
             "https://github.com/betjnldhuch/bastion/releases/download/builds/version-android.ini";
 
@@ -86,10 +88,9 @@ public final class Remote {
      */
     public static boolean refresh(Context ctx) {
         String base = baseUrl();
-        if (base.length() == 0) return false;
         boolean changed = false;
-        changed |= fetch(ctx, base, "news.txt", false);
-        changed |= fetch(ctx, base, "servers.ini", true);
+        if (base.length() > 0) changed |= fetch(ctx, base, "news.txt", false);
+        changed |= fetch(ctx, SERVERS_BASE, "servers.ini", true);
         return changed;
     }
 
