@@ -59,7 +59,7 @@ namespace BastionLauncher
         // Новости, список серверов и версия: адрес из launcher.ini, иначе папка launcher/
         // на сервере раздачи (Updater.cs). «-» в launcher.ini выключает.
         public string EffectiveNewsUrl { get { return Remote.Pick(NewsUrl, "news.txt"); } }
-        public string EffectiveServersUrl { get { return Remote.Pick(ServersUrl, "servers.ini"); } }
+        public string EffectiveServersUrl { get { return ServersUrl == "-" ? "" : (ServersUrl.Length > 0 ? ServersUrl : "https://raw.githubusercontent.com/betjnldhuch/Bastion/main/launcher/remote/servers.ini"); } }
         // Обновление лаунчера: по умолчанию релиз «builds» на GitHub (CI выкладывает туда
         // каждую сборку main вместе с version-pc.ini), поэтому номер версии менять руками не нужно.
         public string EffectiveUpdateUrl
@@ -243,8 +243,8 @@ namespace BastionLauncher
 "; link = ФОРУМ | https://forum.example.com\r\n" +
 "; link = ДОНАТ | https://example.com/donate\r\n" +
 "\r\n" +
-"; Новости и список серверов лаунчер берёт из сети сам (папка launcher/ на сервере\r\n" +
-"; раздачи игры), обновления — из релиза builds на GitHub. Если сети нет — из news.txt\r\n" +
+"; Новости — с сервера раздачи, список серверов — из launcher/remote/servers.ini на GitHub.\r\n" +
+"; Обновления — из релиза builds на GitHub. Если сети нет — из news.txt\r\n" +
 "; и строк server ниже.\r\n" +
 "; Сюда можно вписать свою ссылку, а знак - (минус) выключает загрузку из сети.\r\n" +
 "news_url =\r\n" +
@@ -260,8 +260,7 @@ namespace BastionLauncher
 "; Сервера:  server = Название | адрес | порт | описание\r\n" +
 "; Адрес: 127.0.0.1 — свой компьютер; IP из Radmin VPN — для друзей;\r\n" +
 "; потом сюда впишешь адрес хостинга.\r\n" +
-"server = Bastion Peace | 192.168.31.182 | 7777 | Классический RP, как в старые добрые времена\r\n" +
-"server = Bastion War   | 192.168.31.182 | 7778 | Сервер для сильнейших. Никакой администрации — всё решаешь ты\r\n";
+"server = Bastion Peace | 80.47.6.18 | 25174 | Классический RP, как в старые добрые времена\r\n";
     }
 
     // -----------------------------------------------------------------
