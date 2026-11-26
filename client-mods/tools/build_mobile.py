@@ -31,8 +31,19 @@ def ours(path):
             if fmt == 0x8500 and d3d == 21: names.append(name)
     return names
 
-def btx(im):
-    im = im.convert('RGBA'); raw = im.tobytes()
+# The client retains override textures in memory. Cap character atlases on Android.
+SKIN_TEXTURES = frozenset((
+    "lapd1 sfpd1 lvpd1 csher dsher tenpenny fbi wmomib bmymib "
+    "army wmysgrd laemt lvemt sfemt wmosci fam1 fam2 fam3 "
+    "sweet ballas1 ballas2 ballas3 vla1 vla2 vla3 omyst ofyst "
+    "male01 wmybmx wmydrug hmyri swmyhp1 bfyri hfyri wfyst "
+).split())
+
+def btx(im, key=None):
+    im = im.convert('RGBA')
+    if key in SKIN_TEXTURES and max(im.size) > 512:
+        im.thumbnail((512, 512), Image.Resampling.LANCZOS)
+    raw = im.tobytes()
     z = zlib.compress(raw, 9)
     return b'BTX1' + struct.pack('<III', im.width, im.height, len(z)) + z
 
@@ -59,7 +70,7 @@ def main():
         textures.setdefault((model + 'icon').lower(), Image.open(os.path.join(WEAPON_SRC, model + '.png')).convert('RGBA'))
     h = hashlib.sha256()
     for key in sorted(textures):
-        data = btx(textures[key])
+        data = btx(textures[key], key)
         open(os.path.join(OUT, 'tex', key + '.btx'), 'wb').write(data)
         h.update(key.encode() + data)
     for f in sorted(os.listdir(os.path.join(OUT, 'img', 'gta3'))):
