@@ -28,7 +28,8 @@ def ours(path):
             ss = next(x for x in rw.chunks(b, cs, ce) if x[0] == 1)[1]
             name = b[ss + 8:ss + 40].split(b'\0')[0].decode('latin1')
             fmt, d3d = struct.unpack_from('<II', b, ss + 72)
-            if fmt == 0x8500 and d3d == 21: names.append(name)
+            if (fmt == 0x8500 and d3d == 21) or name.startswith('bst_v_'):
+                names.append(name)
     return names
 
 # The client retains override textures in memory. Cap character atlases on Android.
@@ -41,7 +42,7 @@ SKIN_TEXTURES = frozenset((
 
 def btx(im, key=None):
     im = im.convert('RGBA')
-    if key in SKIN_TEXTURES and max(im.size) > 512:
+    if (key in SKIN_TEXTURES or (key or '').startswith('bst_v_')) and max(im.size) > 512:
         im.thumbnail((512, 512), Image.Resampling.LANCZOS)
     raw = im.tobytes()
     z = zlib.compress(raw, 9)
