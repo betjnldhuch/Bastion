@@ -62,7 +62,10 @@ def read(src):
             name=b[ss+8:ss+40].split(b'\0')[0].decode('latin1')
             fourcc=struct.unpack_from('<I',b,ss+76)[0]; w,h,dep=struct.unpack_from('<HHB',b,ss+80)
             p=ss+88+(1024 if dep==8 else 0); sz=struct.unpack_from('<I',b,p)[0]; data=b[p+4:p+4+sz]
-            if fourcc in (0x31545844,0x33545844): im=_dxt(data,w,h,1 if fourcc==0x31545844 else 3)
+            if name.startswith('bst_v_') and fourcc in (0x31545844,0x35545844):
+                # Vehicle paint and decals use DXT1 and DXT5, including interpolated alpha.
+                im=Image.frombytes('RGBA',(w,h),data,'bcn',1 if fourcc==0x31545844 else 3)
+            elif fourcc in (0x31545844,0x33545844): im=_dxt(data,w,h,1 if fourcc==0x31545844 else 3)
             elif dep==32:
                 im=Image.frombytes('RGBA',(w,h),data[:w*h*4]); r,g,bb,a=im.split(); im=Image.merge('RGBA',(bb,g,r,a))
             else: continue
