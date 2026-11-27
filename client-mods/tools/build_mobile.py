@@ -13,6 +13,7 @@ import rw, txdpatch
 from PIL import Image
 from build_radar import MAP as RADAR_MAP, HUD_ART
 from build_weapons import WEAPONS, SRC as WEAPON_SRC
+from build_streets import mobile_images as street_images
 
 ROOT = os.path.normpath(os.path.join(HERE, '..', '..'))
 PACK = os.path.join(ROOT, 'launcher', 'client-pack', 'pack', 'models')
@@ -48,6 +49,17 @@ def btx(im, key=None):
     z = zlib.compress(raw, 9)
     return b'BTX1' + struct.pack('<III', im.width, im.height, len(z)) + z
 
+def write_version():
+    h = hashlib.sha256()
+    for directory, suffix in (('tex', '.btx'), (os.path.join('img', 'gta3'), '.dff')):
+        path = os.path.join(OUT, directory)
+        for f in sorted(f for f in os.listdir(path) if f.endswith(suffix)):
+            key = f[:-4] if suffix == '.btx' else f
+            with open(os.path.join(path, f), 'rb') as asset:
+                h.update(key.encode() + asset.read())
+    with open(os.path.join(OUT, 'version.txt'), 'w', newline='\n') as stamp:
+        stamp.write(h.hexdigest()[:16] + '\n')
+
 def main():
     shutil.rmtree(OUT, ignore_errors=True)
     os.makedirs(os.path.join(OUT, 'tex')); os.makedirs(os.path.join(OUT, 'img', 'gta3'))
@@ -69,14 +81,11 @@ def main():
     # значки оружия: на ПК лаунчер вписывает их в txd оружия (build_weapons.py), здесь — по имени текстуры
     for model in WEAPONS:
         textures.setdefault((model + 'icon').lower(), Image.open(os.path.join(WEAPON_SRC, model + '.png')).convert('RGBA'))
-    h = hashlib.sha256()
+    textures.update(street_images())
     for key in sorted(textures):
         data = btx(textures[key], key)
         open(os.path.join(OUT, 'tex', key + '.btx'), 'wb').write(data)
-        h.update(key.encode() + data)
-    for f in sorted(os.listdir(os.path.join(OUT, 'img', 'gta3'))):
-        h.update(f.encode() + open(os.path.join(OUT, 'img', 'gta3', f), 'rb').read())
-    open(os.path.join(OUT, 'version.txt'), 'w').write(h.hexdigest()[:16] + '\n')
+    write_version()
     print('готово:', len(textures), 'текстур,', len(os.listdir(os.path.join(OUT, 'img', 'gta3'))), 'dff ->', OUT)
 
 if __name__ == '__main__': main()

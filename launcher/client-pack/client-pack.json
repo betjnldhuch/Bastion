@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 7,
   "product": "Bastion PC client pack",
   "files": [
     {
@@ -2115,6 +2115,102 @@
       "url": "pack/models/gta3.img/wmysgrd.txd",
       "size": 2796412,
       "sha256": "5b1ca6f96ed1142c4841647d71d3f4bba9c292e4779ab3efad96a23f956740af"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "lanroad.txd",
+      "texture": "crossing_law",
+      "url": "pack/models/gta3.img/lanroad.txd/crossing_law.tex",
+      "size": 349712,
+      "sha256": "42393fce0c3621e2df46738e6d865f2b1e1559bf3fe6cf758fb248321ea79557"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "lanroad.txd",
+      "texture": "easykerb",
+      "url": "pack/models/gta3.img/lanroad.txd/easykerb.tex",
+      "size": 11092,
+      "sha256": "2212a386ad4bb71dd577c7149a3b60e347807ce2993c6486924b68b636b99f90"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "lanroad.txd",
+      "texture": "sidelatino1_LAe",
+      "url": "pack/models/gta3.img/lanroad.txd/sidelatino1_LAe.tex",
+      "size": 174940,
+      "sha256": "9a210db8baeeed5de264d89fa5899e39af0a2c0b849eacaf4383615b6963ee04"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "lanroad.txd",
+      "texture": "sl_pavebutt1",
+      "url": "pack/models/gta3.img/lanroad.txd/sl_pavebutt1.tex",
+      "size": 174940,
+      "sha256": "b275f5c80a3b6d06393bc5e150f8d45007f1b90411e9548f321b85e548690eaa"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "lanroad.txd",
+      "texture": "snpedtest1",
+      "url": "pack/models/gta3.img/lanroad.txd/snpedtest1.tex",
+      "size": 699232,
+      "sha256": "c554107e6dd8d51e192dc7b65a4510e54e467c984a8eee99284454fef48622aa"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "lanroad.txd",
+      "texture": "tarmacplain_bank",
+      "url": "pack/models/gta3.img/lanroad.txd/tarmacplain_bank.tex",
+      "size": 699232,
+      "sha256": "d86821a763bdcd73a4d058f0726d38c83c0cb3b606ba741979f65966d6611bf8"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "union_las.txd",
+      "texture": "crazypave",
+      "url": "pack/models/gta3.img/union_las.txd/crazypave.tex",
+      "size": 174940,
+      "sha256": "3e46d2834753db9c5547d496f7c91f41ebe69bd8f58d46083d49d5a90cf381aa"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "union_las.txd",
+      "texture": "easykerb",
+      "url": "pack/models/gta3.img/union_las.txd/easykerb.tex",
+      "size": 11092,
+      "sha256": "2212a386ad4bb71dd577c7149a3b60e347807ce2993c6486924b68b636b99f90"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "union_las.txd",
+      "texture": "snpedtest1",
+      "url": "pack/models/gta3.img/union_las.txd/snpedtest1.tex",
+      "size": 699232,
+      "sha256": "c554107e6dd8d51e192dc7b65a4510e54e467c984a8eee99284454fef48622aa"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "union_las.txd",
+      "texture": "tarmacplain_bank",
+      "url": "pack/models/gta3.img/union_las.txd/tarmacplain_bank.tex",
+      "size": 699232,
+      "sha256": "d86821a763bdcd73a4d058f0726d38c83c0cb3b606ba741979f65966d6611bf8"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "railway_las.txd",
+      "texture": "concretenewb256",
+      "url": "pack/models/gta3.img/railway_las.txd/concretenewb256.tex",
+      "size": 174940,
+      "sha256": "b4572a609cf7d2ac79abd02bb86630e36b8c0bdce00e4a6232673d412411f4cc"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "civic06_lan.txd",
+      "texture": "tarmacplain_bank",
+      "url": "pack/models/gta3.img/civic06_lan.txd/tarmacplain_bank.tex",
+      "size": 699232,
+      "sha256": "d86821a763bdcd73a4d058f0726d38c83c0cb3b606ba741979f65966d6611bf8"
     }
   ]
 }
