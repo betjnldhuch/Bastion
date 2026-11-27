@@ -67,7 +67,11 @@ CObject::CObject(int iModel, CVector vecPos, CVector vecRot, float fDrawDistance
 		return;
 	}
 
-	ScriptCommand(&create_object, iModel, vecPos.x, vecPos.y, vecPos.z, &m_dwGTAId);
+	// ScriptCommand's output slots are uintptr-wide on ARM64, but m_dwGTAId is 32-bit.
+	// Use a correctly sized local slot to avoid overwriting the next object field.
+	uintptr objectHandle = 0;
+	ScriptCommand(&create_object, iModel, vecPos.x, vecPos.y, vecPos.z, &objectHandle);
+	m_dwGTAId = static_cast<uint32_t>(objectHandle);
 	if (!m_dwGTAId) return;
 	ScriptCommand(&put_object_at, m_dwGTAId, vecPos.x, vecPos.y, vecPos.z);
 	m_pEntity = GamePool_Object_GetAt(m_dwGTAId);

@@ -1128,8 +1128,81 @@ replace_exact(playerped, """        if (!CStreaming::TryLoadModel(uiModel))
         if (m_pPed->m_pRwObject) m_pPed->DeleteRwObject();
         m_pPed->SetModelIndex(uiModel);
 
+        // Let streaming evict the previous model normally; immediate removal
+        // during the spawn/render transition can invalidate pending references.
         if (oldModelId != uiModel && oldModelId < CModelInfo::NUM_MODEL_INFOS &&
             CModelInfo::GetModelInfo(oldModelId))
-            CStreaming::RemoveModelIfNoRefs(oldModelId);""")
+            CStreaming::SetModelIsDeletable(oldModelId);""")
+
+# 18. Checkpoint handles must start at zero. Login/spawn can disable them
+# before any checkpoint exists; UpdateCheckpoints must not delete a marker twice.
+replace_exact(cpp / "game/game.cpp", "\tm_bRaceCheckpointsEnabled = false;\n\tm_dwRaceCheckpointHandle = 0;",
+              "\tm_bRaceCheckpointsEnabled = false;\n\tm_dwCheckpointMarker = 0;\n\tm_dwRaceCheckpointMarker = 0;\n\tm_dwRaceCheckpointHandle = 0;")
+replace_exact(cpp / "game/game.cpp", "\telse if (m_dwRaceCheckpointMarker)\n\t{\n\t\tDisableMarker(m_dwRaceCheckpointMarker);\n\t\tDisableRaceCheckpoint();\n\t\tm_dwRaceCheckpointMarker = 0;\n\t}",
+              "\telse if (m_dwRaceCheckpointMarker || m_dwRaceCheckpointHandle)\n\t{\n\t\tDisableRaceCheckpoint();\n\t}")
+replace_exact(cpp / "game/game.cpp", "    Log(\"DisableRaceCheckpoint\");\n    if (m_dwRaceCheckpointHandle != NULL)",
+              "    Log(\"DisableRaceCheckpoint: handle=%u marker=%u\", (unsigned)m_dwRaceCheckpointHandle, (unsigned)m_dwRaceCheckpointMarker);\n    if (m_dwRaceCheckpointHandle != NULL)")
+
+# 19. Spawn crash follow-up: preserve original Android crash context, initialize
+# pickup output, and isolate the failing spawn operation in the client log.
+replace_exact(cpp / "game/game.cpp", "    uintptr hnd;\n\n    auto dwModelArray",
+              "    uintptr hnd = 0;\n\n    auto dwModelArray")
+replace_exact(cpp / "main.cpp", "\tsigaction(SIGSEGV, &act, &act_old);",
+              "\t// Preserve Android's native SIGSEGV handler and original fault context.\n\t// The upstream handler calls ART's previous handler directly, then unwinds\n\t// the signal handler itself; this can obscure the original crashing frame.\n\t// sigaction(SIGSEGV, &act, &act_old);")
+replace_exact(cpp / "net/localplayer.cpp", "\tpGame->DisableTrainTraffic();\n\n\tm_pPlayerPed->m_pPed->SetPosn(m_SpawnInfo.vecPos.x,\n\t\tm_SpawnInfo.vecPos.y, m_SpawnInfo.vecPos.z + 0.5f);\n\n\tm_pPlayerPed->SetTargetRotation(m_SpawnInfo.fRotation);",
+              "\tLog(\"[Bastion] spawn: disable train traffic\");\n\tpGame->DisableTrainTraffic();\n\tLog(\"[Bastion] spawn: teleport\");\n\tif (!m_pPlayerPed->m_pPed || GamePool_Ped_GetAt(m_pPlayerPed->m_dwGTAId) != m_pPlayerPed->m_pPed) {\n\t\tLog(\"[Bastion] spawn: ped no longer valid\");\n\t\treturn false;\n\t}\n\tm_pPlayerPed->m_pPed->SetPosn(m_SpawnInfo.vecPos.x,\n\t\tm_SpawnInfo.vecPos.y, m_SpawnInfo.vecPos.z + 0.5f);\n\n\tLog(\"[Bastion] spawn: rotation\");\n\tm_pPlayerPed->SetTargetRotation(m_SpawnInfo.fRotation);\n\tLog(\"[Bastion] spawn: rotation complete\");")
+replace_exact(cpp / "net/localplayer.cpp", "\tm_iDisplayZoneTick = GetTickCount() + 1000;\n\n\treturn true;",
+              "\tm_iDisplayZoneTick = GetTickCount() + 1000;\n\tLog(\"[Bastion] spawn: complete\");\n\n\treturn true;")
+
+# 20. Retain first-active-tick diagnostic; V3 reproduced without skin changes.
+replace_exact(cpp / "net/localplayer.cpp", "bool bFirstSpawn = true;",
+              "bool bFirstSpawn = true;\nstatic bool bastionTraceFirstActive = false;")
+replace_exact(cpp / "net/localplayer.cpp", "\tif (m_bIsActive && m_pPlayerPed != nullptr)\n\t{\n\t\t// local player is dead",
+              "\tif (m_bIsActive && m_pPlayerPed != nullptr)\n\t{\n\t\tconst bool trace = bastionTraceFirstActive;\n\t\tbastionTraceFirstActive = false;\n\t\tif (trace) Log(\"[Bastion TEST] first active tick: start\");\n\t\t// local player is dead")
+replace_exact(cpp / "net/localplayer.cpp", "\t\tpGame->UpdateCheckpoints();",
+              "\t\tif (trace) Log(\"[Bastion TEST] first active tick: checkpoints\");\n\t\tpGame->UpdateCheckpoints();")
+replace_exact(cpp / "net/localplayer.cpp", "\t\tUpdateSurfing();\n\t\tCheckWeapons();",
+              "\t\tif (trace) Log(\"[Bastion TEST] first active tick: weapons\");\n\t\tUpdateSurfing();\n\t\tCheckWeapons();")
+replace_exact(cpp / "net/localplayer.cpp", "\t\tUpdateCameraTarget();\n\t\t// PLAYER DATA UPDATES",
+              "\t\tUpdateCameraTarget();\n\t\tif (trace) Log(\"[Bastion TEST] first active tick: sync\");\n\t\t// PLAYER DATA UPDATES")
+replace_exact(cpp / "net/localplayer.cpp", "\tm_bIsWasted = false;\n\tm_bIsActive = true;",
+              "\tm_bIsWasted = false;\n\tbastionTraceFirstActive = true;\n\tm_bIsActive = true;")
+
+# 21. V4: texture DB lifetime and duplicate ARM64 hooks. The V3 test ruled out
+# local skin switching as a necessary condition of this crash.
+replace_exact(cpp / "util/CUtil.cpp", "    TextureDatabaseRuntime::Register(db_handle);\n\n    auto tex = CUtil::GetTexture(texture);\n    if(!tex)\n    {\n        Log(\"Error: Texture (%s) not found in database (%s)\", dbname, texture);\n        return nullptr;\n    }\n\n    TextureDatabaseRuntime::Unregister(db_handle);\n\n    return tex;",
+              "    // Register is idempotent, not reference counted. Preserve registrations\n    // owned by GTA and undo only registrations made by this lookup, including misses.\n    // ARM64 GTA 2.11: the actual engine array is at 0xd13d40 (verified ELF symbol).\n    auto& registered = *reinterpret_cast<TDBArray<TextureDatabaseRuntime*>*>(g_libGTASA + 0xd13d40);\n    bool alreadyRegistered = false;\n    for (unsigned i = 0; i < registered.numEntries; ++i) {\n        if (registered.dataPtr[i] == db_handle) { alreadyRegistered = true; break; }\n    }\n    if (!alreadyRegistered) TextureDatabaseRuntime::Register(db_handle);\n    auto tex = CUtil::GetTexture(texture);\n    if (!alreadyRegistered) TextureDatabaseRuntime::Unregister(db_handle);\n    if (!tex) Log(\"Error: Texture (%s) not found in database (%s)\", dbname, texture);\n    return tex;")
+replace_exact(cpp / "game/hooks.cpp", "    CHook::InlineHook(\"_ZN16CTaskSimpleGetUp10ProcessPedEP4CPed\", &CTaskSimpleGetUp__ProcessPed_hook, &CTaskSimpleGetUp__ProcessPed); // CTaskSimpleGetUp::ProcessPed\n    CHook::InlineHook(\"_ZN7CObject6RenderEv\", &CObject_Render_hook, & CObject_Render);",
+              "    CHook::InlineHook(\"_ZN16CTaskSimpleGetUp10ProcessPedEP4CPed\", &CTaskSimpleGetUp__ProcessPed_hook, &CTaskSimpleGetUp__ProcessPed); // CTaskSimpleGetUp::ProcessPed\n    // CObject::Render is installed once below, not twice.")
+replace_exact(cpp / "game/hooks.cpp", "#if  0\n    CHook::InlineHook(g_libGTASA + 0x005AA200 + 1, &CFont_PrintString_hook, &CFont_PrintString);\n#else\n    CHook::InlineHook(g_libGTASA + 0x5D6EC4, &CFont_PrintString_hook, &CFont_PrintString);\n#endif",
+              "    // BastionInstallHudHooks installs the sole CFont::PrintString hook.")
+replace_exact(cpp / "game/textdraw.cpp", "    RwTexture* tex;\n    if (strncmp(szSlot, \"none\", 5u))",
+              "    RwTexture* tex = nullptr;\n    if (strncmp(szSlot, \"none\", 5u))")
+replace_exact(cpp / "game/textdraw.cpp", "    if (m_TextDrawData.iTextureSlot != -1 && m_TextDrawData.iTextureSlot != 0x0 && TextDrawTexture[m_TextDrawData.iTextureSlot]) RwTextureDestroy((RwTexture*)TextDrawTexture[m_TextDrawData.iTextureSlot]);\n    DestroyTextDrawTexture(m_TextDrawData.iTextureSlot);",
+              "    DestroyTextDrawTexture(m_TextDrawData.iTextureSlot);")
+replace_exact(cpp / "game/textdraw.cpp", "void CTextDraw::DrawTextured()\n{",
+              "void CTextDraw::DrawTextured()\n{\n    if (m_TextDrawData.iTextureSlot < 0 || m_TextDrawData.iTextureSlot >= 200) return;")
+replace_exact(cpp / "game/textdraw.cpp", "        DestroyTextDrawTexture(m_TextDrawData.iTextureSlot);\n        LoadTexture();",
+              "        DestroyTextDrawTexture(m_TextDrawData.iTextureSlot);\n        m_TextDrawData.iTextureSlot = GetFreeTextDrawTextureSlot();\n        LoadTexture();")
+replace_exact(cpp / "game/font.cpp", "\tuint16_t* gxt_string = new uint16_t[0xFF];\n\tCFont::AsciiToGxtChar(string, gxt_string);\n\t((void (*)(float, float, uint16_t*))(g_libGTASA + 0x5D6EC4))(posX, posY, gxt_string);\n\tdelete gxt_string;\n\t((void (*)())(g_libGTASA + 0x5D6090))();//53411C ; _DWORD CFont::RenderFontBuffer(CFont *__hidden this)",
+              "\tif (!string) return;\n\tuint16_t* gxt_string = new uint16_t[strlen(string) + 1]();\n\tCFont::AsciiToGxtChar(string, gxt_string);\n\t((void (*)(float, float, uint16_t*))(g_libGTASA + 0x5D6EC4))(posX, posY, gxt_string);\n\t((void (*)())(g_libGTASA + 0x5D6090))();//53411C ; _DWORD CFont::RenderFontBuffer(CFont *__hidden this)\n\tdelete[] gxt_string;")
+# Keep the existing clock filter in the single HUD font hook.
+replace_exact(hooks_cpp, "    BastionPrintString(x, y, text);",
+              "    if (ShouldHideHudClock(x, y, text)) return;\n    BastionPrintString(x, y, text);")
+# Keep the one remaining CObject::Render hook: V7 restores custom materials.
+
+# 22. Keep the vertex buffer lifetime correction, restore native UI.
+replace_exact(cpp / "gui/imguiwrapper.cpp", "\t\t\tdelete m_vertexBuffer;", "\t\t\tdelete[] m_vertexBuffer;")
+
+# 23. V6: fix the actual ARM64 3D label projection entry point and camera.
+# Verified against libGame.so from V4 (build ID 84a3af6e60203efe45dc9f06b77ce5ca9e9dacc9).
+# Calling into the middle of DoVehicleLights bypasses its stack prologue,
+# so its epilogue restores a bogus return address. V5 confirmed the UI path.
+replace_exact(label_cpp, "            CVector vecOut;\n            typedef void (*CalcScreenCoors_t)(CVector*, CVector*, float*, float*, bool, bool);\n            CalcScreenCoors_t CalcScreenCoors = (CalcScreenCoors_t)(g_libGTASA + (VER_x32 ? 0x005C57E8 + 1 : 0x6E9DF8));\n\n            if (CalcScreenCoors) {\n                CalcScreenCoors((CVector*)&vecPos, &vecOut, 0, 0, 0, 0);\n\n                if (vecOut.z < 1.0f) return;",
+              "            CVector vecOut{};\n            // GTA 2.11 ARM64: CSprite::CalcScreenCoors is 0x5F449C.\n            // 0x6E9DF8 is inside CVehicle::DoVehicleLights, NOT a function entry.\n            typedef bool (*CalcScreenCoors_t)(const CVector*, CVector*, float*, float*, bool, bool);\n            CalcScreenCoors_t CalcScreenCoors = (CalcScreenCoors_t)(g_libGTASA + (VER_x32 ? 0x005C57E8 + 1 : 0x5F449C));\n\n            if (CalcScreenCoors) {\n                if (!CalcScreenCoors(&vecPos, &vecOut, nullptr, nullptr, true, true)) return;\n\n                if (vecOut.z < 1.0f) return;")
+label_source = read(label_cpp)
+if label_source.count("0xBBA8D0") != 2:
+    raise SystemExit("textlabelpool.cpp: expected two old camera addresses")
+write(label_cpp, label_source.replace("0xBBA8D0", "0x9F86F8"))
 
 print("SAMP-Mobile prepared for Bastion: library module, Bastion storage, :game process, no Firebase.")
