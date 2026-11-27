@@ -13,6 +13,7 @@ import rw, txdpatch
 from PIL import Image
 from build_radar import MAP as RADAR_MAP, HUD_ART
 from build_weapons import WEAPONS, SRC as WEAPON_SRC
+from transport_textures import mobile_transport
 
 ROOT = os.path.normpath(os.path.join(HERE, '..', '..'))
 PACK = os.path.join(ROOT, 'launcher', 'client-pack', 'pack', 'models')
@@ -61,6 +62,7 @@ def main():
             if not f.endswith('.txd'): continue
             names = ours(p)
             if f == 'hud.txd': names = [n for n in names if n.lower() in radar]
+            if not names: continue
             imgs = txdpatch.read(p)
             for n in names:
                 key = n.lower()
@@ -69,6 +71,16 @@ def main():
     # значки оружия: на ПК лаунчер вписывает их в txd оружия (build_weapons.py), здесь — по имени текстуры
     for model in WEAPONS:
         textures.setdefault((model + 'icon').lower(), Image.open(os.path.join(WEAPON_SRC, model + '.png')).convert('RGBA'))
+    for key, image in mobile_transport(PACK):
+        if key in textures:
+            raise ValueError('Vehicle texture name is already in use: ' + key)
+        textures[key] = image
+    vehicle_models = os.path.join(ROOT, 'client-mods', 'transport', 'android-models')
+    if os.path.isdir(vehicle_models):
+        for filename in sorted(os.listdir(vehicle_models)):
+            if filename.endswith('.dff'):
+                shutil.copyfile(os.path.join(vehicle_models, filename),
+                                os.path.join(OUT, 'img', 'gta3', filename))
     h = hashlib.sha256()
     for key in sorted(textures):
         data = btx(textures[key], key)

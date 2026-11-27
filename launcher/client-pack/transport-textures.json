@@ -1,0 +1,2406 @@
+{
+  "gta3.img/admiral.txd": {
+    "admiral92interior128": [
+      "admiral92interior128",
+      256
+    ],
+    "admiral92wheel64": [
+      "admiral92wheel64",
+      128
+    ]
+  },
+  "gta3.img/alpha.txd": {
+    "alpha92handle32": [
+      "alpha92handle32",
+      128
+    ],
+    "alpha92interior128": [
+      "alpha92interior128",
+      256
+    ],
+    "alpha92wheel64": [
+      "alpha92wheel64",
+      128
+    ]
+  },
+  "gta3.img/androm.txd": {
+    "andromeda92body": [
+      "andromeda92body",
+      256
+    ],
+    "andromeda92wing": [
+      "andromeda92wing",
+      256
+    ]
+  },
+  "gta3.img/artict1.txd": {
+    "artict1_128x64": [
+      "artict1_128x64",
+      128
+    ],
+    "artict1logos": [
+      "artict1logos",
+      256
+    ],
+    "artict1wheel64": [
+      "artict1wheel64",
+      128
+    ]
+  },
+  "gta3.img/artict2.txd": {
+    "artict2_128x64": [
+      "artict2_128x64",
+      128
+    ],
+    "artict2stones128": [
+      "artict2stones128",
+      256
+    ],
+    "artict2wheel64": [
+      "artict2wheel64",
+      128
+    ]
+  },
+  "gta3.img/artict3.txd": {
+    "artict3_128x64": [
+      "artict3_128x64",
+      128
+    ],
+    "artict3wheel64": [
+      "artict3wheel64",
+      128
+    ]
+  },
+  "gta3.img/at400.txd": {
+    "at400_92_256": [
+      "at400_92_256",
+      256
+    ]
+  },
+  "gta3.img/bagboxa.txd": {
+    "bagboxa128": [
+      "bagboxa128",
+      256
+    ],
+    "bagboxa32": [
+      "bagboxa32",
+      128
+    ],
+    "bagboxa92wheel": [
+      "bagboxa92wheel",
+      128
+    ]
+  },
+  "gta3.img/bagboxb.txd": {
+    "bagboxb128": [
+      "bagboxb128",
+      256
+    ],
+    "bagboxb92wheel": [
+      "bagboxb92wheel",
+      128
+    ],
+    "bagboxbcases128": [
+      "bagboxbcases128",
+      256
+    ]
+  },
+  "gta3.img/baggage.txd": {
+    "baggage92box32": [
+      "baggage92box32",
+      128
+    ],
+    "baggage92interior128": [
+      "baggage92interior128",
+      256
+    ],
+    "baggage92wheel": [
+      "baggage92wheel",
+      128
+    ]
+  },
+  "gta3.img/bandito.txd": {
+    "bandito92interior128": [
+      "bandito92interior128",
+      256
+    ],
+    "banditospring32": [
+      "banditospring32",
+      128
+    ],
+    "banditowheel64": [
+      "banditowheel64",
+      128
+    ]
+  },
+  "gta3.img/banshee.txd": {
+    "banshee92handle32": [
+      "banshee92handle32",
+      128
+    ],
+    "banshee92interior128": [
+      "banshee92interior128",
+      256
+    ],
+    "banshee92wheel32": [
+      "banshee92wheel32",
+      128
+    ]
+  },
+  "gta3.img/beagle.txd": {
+    "beagle256": [
+      "beagle256",
+      256
+    ],
+    "cargobobrotorblack128": [
+      "bva713b02734b31",
+      128
+    ]
+  },
+  "gta3.img/benson.txd": {
+    "benson92adverts256": [
+      "benson92adverts256",
+      256
+    ],
+    "benson92interior128": [
+      "benson92interior128",
+      256
+    ],
+    "benson92wheel64": [
+      "benson92wheel64",
+      128
+    ],
+    "bensoncrate8bit64": [
+      "bensoncrate8bit64",
+      128
+    ],
+    "mule92interior128": [
+      "mule92interior128",
+      256
+    ]
+  },
+  "gta3.img/bf400.txd": {
+    "bf400928bit64x128": [
+      "bf400928bit64x128",
+      256
+    ],
+    "bf40092body128": [
+      "bf40092body128",
+      256
+    ],
+    "bf40092brakes64": [
+      "bf40092brakes64",
+      128
+    ]
+  },
+  "gta3.img/bfinject.txd": {
+    "bfinject92interior128": [
+      "bfinject92interior128",
+      256
+    ],
+    "emperor92wheel64": [
+      "emperor92wheel64",
+      128
+    ]
+  },
+  "gta3.img/bike.txd": {
+    "bike8bit128": [
+      "bike8bit128",
+      256
+    ],
+    "bikegear128": [
+      "bikegear128",
+      256
+    ]
+  },
+  "gta3.img/blade.txd": {
+    "blade92interior128": [
+      "blade92interior128",
+      256
+    ],
+    "blade92wheel64": [
+      "blade92wheel64",
+      128
+    ],
+    "remapblade92body128": [
+      "remapblade92body128",
+      256
+    ]
+  },
+  "gta3.img/blade1.txd": {
+    "blade92body256a": [
+      "blade92body256a",
+      512
+    ]
+  },
+  "gta3.img/blade2.txd": {
+    "blade92body256b": [
+      "blade92body256b",
+      512
+    ]
+  },
+  "gta3.img/blade3.txd": {
+    "blade92body256c": [
+      "blade92body256c",
+      512
+    ]
+  },
+  "gta3.img/blistac.txd": {
+    "blistac92interior128": [
+      "blistac92interior128",
+      256
+    ],
+    "blistac92wheel64": [
+      "blistac92wheel64",
+      128
+    ]
+  },
+  "gta3.img/bloodra.txd": {
+    "bloodra92checker": [
+      "bloodra92checker",
+      128
+    ],
+    "bloodra92interior128": [
+      "bloodra92interior128",
+      256
+    ],
+    "bloodra92numbers": [
+      "bloodra92numbers",
+      256
+    ],
+    "glendale92wheel64": [
+      "glendale92wheel64",
+      128
+    ]
+  },
+  "gta3.img/bmx.txd": {
+    "bmxdetail": [
+      "bmxdetail",
+      128
+    ],
+    "bmxtexpage": [
+      "bmxtexpage",
+      128
+    ],
+    "bmxwheel": [
+      "bmxwheel",
+      128
+    ]
+  },
+  "gta3.img/bobcat.txd": {
+    "bobcat92interior128": [
+      "bobcat92interior128",
+      256
+    ],
+    "bobcat92logo128": [
+      "bobcat92logo128",
+      256
+    ],
+    "bobcat92wheel64": [
+      "bobcat92wheel64",
+      128
+    ]
+  },
+  "gta3.img/boxburg.txd": {
+    "boxville92crate128": [
+      "boxville92crate128",
+      256
+    ],
+    "boxville92interior128": [
+      "boxville92interior128",
+      256
+    ],
+    "boxville92wheel64": [
+      "boxville92wheel64",
+      128
+    ]
+  },
+  "gta3.img/bravura.txd": {
+    "bravura92interior128": [
+      "bravura92interior128",
+      256
+    ],
+    "bravura92wheel64": [
+      "bravura92wheel64",
+      128
+    ]
+  },
+  "gta3.img/broadway.txd": {
+    "broadway92interior128": [
+      "broadway92interior128",
+      256
+    ],
+    "broadway92wheel64": [
+      "broadway92wheel64",
+      128
+    ],
+    "remapbroadway92body128": [
+      "remapbroadway92body128",
+      256
+    ]
+  },
+  "gta3.img/broadway1.txd": {
+    "broadway92body256a": [
+      "broadway92body256a",
+      512
+    ]
+  },
+  "gta3.img/broadway2.txd": {
+    "broadway92body256b": [
+      "broadway92body256b",
+      512
+    ]
+  },
+  "gta3.img/buccanee.txd": {
+    "buccaneer92interior128": [
+      "buccaneer92interior128",
+      256
+    ],
+    "buccaneer92wheel64": [
+      "buccaneer92wheel64",
+      128
+    ]
+  },
+  "gta3.img/buffalo.txd": {
+    "buffalo92interior128": [
+      "buffalo92interior128",
+      256
+    ],
+    "buffalo92wheel32": [
+      "buffalo92wheel32",
+      128
+    ]
+  },
+  "gta3.img/bullet.txd": {
+    "bullet92interior128": [
+      "bullet92interior128",
+      256
+    ]
+  },
+  "gta3.img/burrito.txd": {
+    "burrito92interior128": [
+      "burrito92interior128",
+      256
+    ],
+    "burrito92wheel64": [
+      "burrito92wheel64",
+      128
+    ]
+  },
+  "gta3.img/bus.txd": {
+    "bus92decals128": [
+      "bus92decals128",
+      256
+    ],
+    "dash92interior128": [
+      "dash92interior128",
+      256
+    ],
+    "dash92wheel64": [
+      "dash92wheel64",
+      128
+    ]
+  },
+  "gta3.img/caddy.txd": {
+    "caddy92interior128": [
+      "caddy92interior128",
+      256
+    ],
+    "caddy92wheel64": [
+      "caddy92wheel64",
+      128
+    ],
+    "caddybag128": [
+      "caddybag128",
+      256
+    ]
+  },
+  "gta3.img/cadrona.txd": {
+    "cadrona92interior128": [
+      "cadrona92interior128",
+      256
+    ],
+    "cadrona92wheel64": [
+      "cadrona92wheel64",
+      128
+    ]
+  },
+  "gta3.img/camper.txd": {
+    "camper92interior128": [
+      "camper92interior128",
+      256
+    ],
+    "remapcamperbody256": [
+      "remapcamperbody256",
+      256
+    ]
+  },
+  "gta3.img/camper1.txd": {
+    "camper1": [
+      "camper1",
+      512
+    ]
+  },
+  "gta3.img/cargobob.txd": {
+    "cargobob92body256": [
+      "cargobob92body256",
+      256
+    ]
+  },
+  "gta3.img/cement.txd": {
+    "cement92interior128": [
+      "cement92interior128",
+      256
+    ],
+    "cement92logo": [
+      "cement92logo",
+      256
+    ],
+    "cement92wheel": [
+      "cement92wheel",
+      128
+    ]
+  },
+  "gta3.img/cheetah.txd": {
+    "cheetah92interior128": [
+      "cheetah92interior128",
+      256
+    ]
+  },
+  "gta3.img/clover.txd": {
+    "clover92body128": [
+      "clover92body128",
+      256
+    ],
+    "clover92interior128": [
+      "clover92interior128",
+      256
+    ],
+    "clover92wheel64": [
+      "clover92wheel64",
+      128
+    ]
+  },
+  "gta3.img/club.txd": {
+    "club92interior128": [
+      "club92interior128",
+      256
+    ]
+  },
+  "gta3.img/coach.txd": {
+    "coach92decals128": [
+      "coach92decals128",
+      256
+    ],
+    "coach92interior128": [
+      "coach92interior128",
+      256
+    ],
+    "coach92wheel64": [
+      "coach92wheel64",
+      128
+    ]
+  },
+  "gta3.img/coastg.txd": {
+    "coast928bit128": [
+      "coast928bit128",
+      256
+    ],
+    "coast928bit128b": [
+      "coast928bit128b",
+      256
+    ],
+    "coast92extra128": [
+      "coast92extra128",
+      256
+    ]
+  },
+  "gta3.img/combine.txd": {
+    "combineteeth": [
+      "combineteeth",
+      128
+    ],
+    "combinetexpage128": [
+      "combinetexpage128",
+      256
+    ],
+    "combinewheel64": [
+      "combinewheel64",
+      128
+    ]
+  },
+  "gta3.img/comet.txd": {
+    "comet92interior128": [
+      "comet92interior128",
+      256
+    ],
+    "comet92wheel32": [
+      "comet92wheel32",
+      128
+    ]
+  },
+  "gta3.img/cropdust.txd": {
+    "cropdustbody256": [
+      "cropdustbody256",
+      256
+    ],
+    "cropdustprop4bit64": [
+      "cropdustprop4bit64",
+      128
+    ],
+    "cropdusttexpage": [
+      "cropdusttexpage",
+      256
+    ]
+  },
+  "gta3.img/dft30.txd": {
+    "dft3092flatbed128": [
+      "dft3092flatbed128",
+      256
+    ],
+    "dft3092interior128": [
+      "dft3092interior128",
+      256
+    ],
+    "dft3092wheel64": [
+      "dft3092wheel64",
+      128
+    ]
+  },
+  "gta3.img/dinghy.txd": {
+    "dinghy928bit128": [
+      "dinghy928bit128",
+      256
+    ],
+    "dinghy928bit128c": [
+      "dinghy928bit128c",
+      256
+    ]
+  },
+  "gta3.img/dodo.txd": {
+    "dodo92body8bit256": [
+      "dodo92body8bit256",
+      256
+    ],
+    "dodo92decal128b": [
+      "dodo92decal128b",
+      256
+    ],
+    "dodo92prop64black": [
+      "dodo92prop64black",
+      128
+    ],
+    "dodo92wheel64": [
+      "dodo92wheel64",
+      128
+    ]
+  },
+  "gta3.img/dozer.txd": {
+    "dozer92detail128": [
+      "dozer92detail128",
+      256
+    ],
+    "dozer92logo128": [
+      "dozer92logo128",
+      256
+    ],
+    "dozer92wheel": [
+      "dozer92wheel",
+      128
+    ]
+  },
+  "gta3.img/dumper.txd": {
+    "dumper92interior128": [
+      "dumper92interior128",
+      256
+    ],
+    "dumper92logo": [
+      "dumper92logo",
+      256
+    ],
+    "dumper92wheel": [
+      "dumper92wheel",
+      128
+    ]
+  },
+  "gta3.img/duneride.txd": {
+    "bodykitmesh64": [
+      "bv377762c6e98",
+      128
+    ],
+    "dunerider92interior128": [
+      "dunerider92interior128",
+      256
+    ],
+    "dunerider92wheel": [
+      "dunerider92wheel",
+      128
+    ]
+  },
+  "gta3.img/elegant.txd": {
+    "elegant92interior128": [
+      "elegant92interior128",
+      256
+    ],
+    "elegant92wheel64": [
+      "elegant92wheel64",
+      128
+    ]
+  },
+  "gta3.img/elegy.txd": {
+    "elegy92interior128": [
+      "elegy92interior128",
+      256
+    ],
+    "remapelegybody128": [
+      "remapelegybody128",
+      256
+    ],
+    "sultan92stickers128": [
+      "sultan92stickers128",
+      256
+    ]
+  },
+  "gta3.img/emperor.txd": {
+    "stafford92interior128": [
+      "stafford92interior128",
+      256
+    ]
+  },
+  "gta3.img/esperant.txd": {
+    "esperant92interior128": [
+      "esperant92interior128",
+      256
+    ],
+    "esperant92wheel64": [
+      "esperant92wheel64",
+      128
+    ]
+  },
+  "gta3.img/euros.txd": {
+    "euros92interior128": [
+      "euros92interior128",
+      256
+    ],
+    "euros92wheel32": [
+      "euros92wheel32",
+      128
+    ]
+  },
+  "gta3.img/faggio.txd": {
+    "faggio92texpage128": [
+      "faggio92texpage128",
+      256
+    ]
+  },
+  "gta3.img/farmtr1.txd": {
+    "farmtr1_92_128": [
+      "farmtr1_92_128",
+      256
+    ],
+    "tractor128": [
+      "tractor128",
+      256
+    ]
+  },
+  "gta3.img/fcr900.txd": {
+    "fcr900928bit128": [
+      "fcr900928bit128",
+      256
+    ],
+    "fcr90092body128": [
+      "fcr90092body128",
+      256
+    ],
+    "fcr90092brakes64": [
+      "fcr90092brakes64",
+      128
+    ]
+  },
+  "gta3.img/feltzer.txd": {
+    "feltzer92interior128": [
+      "feltzer92interior128",
+      256
+    ],
+    "feltzer92wheel64": [
+      "feltzer92wheel64",
+      128
+    ]
+  },
+  "gta3.img/firela.txd": {
+    "firela92decalb": [
+      "firela92decalb",
+      256
+    ],
+    "firela92interior128": [
+      "firela92interior128",
+      256
+    ],
+    "firela92plate128": [
+      "firela92plate128",
+      256
+    ],
+    "firela92wheel64": [
+      "firela92wheel64",
+      128
+    ]
+  },
+  "gta3.img/firetruk.txd": {
+    "firetruk92decal": [
+      "firetruk92decal",
+      256
+    ],
+    "firetruk92interior128": [
+      "firetruk92interior128",
+      256
+    ],
+    "firetruk92num64": [
+      "firetruk92num64",
+      128
+    ],
+    "firetruk92plate32": [
+      "firetruk92plate32",
+      128
+    ],
+    "firetruk92sign64": [
+      "firetruk92sign64",
+      128
+    ],
+    "firetruk92wheel": [
+      "firetruk92wheel",
+      128
+    ],
+    "lsfd92badge64": [
+      "lsfd92badge64",
+      128
+    ]
+  },
+  "gta3.img/flash.txd": {
+    "flash92interior128": [
+      "flash92interior128",
+      256
+    ],
+    "remapflash92body256": [
+      "remapflash92body256",
+      256
+    ]
+  },
+  "gta3.img/flatbed.txd": {
+    "flatbed92extra128": [
+      "flatbed92extra128",
+      256
+    ],
+    "flatbed92interior128": [
+      "flatbed92interior128",
+      256
+    ],
+    "flatbed92tarp128": [
+      "flatbed92tarp128",
+      128
+    ],
+    "flatbed92wheel64": [
+      "flatbed92wheel64",
+      128
+    ]
+  },
+  "gta3.img/forklift.txd": {
+    "forklift8bit128": [
+      "forklift8bit128",
+      256
+    ],
+    "forklift92wheel64": [
+      "forklift92wheel64",
+      128
+    ]
+  },
+  "gta3.img/fortune.txd": {
+    "fortune92interior128": [
+      "fortune92interior128",
+      256
+    ],
+    "fortune92wheel64": [
+      "fortune92wheel64",
+      128
+    ]
+  },
+  "gta3.img/freeway.txd": {
+    "freeway92brakes64": [
+      "freeway92brakes64",
+      128
+    ],
+    "freeway92metal128": [
+      "freeway92metal128",
+      256
+    ]
+  },
+  "gta3.img/freibox.txd": {
+    "freibox92texpage256": [
+      "freibox92texpage256",
+      256
+    ]
+  },
+  "gta3.img/freiflat.txd": {
+    "freiflat92floor128": [
+      "freiflat92floor128",
+      256
+    ],
+    "freiflat92texpage128": [
+      "freiflat92texpage128",
+      256
+    ]
+  },
+  "gta3.img/freight.txd": {
+    "freight92window64": [
+      "freight92window64",
+      128
+    ],
+    "freightbody256": [
+      "freightbody256",
+      256
+    ],
+    "freighttexpage": [
+      "bv23c33c7d8bb0",
+      256
+    ],
+    "freighttexpage2": [
+      "freighttexpage2",
+      256
+    ]
+  },
+  "gta3.img/glendale.txd": {
+    "glendale92interior128": [
+      "bv62e7a6db198bc",
+      256
+    ]
+  },
+  "gta3.img/glenshit.txd": {
+    "glendale92interior128": [
+      "bvf335cf4d632f8",
+      256
+    ]
+  },
+  "gta3.img/greenwoo.txd": {
+    "greenwoo92interior128": [
+      "greenwoo92interior128",
+      256
+    ],
+    "greenwoo92wheel64": [
+      "greenwoo92wheel64",
+      128
+    ]
+  },
+  "gta3.img/hermes.txd": {
+    "hermes92interior128": [
+      "hermes92interior128",
+      256
+    ]
+  },
+  "gta3.img/hotdog.txd": {
+    "hotdog92body256": [
+      "hotdog92body256",
+      256
+    ],
+    "hotdog92glass128": [
+      "hotdog92glass128",
+      256
+    ],
+    "hotdog92interior128": [
+      "hotdog92interior128",
+      256
+    ],
+    "hotdog92signs256": [
+      "hotdog92signs256",
+      256
+    ],
+    "hotdog92wheel64": [
+      "hotdog92wheel64",
+      128
+    ]
+  },
+  "gta3.img/hotknife.txd": {
+    "hotknife92interior128": [
+      "hotknife92interior128",
+      256
+    ],
+    "hotknifebody128a": [
+      "hotknifebody128a",
+      256
+    ],
+    "hotknifebody128b": [
+      "hotknifebody128b",
+      256
+    ]
+  },
+  "gta3.img/hotrina.txd": {
+    "hotrina92interior64": [
+      "hotrina92interior64",
+      128
+    ],
+    "hotrina92logos128": [
+      "hotrina92logos128",
+      256
+    ],
+    "hotrina92num128": [
+      "hotrina92num128",
+      256
+    ],
+    "hotrina92tyre32": [
+      "hotrina92tyre32",
+      128
+    ],
+    "hotrina92web32": [
+      "hotrina92web32",
+      128
+    ]
+  },
+  "gta3.img/hotrinb.txd": {
+    "hotrinb92interior64": [
+      "hotrinb92interior64",
+      128
+    ],
+    "hotrinb92logos128": [
+      "hotrinb92logos128",
+      256
+    ],
+    "hotrinb92num128": [
+      "hotrinb92num128",
+      256
+    ],
+    "hotrinb92tyre32": [
+      "hotrinb92tyre32",
+      128
+    ],
+    "hotrinb92web32": [
+      "hotrinb92web32",
+      128
+    ]
+  },
+  "gta3.img/hotring.txd": {
+    "hotring92interior64": [
+      "hotring92interior64",
+      128
+    ],
+    "hotring92logos128": [
+      "hotring92logos128",
+      256
+    ],
+    "hotring92number64": [
+      "hotring92number64",
+      128
+    ],
+    "hotring92tyre32": [
+      "hotring92tyre32",
+      128
+    ],
+    "hotring92web32": [
+      "hotring92web32",
+      128
+    ]
+  },
+  "gta3.img/hunter.txd": {
+    "hunter8bit128a": [
+      "hunter8bit128a",
+      256
+    ],
+    "hunteralpha8bit64a": [
+      "hunteralpha8bit64a",
+      128
+    ],
+    "hunterbody8bit256a": [
+      "hunterbody8bit256a",
+      256
+    ]
+  },
+  "gta3.img/huntley.txd": {
+    "range92interior128": [
+      "range92interior128",
+      256
+    ]
+  },
+  "gta3.img/hustler.txd": {
+    "hustler92interior128": [
+      "hustler92interior128",
+      256
+    ]
+  },
+  "gta3.img/hydra.txd": {
+    "hydra128": [
+      "hydra128",
+      256
+    ],
+    "hydrabody256": [
+      "hydrabody256",
+      256
+    ],
+    "hydradecal": [
+      "hydradecal",
+      256
+    ]
+  },
+  "gta3.img/infernus.txd": {
+    "infernus92handle32": [
+      "infernus92handle32",
+      128
+    ],
+    "infernus92interior128": [
+      "infernus92interior128",
+      256
+    ],
+    "infernus92wheel32": [
+      "infernus92wheel32",
+      128
+    ]
+  },
+  "gta3.img/intruder.txd": {
+    "intruder92interior128": [
+      "intruder92interior128",
+      256
+    ],
+    "intruder92wheel64": [
+      "intruder92wheel64",
+      128
+    ]
+  },
+  "gta3.img/jester.txd": {
+    "remapjesterbody256": [
+      "remapjesterbody256",
+      256
+    ],
+    "stratum92interior128": [
+      "stratum92interior128",
+      256
+    ]
+  },
+  "gta3.img/jetmax.txd": {
+    "jetmax92decal128": [
+      "jetmax92decal128",
+      256
+    ],
+    "jetmax92interior128": [
+      "jetmax92interior128",
+      256
+    ]
+  },
+  "gta3.img/journey.txd": {
+    "journey92floor32": [
+      "journey92floor32",
+      128
+    ],
+    "journey92interior128": [
+      "journey92interior128",
+      256
+    ],
+    "journey92interior2": [
+      "journey92interior2",
+      256
+    ],
+    "journey92stripe32": [
+      "journey92stripe32",
+      128
+    ],
+    "journey92upholstery32": [
+      "journey92upholstery32",
+      128
+    ],
+    "journey92wall32": [
+      "journey92wall32",
+      128
+    ],
+    "journey92wheel64": [
+      "journey92wheel64",
+      128
+    ]
+  },
+  "gta3.img/kart.txd": {
+    "kart924bit16": [
+      "kart924bit16",
+      128
+    ],
+    "kart928bit128": [
+      "kart928bit128",
+      256
+    ],
+    "kart92wheel64": [
+      "kart92wheel64",
+      128
+    ],
+    "remapkart92body8bit256": [
+      "remapkart92body8bit256",
+      256
+    ]
+  },
+  "gta3.img/landstal.txd": {
+    "landstal92interior128": [
+      "landstal92interior128",
+      256
+    ],
+    "landstal92wood": [
+      "landstal92wood",
+      128
+    ]
+  },
+  "gta3.img/launch.txd": {
+    "launch92interior128": [
+      "launch92interior128",
+      256
+    ],
+    "launch92prop": [
+      "launch92prop",
+      256
+    ]
+  },
+  "gta3.img/leviathn.txd": {
+    "leviathnbody8bit256": [
+      "leviathnbody8bit256",
+      256
+    ]
+  },
+  "gta3.img/linerun.txd": {
+    "linerun92chrome32": [
+      "linerun92chrome32",
+      128
+    ],
+    "linerun92dark32": [
+      "linerun92dark32",
+      128
+    ],
+    "linerun92decal64": [
+      "linerun92decal64",
+      128
+    ],
+    "linerun92interior128": [
+      "linerun92interior128",
+      256
+    ],
+    "linerun92wheel64": [
+      "linerun92wheel64",
+      128
+    ]
+  },
+  "gta3.img/majestic.txd": {
+    "majestic92interior128": [
+      "majestic92interior128",
+      256
+    ]
+  },
+  "gta3.img/manana.txd": {
+    "manana92interior128": [
+      "manana92interior128",
+      256
+    ],
+    "manana92wheel64": [
+      "manana92wheel64",
+      128
+    ]
+  },
+  "gta3.img/marquis.txd": {
+    "marquis92decal64": [
+      "marquis92decal64",
+      128
+    ],
+    "marquis92interior128": [
+      "marquis92interior128",
+      256
+    ]
+  },
+  "gta3.img/maverick.txd": {
+    "maverick92body128": [
+      "maverick92body128",
+      256
+    ],
+    "maverick92texpage128": [
+      "maverick92texpage128",
+      256
+    ],
+    "maverick92texpageb64": [
+      "maverick92texpageb64",
+      128
+    ]
+  },
+  "gta3.img/merit.txd": {
+    "merit92interior128": [
+      "merit92interior128",
+      256
+    ],
+    "merit92wheel64": [
+      "merit92wheel64",
+      128
+    ]
+  },
+  "gta3.img/mesa.txd": {
+    "mesa92interior128": [
+      "mesa92interior128",
+      256
+    ]
+  },
+  "generic/vehicle.txd": {
+    "vehiclegeneric256": [
+      "vehiclegeneric256",
+      512
+    ],
+    "vehiclegrunge256": [
+      "vehiclegrunge256",
+      512
+    ],
+    "vehiclesteering128": [
+      "vehiclesteering128",
+      512
+    ],
+    "vehicletyres128": [
+      "vehicletyres128",
+      512
+    ]
+  },
+  "gta3.img/monster.txd": {
+    "monster92interior128": [
+      "monster92interior128",
+      256
+    ],
+    "monster92stuff64": [
+      "monster92stuff64",
+      128
+    ],
+    "monster92tyre64": [
+      "monster92tyre64",
+      256
+    ],
+    "monster92wheel64": [
+      "monster92wheel64",
+      128
+    ]
+  },
+  "gta3.img/monstera.txd": {
+    "monstera92body256a": [
+      "monstera92body256a",
+      256
+    ],
+    "monstera92interior128": [
+      "monstera92interior128",
+      256
+    ],
+    "monstera92stuff64": [
+      "monstera92stuff64",
+      256
+    ],
+    "monstera92tyre64": [
+      "monstera92tyre64",
+      256
+    ],
+    "monstera92wheel64": [
+      "monstera92wheel64",
+      128
+    ]
+  },
+  "gta3.img/monsterb.txd": {
+    "monsterb92body256a": [
+      "monsterb92body256a",
+      256
+    ],
+    "monsterb92interior128": [
+      "monsterb92interior128",
+      256
+    ],
+    "monsterb92stuff64": [
+      "monsterb92stuff64",
+      256
+    ],
+    "monsterb92tyre64": [
+      "monsterb92tyre64",
+      256
+    ],
+    "monsterb92wheel64": [
+      "monsterb92wheel64",
+      128
+    ]
+  },
+  "gta3.img/moonbeam.txd": {
+    "moonbeam92interior128": [
+      "moonbeam92interior128",
+      256
+    ]
+  },
+  "gta3.img/mower.txd": {
+    "mower928bit128": [
+      "mower928bit128",
+      256
+    ],
+    "mower92wheel32": [
+      "mower92wheel32",
+      128
+    ]
+  },
+  "gta3.img/mrwhoop.txd": {
+    "mrwhoo92interior128": [
+      "mrwhoo92interior128",
+      256
+    ],
+    "mrwhoo92wheel64": [
+      "mrwhoo92wheel64",
+      128
+    ],
+    "mrwhoop92decals128": [
+      "mrwhoop92decals128",
+      256
+    ]
+  },
+  "gta3.img/mtbike.txd": {
+    "mtbike64x128": [
+      "mtbike64x128",
+      256
+    ],
+    "mtbikegear128": [
+      "mtbikegear128",
+      128
+    ],
+    "mtbikewheel64": [
+      "mtbikewheel64",
+      128
+    ]
+  },
+  "gta3.img/mule.txd": {
+    "mule92adverts256": [
+      "mule92adverts256",
+      256
+    ],
+    "mule92wheel64": [
+      "mule92wheel64",
+      128
+    ]
+  },
+  "gta3.img/nebula.txd": {
+    "nebula92interior128": [
+      "nebula92interior128",
+      256
+    ],
+    "nebula92wheel64": [
+      "nebula92wheel64",
+      128
+    ]
+  },
+  "gta3.img/nevada.txd": {
+    "beagleprop64": [
+      "beagleprop64",
+      128
+    ],
+    "nevada92body256": [
+      "nevada92body256",
+      256
+    ],
+    "nevada92decal128": [
+      "nevada92decal128",
+      256
+    ]
+  },
+  "gta3.img/nrg500.txd": {
+    "nrg50092body128": [
+      "nrg50092body128",
+      256
+    ],
+    "nrg50092brakes64": [
+      "nrg50092brakes64",
+      128
+    ],
+    "nrg50092decal64": [
+      "nrg50092decal64",
+      256
+    ],
+    "nrg50092metal128": [
+      "nrg50092metal128",
+      256
+    ]
+  },
+  "gta3.img/oceanic.txd": {
+    "oceanic92interior128": [
+      "oceanic92interior128",
+      256
+    ]
+  },
+  "gta3.img/packer.txd": {
+    "packer92interior128": [
+      "packer92interior128",
+      256
+    ],
+    "packer92wheel": [
+      "packer92wheel",
+      128
+    ]
+  },
+  "gta3.img/pcj600.txd": {
+    "pcj60092brakes64": [
+      "pcj60092brakes64",
+      128
+    ],
+    "pcj60092gear64": [
+      "pcj60092gear64",
+      128
+    ],
+    "pcj60092metal128": [
+      "pcj60092metal128",
+      256
+    ]
+  },
+  "gta3.img/peren.txd": {
+    "peren92interior128": [
+      "peren92interior128",
+      256
+    ],
+    "peren92wheel64": [
+      "peren92wheel64",
+      128
+    ]
+  },
+  "gta3.img/petro.txd": {
+    "petro92decal64b": [
+      "petro92decal64b",
+      128
+    ],
+    "petro92interior128": [
+      "petro92interior128",
+      256
+    ],
+    "petro92wheel": [
+      "petro92wheel",
+      128
+    ]
+  },
+  "gta3.img/petrotr.txd": {
+    "petroltr92decal256": [
+      "petroltr92decal256",
+      256
+    ],
+    "petrotr92interior128": [
+      "petrotr92interior128",
+      256
+    ],
+    "petrotr92wheel": [
+      "petrotr92wheel",
+      128
+    ]
+  },
+  "gta3.img/phoenix.txd": {
+    "phoenix92interior128": [
+      "phoenix92interior128",
+      256
+    ],
+    "phoenix92wheel64": [
+      "phoenix92wheel64",
+      128
+    ]
+  },
+  "gta3.img/picador.txd": {
+    "picador92interior128": [
+      "picador92interior128",
+      256
+    ],
+    "utility92wheel64": [
+      "utility92wheel64",
+      128
+    ]
+  },
+  "gta3.img/pizzaboy.txd": {
+    "pizzaboy92texpage128": [
+      "pizzaboy92texpage128",
+      256
+    ],
+    "pizzaboy92texpage128b": [
+      "pizzaboy92texpage128b",
+      256
+    ]
+  },
+  "gta3.img/pony.txd": {
+    "pony92interior128": [
+      "pony92interior128",
+      256
+    ],
+    "pony92wheel64": [
+      "pony92wheel64",
+      128
+    ]
+  },
+  "gta3.img/predator.txd": {
+    "predator92body128": [
+      "predator92body128",
+      256
+    ],
+    "predator92decal128": [
+      "predator92decal128",
+      256
+    ],
+    "predator92interior128": [
+      "predator92interior128",
+      256
+    ]
+  },
+  "gta3.img/premier.txd": {
+    "copcarla92wheel64": [
+      "bv08000ac18621e",
+      128
+    ],
+    "premier92interior128": [
+      "premier92interior128",
+      256
+    ]
+  },
+  "gta3.img/previon.txd": {
+    "previon92interior128": [
+      "previon92interior128",
+      256
+    ],
+    "previon92wheel64": [
+      "previon92wheel64",
+      128
+    ]
+  },
+  "gta3.img/primo.txd": {
+    "primo92interior128": [
+      "primo92interior128",
+      256
+    ]
+  },
+  "gta3.img/quad.txd": {
+    "quadgrey32": [
+      "quadgrey32",
+      128
+    ],
+    "quadred32": [
+      "quadred32",
+      128
+    ],
+    "quadtexpage": [
+      "quadtexpage",
+      256
+    ],
+    "quadtyre64": [
+      "quadtyre64",
+      128
+    ],
+    "quadwheel64": [
+      "quadwheel64",
+      128
+    ]
+  },
+  "gta3.img/raindanc.txd": {
+    "raindance92bits128": [
+      "raindance92bits128",
+      128
+    ],
+    "raindance92body128": [
+      "raindance92body128",
+      256
+    ],
+    "raindance92decal128": [
+      "raindance92decal128",
+      256
+    ]
+  },
+  "gta3.img/rancher.txd": {
+    "rancher92interior128": [
+      "bvfa1353e1e669d",
+      256
+    ],
+    "rancher92wheel64": [
+      "bv4c0b306102b71",
+      128
+    ]
+  },
+  "gta3.img/rcbandit.txd": {
+    "rcbandit92wheel32": [
+      "rcbandit92wheel32",
+      128
+    ]
+  },
+  "gta3.img/rcbaron.txd": {
+    "rcbaron92rotor64": [
+      "rcbaron92rotor64",
+      128
+    ],
+    "rcbaron92texpage64": [
+      "rcbaron92texpage64",
+      128
+    ]
+  },
+  "gta3.img/rccam.txd": {
+    "rccam92dirt64": [
+      "rccam92dirt64",
+      256
+    ],
+    "rccam92pot64": [
+      "rccam92pot64",
+      256
+    ]
+  },
+  "gta3.img/rcgoblin.txd": {
+    "rcgoblin92rotor64": [
+      "rcgoblin92rotor64",
+      128
+    ],
+    "rcgoblin92texpage128": [
+      "rcgoblin92texpage128",
+      256
+    ],
+    "rcgoblin92texpage32": [
+      "rcgoblin92texpage32",
+      128
+    ]
+  },
+  "gta3.img/rcraider.txd": {
+    "rcraider92rotor64": [
+      "rcraider92rotor64",
+      128
+    ],
+    "rcraider92texpage128": [
+      "rcraider92texpage128",
+      256
+    ],
+    "rcraider92texpage32": [
+      "rcraider92texpage32",
+      128
+    ]
+  },
+  "gta3.img/rctiger.txd": {
+    "rctiger92body128": [
+      "rctiger92body128",
+      256
+    ],
+    "rctiger92tracks32": [
+      "rctiger92tracks32",
+      128
+    ],
+    "rctiger92wheel32": [
+      "rctiger92wheel32",
+      128
+    ]
+  },
+  "gta3.img/rdtrain.txd": {
+    "rdtrain92interior128": [
+      "rdtrain92interior128",
+      256
+    ],
+    "rdtrainpipes64": [
+      "rdtrainpipes64",
+      128
+    ]
+  },
+  "gta3.img/reefer.txd": {
+    "bodykitmesh64": [
+      "bv8d4bde168fb",
+      128
+    ],
+    "reefer92extra128": [
+      "reefer92extra128",
+      256
+    ],
+    "reefer92interior128": [
+      "reefer92interior128",
+      256
+    ]
+  },
+  "gta3.img/regina.txd": {
+    "regina2interior128": [
+      "regina2interior128",
+      256
+    ],
+    "regina92wheel64": [
+      "regina92wheel64",
+      128
+    ]
+  },
+  "gta3.img/remingtn.txd": {
+    "remapremington256body": [
+      "remapremington256body",
+      256
+    ],
+    "remintoneint64x128": [
+      "remintoneint64x128",
+      256
+    ]
+  },
+  "gta3.img/remingtn1.txd": {
+    "remington1body": [
+      "remington1body",
+      512
+    ]
+  },
+  "gta3.img/remingtn2.txd": {
+    "remington2body": [
+      "remington2body",
+      512
+    ]
+  },
+  "gta3.img/remingtn3.txd": {
+    "remington3body": [
+      "remington3body",
+      512
+    ]
+  },
+  "gta3.img/rhino.txd": {
+    "rhino92texpage256": [
+      "rhino92texpage256",
+      256
+    ],
+    "rhino92wheel64": [
+      "rhino92wheel64",
+      128
+    ]
+  },
+  "gta3.img/romero.txd": {
+    "romero92coffin64": [
+      "romero92coffin64",
+      128
+    ],
+    "romero92interior128": [
+      "romero92interior128",
+      256
+    ],
+    "romero92wheel64": [
+      "romero92wheel64",
+      128
+    ]
+  },
+  "gta3.img/rumpo.txd": {
+    "rumpo92adverts256": [
+      "rumpo92adverts256",
+      256
+    ],
+    "rumpo92interior128": [
+      "rumpo92interior128",
+      256
+    ],
+    "rumpo92wheel64": [
+      "rumpo92wheel64",
+      128
+    ]
+  },
+  "gta3.img/rustler.txd": {
+    "rustler92body256": [
+      "rustler92body256",
+      256
+    ],
+    "rustler92prop64": [
+      "rustler92prop64",
+      128
+    ]
+  },
+  "gta3.img/sabre.txd": {
+    "sabre92interior128": [
+      "sabre92interior128",
+      256
+    ],
+    "sabre92wheel64": [
+      "sabre92wheel64",
+      128
+    ]
+  },
+  "gta3.img/sadler.txd": {
+    "sadler92extra64": [
+      "sadler92extra64",
+      128
+    ],
+    "sadler92interior128": [
+      "sadler92interior128",
+      256
+    ],
+    "sadler92wheel64": [
+      "sadler92wheel64",
+      128
+    ]
+  },
+  "gta3.img/sanchez.txd": {
+    "sanchez92brakes64": [
+      "sanchez92brakes64",
+      128
+    ],
+    "sanchez92gear64": [
+      "sanchez92gear64",
+      128
+    ],
+    "sanchez92metal128": [
+      "sanchez92metal128",
+      256
+    ],
+    "sanchez92tyre64": [
+      "sanchez92tyre64",
+      128
+    ]
+  },
+  "gta3.img/sandking.txd": {
+    "sandking92interior128": [
+      "sandking92interior128",
+      256
+    ],
+    "sandking92stickers128": [
+      "sandking92stickers128",
+      256
+    ]
+  },
+  "gta3.img/savanna.txd": {
+    "remapsavanna92body128": [
+      "remapsavanna92body128",
+      256
+    ],
+    "savanna92grill32": [
+      "savanna92grill32",
+      128
+    ],
+    "savanna92interior128": [
+      "savanna92interior128",
+      256
+    ],
+    "savanna92wheel64": [
+      "savanna92wheel64",
+      128
+    ]
+  },
+  "gta3.img/savanna1.txd": {
+    "savanna92body256a": [
+      "savanna92body256a",
+      512
+    ]
+  },
+  "gta3.img/savanna2.txd": {
+    "savanna92body256b": [
+      "savanna92body256b",
+      512
+    ]
+  },
+  "gta3.img/savanna3.txd": {
+    "savanna92body256c": [
+      "savanna92body256c",
+      512
+    ]
+  },
+  "gta3.img/seaspar.txd": {
+    "seasparrow92floats64": [
+      "seasparrow92floats64",
+      128
+    ],
+    "sparrow92body128": [
+      "bv2bf04476d6682",
+      256
+    ],
+    "sparrow92tail64": [
+      "sparrow92tail64",
+      128
+    ],
+    "sparrow92texpage128": [
+      "sparrow92texpage128",
+      256
+    ],
+    "sparrow92texpage64": [
+      "sparrow92texpage64",
+      128
+    ]
+  },
+  "gta3.img/securica.txd": {
+    "securica92box32": [
+      "securica92box32",
+      128
+    ],
+    "securica92decal128": [
+      "securica92decal128",
+      256
+    ],
+    "securica92interior128": [
+      "securica92interior128",
+      256
+    ],
+    "securica92mesh16": [
+      "securica92mesh16",
+      128
+    ],
+    "securica92plate32": [
+      "securica92plate32",
+      128
+    ],
+    "securica92wheel64": [
+      "securica92wheel64",
+      128
+    ]
+  },
+  "gta3.img/sentinel.txd": {
+    "sentinel92interior128": [
+      "sentinel92interior128",
+      256
+    ],
+    "sentinel92wheel64": [
+      "sentinel92wheel64",
+      128
+    ]
+  },
+  "gta3.img/shamal.txd": {
+    "shamal128": [
+      "shamal128",
+      256
+    ],
+    "shamalbody256": [
+      "bvcd5c75cc9cc",
+      256
+    ]
+  },
+  "gta3.img/skimmer.txd": {
+    "cargobobrotorblack128": [
+      "bve3c1f09582080",
+      128
+    ],
+    "skimmer92body128": [
+      "skimmer92body128",
+      256
+    ]
+  },
+  "gta3.img/slamvan.txd": {
+    "remapslamvan92body128": [
+      "remapslamvan92body128",
+      256
+    ],
+    "slamvan92chain": [
+      "slamvan92chain",
+      128
+    ],
+    "slamvan92interior128": [
+      "slamvan92interior128",
+      256
+    ]
+  },
+  "gta3.img/slamvan1.txd": {
+    "slamvan8bit2561": [
+      "slamvan8bit2561",
+      512
+    ]
+  },
+  "gta3.img/slamvan2.txd": {
+    "slamvan8bit2562": [
+      "slamvan8bit2562",
+      512
+    ]
+  },
+  "gta3.img/slamvan3.txd": {
+    "slamvan8bit2563": [
+      "slamvan8bit2563",
+      512
+    ]
+  },
+  "gta3.img/solair.txd": {
+    "solair92interior128": [
+      "solair92interior128",
+      256
+    ],
+    "solair92wheel64": [
+      "solair92wheel64",
+      128
+    ]
+  },
+  "gta3.img/sparrow.txd": {
+    "sparrow92body128": [
+      "bv3196c6a442226",
+      256
+    ]
+  },
+  "gta3.img/speeder.txd": {
+    "speeder92interior128 ": [
+      "speeder92interior128 ",
+      256
+    ],
+    "speeder92prop": [
+      "speeder92prop",
+      128
+    ]
+  },
+  "gta3.img/squalo.txd": {
+    "squalo92interior128": [
+      "squalo92interior128",
+      256
+    ],
+    "squalodecal128": [
+      "squalodecal128",
+      256
+    ]
+  },
+  "gta3.img/stafford.txd": {
+    "stafford92wheel64": [
+      "stafford92wheel64",
+      128
+    ]
+  },
+  "gta3.img/stallion.txd": {
+    "stalion92interior128": [
+      "stalion92interior128",
+      256
+    ],
+    "stallion92wheel64": [
+      "stallion92wheel64",
+      128
+    ]
+  },
+  "gta3.img/stratum.txd": {
+    "remapstratum292body256": [
+      "remapstratum292body256",
+      256
+    ]
+  },
+  "gta3.img/streak.txd": {
+    "streak128": [
+      "streak128",
+      128
+    ],
+    "streakbody256": [
+      "streakbody256",
+      256
+    ],
+    "streaklogofront128x256": [
+      "streaklogofront128x256",
+      256
+    ],
+    "streaklogoside128x256": [
+      "streaklogoside128x256",
+      256
+    ]
+  },
+  "gta3.img/streakc.txd": {
+    "streakc128x64": [
+      "streakc128x64",
+      256
+    ],
+    "streakcbody128": [
+      "streakcbody128",
+      256
+    ],
+    "streakclogoside128x256": [
+      "streakclogoside128x256",
+      256
+    ]
+  },
+  "gta3.img/stretch.txd": {
+    "stretch92grill": [
+      "stretch92grill",
+      128
+    ],
+    "stretch92interior128": [
+      "stretch92interior128",
+      256
+    ],
+    "stretch92wheel64": [
+      "stretch92wheel64",
+      128
+    ]
+  },
+  "gta3.img/stunt.txd": {
+    "stunt256": [
+      "stunt256",
+      256
+    ]
+  },
+  "gta3.img/sultan.txd": {
+    "remapsultanbody256": [
+      "remapsultanbody256",
+      256
+    ],
+    "sultan92interior128": [
+      "sultan92interior128",
+      256
+    ]
+  },
+  "gta3.img/swatvan.txd": {
+    "swatvan92num128b": [
+      "swatvan92num128b",
+      256
+    ],
+    "swatvan92wheel": [
+      "swatvan92wheel",
+      128
+    ]
+  },
+  "gta3.img/sweeper.txd": {
+    "sweeper92decal128": [
+      "sweeper92decal128",
+      256
+    ],
+    "sweeper92interior128": [
+      "sweeper92interior128",
+      256
+    ],
+    "sweeper92wheel32": [
+      "sweeper92wheel32",
+      128
+    ]
+  },
+  "gta3.img/tahoma.txd": {
+    "tahoma92interior128": [
+      "tahoma92interior128",
+      256
+    ]
+  },
+  "gta3.img/tampa.txd": {
+    "tampa92interior128": [
+      "tampa92interior128",
+      256
+    ],
+    "tampa92wheel64": [
+      "tampa92wheel64",
+      128
+    ]
+  },
+  "gta3.img/topfun.txd": {
+    "topfun92decals128": [
+      "topfun92decals128",
+      256
+    ],
+    "topfun92extra": [
+      "topfun92extra",
+      256
+    ]
+  },
+  "gta3.img/tornado.txd": {
+    "remaptornado92body128": [
+      "remaptornado92body128",
+      256
+    ],
+    "tornado92interior128": [
+      "tornado92interior128",
+      256
+    ],
+    "tornado92wheel64": [
+      "tornado92wheel64",
+      128
+    ]
+  },
+  "gta3.img/tornado1.txd": {
+    "tornado92body256a": [
+      "tornado92body256a",
+      512
+    ]
+  },
+  "gta3.img/tornado2.txd": {
+    "tornado92body256b": [
+      "tornado92body256b",
+      512
+    ]
+  },
+  "gta3.img/tornado3.txd": {
+    "tornado92body256c": [
+      "tornado92body256c",
+      512
+    ]
+  },
+  "gta3.img/towtruck.txd": {
+    "towtruck9264": [
+      "towtruck9264",
+      128
+    ],
+    "towtruck92interior128": [
+      "towtruck92interior128",
+      256
+    ],
+    "towtruck92wheel": [
+      "towtruck92wheel",
+      128
+    ]
+  },
+  "gta3.img/tractor.txd": {
+    "tractorwheel": [
+      "tractorwheel",
+      128
+    ]
+  },
+  "gta3.img/tram.txd": {
+    "tram92signs128": [
+      "tram92signs128",
+      256
+    ],
+    "tramtexpage": [
+      "tramtexpage",
+      256
+    ],
+    "tramwood": [
+      "tramwood",
+      256
+    ]
+  },
+  "gta3.img/trash.txd": {
+    "trash92body128": [
+      "trash92body128",
+      256
+    ],
+    "trash92decal128": [
+      "trash92decal128",
+      256
+    ],
+    "trash92wheel64": [
+      "trash92wheel64",
+      128
+    ]
+  },
+  "gta3.img/tropic.txd": {
+    "tropic92body8bit128": [
+      "tropic92body8bit128",
+      256
+    ],
+    "tropic92decal128": [
+      "tropic92decal128",
+      256
+    ],
+    "tropic92interior128": [
+      "tropic92interior128",
+      256
+    ]
+  },
+  "gta3.img/tug.txd": {
+    "tug92interior128": [
+      "tug92interior128",
+      256
+    ],
+    "tug92wheel": [
+      "tug92wheel",
+      128
+    ]
+  },
+  "gta3.img/tugstair.txd": {
+    "tugstair92wheel": [
+      "tugstair92wheel",
+      128
+    ]
+  },
+  "gta3.img/uranus.txd": {
+    "remapuranus92body256": [
+      "remapuranus92body256",
+      256
+    ],
+    "uranus92interior128": [
+      "uranus92interior128",
+      256
+    ]
+  },
+  "gta3.img/utility.txd": {
+    "utility92extra128x256": [
+      "utility92extra128x256",
+      256
+    ],
+    "utility92interior128": [
+      "utility92interior128",
+      256
+    ]
+  },
+  "gta3.img/utiltr1.txd": {
+    "utiltr192wheel64": [
+      "utiltr192wheel64",
+      128
+    ]
+  },
+  "gta3.img/vincent.txd": {
+    "vincent92interior128": [
+      "vincent92interior128",
+      256
+    ],
+    "vincent92wheel64": [
+      "vincent92wheel64",
+      128
+    ]
+  },
+  "gta3.img/virgo.txd": {
+    "virgo92interior128": [
+      "virgo92interior128",
+      256
+    ],
+    "virgo92wheel32": [
+      "virgo92wheel32",
+      128
+    ]
+  },
+  "gta3.img/voodoo.txd": {
+    "voodoo92interior128": [
+      "voodoo92interior128",
+      256
+    ],
+    "voodoo92wheel64": [
+      "voodoo92wheel64",
+      128
+    ]
+  },
+  "gta3.img/vortex.txd": {
+    "vortex128x64": [
+      "vortex128x64",
+      256
+    ],
+    "vortexprop64a": [
+      "vortexprop64a",
+      128
+    ]
+  },
+  "gta3.img/walton.txd": {
+    "walton92extra64": [
+      "walton92extra64",
+      128
+    ],
+    "walton92interior128": [
+      "walton92interior128",
+      256
+    ],
+    "walton92wheel64": [
+      "walton92wheel64",
+      128
+    ]
+  },
+  "gta3.img/washing.txd": {
+    "washing92interior128": [
+      "washing92interior128",
+      256
+    ],
+    "washing92wheel64": [
+      "washing92wheel64",
+      128
+    ]
+  },
+  "gta3.img/wayfarer.txd": {
+    "wayfarer8bit128": [
+      "wayfarer8bit128",
+      256
+    ],
+    "wayfarerbody8bit128": [
+      "wayfarerbody8bit128",
+      256
+    ]
+  },
+  "gta3.img/willard.txd": {
+    "willard92interior128": [
+      "willard92interior128",
+      256
+    ],
+    "willard92wheel64": [
+      "willard92wheel64",
+      128
+    ]
+  },
+  "gta3.img/yankee.txd": {
+    "yankee92crate": [
+      "yankee92crate",
+      128
+    ],
+    "yankee92interior128": [
+      "yankee92interior128",
+      256
+    ],
+    "yankee92logos": [
+      "yankee92logos",
+      256
+    ],
+    "yankee92wheel64": [
+      "yankee92wheel64",
+      128
+    ]
+  },
+  "gta3.img/yosemite.txd": {
+    "yosemite92interior128": [
+      "yosemite92interior128",
+      256
+    ]
+  },
+  "gta3.img/zr350.txd": {
+    "zr350badge64b": [
+      "zr350badge64b",
+      128
+    ],
+    "zr350interior128": [
+      "zr350interior128",
+      256
+    ]
+  }
+}
