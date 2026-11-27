@@ -1189,10 +1189,7 @@ replace_exact(cpp / "game/font.cpp", "\tuint16_t* gxt_string = new uint16_t[0xFF
 # Keep the existing clock filter in the single HUD font hook.
 replace_exact(hooks_cpp, "    BastionPrintString(x, y, text);",
               "    if (ShouldHideHudClock(x, y, text)) return;\n    BastionPrintString(x, y, text);")
-# Diagnostic isolation: retain objects, but do not mutate their shared geometry
-# during render. This temporarily removes per-object custom colours/textures.
-replace_exact(hooks_cpp, "    CHook::InlineHook(\"_ZN7CObject6RenderEv\", &CObject_Render_hook, & CObject_Render);",
-              "    Log(\"[Bastion TEST V4] object material render override disabled\");")
+# Keep the one remaining CObject::Render hook: V7 restores custom materials.
 
 # 22. Keep the vertex buffer lifetime correction, restore native UI.
 replace_exact(cpp / "gui/imguiwrapper.cpp", "\t\t\tdelete m_vertexBuffer;", "\t\t\tdelete[] m_vertexBuffer;")
