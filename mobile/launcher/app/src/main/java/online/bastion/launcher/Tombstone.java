@@ -189,19 +189,38 @@ final class Tombstone {
         String name = "";
         long tid = 0;
         List<byte[]> frames = new ArrayList<byte[]>();
+        List<byte[]> registers = new ArrayList<byte[]>();
         for (Field t : fields(thread)) {
             if (t.number == 1 && t.wire == 0) tid = t.varint;
             else if (t.number == 2 && t.wire == 2) name = t.str();
+            else if (t.number == 3 && t.wire == 2) registers.add(t.bytes);
             else if (t.number == 4 && t.wire == 2) frames.add(t.bytes);
         }
-        if (header) r.append("Упавший поток: ").append(name).append(" (tid ").append(tid).append(")\nСтек:\n");
+        if (header) {
+            r.append("Упавший поток: ").append(name).append(" (tid ").append(tid).append(")\n");
+            r.append("Регистры ARM64:\n");
+            int col = 0;
+            for (byte[] reg : registers) {
+                String regName = "";
+                long value = 0;
+                for (Field f : fields(reg)) {
+                    if (f.number == 1 && f.wire == 2) regName = f.str();
+                    else if (f.number == 2 && f.wire == 0) value = f.varint;
+                }
+                r.append(String.format("%s=%016x  ", regName, value));
+                if (++col % 3 == 0) r.append('\n');
+            }
+            r.append("\nСтек:\n");
+        }
         else r.append("-- ").append(name).append(" (tid ").append(tid).append(")\n");
         int i = 0;
         for (byte[] frame : frames) {
-            long relPc = 0, fnOff = 0, mapOff = 0;
+            long relPc = 0, fnOff = 0, mapOff = 0, absPc = 0, sp = 0;
             String fn = "", file = "", build = "";
             for (Field f : fields(frame)) {
                 if (f.number == 1 && f.wire == 0) relPc = f.varint;
+                else if (f.number == 2 && f.wire == 0) absPc = f.varint;
+                else if (f.number == 3 && f.wire == 0) sp = f.varint;
                 else if (f.number == 4 && f.wire == 2) fn = f.str();
                 else if (f.number == 5 && f.wire == 0) fnOff = f.varint;
                 else if (f.number == 6 && f.wire == 2) file = f.str();
@@ -229,6 +248,7 @@ final class Tombstone {
             }
             if (fn.length() > 0) r.append(" (").append(fn).append(fnOff >= 0 ? "+" + fnOff : "").append(')');
             if (header && build.length() > 0) r.append(" (BuildId: ").append(build).append(')');
+            if (header) r.append(String.format(" [abs pc=%016x sp=%016x]", absPc, sp));
             r.append('\n');
             if (++i >= maxFrames) break;
         }

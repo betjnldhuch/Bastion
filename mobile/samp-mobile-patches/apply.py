@@ -1154,4 +1154,21 @@ replace_exact(cpp / "net/localplayer.cpp", "\tpGame->DisableTrainTraffic();\n\n\
 replace_exact(cpp / "net/localplayer.cpp", "\tm_iDisplayZoneTick = GetTickCount() + 1000;\n\n\treturn true;",
               "\tm_iDisplayZoneTick = GetTickCount() + 1000;\n\tLog(\"[Bastion] spawn: complete\");\n\n\treturn true;")
 
+# 20. Diagnostic APK ONLY: isolate the local ped model swap from the spawn crash.
+# Retain the game's existing player model; remote player skins are unchanged.
+replace_exact(playerped, "    if (!m_pPed || GamePool_Ped_GetAt(m_dwGTAId) != m_pPed) return;\n    if(!IsPedModel(uiModel))",
+              "    if (!m_pPed || GamePool_Ped_GetAt(m_dwGTAId) != m_pPed) return;\n    if (m_bytePlayerNumber == 0) { Log(\"[Bastion TEST] local skin %u -> %u suppressed\", (unsigned)m_pPed->m_nModelIndex, uiModel); return; }\n    if(!IsPedModel(uiModel))")
+replace_exact(cpp / "net/localplayer.cpp", "bool bFirstSpawn = true;",
+              "bool bFirstSpawn = true;\nstatic bool bastionTraceFirstActive = false;")
+replace_exact(cpp / "net/localplayer.cpp", "\tif (m_bIsActive && m_pPlayerPed != nullptr)\n\t{\n\t\t// local player is dead",
+              "\tif (m_bIsActive && m_pPlayerPed != nullptr)\n\t{\n\t\tconst bool trace = bastionTraceFirstActive;\n\t\tbastionTraceFirstActive = false;\n\t\tif (trace) Log(\"[Bastion TEST] first active tick: start\");\n\t\t// local player is dead")
+replace_exact(cpp / "net/localplayer.cpp", "\t\tpGame->UpdateCheckpoints();",
+              "\t\tif (trace) Log(\"[Bastion TEST] first active tick: checkpoints\");\n\t\tpGame->UpdateCheckpoints();")
+replace_exact(cpp / "net/localplayer.cpp", "\t\tUpdateSurfing();\n\t\tCheckWeapons();",
+              "\t\tif (trace) Log(\"[Bastion TEST] first active tick: weapons\");\n\t\tUpdateSurfing();\n\t\tCheckWeapons();")
+replace_exact(cpp / "net/localplayer.cpp", "\t\tUpdateCameraTarget();\n\t\t// PLAYER DATA UPDATES",
+              "\t\tUpdateCameraTarget();\n\t\tif (trace) Log(\"[Bastion TEST] first active tick: sync\");\n\t\t// PLAYER DATA UPDATES")
+replace_exact(cpp / "net/localplayer.cpp", "\tm_bIsWasted = false;\n\tm_bIsActive = true;",
+              "\tm_bIsWasted = false;\n\tbastionTraceFirstActive = true;\n\tm_bIsActive = true;")
+
 print("SAMP-Mobile prepared for Bastion: library module, Bastion storage, :game process, no Firebase.")

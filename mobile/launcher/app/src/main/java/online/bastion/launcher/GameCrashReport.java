@@ -93,7 +93,7 @@ public final class GameCrashReport {
         if (missingFiles != null)
             for (String line : missingFiles.trim().split("\n")) if (!isOptionalGameFile(line)) lines.add(line);
         if (!lines.isEmpty()) {
-            StringBuilder m = new StringBuilder("[Игра не нашла файлы — последний, скорее всего, причина падения]\n");
+            StringBuilder m = new StringBuilder("[Файлы, которые игра пыталась открыть — не обязательно причина падения]\n");
             for (int i = Math.max(0, lines.size() - 15); i < lines.size(); i++) {
                 String path = lines.get(i);
                 String rootPath = root.getAbsolutePath() + "/";
