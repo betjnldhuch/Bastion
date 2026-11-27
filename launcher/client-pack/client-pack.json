@@ -1,5 +1,5 @@
 {
-  "version": 8,
+  "version": 9,
   "product": "Bastion PC client pack",
   "files": [
     {
@@ -2315,6 +2315,166 @@
       "url": "pack/models/gta3.img/railway_las.txd/lasunion7.tex",
       "size": 174940,
       "sha256": "4a27bf53e034b6b102acdb848a7110a250221e2fae010fa598c4cd67c4330996"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "idlewood3_lae.txd",
+      "texture": "FastFood1_LAe",
+      "url": "pack/models/gta3.img/idlewood3_lae.txd/FastFood1_LAe.tex",
+      "size": 174940,
+      "sha256": "079136d24ce2d1961df4c7b0b5d6fc9cf33add23bc268eda657c364788799380"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "idlewood3_lae.txd",
+      "texture": "pizzasign_LAe",
+      "url": "pack/models/gta3.img/idlewood3_lae.txd/pizzasign_LAe.tex",
+      "size": 174940,
+      "sha256": "80dd41aa8a2ab602cf3689bd25cb35293fd25b0f966933feef6f8db4b13d3875"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "idlewood3_lae.txd",
+      "texture": "pizzasign2LA",
+      "url": "pack/models/gta3.img/idlewood3_lae.txd/pizzasign2LA.tex",
+      "size": 349716,
+      "sha256": "4d14298077369406f4383ad6121bcc676d2a3eee7b5fd36935341af1b93af1a9"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "idlewood3_lae.txd",
+      "texture": "comptwall36",
+      "url": "pack/models/gta3.img/idlewood3_lae.txd/comptwall36.tex",
+      "size": 174940,
+      "sha256": "b5f2a8c02795e0f04a89cd55c00e7829a5e7d1023e7966879031604e03f16a9a"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "idlewood3_lae.txd",
+      "texture": "brickred2",
+      "url": "pack/models/gta3.img/idlewood3_lae.txd/brickred2.tex",
+      "size": 174940,
+      "sha256": "4efbf722d38dd583ee21e1f7cf4eeef323e0f682b04ba6e0c6487e011ace4e95"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "idlewood3_lae.txd",
+      "texture": "sjmhoodlawn41",
+      "url": "pack/models/gta3.img/idlewood3_lae.txd/sjmhoodlawn41.tex",
+      "size": 174940,
+      "sha256": "8fcd14d56ef5bc57f35d546d7d16ea4db1303548bb237929379eab395e1b3e2c"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "idlewood6_lae.txd",
+      "texture": "reeces_LAe",
+      "url": "pack/models/gta3.img/idlewood6_lae.txd/reeces_LAe.tex",
+      "size": 699232,
+      "sha256": "9a7ad2a2858402a661af07aed771e16ec9601ba107dbd86f0e35ca95d9eb5282"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "idlewood6_lae.txd",
+      "texture": "barberpole1",
+      "url": "pack/models/gta3.img/idlewood6_lae.txd/barberpole1.tex",
+      "size": 174940,
+      "sha256": "75916425dea8601aa3ff1d83a346dafc59dd20c719eb6179ec1e09dd834b04e8"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "idlewood6_lae.txd",
+      "texture": "barbershop1",
+      "url": "pack/models/gta3.img/idlewood6_lae.txd/barbershop1.tex",
+      "size": 699232,
+      "sha256": "cbca8705f3250747ad40a0cd1be6f1e5662d96c7e1d97193ef642c2f7f8069d3"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "idlewood6_lae.txd",
+      "texture": "LoadingDoorClean",
+      "url": "pack/models/gta3.img/idlewood6_lae.txd/LoadingDoorClean.tex",
+      "size": 174940,
+      "sha256": "10f9c77f8ae9a2961bd4e3246358263aa3e7760e92e02a22cabc2ddd20887699"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "paynspray_lae.txd",
+      "texture": "laspryshpsig1",
+      "url": "pack/models/gta3.img/paynspray_lae.txd/laspryshpsig1.tex",
+      "size": 349712,
+      "sha256": "eb21892524add23f16280aab76bd3163975507091e5ab250d292036c7d3c405d"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "paynspray_lae.txd",
+      "texture": "bigblue2",
+      "url": "pack/models/gta3.img/paynspray_lae.txd/bigblue2.tex",
+      "size": 174940,
+      "sha256": "cb407fc555af4e6154443519a0a64ab99ec160bfd2e5efdc50209f0b93b3067d"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "paynspray_lae.txd",
+      "texture": "bigblue3",
+      "url": "pack/models/gta3.img/paynspray_lae.txd/bigblue3.tex",
+      "size": 174940,
+      "sha256": "5e7e87110290af7a749655d70e925e186512eb21077886fddcdba24afb7f4447"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "laeroads2s.txd",
+      "texture": "snpedtest1",
+      "url": "pack/models/gta3.img/laeroads2s.txd/snpedtest1.tex",
+      "size": 699232,
+      "sha256": "c554107e6dd8d51e192dc7b65a4510e54e467c984a8eee99284454fef48622aa"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "laeroads2s.txd",
+      "texture": "crossing_law",
+      "url": "pack/models/gta3.img/laeroads2s.txd/crossing_law.tex",
+      "size": 349712,
+      "sha256": "42393fce0c3621e2df46738e6d865f2b1e1559bf3fe6cf758fb248321ea79557"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "laeroads2s.txd",
+      "texture": "sjmhoodlawn41",
+      "url": "pack/models/gta3.img/laeroads2s.txd/sjmhoodlawn41.tex",
+      "size": 174940,
+      "sha256": "8fcd14d56ef5bc57f35d546d7d16ea4db1303548bb237929379eab395e1b3e2c"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "idlewood6_detail.txd",
+      "texture": "snpedtest1",
+      "url": "pack/models/gta3.img/idlewood6_detail.txd/snpedtest1.tex",
+      "size": 699232,
+      "sha256": "c554107e6dd8d51e192dc7b65a4510e54e467c984a8eee99284454fef48622aa"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "idlewood6_detail.txd",
+      "texture": "crossing_law",
+      "url": "pack/models/gta3.img/idlewood6_detail.txd/crossing_law.tex",
+      "size": 349712,
+      "sha256": "42393fce0c3621e2df46738e6d865f2b1e1559bf3fe6cf758fb248321ea79557"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "lasroads_las2.txd",
+      "texture": "snpedtest1",
+      "url": "pack/models/gta3.img/lasroads_las2.txd/snpedtest1.tex",
+      "size": 699232,
+      "sha256": "c554107e6dd8d51e192dc7b65a4510e54e467c984a8eee99284454fef48622aa"
+    },
+    {
+      "path": "models/gta3.img",
+      "name": "lasroads_las2.txd",
+      "texture": "sjmhoodlawn41",
+      "url": "pack/models/gta3.img/lasroads_las2.txd/sjmhoodlawn41.tex",
+      "size": 174940,
+      "sha256": "8fcd14d56ef5bc57f35d546d7d16ea4db1303548bb237929379eab395e1b3e2c"
     }
   ]
 }

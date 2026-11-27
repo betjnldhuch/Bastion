@@ -1,12 +1,13 @@
 # Offline Mod Loader installation from the extracted street pack.
-param([string]$GameDirectory, [string]$OutputDirectory)
+param([string]$GameDirectory, [string]$OutputDirectory,
+      [string]$ModName = 'Bastion-Unity-Station', [int]$DictionaryCount = 4)
 $ErrorActionPreference = 'Stop'
 if (!$GameDirectory) { $GameDirectory = (Read-Host 'GTA San Andreas folder').Trim().Trim('"') }
 $archive = Join-Path $GameDirectory 'models/gta3.img'
-if (!$OutputDirectory) { $OutputDirectory = Join-Path $GameDirectory 'modloader/Bastion-Unity-Station' }
+if (!$OutputDirectory) { $OutputDirectory = Join-Path (Join-Path $GameDirectory 'modloader') $ModName }
 $patchRoot = Join-Path $PSScriptRoot 'pack/models/gta3.img'
 $folders = @(Get-ChildItem -LiteralPath $patchRoot -Directory)
-if ($folders.Count -ne 4) { throw 'Extract the entire ZIP first.' }
+if ($DictionaryCount -lt 1 -or $folders.Count -ne $DictionaryCount) { throw 'Extract the entire ZIP first.' }
 
 $reader = [IO.BinaryReader]::new([IO.File]::OpenRead($archive))
 $dictionaryFiles = @{}

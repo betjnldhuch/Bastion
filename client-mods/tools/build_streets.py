@@ -1,4 +1,4 @@
-"""Build Unity Station street and facade textures for PC and Android."""
+"""Build Los Santos street and facade textures for PC and Android."""
 import hashlib
 import io
 import json
@@ -14,7 +14,7 @@ SOURCE = ROOT / "client-mods/streets/src"
 PACK = ROOT / "launcher/client-pack"
 RW_VERSION = 0x1803FFFF
 
-# The same material occurs in multiple dictionaries near the station.
+# Each PC dictionary needs a patch. Android looks up each material by name.
 DICTIONARIES = {
     "lanroad": ("crossing_law", "easykerb", "sidelatino1_LAe", "sl_pavebutt1",
                 "snpedtest1", "tarmacplain_bank"),
@@ -23,7 +23,15 @@ DICTIONARIES = {
                   "lasunion95", "lasunion96", "lasunion98", "lasunion995"),
     "railway_las": ("concretenewb256", "lasjmroof", "lasunion2", "lasunion5", "lasunion7"),
     "civic06_lan": ("tarmacplain_bank",),
+    "idlewood3_lae": ("FastFood1_LAe", "pizzasign_LAe", "pizzasign2LA", "comptwall36",
+                      "brickred2", "sjmhoodlawn41"),
+    "idlewood6_lae": ("reeces_LAe", "barberpole1", "barbershop1", "LoadingDoorClean"),
+    "paynspray_lae": ("laspryshpsig1", "bigblue2", "bigblue3"),
+    "laeroads2s": ("snpedtest1", "crossing_law", "sjmhoodlawn41"),
+    "idlewood6_detail": ("snpedtest1", "crossing_law"),
+    "lasroads_las2": ("snpedtest1", "sjmhoodlawn41"),
 }
+MASK_NAMES = {"pizzasign2LA": "pizzasign2LA_m"}
 NAMES = sorted({name for names in DICTIONARIES.values() for name in names})
 
 
@@ -35,24 +43,28 @@ def mobile_images():
 
 
 def street_native(name):
+    mask = MASK_NAMES.get(name, "")
+    pixel_format = "DXT5" if mask else "DXT1"
     with Image.open(SOURCE / (name + ".png")) as source:
-        image = source.convert("RGB")
+        image = source.convert("RGBA" if mask else "RGB")
     size = image.size
     levels = []
     while True:
         dds = io.BytesIO()
-        image.save(dds, format="DDS", pixel_format="DXT1")
+        image.save(dds, format="DDS", pixel_format=pixel_format)
         block = dds.getvalue()[128:]
-        expected = ((image.width + 3) // 4) * ((image.height + 3) // 4) * 8
+        block_bytes = 16 if mask else 8
+        expected = ((image.width + 3) // 4) * ((image.height + 3) // 4) * block_bytes
         if len(block) != expected:
-            raise ValueError(f"Invalid DXT1 mip size for {name}")
+            raise ValueError(f"Invalid {pixel_format} mip size for {name}")
         levels.append(struct.pack("<I", len(block)) + block)
         if image.size == (1, 1):
             break
         image = image.resize((max(1, image.width // 2), max(1, image.height // 2)),
                              Image.Resampling.LANCZOS)
-    header = struct.pack("<II32s32sI4sHH4B", 9, 0x1106, name.encode("ascii"), b"",
-                         0x8200, b"DXT1", *size, 16, len(levels), 4, 8)
+    header = struct.pack("<II32s32sI4sHH4B", 9, 0x1106, name.encode("ascii"), mask.encode("ascii"),
+                         0x8300 if mask else 0x8200, pixel_format.encode("ascii"),
+                         *size, 16, len(levels), 4, 9 if mask else 8)
     body = hdr(1, header + b"".join(levels), RW_VERSION) + hdr(3, b"", RW_VERSION)
     return hdr(21, body, RW_VERSION)
 
