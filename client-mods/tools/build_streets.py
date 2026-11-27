@@ -1,4 +1,4 @@
-"""Build the Unity Station street patches for the PC client pack."""
+"""Build Unity Station street and facade textures for PC and Android."""
 import hashlib
 import io
 import json
@@ -18,8 +18,10 @@ RW_VERSION = 0x1803FFFF
 DICTIONARIES = {
     "lanroad": ("crossing_law", "easykerb", "sidelatino1_LAe", "sl_pavebutt1",
                 "snpedtest1", "tarmacplain_bank"),
-    "union_las": ("crazypave", "easykerb", "snpedtest1", "tarmacplain_bank"),
-    "railway_las": ("concretenewb256",),
+    "union_las": ("crazypave", "easykerb", "snpedtest1", "tarmacplain_bank",
+                  "lasjmroof", "lasunion1", "lasunion2", "lasunion5", "lasunion7",
+                  "lasunion95", "lasunion96", "lasunion98", "lasunion995"),
+    "railway_las": ("concretenewb256", "lasjmroof", "lasunion2", "lasunion5", "lasunion7"),
     "civic06_lan": ("tarmacplain_bank",),
 }
 NAMES = sorted({name for names in DICTIONARIES.values() for name in names})
