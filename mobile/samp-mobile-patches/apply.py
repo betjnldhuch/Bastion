@@ -1194,15 +1194,18 @@ replace_exact(hooks_cpp, "    BastionPrintString(x, y, text);",
 replace_exact(hooks_cpp, "    CHook::InlineHook(\"_ZN7CObject6RenderEv\", &CObject_Render_hook, & CObject_Render);",
               "    Log(\"[Bastion TEST V4] object material render override disabled\");")
 
-# 22. V5: isolate the native ImGui render after spawn (diagnostic only).
-# V3/V4 register x24 points at libsamp's Debug##Default string; native UI
-# is a new candidate, not a proven root cause. Keep GTA world and network live.
-replace_exact(cpp / "game/hooks.cpp", "void MainLoop();\nvoid(*Render2dStuff)();\nvoid Render2dStuff_hook()\n{\n    Render2dStuff();\n    MainLoop();\n\n    if (pNetGame && pGame && !pGame->IsGamePaused())\n    {\n        CObjectPool* pObjectPool = pNetGame->GetObjectPool();\n        if (pObjectPool) {\n            pObjectPool->Process();\n            pObjectPool->ProcessMaterialText();\n        }\n\n        CTextDrawPool* pTextDrawPool = pNetGame->GetTextDrawPool();\n        if (pTextDrawPool && pTextDrawPool->GetState() == false) {\n            pTextDrawPool->SnapshotProcess();\n        }\n    }\n\n    if (pUI) pUI->render();\n}",
-              "void MainLoop();\nvoid(*Render2dStuff)();\nextern bool g_BastionV5Spawned;\nvoid Render2dStuff_hook()\n{\n    static unsigned frameAfterSpawn = 0;\n    const bool trace = g_BastionV5Spawned && frameAfterSpawn < 120;\n    if (trace) Log(\"[Bastion V5] frame %u: GTA HUD begin\", frameAfterSpawn);\n    Render2dStuff();\n    if (trace) Log(\"[Bastion V5] frame %u: GTA HUD done, network begin\", frameAfterSpawn);\n    MainLoop();\n    if (trace) Log(\"[Bastion V5] frame %u: network done\", frameAfterSpawn);\n\n    if (pNetGame && pGame && !pGame->IsGamePaused())\n    {\n        CObjectPool* pObjectPool = pNetGame->GetObjectPool();\n        if (pObjectPool) {\n            pObjectPool->Process();\n            pObjectPool->ProcessMaterialText();\n        }\n        if (trace) Log(\"[Bastion V5] frame %u: objects done\", frameAfterSpawn);\n\n        CTextDrawPool* pTextDrawPool = pNetGame->GetTextDrawPool();\n        if (pTextDrawPool && pTextDrawPool->GetState() == false) {\n            pTextDrawPool->SnapshotProcess();\n        }\n    }\n\n    // Diagnostic: leave the normal login UI intact, but skip ImGui after spawn.\n    // Java/WebView UI, engine HUD and networking remain enabled.\n    if (g_BastionV5Spawned) {\n        if (frameAfterSpawn == 0) Log(\"[Bastion V5] native ImGui render disabled after spawn\");\n        if (trace) Log(\"[Bastion V5] frame %u: complete\", frameAfterSpawn);\n        if (frameAfterSpawn < 120) ++frameAfterSpawn;\n    } else if (pUI) {\n        pUI->render();\n    }\n}")
-replace_exact(cpp / "net/localplayer.cpp", "static bool bastionTraceFirstActive = false;",
-              "static bool bastionTraceFirstActive = false;\nbool g_BastionV5Spawned = false;")
-replace_exact(cpp / "net/localplayer.cpp", "\tLog(\"[Bastion] spawn: complete\");",
-              "\tg_BastionV5Spawned = true;\n\tLog(\"[Bastion] spawn: complete\");")
+# 22. Keep the vertex buffer lifetime correction, restore native UI.
 replace_exact(cpp / "gui/imguiwrapper.cpp", "\t\t\tdelete m_vertexBuffer;", "\t\t\tdelete[] m_vertexBuffer;")
+
+# 23. V6: fix the actual ARM64 3D label projection entry point and camera.
+# Verified against libGame.so from V4 (build ID 84a3af6e60203efe45dc9f06b77ce5ca9e9dacc9).
+# Calling into the middle of DoVehicleLights bypasses its stack prologue,
+# so its epilogue restores a bogus return address. V5 confirmed the UI path.
+replace_exact(label_cpp, "            CVector vecOut;\n            typedef void (*CalcScreenCoors_t)(CVector*, CVector*, float*, float*, bool, bool);\n            CalcScreenCoors_t CalcScreenCoors = (CalcScreenCoors_t)(g_libGTASA + (VER_x32 ? 0x005C57E8 + 1 : 0x6E9DF8));\n\n            if (CalcScreenCoors) {\n                CalcScreenCoors((CVector*)&vecPos, &vecOut, 0, 0, 0, 0);\n\n                if (vecOut.z < 1.0f) return;",
+              "            CVector vecOut{};\n            // GTA 2.11 ARM64: CSprite::CalcScreenCoors is 0x5F449C.\n            // 0x6E9DF8 is inside CVehicle::DoVehicleLights, NOT a function entry.\n            typedef bool (*CalcScreenCoors_t)(const CVector*, CVector*, float*, float*, bool, bool);\n            CalcScreenCoors_t CalcScreenCoors = (CalcScreenCoors_t)(g_libGTASA + (VER_x32 ? 0x005C57E8 + 1 : 0x5F449C));\n\n            if (CalcScreenCoors) {\n                if (!CalcScreenCoors(&vecPos, &vecOut, nullptr, nullptr, true, true)) return;\n\n                if (vecOut.z < 1.0f) return;")
+label_source = read(label_cpp)
+if label_source.count("0xBBA8D0") != 2:
+    raise SystemExit("textlabelpool.cpp: expected two old camera addresses")
+write(label_cpp, label_source.replace("0xBBA8D0", "0x9F86F8"))
 
 print("SAMP-Mobile prepared for Bastion: library module, Bastion storage, :game process, no Firebase.")
