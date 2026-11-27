@@ -1128,9 +1128,11 @@ replace_exact(playerped, """        if (!CStreaming::TryLoadModel(uiModel))
         if (m_pPed->m_pRwObject) m_pPed->DeleteRwObject();
         m_pPed->SetModelIndex(uiModel);
 
+        // Let streaming evict the previous model normally; immediate removal
+        // during the spawn/render transition can invalidate pending references.
         if (oldModelId != uiModel && oldModelId < CModelInfo::NUM_MODEL_INFOS &&
             CModelInfo::GetModelInfo(oldModelId))
-            CStreaming::RemoveModelIfNoRefs(oldModelId);""")
+            CStreaming::SetModelIsDeletable(oldModelId);""")
 
 # 18. Checkpoint handles must start at zero. Login/spawn can disable them
 # before any checkpoint exists; UpdateCheckpoints must not delete a marker twice.
@@ -1140,5 +1142,16 @@ replace_exact(cpp / "game/game.cpp", "\telse if (m_dwRaceCheckpointMarker)\n\t{\
               "\telse if (m_dwRaceCheckpointMarker || m_dwRaceCheckpointHandle)\n\t{\n\t\tDisableRaceCheckpoint();\n\t}")
 replace_exact(cpp / "game/game.cpp", "    Log(\"DisableRaceCheckpoint\");\n    if (m_dwRaceCheckpointHandle != NULL)",
               "    Log(\"DisableRaceCheckpoint: handle=%u marker=%u\", (unsigned)m_dwRaceCheckpointHandle, (unsigned)m_dwRaceCheckpointMarker);\n    if (m_dwRaceCheckpointHandle != NULL)")
+
+# 19. Spawn crash follow-up: preserve original Android crash context, initialize
+# pickup output, and isolate the failing spawn operation in the client log.
+replace_exact(cpp / "game/game.cpp", "    uintptr hnd;\n\n    auto dwModelArray",
+              "    uintptr hnd = 0;\n\n    auto dwModelArray")
+replace_exact(cpp / "main.cpp", "\tsigaction(SIGSEGV, &act, &act_old);",
+              "\t// Preserve Android's native SIGSEGV handler and original fault context.\n\t// The upstream handler calls ART's previous handler directly, then unwinds\n\t// the signal handler itself; this can obscure the original crashing frame.\n\t// sigaction(SIGSEGV, &act, &act_old);")
+replace_exact(cpp / "net/localplayer.cpp", "\tpGame->DisableTrainTraffic();\n\n\tm_pPlayerPed->m_pPed->SetPosn(m_SpawnInfo.vecPos.x,\n\t\tm_SpawnInfo.vecPos.y, m_SpawnInfo.vecPos.z + 0.5f);\n\n\tm_pPlayerPed->SetTargetRotation(m_SpawnInfo.fRotation);",
+              "\tLog(\"[Bastion] spawn: disable train traffic\");\n\tpGame->DisableTrainTraffic();\n\tLog(\"[Bastion] spawn: teleport\");\n\tif (!m_pPlayerPed->m_pPed || GamePool_Ped_GetAt(m_pPlayerPed->m_dwGTAId) != m_pPlayerPed->m_pPed) {\n\t\tLog(\"[Bastion] spawn: ped no longer valid\");\n\t\treturn false;\n\t}\n\tm_pPlayerPed->m_pPed->SetPosn(m_SpawnInfo.vecPos.x,\n\t\tm_SpawnInfo.vecPos.y, m_SpawnInfo.vecPos.z + 0.5f);\n\n\tLog(\"[Bastion] spawn: rotation\");\n\tm_pPlayerPed->SetTargetRotation(m_SpawnInfo.fRotation);\n\tLog(\"[Bastion] spawn: rotation complete\");")
+replace_exact(cpp / "net/localplayer.cpp", "\tm_iDisplayZoneTick = GetTickCount() + 1000;\n\n\treturn true;",
+              "\tm_iDisplayZoneTick = GetTickCount() + 1000;\n\tLog(\"[Bastion] spawn: complete\");\n\n\treturn true;")
 
 print("SAMP-Mobile prepared for Bastion: library module, Bastion storage, :game process, no Firebase.")
