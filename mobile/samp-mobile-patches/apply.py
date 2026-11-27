@@ -1132,4 +1132,13 @@ replace_exact(playerped, """        if (!CStreaming::TryLoadModel(uiModel))
             CModelInfo::GetModelInfo(oldModelId))
             CStreaming::RemoveModelIfNoRefs(oldModelId);""")
 
+# 18. Checkpoint handles must start at zero. Login/spawn can disable them
+# before any checkpoint exists; UpdateCheckpoints must not delete a marker twice.
+replace_exact(cpp / "game/game.cpp", "\tm_bRaceCheckpointsEnabled = false;\n\tm_dwRaceCheckpointHandle = 0;",
+              "\tm_bRaceCheckpointsEnabled = false;\n\tm_dwCheckpointMarker = 0;\n\tm_dwRaceCheckpointMarker = 0;\n\tm_dwRaceCheckpointHandle = 0;")
+replace_exact(cpp / "game/game.cpp", "\telse if (m_dwRaceCheckpointMarker)\n\t{\n\t\tDisableMarker(m_dwRaceCheckpointMarker);\n\t\tDisableRaceCheckpoint();\n\t\tm_dwRaceCheckpointMarker = 0;\n\t}",
+              "\telse if (m_dwRaceCheckpointMarker || m_dwRaceCheckpointHandle)\n\t{\n\t\tDisableRaceCheckpoint();\n\t}")
+replace_exact(cpp / "game/game.cpp", "    Log(\"DisableRaceCheckpoint\");\n    if (m_dwRaceCheckpointHandle != NULL)",
+              "    Log(\"DisableRaceCheckpoint: handle=%u marker=%u\", (unsigned)m_dwRaceCheckpointHandle, (unsigned)m_dwRaceCheckpointMarker);\n    if (m_dwRaceCheckpointHandle != NULL)")
+
 print("SAMP-Mobile prepared for Bastion: library module, Bastion storage, :game process, no Firebase.")
