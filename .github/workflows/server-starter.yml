@@ -46,7 +46,7 @@ jobs:
             /out:BastionServer.exe Starter.cs Logs.cs Telegram.cs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           New-Item -ItemType Directory -Force ..\..\dist\BastionServer | Out-Null
-          Copy-Item BastionServer.exe, README.txt ..\..\dist\BastionServer
+          Copy-Item BastionServer.exe, Start-Bastion.bat, README.txt ..\..\dist\BastionServer
 
       - uses: actions/upload-artifact@v4
         continue-on-error: true

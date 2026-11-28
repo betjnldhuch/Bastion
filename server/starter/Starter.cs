@@ -446,6 +446,60 @@ namespace BastionServer
     // -----------------------------------------------------------------
     //  Главное окно
     // -----------------------------------------------------------------
+    static class ServerFirewall
+    {
+        static dynamic Create(string progId)
+        {
+            return Activator.CreateInstance(Type.GetTypeFromProgID(progId, true));
+        }
+
+        // null — только прочитать состояние. Имена совпадают с ручными правилами netsh.
+        public static CheckState Rules(int port, bool? enable)
+        {
+            if (port < 1 || port > 65535) throw new ArgumentOutOfRangeException("port");
+            dynamic rules = Create("HNetCfg.FwPolicy2").Rules;
+            string localPort = port.ToString(CultureInfo.InvariantCulture);
+            string udpName = "Bastion " + localPort;
+            string tcpName = udpName + " TCP";
+            bool udp = false, tcp = false;
+            foreach (dynamic rule in (System.Collections.IEnumerable)rules)
+            {
+                string name = rule.Name;
+                if (name != udpName && name != tcpName) continue;
+                int protocol = name == udpName ? 17 : 6;
+                if (rule.Direction != 1 || rule.Action != 1 || rule.Protocol != protocol ||
+                    rule.LocalPorts != localPort) continue;
+                if (enable.HasValue && rule.Enabled != enable.Value) rule.Enabled = enable.Value;
+                if (rule.Enabled)
+                {
+                    if (protocol == 17) udp = true;
+                    else tcp = true;
+                }
+            }
+            if (enable == true)
+            {
+                if (!udp) Add(rules, udpName, localPort, 17);
+                if (!tcp) Add(rules, tcpName, localPort, 6);
+                return CheckState.Checked;
+            }
+            if (udp && tcp) return CheckState.Checked;
+            return udp || tcp ? CheckState.Indeterminate : CheckState.Unchecked;
+        }
+
+        static void Add(dynamic rules, string name, string port, int protocol)
+        {
+            dynamic rule = Create("HNetCfg.FWRule");
+            rule.Name = name;
+            rule.Protocol = protocol;
+            rule.LocalPorts = port;
+            rule.Direction = 1; // входящее
+            rule.Action = 1;    // разрешить
+            rule.Profiles = int.MaxValue;
+            rule.Enabled = true;
+            rules.Add(rule);
+        }
+    }
+
     class MainForm : Form
     {
         // состояние сервера
@@ -476,6 +530,8 @@ namespace BastionServer
         Btn btnDownload, btnCompile, btnFromFile, btnRollback, btnBackupDb;
         TextBox fName, fMax, fPort, fRcon, fPass, fSite, fLang;
         CheckBox fRconOn, chkAutoRestart, chkAutoStart;
+        CheckBox chkFirewall;
+        int firewallPort;
         NotifyIcon tray;
         System.Windows.Forms.Timer tick;
         volatile bool querying, busy;
@@ -1620,6 +1676,9 @@ namespace BastionServer
             y += 54;
 
             H("СТАРТЕР", s, ref y);
+            chkFirewall = Check("", s, ref y);
+            chkFirewall.AutoCheck = false;
+            chkFirewall.Click += delegate { ChangeFirewall(); };
             Label dl = new Label();
             dl.Text = "Папка сервера";
             dl.ForeColor = T.Dim;
@@ -1799,6 +1858,46 @@ namespace BastionServer
             catch (Exception ex) { Say("Автозапуск не настроен: " + ex.Message, T.Red); }
         }
 
+        void RefreshFirewall()
+        {
+            firewallPort = Port;
+            chkFirewall.Text = "Разрешить подключения к порту " + firewallPort + " (UDP и TCP)";
+            try
+            {
+                chkFirewall.CheckState = ServerFirewall.Rules(firewallPort, null);
+                chkFirewall.Enabled = true;
+            }
+            catch (Exception ex)
+            {
+                chkFirewall.CheckState = CheckState.Indeterminate;
+                chkFirewall.Enabled = false;
+                chkFirewall.Text += " — правила Windows недоступны";
+                Say("Брандмауэр: " + ex.Message, T.Yellow);
+            }
+        }
+
+        void ChangeFirewall()
+        {
+            bool enable = chkFirewall.CheckState != CheckState.Checked;
+            try
+            {
+                ProcessStartInfo info = new ProcessStartInfo(Application.ExecutablePath,
+                    "--firewall " + (enable ? "on " : "off ") + firewallPort.ToString(CultureInfo.InvariantCulture));
+                info.UseShellExecute = true;
+                info.Verb = "runas";
+                using (Process helper = Process.Start(info))
+                {
+                    helper.WaitForExit();
+                    if (helper.ExitCode != 0) throw new System.ComponentModel.Win32Exception(helper.ExitCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Правила брандмауэра Bastion", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            RefreshFirewall();
+        }
+
         void PickServerDir()
         {
             using (FolderBrowserDialog d = new FolderBrowserDialog())
@@ -1823,6 +1922,7 @@ namespace BastionServer
 
         void LoadConfigFields()
         {
+            if (tabs.Selected == 3) RefreshFirewall();
             foreach (TextBox t in new TextBox[] { fName, fMax, fPort, fRcon, fPass, fSite, fLang }) t.Text = "";
             if (!File.Exists(ConfigPath)) return;
             try
@@ -1922,8 +2022,29 @@ namespace BastionServer
         public static string ExeDir { get { return Path.GetDirectoryName(Application.ExecutablePath); } }
 
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
+            if (args.Length > 0 && args[0] == "--firewall")
+            {
+                int port;
+                if (args.Length != 3 || (args[1] != "on" && args[1] != "off") ||
+                    !int.TryParse(args[2], out port) || port < 1 || port > 65535)
+                {
+                    Environment.ExitCode = 87;
+                    return;
+                }
+                try
+                {
+                    using (Mutex change = new Mutex(false, "BastionFirewall_" + port))
+                    {
+                        try { change.WaitOne(); } catch (AbandonedMutexException) { }
+                        try { ServerFirewall.Rules(port, args[1] == "on"); }
+                        finally { change.ReleaseMutex(); }
+                    }
+                }
+                catch (Exception ex) { Environment.ExitCode = ex.HResult & 0xffff; if (Environment.ExitCode == 0) Environment.ExitCode = 1; }
+                return;
+            }
             bool created;
             using (Mutex m = new Mutex(true, "BastionServerStarter_" + ExeDir.ToLowerInvariant().GetHashCode().ToString("x"), out created))
             {
